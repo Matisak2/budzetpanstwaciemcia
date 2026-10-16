@@ -1,7 +1,7 @@
 /* Budżet M&W – service worker: the app opens without internet.
    index.html: network first (so updates arrive), cached copy when offline.
    Firebase SDK (versioned URLs): cache first. Firestore/Auth traffic is never touched. */
-const CACHE = 'budzet-mw-v3';
+const CACHE = 'budzet-mw-v4';
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const SDK_FILES = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => SDK + f);
