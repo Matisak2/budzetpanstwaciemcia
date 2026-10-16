@@ -955,8 +955,39 @@ function markBackup(){w(setDoc(META(),{at:Date.now(),who:S.who}))}
 async function writeTxs(list){const by={};list.forEach(([id,t])=>{const ym=t.date.slice(0,7);(by[ym]=by[ym]||{})[id]=t});
   for(const ym of Object.keys(by).sort())merge(doc(MC(),ym),{tx:by[ym]});return true}
 async function writePlans(map){for(const[ym,d]of Object.entries(map)){if(Object.keys(d).length)merge(doc(PLC(),ym),d)}return true}
+/* fuzzy name matching for transaction-list imports: words without brackets/punctuation */
+const toks=n=>new Set(String(n||'').toLowerCase().replace(/\(.*?\)/g,' ').replace(/^\s*\d+\s*[.)]\s*/,'').split(/[^0-9a-ząćęłńóśźż+-]+/i).filter(w=>w.length>=3&&!['oraz','dla','the'].includes(w)));
+const simTok=(a,b)=>{const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;let k=0;A.forEach(w=>{if(B.has(w))k++});return k/Math.min(A.size,B.size)};
+function matchSub(cfg,catName,subName,type){const want=type=='inc'?'inc':'exp';let best=null;
+  for(const c of cfg.cats){if(c.type!=want)continue;const cs=simTok(c.name,catName);
+    for(const x of c.subs){const exact=x.name.trim().toLowerCase()==subName.trim().toLowerCase();const sc=exact?10:simTok(x.name,subName)+(cs>=.5?.5:0);
+      if(!best||sc>best.sc)best={sc,sub:x,cat:c,exact}}}
+  return best&&(best.exact||best.sc>=1.1)?best:null}
+async function importTxList(o){const cfg=S.cfg,list=(o.tx||[]).filter(t=>isDate(t.date)&&t.amount>0&&['inc','exp','tr'].includes(t.type));
+  const acc=n=>cfg.accs.find(a=>a.name.trim().toLowerCase()==String(n||'').trim().toLowerCase());
+  const newAccs=[...new Set(list.flatMap(t=>[t.acc,t.to]).filter(n=>n&&!acc(n)))];
+  const mapped=[],fuzzy=new Map(),missing=new Map();
+  for(const t of list){let sub='';if(t.type!='tr'){const m=matchSub(cfg,t.cat,t.sub,t.type);
+      if(m){sub=m.sub.id;if(!m.exact)fuzzy.set(t.sub,m.sub.name)}else missing.set(t.sub,t.cat)}
+    mapped.push({t,sub})}
+  const n=list.length,inc=list.filter(t=>t.type=='inc').reduce((a,t)=>a+t.amount,0),exp=list.filter(t=>t.type=='exp').reduce((a,t)=>a+t.amount,0);
+  const dates=list.map(t=>t.date).sort();
+  const trW=n==1?'transakcja':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'transakcje':'transakcji';let text=`${n} ${trW} z okresu ${dates[0].split('-').reverse().join('.')}–${dates.at(-1).split('-').reverse().join('.')}\nprzychody ${zl(inc)} · wydatki ${zl(exp)}`;
+  if(fuzzy.size)text+=`\n\nDopasowane do Waszych pozycji:\n`+[...fuzzy].map(([a,b])=>`• ${a} → ${b}`).join('\n');
+  if(missing.size)text+=`\n\nNowe pozycje (zostaną dodane):\n`+[...missing].map(([a,c])=>`• ${a} (${cleanCat(c)})`).join('\n');
+  if(newAccs.length)text+=`\n\nNowe konta (zostaną dodane): ${newAccs.join(', ')}`;
+  text+='\n\nTransakcje zostaną dopisane. Wczytanie tego samego pliku drugi raz niczego nie zdubluje.';
+  if(!await ask({title:'Wczytać transakcje?',text,ok:'Wczytaj'}))return;
+  for(const name of newAccs){const a={id:'a'+rid(),name,grp:'cur',open:0};cfg.accs.push(a);saveAcc(a)}
+  for(const[name,catName]of missing){const want=list.find(t=>t.sub==name).type=='inc'?'inc':'exp';
+    let c=cfg.cats.filter(k=>k.type==want).map(k=>({k,s:simTok(k.name,catName)})).sort((a,b)=>b.s-a.s)[0];
+    let k=c&&c.s>=.5?c.k:null;if(!k){k={id:'c'+rid(),name:cleanCat(catName)||'Inne',type:want,subs:[]};cfg.cats.push(k);saveCat(k)}
+    const x={id:'s'+rid(),name,};k.subs.push(x);saveSub(k,x);mapped.forEach(m=>{if(m.t.sub==name&&m.t.type!='tr')m.sub=x.id})}
+  await writeTxs(mapped.map(({t,sub})=>[t.id||('b'+rid()),{type:t.type,amount:t.amount,date:t.date,sub,acc:acc(t.acc)?.id||'',to:t.type=='tr'?(acc(t.to)?.id||''):'',who:t.who||'',note:t.note||'',deleted:false,ts:Date.now()}]));
+  render();toast(`Wczytano: ${n} ${trW} ✓`)}
 async function importFile(file){if(guard())return;let o;
   try{o=JSON.parse(await file.text())}catch(e){return ask({title:'To nie jest plik kopii',text:'Wybierz plik .json pobrany przyciskiem „Pobierz kopię”.',ok:'OK',cancel:'Zamknij'})}
+  if(o&&o.format=='budzet-mw-tx'&&Array.isArray(o.tx))return importTxList(o);
   const isNew=o&&o.cfg&&Array.isArray(o.tx),isOld=o&&Array.isArray(o.categories)&&Array.isArray(o.transactions);
   if(!isNew&&!isOld)return ask({title:'Nie rozpoznaję tego pliku',text:'To nie jest kopia budżetu z tej ani ze starej wersji aplikacji.',ok:'OK',cancel:'Zamknij'});
   const n=isNew?o.tx.filter(t=>!t.deleted).length:o.transactions.length;
