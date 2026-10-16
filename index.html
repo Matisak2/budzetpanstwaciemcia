@@ -221,6 +221,10 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .pink .badge{background:#fce7f3;color:#be185d}
 .pink .chip[style]{background:#fae8ff!important;color:#a21caf!important}
 .pink .trend.up{background:#fbcfe8;color:#9d174d}
+.recgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.recgrid b{font-size:15px}
+.recrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);font-size:13px}
+.rdiff{font-size:12px;font-weight:800;min-height:0}
 .seg.seg3{display:grid;grid-template-columns:repeat(3,1fr);width:100%}
 .seg.seg3 button{padding:9px 4px}
 .envtop{display:flex;justify-content:space-between;align-items:center;gap:10px;background:linear-gradient(135deg,#f5f3ff,#e8edff);color:#1e293b;border:1px solid #d9e0fb;border-radius:18px;padding:14px 16px}
@@ -460,6 +464,14 @@ function buildIcs(fixed,today){const esc2=t=>String(t).replace(/[\\;,]/g,m=>'\\'
       'DESCRIPTION:'+esc2('Termin opłaty stałej. Po zapłaceniu odhacz ją w aplikacji Budżet M&W.'),'TRANSP:TRANSPARENT',
       'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc2('Jutro termin: '+f.name),'TRIGGER:-PT6H','END:VALARM','END:VEVENT')}
   L.push('END:VCALENDAR');return L.join('\r\n')+'\r\n'}
+
+/* bulk reconcile: diffs per account → transfers (too much → too little), leftovers → adjustments; investment accounts → value change */
+function planRecon(diffs){// diffs: [{id,d,inv}]
+  const ops=[],pos=diffs.filter(x=>!x.inv&&x.d>0).map(x=>({...x})).sort((a,b)=>b.d-a.d),neg=diffs.filter(x=>!x.inv&&x.d<0).map(x=>({...x,d:-x.d})).sort((a,b)=>b.d-a.d);
+  let i=0,j=0;while(i<pos.length&&j<neg.length){const a=Math.min(pos[i].d,neg[j].d);ops.push({kind:'tr',from:neg[j].id,to:pos[i].id,amount:a});pos[i].d-=a;neg[j].d-=a;if(!pos[i].d)i++;if(!neg[j].d)j++}
+  pos.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:x.d})});neg.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:-x.d})});
+  diffs.filter(x=>x.inv&&x.d).forEach(x=>ops.push({kind:'val',acc:x.id,amount:x.d}));
+  return ops}
 
 /* ---------- UI helpers ---------- */
 function toast(msg,kind,action){const t=$('toast');t.textContent='';const sp=document.createElement('span');sp.textContent=msg;t.append(sp);
@@ -770,6 +782,27 @@ async function allocGoal(gid,dir){if(guard())return;const g=S.goals[gid],have=go
 async function setSavTarget(){if(guard())return;const r=await ask({title:'Ile chcecie odkładać co miesiąc?',text:'Liczy się wszystko, co przybyło na kontach oszczędnościowych i inwestycjach w danym miesiącu. Wpisz 0, żeby wyłączyć.',fields:[{id:'v',label:'Kwota miesięcznie (zł)',type:'decimal',value:S.savTarget?f2(S.savTarget):'',ph:'np. 2000'}]});
   if(!r)return;merge(H,{savTarget:Math.max(0,pg(r.v))});toast('Zapisano cel miesięczny')}
 function setSub(k){S.sub=k;render()}
+/* bulk reconcile screen in the Accounts tab */
+const recAccs=()=>{const o={cur:0,sav:1,inv:2};return S.cfg.accs.filter(a=>!a.archived).slice().sort((a,b)=>o[a.grp]-o[b.grp])};
+function openRecon(){if(guard())return;S.recon=true;S.recVals={};window.scrollTo(0,0);render()}
+function closeRecon(){S.recon=false;render()}
+function recRead(){const tx=liveOf(S.tx),tom=addDays(td(),1);return recAccs().map(a=>{const el=$('rv_'+a.id),app=balance(S.cfg,tx,a.id,tom),raw=el?el.value.trim():'';return{a,app,filled:raw!=='',real:raw===''?app:pg(raw)}})}
+function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(),app=r.reduce((s,x)=>s+x.app,0),real=r.reduce((s,x)=>s+x.real,0),n=r.filter(x=>x.filled).length,d=real-app;
+  $('recApp').textContent=zl(app);$('recReal').textContent=zl(real);$('recN').textContent=n?`uzupełniono ${n} z ${r.length}`:'nic jeszcze nie wpisano';
+  const el=$('recDiff');el.textContent=(d>0?'+':'')+zl(d);el.className='num '+(d>0?'t-inc':d<0?'t-exp':'');
+  r.forEach(x=>{const c=$('rd_'+x.a.id);if(c){const dd=x.real-x.app;c.textContent=x.filled&&dd?(dd>0?'+':'')+zl(dd):'';c.className='rdiff '+(dd>0?'t-inc':'t-exp')}})}
+async function applyRecon(){const r=recRead().filter(x=>x.filled&&x.real!==x.app);
+  if(!r.length)return toast('Wszystko się zgadza – nic do zmiany');
+  const ops=planRecon(r.map(x=>({id:x.a.id,d:x.real-x.app,inv:x.a.grp=='inv'})));
+  const lines=ops.map(o=>o.kind=='tr'?`⇄ ${accN(o.from)} → ${accN(o.to)}: ${zl(o.amount)}`:o.kind=='val'?`📈 ${accN(o.acc)}: zmiana wartości ${o.amount>0?'+':''}${zl(o.amount)}`:`⚖️ ${accN(o.acc)}: wyrównanie ${o.amount>0?'+':''}${zl(o.amount)}`).join('\n');
+  const tr=ops.filter(o=>o.kind=='tr').length,adj=ops.filter(o=>o.kind=='adj').length;
+  if(!await ask({title:'Zapisać te zmiany?',text:lines+`\n\n${tr?'Przelewy (⇄) przenoszą pieniądze między kontami i nie wpływają na budżet. ':''}${adj?'Wyrównania (⚖️) to różnica, której nie da się wyjaśnić przelewem – też nie liczą się do wydatków. ':''}`,ok:'Zapisz'}))return;
+  const ym=td().slice(0,7),date=td(),ids=[];
+  for(const o of ops){const id='t'+rid();ids.push(id);
+    const base={date,sub:'',who:S.who,deleted:false,ts:Date.now()};
+    putTx(ym,id,o.kind=='tr'?{...base,type:'tr',amount:o.amount,acc:o.from,to:o.to,note:'Wyrównanie sald – przeniesienie'}:{...base,type:'adj',amount:o.amount,acc:o.acc,to:'',note:o.kind=='val'?'Zmiana wartości':'Wyrównanie salda',...(o.kind=='val'?{val:true}:{})})}
+  S.recon=false;render();
+  toast(`Zapisano ${ops.length} ${ops.length==1?'zmianę':ops.length<5?'zmiany':'zmian'}`,'',{label:'Cofnij',fn:()=>ids.forEach(id=>putTx(ym,id,{deleted:true}))})}
 /* savings / investment accounts managed from the Savings tab */
 async function addSavAcc(owner){if(guard())return;
   const r=await ask({title:'Nowe konto – '+owner,fields:[{id:'n',label:'Nazwa',ph:owner=='Wspólne'?'np. Fundusz wakacyjny':'np. Konto oszczędnościowe '+owner}, {id:'g',label:'Rodzaj',type:'select',value:'sav',options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]}],ok:'Dodaj konto'});
@@ -1126,7 +1159,17 @@ function render(){
       h+=`<div class="mini" style="padding:0 4px">Konta „inwest.” (inwestycje, IKE, IKZE) mają zmienną wartość – raz na jakiś czas wpisz aktualną kwotę z aplikacji przyciskiem „✎ Wartość”. Przycisk ⋯ zmienia nazwę lub usuwa konto (pieniądze przejdą na inne konto).</div>`;
       h+=goalsH(o)+'</div>'}}
 
+  else if(S.tab=='acc'&&S.recon){
+    const tom=addDays(td(),1),accs=recAccs(),app=accs.reduce((x,a)=>x+balance(S.cfg,tx,a.id,tom),0),GH={cur:'KONTA BIEŻĄCE',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE, IKE, IKZE'};
+    h+=`<div class="worth rectop"><div class="l">⚖️ Wyrównaj wszystkie salda · stan na dziś ${td().split('-').reverse().join('.')}</div>
+      <div class="recgrid"><div><div class="mini">W aplikacji</div><b class="num" id="recApp">${zl(app)}</b></div><div><div class="mini">Wpisane</div><b class="num" id="recReal">${zl(app)}</b></div><div><div class="mini">Różnica</div><b class="num" id="recDiff">0,00 zł</b></div></div><div class="mini" id="recN">nic jeszcze nie wpisano</div></div>
+      <div class="note">Wpisz, ile <b>faktycznie</b> jest na kontach (z aplikacji banku). Puste pole = bez zmian. Różnice między kontami zapiszę jako przelewy, a resztę jako wyrównanie.</div>`;
+    let g0='';h+=`<div class="list">`+accs.map(a=>{const b=balance(S.cfg,tx,a.id,tom),hd=a.grp!=g0?`<div class="grp-h ${a.grp}"><span>${GH[a.grp]}</span></div>`:'';g0=a.grp;
+      return hd+`<div class="recrow"><div style="min-width:0"><b>${esc(a.name)}</b><div class="mini">w aplikacji: <span class="num">${zl(b)}</span></div><div class="rdiff" id="rd_${a.id}"></div></div><input id="rv_${a.id}" class="planin" style="max-width:130px" inputmode="decimal" value="${esc((S.recVals||{})[a.id]||'')}" placeholder="${f2(b)}" oninput="recSum()" autocomplete="off"></div>`}).join('')+`</div>`;
+    h+=`<div class="g2"><button class="btn" onclick="closeRecon()">Anuluj</button><button class="btn primary" onclick="applyRecon()">Dalej</button></div>`}
+
   else if(S.tab=='acc'){
+    h+=`<button class="btn dark" style="width:100%" onclick="openRecon()">⚖️ Wyrównaj wszystkie salda naraz</button>`;
     h+=`<div class="worth"><div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(tot('cur')+tot('sav')+tot('inv')+invPln)}</div><div class="s">bieżące ${zl0(tot('cur'))} · oszczędności ${zl0(tot('sav'))} · inwestycje ${zl0(tot('inv')+invPln)}</div></div>`;
     h+=['cur','sav','inv'].filter(g=>g!='inv'||S.cfg.accs.some(a=>a.grp=='inv')).map(g=>`<div class="list"><div class="grp-h ${g}"><span>${{cur:'KONTA BIEŻĄCE',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE'}[g]}</span><span class="num">${zl(tot(g))}</span></div>${S.cfg.accs.filter(a=>a.grp==g&&(!a.archived||balance(S.cfg,tx,a.id,end)||balance(S.cfg,tx,a.id,start))).map(a=>{const e=balance(S.cfg,tx,a.id,end),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0;
       return`<div class="acc"><div><b>${esc(a.name)}</b><div class="mini">na początek: ${zl(s0)}</div>${a.grp=='inv'?`<button class="chip" onclick="updateValue('${a.id}')">✎ Aktualizuj wartość</button>`:`<button class="chip" onclick="recon('${a.id}')">⚖️ Wyrównaj</button>`}</div><div class="r"><b class="num">${zl(e)}</b><div class="mini ${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</div></div></div>`}).join('')}</div>`).join('');
@@ -1137,7 +1180,7 @@ function render(){
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div>${S.cfg.accs.filter(a=>!a.archived).map(a=>`<div class="rowx"><span><b>${esc(a.name)}</b><br><span class="mini">${GRPN[a.grp]||a.grp} · ${accOwner(a)} · saldo początkowe ${zl(a.open)}</span></span><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></div>`).join('')}</div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button style="font-weight:800;text-align:left;flex:1;min-width:0" onclick="editCat(${ci})">${esc(catL(c))} ✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button><button class="btn" onclick="logout()">Wyloguj</button></div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
-  $('app').innerHTML=h}
+  $('app').innerHTML=h;if(S.tab=='acc'&&S.recon&&$('recApp'))recSum()}
 function setAna(k){S.ana=k;render()}
 function tog(id){S.open[id]=!S.open[id];render()}
 const addMonths=(ym,n)=>{let[y,m]=ym.split('-').map(Number);m+=n;while(m<1){m+=12;y--}while(m>12){m-=12;y++}return y+'-'+p2(m)};
@@ -1150,7 +1193,7 @@ function autoPlan(){const ym=S.ym,cur=td().slice(0,7);
 /* ---------- wiring ---------- */
 $('prevM').onclick=()=>mv(-1);$('nextM').onclick=()=>mv(1);
 function mv(d){if(S.tab=='ana'&&S.ana=='y')d*=12;let[y,m]=S.ym.split('-').map(Number);m+=d;if(m<1){m=12;y--}if(m>12){m=1;y++}S.ym=y+'-'+p2(m);render()}
-const goTab=t=>{S.tab=t;window.scrollTo(0,0);render()};
+const goTab=t=>{S.tab=t;S.recon=false;window.scrollTo(0,0);render()};
 document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
 $('gearBtn').onclick=()=>goTab(S.tab=='set'?'dash':'set');
 $('addBtn').onclick=()=>openTx();
@@ -1201,7 +1244,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,addSell,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,togInv,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,editInv,addLot,delLot,exportJson,logout});
+Object.assign(window,{openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,addSell,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,togInv,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,editInv,addLot,delLot,exportJson,logout});
 </script>
 </body>
 </html>
