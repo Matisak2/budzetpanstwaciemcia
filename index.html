@@ -191,6 +191,14 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .tbl th:first-child,.tbl td:first-child{text-align:left}
 .tbl td{text-align:right;padding:6px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
 .tbl tr.tot td{font-weight:800;border-top:2px solid var(--line)}
+.seg.seg3{display:grid;grid-template-columns:repeat(3,1fr);width:100%}
+.seg.seg3 button{padding:9px 4px}
+.envtop{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--head);color:#fff;border-radius:18px;padding:14px 16px}
+.envtop .mini{color:#94a3b8}
+.envtop .big{font-size:26px;color:#34d399}
+.envtop.neg .big{color:#fda4af}
+.cush{display:flex;align-items:baseline;gap:8px}
+.cush .num{font-size:30px}
 .goal{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:7px}
 .goal b{font-size:14.5px}
 .gbar{height:12px;border-radius:12px;background:#e0e7ff;overflow:hidden}
@@ -359,14 +367,14 @@ const DEF=[ ["ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Premia Ma
  ["INNE WYDATKI","exp",["Opłaty bankowe","Poczta i przesyłki","Urząd i opłaty","Kary i mandaty","Udzielone pożyczki"]],
  ["DZIECI (PRZYSZŁOŚĆ)","exp",["Żłobek/przedszkole","Wyprawka","Ubranka i zabawki","Zajęcia dodatkowe"]]];
 const seed=()=>({v:1,fixed:[],cats:DEF.map((c,i)=>({id:'c'+i,name:c[0],type:c[1],subs:c[2].map((s,j)=>({id:'c'+i+'s'+j,name:s}))})),
-accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","cur"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],open:0}))});
+accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","cur"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"],["Inwestycje Mati","inv"],["Inwestycje Wercia","inv"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],open:0}))});
 
 /* pastel colour per category: --c header, --c2 rows, --c3 dark text/bar of the same hue */
 const HUES=[150,205,28,340,265,48,185,12,295,95,228,320,62,168,245,0];
 const pastel=i=>{const h=HUES[i%HUES.length];return`--c:hsl(${h} 72% 89%);--c2:hsl(${h} 70% 97%);--c3:hsl(${h} 50% 26%)`};
 
 /* ---------- state ---------- */
-const S={goals:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},invOpen:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
+const S={sub:'ov',savTarget:0,goals:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},invOpen:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
 let seeding=false;
 
 /* ---------- pure money logic ---------- */
@@ -446,7 +454,9 @@ function ask({title,text='',fields=[],ok='Zapisz',cancel='Anuluj',danger=false,a
     d.onclick=e=>{if(e.target===d)done(null)};
     d.onkeydown=e=>{if(e.key=='Enter'&&e.target.tagName=='INPUT'){e.preventDefault();$('dlgOk').click()}if(e.key=='Escape')done(null)};
   })}
-const accOpts=()=>[{group:'Konta bieżące',items:S.cfg.accs.filter(a=>a.grp=='cur').map(a=>[a.id,a.name])},{group:'Oszczędności',items:S.cfg.accs.filter(a=>a.grp=='sav').map(a=>[a.id,a.name])}];
+const GRPN={cur:'Konto bieżące',sav:'Oszczędności',inv:'Inwestycje'};
+const accOwner=a=>a.owner||(/wercia|weronika/i.test(a.name)?'Wercia':/mati/i.test(a.name)?'Mati':'Wspólne');
+const accOpts=()=>[['cur','Konta bieżące'],['sav','Oszczędności'],['inv','Inwestycje']].map(([g,l])=>({group:l,items:S.cfg.accs.filter(a=>a.grp==g).map(a=>[a.id,a.name])})).filter(g=>g.items.length);
 const subOpts=type=>S.cfg.cats.filter(c=>!type||c.type==type).map(c=>({group:catL(c),items:c.subs.map(s=>[s.id,s.name])}));
 
 /* ---------- storage (Firebase Firestore) ---------- */
@@ -495,10 +505,11 @@ function openTx(id,pre){if(guard())return;
   $('md').value=t?t.date:(td().startsWith(S.ym)?td():S.ym+'-01');
   $('ms').value=t?(t.sub||''):'';
   if(t){$('mc').value=t.acc;$('mto').value=t.to||''}else{const last=ls.get('mw_acc_'+S.who);if(last&&S.cfg.accs.some(a=>a.id==last))$('mc').value=last}
+  if(pre?.from){$('mc').value=pre.from;const c=S.cfg.accs.find(a=>a.grp=='cur');if(c)$('mto').value=c.id}
   if(pre?.to)$('mto').value=pre.to;
   if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o){if(pre?.to)$('mc').value=o.value;else $('mto').value=o.value}}
   $('mn').value=t?(t.note||''):'';
-  $('shTitle').textContent=t?'Edytuj transakcję':pre?.type=='tr'?'Przelew na oszczędności':'Nowa transakcja';$('shDel').hidden=!t;
+  $('shTitle').textContent=t?'Edytuj transakcję':pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;
   $('sheet').hidden=false;if(!t)setTimeout(()=>$('ma').focus(),80)}
 const closeSheet=()=>{$('sheet').hidden=true;S.edit=null};
 async function saveTx(){if(guard())return;
@@ -532,14 +543,14 @@ async function recon(id){if(guard())return;const before=S.ym+'-32',cur=balance(S
   if(!r||!r.v.trim())return;const d=pg(r.v)-cur;if(!d)return toast('Saldo się zgadza');
   const date=td().startsWith(S.ym)?td():S.ym+'-'+p2(daysIn(S.ym));
   if(await putTx(S.ym,'t'+rid(),{type:'adj',amount:d,date,sub:'',acc:id,to:'',who:S.who,note:'Wyrównanie salda',deleted:false,ts:Date.now()}))toast('Dodano wyrównanie '+(d>0?'+':'')+zl(d))}
-async function addAcc(){if(guard())return;const r=await ask({title:'Nowe konto',fields:[{id:'n',label:'Nazwa'},{id:'g',label:'Rodzaj',type:'select',value:'cur',options:[['cur','Konto bieżące'],['sav','Oszczędności']]}],ok:'Dodaj'});
-  if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,open:0};S.cfg.accs.push(a);render();saveAcc(a)}
+async function addAcc(){if(guard())return;const r=await ask({title:'Nowe konto',fields:[{id:'n',label:'Nazwa'},{id:'g',label:'Rodzaj',type:'select',value:'cur',options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:S.who,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]}],ok:'Dodaj'});
+  if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner:r.w,open:0};S.cfg.accs.push(a);render();saveAcc(a)}
 async function editAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id);
   const used=liveOf(S.tx).some(t=>t.acc===id||t.to===id);
-  const r=await ask({title:'Edytuj konto',fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:[['cur','Konto bieżące'],['sav','Oszczędności']]},{id:'o',label:'Saldo początkowe – przed pierwszą transakcją (zł)',type:'decimal',value:f2(a.open)}],alt:used?null:'Usuń konto'});
+  const r=await ask({title:'Edytuj konto',fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:accOwner(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'o',label:'Saldo początkowe – przed pierwszą transakcją (zł)',type:'decimal',value:f2(a.open)}],alt:used?null:'Usuń konto'});
   if(!r)return;
   if(r=='alt'){if(!await ask({title:'Usunąć konto?',text:a.name,ok:'Usuń',danger:true}))return;S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);render();delAccDb(id);return}
-  if(r.n.trim())a.name=r.n.trim();a.grp=r.g;a.open=pg(r.o);render();saveAcc(a)}
+  if(r.n.trim())a.name=r.n.trim();a.grp=r.g;a.owner=r.w;a.open=pg(r.o);render();saveAcc(a)}
 async function addSub(ci){if(guard())return;const r=await ask({title:'Nowa pozycja',text:catL(S.cfg.cats[ci]),fields:[{id:'n',label:'Nazwa'}],ok:'Dodaj'});
   if(!r||!r.n.trim())return;const c=S.cfg.cats[ci],s={id:'s'+rid(),name:r.n.trim()};c.subs.push(s);render();saveSub(c,s)}
 async function renSub(ci,si){if(guard())return;const s=S.cfg.cats[ci].subs[si];const r=await ask({title:'Zmień nazwę',fields:[{id:'n',label:'Nazwa',value:s.name}]});
@@ -680,29 +691,53 @@ async function delLot(iid,lid){if(guard())return;const it=S.inv[iid],l=it.lots[l
     toast('Usunięto '+what,'',{label:'Cofnij',fn:()=>{putInv(iid,{lots:{[lid]:{deleted:false}}});if(t)putTx(t.date.slice(0,7),t.id,{deleted:false})}})}}
 function togInv(id){S.invOpen[id]=!S.invOpen[id];render()}
 
-/* ---------- savings goals ---------- */
-function goalProgress(g,cfg,tx,today){const saved=g.acc?balance(cfg,tx,g.acc,addDays(today,1)):(g.saved||0);
+/* ---------- investment accounts ---------- */
+/* contributed = opening balance + money moved in − money moved out; value change = sum of value updates (adj) */
+function invAccStats(cfg,tx,id,before){const a=cfg.accs.find(x=>x.id==id);let paid=a?.open||0,chg=0,last=null;
+  for(const t of tx){if(t.date>=before)continue;
+    if(t.acc===id){if(t.type=='adj'){chg+=t.amount;if(!last||t.date>last)last=t.date}else if(t.type=='inc'||t.type=='invs')paid+=t.amount;else paid-=t.amount}
+    if(t.type=='tr'&&t.to===id)paid+=t.amount}
+  const value=paid+chg;return{paid,chg,value,pct:paid>0?chg/paid*100:null,last}}
+async function updateValue(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id),tom=addDays(td(),1),cur=balance(S.cfg,liveOf(S.tx),id,tom);
+  const r=await ask({title:'Aktualna wartość: '+a.name,text:`W aplikacji: ${zl(cur)}\nWpisz, ile jest teraz warte konto w aplikacji brokera. Różnicę zapiszę jako zysk albo stratę (nie wpływa na wydatki).`,fields:[{id:'v',label:'Wartość dziś (zł)',type:'decimal',value:f2(cur)}],ok:'Zapisz wartość'});
+  if(!r||!r.v.trim())return;const d=pg(r.v)-cur;if(!d)return toast('Wartość się zgadza');
+  const ym=td().slice(0,7),tid='t'+rid();
+  if(await putTx(ym,tid,{type:'adj',val:true,amount:d,date:td(),sub:'',acc:id,to:'',who:S.who,note:'Zmiana wartości',deleted:false,ts:Date.now()}))
+    toast(`${d>0?'Zysk':'Strata'} ${zl(Math.abs(d))} zapisany`,'',{label:'Cofnij',fn:()=>putTx(ym,tid,{deleted:true})})}
+
+/* ---------- savings goals as envelopes: money in savings + investment accounts is assigned to goals ---------- */
+const goalAlloc=g=>g.alloc??g.saved??0;
+const poolNow=(cfg,tx)=>cfg.accs.filter(a=>a.grp=='sav'||a.grp=='inv').reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
+function goalProgress(g,cfg,tx,today){const saved=goalAlloc(g);
   const pct=g.target?Math.max(0,saved/g.target*100):0,left=Math.max(0,g.target-saved);
   let months=null,perMonth=null;
   if(g.deadline&&left>0){const[y,m]=g.deadline.split('-').map(Number),[cy,cm]=today.split('-').map(Number);months=Math.max(1,(y-cy)*12+(m-cm)+1);perMonth=Math.ceil(left/months)}
   return{saved,pct,left,months,perMonth,done:saved>=g.target&&g.target>0}}
+const unallocated=()=>poolNow(S.cfg,liveOf(S.tx))-Object.values(S.goals).reduce((a,g)=>a+goalAlloc(g),0);
 async function editGoal(gid){if(guard())return;const g=gid?S.goals[gid]:null;
-  const r=await ask({title:g?'Edytuj cel':'Nowy cel oszczędnościowy',fields:[
+  const r=await ask({title:g?'Edytuj cel':'Nowy cel (koperta)',text:g?'':'Cel to „koperta”: przydzielacie do niej część pieniędzy z kont oszczędnościowych i inwestycji.',fields:[
     {id:'n',label:'Na co oszczędzacie?',value:g?.name||'',ph:'np. Wakacje 2027'},
     {id:'t',label:'Ile potrzebujecie (zł)',type:'decimal',value:g?f2(g.target):'',ph:'np. 6000'},
-    {id:'d',label:'Do kiedy (miesiąc, opcjonalnie)',type:'month',value:g?.deadline||''},
-    {id:'a',label:'Skąd liczyć postęp',type:'select',value:g?.acc||'',options:[['','Wpłaty wpisywane ręcznie'],{group:'Saldo konta',items:S.cfg.accs.map(a=>[a.id,a.name])}]}],
+    {id:'d',label:'Do kiedy (miesiąc, opcjonalnie)',type:'month',value:g?.deadline||''}],
     ok:g?'Zapisz':'Dodaj cel',alt:g?'Usuń cel':null});
   if(!r)return;
-  if(r=='alt'){if(!await ask({title:'Usunąć cel?',text:g.name,ok:'Usuń',danger:true}))return;const keep=clone(g);w(deleteDoc(doc(GOALS(),gid)));toast('Usunięto cel','',{label:'Cofnij',fn:()=>w(setDoc(doc(GOALS(),gid),keep))});return}
+  if(r=='alt'){if(!await ask({title:'Usunąć cel?',text:`${g.name}\nPrzydzielone ${zl(goalAlloc(g))} wróci do puli „do przydzielenia”.`,ok:'Usuń',danger:true}))return;const keep=clone(g);w(deleteDoc(doc(GOALS(),gid)));toast('Usunięto cel','',{label:'Cofnij',fn:()=>w(setDoc(doc(GOALS(),gid),keep))});return}
   const target=pg(r.t);if(!r.n.trim())return toast('Podaj nazwę celu','bad');if(target<=0)return toast('Podaj kwotę celu','bad');
-  const body={name:r.n.trim(),target,deadline:/^\d{4}-\d{2}$/.test(r.d)?r.d:'',acc:r.a||''};
-  const id=gid||'g'+rid();if(!g)body.saved=0,body.ts=Date.now();
+  const body={name:r.n.trim(),target,deadline:/^\d{4}-\d{2}$/.test(r.d)?r.d:''};
+  const id=gid||'g'+rid();if(!g)body.alloc=0,body.ts=Date.now();
   merge(doc(GOALS(),id),body);toast(g?'Zapisano cel':'Dodano cel: '+body.name)}
-async function addToGoal(gid){if(guard())return;const g=S.goals[gid];
-  const r=await ask({title:'Wpłata na cel: '+g.name,text:'Wpisz kwotę ujemną, jeśli wypłacacie z celu.',fields:[{id:'v',label:'Kwota (zł)',type:'decimal',ph:'np. 500'}],ok:'Dodaj'});
-  if(!r)return;const v=pg(r.v);if(!v)return;const before=g.saved||0;
-  merge(doc(GOALS(),gid),{saved:before+v});toast(`${v>0?'Dodano':'Wypłacono'} ${zl(Math.abs(v))}`,'',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),{saved:before})})}
+async function allocGoal(gid,dir){if(guard())return;const g=S.goals[gid],have=goalAlloc(g),free=unallocated();
+  if(dir>0&&free<=0)return ask({title:'Brak wolnych pieniędzy',text:'Wszystkie oszczędności są już przydzielone do celów. Wpłaćcie coś na konto oszczędnościowe albo zabierzcie z innego celu.',ok:'OK',cancel:'Zamknij'});
+  const sug=dir>0?Math.max(0,Math.min(free,g.target-have)):have;
+  const r=await ask({title:(dir>0?'Przydziel do: ':'Zabierz z: ')+g.name,text:dir>0?`Do przydzielenia: ${zl(free)}`:`W kopercie: ${zl(have)}`,fields:[{id:'v',label:'Kwota (zł)',type:'decimal',value:sug?f2(sug):''}],ok:dir>0?'Przydziel':'Zabierz'});
+  if(!r)return;const v=pg(r.v);if(v<=0)return;
+  if(dir>0&&v>free)return toast('Możesz przydzielić najwyżej '+zl(free),'bad');
+  if(dir<0&&v>have)return toast('W kopercie jest tylko '+zl(have),'bad');
+  const nv=have+dir*v;merge(doc(GOALS(),gid),{alloc:nv,saved:nv});
+  toast(`${dir>0?'Przydzielono':'Zabrano'} ${zl(v)}`,'',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),{alloc:have,saved:have})})}
+async function setSavTarget(){if(guard())return;const r=await ask({title:'Ile chcecie odkładać co miesiąc?',text:'Liczy się wszystko, co przybyło na kontach oszczędnościowych i inwestycjach w danym miesiącu. Wpisz 0, żeby wyłączyć.',fields:[{id:'v',label:'Kwota miesięcznie (zł)',type:'decimal',value:S.savTarget?f2(S.savTarget):'',ph:'np. 2000'}]});
+  if(!r)return;merge(H,{savTarget:Math.max(0,pg(r.v))});toast('Zapisano cel miesięczny')}
+function setSub(k){S.sub=k;render()}
 
 /* ---------- backup ---------- */
 async function exportJson(){if(!S.cfg)return;
@@ -766,7 +801,7 @@ function txMatches(t,sm,F,ym){
   return q.split(/\s+/).every(w=>hay.includes(w.replace(',','.'))||hay.includes(w))}
 function txRowH(t,sm){const k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
   const cls=k=='invs'?'inv':k;
-  const title=k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?'Wyrównanie salda':k=='inv'?'📈 Zakup: '+t.note:k=='invs'?'📉 Sprzedaż: '+t.note:(t.fixedId?'📌 ':'')+(sm[t.sub]?.name||'Bez pozycji');
+  const title=k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'📈 Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'📈 Zakup: '+t.note:k=='invs'?'📉 Sprzedaż: '+t.note:(t.fixedId?'📌 ':'')+(sm[t.sub]?.name||'Bez pozycji');
   return`<button class="tx" onclick="openTx('${t.id}')"><span class="info"><b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew':esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'?`<div class="note">${esc(t.note)}</div>`:''}</span><span class="amt num t-${cls}">${sg}${zl(Math.abs(t.amount))}</span></button>`}
 function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx);
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
@@ -941,7 +976,7 @@ function render(){
   const invPln=invList.reduce((a,i)=>a+i.st.pln,0);
   /* savings = savings accounts + money put into investments, at a given date; change over the shown month */
   const invAt=before=>invList.reduce((a,i)=>a+invStats(i,before).pln,0);
-  const savAt=before=>S.cfg.accs.filter(a=>a.grp=='sav').reduce((a,c)=>a+balance(S.cfg,tx,c.id,before),0)+invAt(before);
+  const savAt=before=>S.cfg.accs.filter(a=>a.grp=='sav'||a.grp=='inv').reduce((a,c)=>a+balance(S.cfg,tx,c.id,before),0)+invAt(before);
   const savEnd=savAt(end),savDelta=savEnd-savAt(start);
   const trendH=d=>d>0?`<span class="trend up" title="Przybyło w tym miesiącu">▲ +${zl0(d)}</span>`:d<0?`<span class="trend down" title="Ubyło w tym miesiącu">▼ −${zl0(-d)}</span>`:'';
   const pct=(a,p)=>p?Math.round(a/p*100)+'% planu':'brak planu';
@@ -988,37 +1023,64 @@ function render(){
     h+=`<div class="btns" style="justify-content:center"><button class="btn dark" onclick="editFixed()">+ Dodaj opłatę stałą</button></div><div class="mini" style="text-align:center">Stuknij kwadracik, żeby odhaczyć. Stuknij nazwę, żeby zmienić opłatę.</div>${fx.length?`<div class="card"><h3>📅 Przypomnienia w telefonie</h3><div class="mini">Dodaj opłaty do kalendarza telefonu. Dzień przed terminem o 18:00 dostaniesz powiadomienie, nawet gdy aplikacja jest zamknięta.</div><button class="btn primary" onclick="calendarExport()">Dodaj opłaty do kalendarza</button></div>`:''}`}
 
   else if(S.tab=='sav'){
-    const savAccs=S.cfg.accs.filter(a=>a.grp=='sav');
-    h+=`<div class="worth"><div class="l">Oszczędności + wpłacone na inwestycje</div><div class="v num">${zl(savEnd)} ${trendH(savDelta)}</div><div class="s">na kontach ${zl(tot('sav'))} · w inwestycjach ${zl(invPln)}</div></div>`;
-    h+=`<div class="list"><div class="grp-h sav"><span>KONTA OSZCZĘDNOŚCIOWE</span><span class="num">${zl(tot('sav'))}</span></div>${savAccs.map(a=>{const e=balance(S.cfg,tx,a.id,end),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0;
-      return`<div class="acc"><div><b>${esc(a.name)}</b><div class="mini">w tym miesiącu: <span class="${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</span></div><button class="chip" onclick="openTx(null,{type:'tr',to:'${a.id}'})">↓ Wpłać na to konto</button></div><div class="r"><b class="num">${zl(e)}</b></div></div>`}).join('')||'<div class="acc mini">Brak kont oszczędnościowych – dodasz je w ⚙️ Ustawieniach.</div>'}</div>`;
-    const goals=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())})).sort((a,b)=>(a.ts||0)-(b.ts||0));
-    h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">Cele oszczędnościowe</span><button class="btn sm dark" onclick="editGoal()">+ Dodaj cel</button></div>`;
-    if(!goals.length)h+=`<div class="empty" style="padding:14px 12px">Dodaj cel, np. „Wakacje 2027 – 6000 zł”, a zobaczycie, ile już macie i ile odkładać co miesiąc.</div>`;
-    h+=goals.map(g=>{const p=g.pr,w=Math.min(100,p.pct);
-      return`<div class="goal"><div class="r1"><b>${p.done?'🎉 ':''}${esc(g.name)}</b><span class="pill ${p.done?'ok':'low'}">${Math.floor(p.pct)}%</span></div>
-        <div class="gbar"><i style="width:${w.toFixed(1)}%"></i></div>
-        <div class="r1 mini"><span><b class="num" style="color:var(--fg)">${zl0(p.saved)}</b> z ${zl0(g.target)}</span><span>${p.done?'Cel osiągnięty!':'brakuje '+zl0(p.left)}</span></div>
-        ${p.perMonth?`<div class="mini">Do ${MNG[+g.deadline.slice(5)-1]} ${g.deadline.slice(0,4)}: odkładajcie ok. <b style="color:var(--fg)">${zl0(p.perMonth)}</b> miesięcznie (${p.months} mies.)</div>`:''}
-        <div class="mini">${g.acc?'Postęp = saldo konta „'+esc(accN(g.acc))+'”':'Wpłaty wpisywane ręcznie'}</div>
-        <div class="inv-a" style="padding:0">${g.acc?'':`<button class="btn sm primary" onclick="addToGoal('${g.id}')">+ Wpłać na cel</button>`}<button class="btn sm" onclick="editGoal('${g.id}')">Edytuj</button></div></div>`}).join('');
-    h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">Inwestycje</span><button class="btn sm dark" onclick="editInv()">+ Dodaj inwestycję</button></div>`;
-    if(!invList.length)h+=`<div class="empty" style="padding:20px 12px">Dodaj ETF, akcje lub obligacje. Potem wpisuj każdy zakup: ile sztuk i po jakiej cenie, a aplikacja policzy średnią cenę i sumę wpłat.</div>`;
-    h+=invList.map(it=>{const st=it.st,c=it.cur||'PLN',o=S.invOpen[it.id];
-      return`<div class="inv"><div class="inv-h"><div style="min-width:0"><span class="badge">${esc(it.kind||'ETF')}</span><span class="badge" style="background:#f1f5f9;color:#334155">${esc(c)}</span><span class="badge" style="background:#ecfdf5;color:#047857">${esc(it.owner||'')}</span><br><b>${esc(it.name)}</b></div><button class="btn sm" onclick="editInv('${it.id}')">Edytuj</button></div>
-        <div class="stats"><div class="stat"><em>Sztuk</em><b>${fqty(st.qty)}</b></div><div class="stat"><em>Średnia cena</em><b>${fcur(st.avg,c)}</b></div><div class="stat"><em>${st.sells?'Wpłacono (pozostałe)':'Wpłacono'}</em><b>${fcur(st.cost,c)}</b>${c!='PLN'&&st.pln?`<div class="mini">${zl(st.pln)}</div>`:''}</div>${st.value!==null?`<div class="stat"><em>Wartość wg kursu ${esc(String(it.price).replace('.',','))}</em><b>${fcur(st.value,c)}</b><div class="mini ${st.gain>=0?'t-inc':'t-exp'}" style="font-weight:700">${st.gain>=0?'+':''}${fcur(st.gain,c)}${st.gainPct!==null?' ('+(st.gainPct>=0?'+':'')+st.gainPct.toFixed(1).replace('.',',')+'%)':''}</div></div>`:''}${st.sells?`<div class="stat"><em>Zysk zrealizowany</em><b class="${st.realized>=0?'t-inc':'t-exp'}">${st.realized>=0?'+':''}${fcur(st.realized,c)}</b>${c!='PLN'&&st.realizedPln?`<div class="mini">${st.realizedPln>=0?'+':''}${zl(st.realizedPln)}</div>`:''}</div>`:''}</div>
-        <div class="inv-a"><button class="btn sm primary" onclick="addLot('${it.id}')">+ Zakup</button>${st.qty>0?`<button class="btn sm" onclick="addSell('${it.id}')">− Sprzedaż</button>`:''}${st.lots.length?`<button class="btn sm" onclick="togInv('${it.id}')">${o?'Ukryj':'Pokaż'} historię (${st.lots.length})</button>`:''}</div>
-        ${o&&st.lots.length?`<div class="lots">${st.lots.slice().reverse().map(l=>`<button class="lot" onclick="delLot('${it.id}','${l.id}')"><span>${l.kind=='sell'?'<b class="t-exp">Sprzedaż</b>':'<b class="t-inc">Zakup</b>'} · ${l.date.split('-').reverse().join('.')}<br><span class="mini">${fqty(l.qty)} szt. × ${fcur(l.price,c)}${l.fee?(l.kind=='sell'?' − ':' + ')+'prowizja '+fcur(l.fee,c):''}${l.txId?(l.kind=='sell'?' · na konto':' · z konta'):''}</span></span><span class="num">${fcur(l.qty*l.price+(l.kind=='sell'?-1:1)*(l.fee||0),c)}${c!='PLN'&&l.pln?`<br><span class="mini">${zl(l.pln)}</span>`:''}</span></button>`).join('')}<div class="mini" style="padding:6px 12px 10px">Stuknij wpis, żeby go usunąć.</div></div>`:''}</div>`}).join('')}
+    const tom=addDays(td(),1),savAccs=S.cfg.accs.filter(a=>a.grp=='sav'),invAccs=S.cfg.accs.filter(a=>a.grp=='inv');
+    h+=`<div class="seg seg3">${[['ov','Przegląd'],['goals','Cele'],['inv','Inwestycje']].map(([k,l])=>`<button aria-pressed="${S.sub==k}" onclick="setSub('${k}')">${l}</button>`).join('')}</div>`;
+    const accRow=(a,extra)=>{const e=balance(S.cfg,tx,a.id,end),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0;
+      return`<div class="acc"><div style="min-width:0"><b>${esc(a.name)}</b><div class="mini">${accOwner(a)} · w tym miesiącu: <span class="${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</span></div>${extra||''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="openTx(null,{type:'tr',to:'${a.id}'})">↓ Wpłać</button><button class="chip" onclick="openTx(null,{type:'tr',from:'${a.id}'})">↑ Wypłać</button>${a.grp=='inv'?`<button class="chip" style="background:#ede9fe;color:#5b21b6" onclick="updateValue('${a.id}')">✎ Aktualizuj wartość</button>`:''}</div></div><div class="r"><b class="num">${zl(e)}</b></div></div>`};
+
+    if(S.sub=='ov'){
+      h+=`<div class="worth"><div class="l">Oszczędności i inwestycje razem</div><div class="v num">${zl(savEnd)} ${trendH(savDelta)}</div><div class="s">konta oszczędnościowe ${zl(tot('sav'))} · inwestycje ${zl(tot('inv')+invPln)}</div></div>`;
+      // who owns what
+      const own={};[...savAccs,...invAccs].forEach(a=>{const o=accOwner(a);own[o]=(own[o]||0)+balance(S.cfg,tx,a.id,end)});
+      const ownTot=Object.values(own).reduce((a,v)=>a+Math.max(0,v),0),cols={Mati:'#2a78d6',Wercia:'#e87ba4','Wspólne':'#1baf7a'};
+      if(ownTot>0)h+=`<section class="chart"><div class="ct"><b>Czyje oszczędności</b></div><div class="stack">${['Mati','Wercia','Wspólne'].filter(n=>own[n]>0).map(n=>`<i style="width:${(own[n]/ownTot*100).toFixed(2)}%;background:${cols[n]}" data-tip="${n}: ${zl(own[n])}"></i>`).join('')}</div><div class="lg">${['Mati','Wercia','Wspólne'].filter(n=>own[n]).map(n=>`<span><i style="background:${cols[n]}"></i>${n}: <b class="num">${zl(own[n])}</b></span>`).join('')}</div><div class="tip mini">Dotknij paska, żeby zobaczyć kwotę.</div></section>`;
+      // saved this month / year + monthly target
+      const yStart=S.ym.slice(0,4)+'-00',yDelta=savEnd-savAt(yStart),tg=S.savTarget;
+      h+=`<section class="chart"><div class="ct"><b>Ile odłożyliście</b><span class="mini">przybyło na kontach oszczędnościowych i w inwestycjach</span></div>
+        <div class="kpis" style="gap:8px"><div class="kpi k-em"><div class="l">${MN[+S.ym.slice(5)-1]}</div><div class="v num ${savDelta<0?'t-exp':''}">${savDelta>0?'+':''}${zl(savDelta)}</div>${tg?`<div class="s">cel ${zl0(tg)} · ${Math.max(0,Math.round(savDelta/tg*100))}%</div>`:''}</div><div class="kpi k-sk"><div class="l">Rok ${S.ym.slice(0,4)}</div><div class="v num ${yDelta<0?'t-exp':''}">${yDelta>0?'+':''}${zl(yDelta)}</div>${tg?`<div class="s">cel ${zl0(tg*(+S.ym.slice(5)))} do końca ${MNG[+S.ym.slice(5)-1]}</div>`:''}</div></div>
+        ${tg?`<div class="gbar"><i style="width:${Math.min(100,Math.max(0,savDelta/tg*100)).toFixed(1)}%"></i></div><div class="mini">${savDelta>=tg?'🎉 Cel na ten miesiąc osiągnięty!':`Do celu w tym miesiącu brakuje ${zl0(tg-Math.max(0,savDelta))}.`}</div>`:''}
+        <button class="btn sm" style="align-self:flex-start" onclick="setSavTarget()">${tg?'Zmień cel miesięczny ('+zl0(tg)+')':'+ Ustaw cel: ile odkładać co miesiąc'}</button></section>`;
+      // emergency cushion
+      const curYm=td().slice(0,7),past=[];for(let k=1;k<=6;k++){const m=addMonths(curYm,-k),e=agg(S.cfg,tx,m).exp;if(e>0)past.push(e)}
+      const avgE=past.length?past.reduce((a,v)=>a+v,0)/past.length:agg(S.cfg,tx,curYm).exp,pool=savAt(tom);
+      if(avgE>0){const mths=pool/avgE,lvl=mths<3?['bad','Warto ją powiększyć – zwykle radzi się mieć zapas na 3–6 miesięcy.']:mths<6?['ok','Dobry poziom – zapas na 3–6 miesięcy to zalecane minimum.']:['ok','Bardzo bezpieczny poziom.'];
+        h+=`<section class="chart"><div class="ct"><b>🛟 Poduszka finansowa</b><span class="mini">średnie wydatki: ${zl0(avgE)}/mies. (${past.length?'ostatnie '+past.length+' mies.':'ten miesiąc'})</span></div>
+          <div class="cush"><span class="num">${mths.toFixed(1).replace('.',',')}</span><span>mies. życia bez przychodów</span></div>
+          <div class="gbar"><i style="width:${Math.min(100,mths/6*100).toFixed(1)}%"></i></div><div class="mini ${lvl[0]=='bad'?'t-exp':''}">${lvl[1]}</div></section>`}
+      h+=`<div class="list"><div class="grp-h sav"><span>KONTA OSZCZĘDNOŚCIOWE</span><span class="num">${zl(tot('sav'))}</span></div>${savAccs.map(a=>accRow(a)).join('')||'<div class="acc mini">Brak kont oszczędnościowych – dodasz je w ⚙️ Ustawieniach.</div>'}</div>`}
+
+    else if(S.sub=='goals'){
+      const goals=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+      const pool=poolNow(S.cfg,tx),alloc=goals.reduce((a,g)=>a+g.pr.saved,0),free=pool-alloc;
+      h+=`<div class="envtop ${free<0?'neg':''}"><div><div class="mini">${free<0?'Przydzielono więcej, niż macie':'Do przydzielenia'}</div><div class="num big">${zl(free)}</div></div><div class="mini" style="text-align:right">oszczędności ${zl0(pool)}<br>w celach ${zl0(alloc)}</div></div>`;
+      if(free<0)h+=`<div class="note bad">⚠️ Na kontach oszczędnościowych i w inwestycjach jest mniej, niż przydzieliliście do celów. Zabierzcie ${zl(-free)} z któregoś celu.</div>`;
+      if(!goals.length)h+=`<div class="empty" style="padding:14px 12px">Cele działają jak koperty: dzielicie oszczędności na to, na co je odkładacie, np. Wakacje, Remont, Poduszka. Każda złotówka ma swoje przeznaczenie.</div>`;
+      h+=goals.map(g=>{const p=g.pr,wd=Math.min(100,p.pct);
+        return`<div class="goal"><div class="r1"><b>${p.done?'🎉 ':''}${esc(g.name)}</b><span class="pill ${p.done?'ok':'low'}">${Math.floor(p.pct)}%</span></div>
+          <div class="gbar"><i style="width:${wd.toFixed(1)}%"></i></div>
+          <div class="r1 mini"><span><b class="num" style="color:var(--fg)">${zl0(p.saved)}</b> z ${zl0(g.target)}</span><span>${p.done?'Cel osiągnięty!':'brakuje '+zl0(p.left)}</span></div>
+          ${p.perMonth?`<div class="mini">Do ${MNG[+g.deadline.slice(5)-1]} ${g.deadline.slice(0,4)}: przydzielajcie ok. <b style="color:var(--fg)">${zl0(p.perMonth)}</b> miesięcznie (${p.months} mies.)</div>`:''}
+          <div class="btns" style="gap:6px"><button class="btn sm primary" onclick="allocGoal('${g.id}',1)">+ Przydziel</button>${p.saved>0?`<button class="btn sm" onclick="allocGoal('${g.id}',-1)">− Zabierz</button>`:''}<button class="btn sm" onclick="editGoal('${g.id}')">Edytuj</button></div></div>`}).join('');
+      h+=`<div class="btns" style="justify-content:center"><button class="btn dark" onclick="editGoal()">+ Dodaj cel</button></div>`}
+
+    else{
+      const iv=invAccs.map(a=>({a,st:invAccStats(S.cfg,tx,a.id,tom)})),paid=iv.reduce((s,x)=>s+x.st.paid,0),val=iv.reduce((s,x)=>s+x.st.value,0),chg=val-paid;
+      h+=`<div class="worth"><div class="l">Inwestycje – wartość dziś</div><div class="v num">${zl(val)}</div><div class="s">wpłacono ${zl(paid)} · <span style="color:${chg>=0?'#34d399':'#fda4af'}">${chg>=0?'+':''}${zl(chg)}${paid>0?' ('+(chg>=0?'+':'')+(chg/paid*100).toFixed(1).replace('.',',')+'%)':''}</span></div></div>
+        <div class="note">💡 Raz na jakiś czas sprawdź wartość w aplikacji brokera i wpisz ją przyciskiem <b>„Aktualizuj wartość”</b>. Wpłaty na inwestycje rób przyciskiem <b>„Wpłać”</b> (przelew z konta).</div>`;
+      h+=`<div class="list"><div class="grp-h inv"><span>KONTA INWESTYCYJNE</span><span class="num">${zl(val)}</span></div>${iv.map(({a,st})=>{const ago=st.last?Math.floor((Date.now()-new Date(st.last+'T12:00:00'))/864e5):null;
+        return accRow(a,`<div class="mini">wpłacono ${zl0(st.paid)} · <b class="${st.chg>=0?'t-inc':'t-exp'}">${st.chg>=0?'+':''}${zl0(st.chg)}${st.pct!==null?' ('+(st.chg>=0?'+':'')+st.pct.toFixed(1).replace('.',',')+'%)':''}</b></div><div class="mini">${st.last?`wartość z ${st.last.split('-').reverse().join('.')}${ago>30?' · <b class="t-exp">warto zaktualizować</b>':ago>0?' ('+ago+' dni temu)':' (dziś)'}`:'wartości jeszcze nie aktualizowano'}</div>`)}).join('')||'<div class="acc mini">Brak kont inwestycyjnych – dodasz je w ⚙️ Ustawieniach (rodzaj „Inwestycje”).</div>'}</div>`;
+      if(invList.length){h+=`<div class="h2">Starsze wpisy inwestycji (poprzednia wersja)</div>`;
+        h+=invList.map(it=>{const st=it.st,c=it.cur||'PLN';return`<div class="inv"><div class="inv-h"><div style="min-width:0"><span class="badge">${esc(it.kind||'ETF')}</span><br><b>${esc(it.name)}</b><div class="mini">${fqty(st.qty)} szt. · wpłacono ${fcur(st.cost,c)}</div></div><button class="btn sm" onclick="editInv('${it.id}')">Edytuj / usuń</button></div></div>`}).join('')}}}
 
   else if(S.tab=='acc'){
-    h+=`<div class="worth"><div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(tot('cur')+tot('sav')+invPln)}</div><div class="s">konta ${zl(tot('cur')+tot('sav'))} · inwestycje (wpłacono) ${zl(invPln)}</div></div>`;
-    h+=['cur','sav'].map(g=>`<div class="list"><div class="grp-h ${g}"><span>${g=='cur'?'KONTA BIEŻĄCE':'OSZCZĘDNOŚCI'}</span><span class="num">${zl(tot(g))}</span></div>${S.cfg.accs.filter(a=>a.grp==g).map(a=>{const e=balance(S.cfg,tx,a.id,end),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0;
-      return`<div class="acc"><div><b>${esc(a.name)}</b><div class="mini">na początek: ${zl(s0)}</div><button class="chip" onclick="recon('${a.id}')">⚖️ Wyrównaj</button></div><div class="r"><b class="num">${zl(e)}</b><div class="mini ${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</div></div></div>`}).join('')}</div>`).join('');
-    if(invList.length)h+=`<div class="list"><div class="grp-h inv"><span>INWESTYCJE (WPŁACONO)</span><span class="num">${zl(invPln)}</span></div>${invList.map(i=>`<div class="acc"><div><b>${esc(i.name)}</b><div class="mini">${esc(i.kind||'')} · ${esc(i.owner||'')}</div></div><div class="r"><b class="num">${zl(i.st.pln)}</b></div></div>`).join('')}</div>`}
+    h+=`<div class="worth"><div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(tot('cur')+tot('sav')+tot('inv')+invPln)}</div><div class="s">bieżące ${zl0(tot('cur'))} · oszczędności ${zl0(tot('sav'))} · inwestycje ${zl0(tot('inv')+invPln)}</div></div>`;
+    h+=['cur','sav','inv'].filter(g=>g!='inv'||S.cfg.accs.some(a=>a.grp=='inv')).map(g=>`<div class="list"><div class="grp-h ${g}"><span>${{cur:'KONTA BIEŻĄCE',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE'}[g]}</span><span class="num">${zl(tot(g))}</span></div>${S.cfg.accs.filter(a=>a.grp==g).map(a=>{const e=balance(S.cfg,tx,a.id,end),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0;
+      return`<div class="acc"><div><b>${esc(a.name)}</b><div class="mini">na początek: ${zl(s0)}</div>${a.grp=='inv'?`<button class="chip" onclick="updateValue('${a.id}')">✎ Aktualizuj wartość</button>`:`<button class="chip" onclick="recon('${a.id}')">⚖️ Wyrównaj</button>`}</div><div class="r"><b class="num">${zl(e)}</b><div class="mini ${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</div></div></div>`}).join('')}</div>`).join('');
+    if(invList.length)h+=`<div class="list"><div class="grp-h inv"><span>STARSZE WPISY INWESTYCJI</span><span class="num">${zl(invPln)}</span></div>${invList.map(i=>`<div class="acc"><div><b>${esc(i.name)}</b><div class="mini">${esc(i.kind||'')} · ${esc(i.owner||'')}</div></div><div class="r"><b class="num">${zl(i.st.pln)}</b></div></div>`).join('')}</div>`}
 
   else{
     h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
-    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div>${S.cfg.accs.map(a=>`<div class="rowx"><span><b>${esc(a.name)}</b><br><span class="mini">${a.grp=='cur'?'bieżące':'oszczędności'} · saldo początkowe ${zl(a.open)}</span></span><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></div>`).join('')}</div>
+    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div>${S.cfg.accs.map(a=>`<div class="rowx"><span><b>${esc(a.name)}</b><br><span class="mini">${GRPN[a.grp]||a.grp} · ${accOwner(a)} · saldo początkowe ${zl(a.open)}</span></span><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></div>`).join('')}</div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button style="font-weight:800;text-align:left;flex:1;min-width:0" onclick="editCat(${ci})">${esc(catL(c))} ✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button><button class="btn" onclick="logout()">Wyloguj</button></div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
   $('app').innerHTML=h}
@@ -1070,7 +1132,8 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   $('app').innerHTML='<div class="load">Wczytywanie budżetu…</div>';
   const onErr=e=>{err(e);if(e?.code=='permission-denied')$('app').innerHTML='<div class="load">Brak dostępu do danych.<br><br>Sprawdź reguły Firestore albo czy ten e-mail jest na liście.</div>'};
   unsub.push(onSnapshot(H,s=>{
-    if(s.exists()){const c=fromDoc(clone(s.data()));const leg=c.legacy;delete c.legacy;S.cfg=c;render();if(leg&&!s.metadata.fromCache)saveCfg()}
+    if(s.exists()){const raw=s.data(),c=fromDoc(clone(raw));const leg=c.legacy;delete c.legacy;S.cfg=c;S.savTarget=raw.savTarget||0;render();if(leg&&!s.metadata.fromCache)saveCfg();
+      if(!raw.invAcc&&!s.metadata.fromCache&&!leg){[['ainvM','Inwestycje Mati','Mati'],['ainvW','Inwestycje Wercia','Wercia']].forEach(([id,n,o])=>{if(!c.accs.some(a=>a.id==id)){const a={id,name:n,grp:'inv',owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{invAcc:true});render()}}
     else if(!s.metadata.fromCache&&!seeding){seeding=true;S.cfg=seed();render();saveCfg()}
   },onErr));
   unsub.push(onSnapshot(MC(),{includeMetadataChanges:true},s=>{const all=[];S.months=new Set();
@@ -1082,7 +1145,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{setAna,addSell,editGoal,addToGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,togInv,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,editInv,addLot,delLot,exportJson,logout});
+Object.assign(window,{updateValue,allocGoal,setSavTarget,setSub,setAna,addSell,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,togInv,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,editInv,addLot,delLot,exportJson,logout});
 </script>
 </body>
 </html>
