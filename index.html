@@ -357,7 +357,7 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 <nav class="tabs" aria-label="Sekcje"><div class="in">
   <button data-tab="dash" aria-current="page"><span class="e">📊</span>Budżet</button>
   <button data-tab="tx"><span class="e">🧾</span>Rejestr</button>
-  <button data-tab="fix"><span class="e">📌</span>Opłaty</button>
+  <button data-tab="fix"><span class="e">📌</span>Stałe</button>
   <button data-tab="ana"><span class="e">📈</span>Analiza</button>
   <button data-tab="sav"><span class="e">🐷</span>Oszczędn.</button>
   <button data-tab="acc"><span class="e">👛</span>Konta</button>
@@ -436,7 +436,7 @@ const DEF=[ ["ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Premia Ma
  ["INNE WYDATKI","exp",["Opłaty bankowe","Poczta i przesyłki","Urząd i opłaty","Kary i mandaty","Udzielone pożyczki"]],
  ["DZIECI (PRZYSZŁOŚĆ)","exp",["Żłobek/przedszkole","Wyprawka","Ubranka i zabawki","Zajęcia dodatkowe"]]];
 const seed=()=>({v:1,fixed:[],cats:DEF.map((c,i)=>({id:'c'+i,name:c[0],type:c[1],subs:c[2].map((s,j)=>({id:'c'+i+'s'+j,name:s}))})),
-accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","cur"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"],["Inwestycje Mati","inv"],["Inwestycje Wercia","inv"],["IKE Mati","inv"],["IKZE Mati","inv"],["IKE Wercia","inv"],["IKZE Wercia","inv"],["Oszczędności wspólne","sav"],["Poduszka bezpieczeństwa","sav"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],open:0}))});
+accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","cur"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"],["Inwestycje Mati","inv"],["Inwestycje Wercia","inv"],["IKE Mati","inv"],["IKZE Mati","inv"],["IKE Wercia","inv"],["IKZE Wercia","inv"],["PPK Mati","inv"],["PPK Wercia","inv"],["Oszczędności wspólne","sav"],["Poduszka bezpieczeństwa","sav"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],open:0}))});
 
 /* pastel colour per category: --c header, --c2 rows, --c3 dark text/bar of the same hue */
 const HUES=[150,205,28,340,265,48,185,12,295,95,228,320,62,168,245,0];
@@ -503,14 +503,15 @@ const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+
 function dueAlerts(fixed,tx,today){const out=[],tom=addDays(today,1);
   const paid=(f,ym)=>tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym));
   for(const f of fixed){const ym=today.slice(0,7),due=fixedDate(f,ym);
+    if(f.kind=='inc'){if(!paid(f,ym)&&due<today)out.push({f,when:'inc',due});continue}
     if(!paid(f,ym)){if(due<today)out.push({f,when:'late',due});else if(due==today)out.push({f,when:'today',due});else if(due==tom)out.push({f,when:'tomorrow',due})}
     const tym=tom.slice(0,7);if(tym!=ym&&fixedDate(f,tym)==tom&&!paid(f,tym))out.push({f,when:'tomorrow',due:tom})}
-  const ord={late:0,today:1,tomorrow:2};return out.sort((a,b)=>ord[a.when]-ord[b.when]||a.due.localeCompare(b.due))}
+  const ord={late:0,today:1,tomorrow:2,inc:3};return out.sort((a,b)=>ord[a.when]-ord[b.when]||a.due.localeCompare(b.due))}
 /* iCalendar file: one monthly all-day event per fixed cost, alarm at 18:00 the evening before */
 function buildIcs(fixed,today){const esc2=t=>String(t).replace(/[\\;,]/g,m=>'\\'+m).replace(/\n/g,'\\n');
   const stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
   const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Budzet MW//PL','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Opłaty stałe'];
-  for(const f of fixed){const day=Math.min(31,Math.max(1,+f.day||1));let first=fixedDate(f,today.slice(0,7));if(first<today){const n=addDays(today.slice(0,7)+'-01',32).slice(0,7);first=fixedDate(f,n)}
+  for(const f of fixed.filter(x=>(x.kind||'exp')=='exp')){const day=Math.min(31,Math.max(1,+f.day||1));let first=fixedDate(f,today.slice(0,7));if(first<today){const n=addDays(today.slice(0,7)+'-01',32).slice(0,7);first=fixedDate(f,n)}
     const ds=first.replace(/-/g,''),de=addDays(first,1).replace(/-/g,'');
     L.push('BEGIN:VEVENT','UID:oplata-'+f.id+'@budzet-mw','DTSTAMP:'+stamp,'DTSTART;VALUE=DATE:'+ds,'DTEND;VALUE=DATE:'+de,
       'RRULE:FREQ=MONTHLY;BYMONTHDAY='+(day>=31?'-1':day),'SUMMARY:'+esc2('💳 '+f.name+' – '+zl(f.amount).replace(/\s/g,' ')),
@@ -543,7 +544,7 @@ function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=td(),ym=
   if(pexp>0){const left=pexp-A.exp;msgs.push(left>=0?`Do końca miesiąca ${dl} ${dl==1?'dzień':'dni'} – w budżecie zostało jeszcze ${zl0(left)} 💚`:`Plan wydatków przekroczony o ${zl0(-left)} – nic straconego, w przyszłym miesiącu pójdzie lepiej 💪`)}
   const sv=S.cfg.accs.filter(a=>a.grp=='sav'||a.grp=='inv'),sd=sv.reduce((x,a)=>x+balance(cfg,tx,a.id,ym+'-32')-balance(cfg,tx,a.id,ym+'-00'),0);
   if(sd>0)msgs.push(`W tym miesiącu odłożyliście już ${zl0(sd)} 🐷 Brawo!`);
-  const soon=(cfg.fixed||[]).filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym))});
+  const soon=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp').filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym))});
   if(soon.length)msgs.push(`W ciągu kilku dni ${soon.length==1?'termin opłaty „'+soon[0].name+'”':'terminy '+soon.length+' opłat stałych'} – zerknij do 📌`);
   const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({g,p:goalAlloc(g)/g.target*100})).sort((a,b)=>b.p-a.p)[0];
   if(gl&&gl.p>0)msgs.push(`Cel „${gl.g.name}” jest już w ${Math.floor(gl.p)}% – coraz bliżej! ✨`);
@@ -615,6 +616,7 @@ function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(b=>b.se
 function openTx(id,pre){if(guard())return;
   const t=id?liveById(id):null;
   if(t&&t.type=='adj'){ask({title:'Wyrównanie salda',text:`${accN(t.acc)}: ${t.amount>0?'+':''}${zl(t.amount)} (${t.date})\nUsunąć to wyrównanie?`,ok:'Usuń',danger:true}).then(r=>{if(r)delTx(id)});return}
+  if(t&&t.ppk){ask({title:t.note,text:`${accN(t.acc)}: ${zl(t.amount)} (${t.date.split('-').reverse().join('.')})\nTa wpłata jest powiązana z pensją. Żeby ją zmienić, odznacz i odhacz pensję ponownie w 📌 Stałe.`,ok:'Usuń wpłatę',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTen wpis zmienisz lub usuniesz w zakładce Oszczędności.`,ok:'Przejdź',cancel:'Zamknij'}).then(r=>{if(r){S.tab='sav';render()}});return}
   S.edit=t?id:null;
   $('ms').innerHTML='<option value="">— wybierz —</option>'+S.cfg.cats.map(c=>`<optgroup label="${esc(catL(c))}">${c.subs.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</optgroup>`).join('');
@@ -706,41 +708,68 @@ function setWho(v){S.who=v;ls.set('mw_who',v);render()}
 
 /* ---------- fixed costs ---------- */
 const fixedPaid=(fid,ym)=>liveOf(S.tx).find(t=>t.fixedId===fid&&t.date.startsWith(ym));
-async function editFixed(fid){if(guard())return;
-  const f=fid?S.cfg.fixed.find(x=>x.id==fid):null;
-  const r=await ask({title:f?'Edytuj opłatę stałą':'Nowa opłata stała',fields:[
-    {id:'n',label:'Nazwa',value:f?.name||'',ph:'np. Czynsz'},
-    {id:'a',label:'Kwota (zł)',type:'decimal',value:f?f2(f.amount):'',ph:'0,00'},
-    {id:'d',label:'Termin – dzień miesiąca (1–31)',type:'int',value:f?.day||10},
-    {id:'s',label:'Pozycja budżetu',type:'select',value:f?.sub||'',options:[['','— wybierz —'],...subOpts('exp')]},
-    {id:'c',label:'Płacone z konta',type:'select',value:f?.acc||S.cfg.accs[0]?.id,options:accOpts()}],
-    ok:f?'Zapisz':'Dodaj',alt:f?'Usuń opłatę':null});
+async function editFixed(fid,kind){if(guard())return;
+  const f=fid?S.cfg.fixed.find(x=>x.id==fid):null;kind=f?(f.kind||'exp'):(kind||'exp');const inc=kind=='inc';
+  const invAccs=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
+  const fields=[
+    {id:'n',label:'Nazwa',value:f?.name||'',ph:inc?'np. Pensja Mati':'np. Czynsz'},
+    {id:'a',label:inc?'Przybliżona kwota (zł)':'Kwota (zł)',type:'decimal',value:f?f2(f.amount):'',ph:'0,00'},
+    {id:'d',label:inc?'Zwykle wpływa do dnia (1–31)':'Termin – dzień miesiąca (1–31)',type:'int',value:f?.day||10},
+    {id:'s',label:'Pozycja budżetu',type:'select',value:f?.sub||'',options:[['','— wybierz —'],...subOpts(kind)]},
+    {id:'c',label:inc?'Wpływa na konto':'Płacone z konta',type:'select',value:f?.acc||S.cfg.accs.find(a=>a.grp=='cur')?.id,options:accOpts()}];
+  if(inc){fields.push({id:'v',label:'Kwota co miesiąc',type:'select',value:f?.vary?'1':'0',options:[['0','Podpowiadaj ostatnią kwotę'],['1','Zawsze inna – wpisuję od zera']]});
+    fields.push({id:'p',label:'Wpłaty PPK przy tej pensji',type:'select',value:f?.ppk||'',options:[['','Bez PPK'],...invAccs.map(a=>[a.id,a.name])]})}
+  const r=await ask({title:f?(inc?'Edytuj przychód stały':'Edytuj opłatę stałą'):(inc?'Nowy przychód stały':'Nowa opłata stała'),fields,ok:f?'Zapisz':'Dodaj',alt:f?(inc?'Usuń przychód':'Usuń opłatę'):null});
   if(!r)return;
-  if(r=='alt'){if(!await ask({title:'Usunąć opłatę stałą?',text:f.name+'\nWydatki już zapisane w rejestrze zostaną.',ok:'Usuń',danger:true}))return;S.cfg.fixed=S.cfg.fixed.filter(x=>x.id!=fid);render();delFixedDb(fid);return}
+  if(r=='alt'){if(!await ask({title:inc?'Usunąć przychód stały?':'Usunąć opłatę stałą?',text:f.name+'\nWpisy już zapisane w rejestrze zostaną.',ok:'Usuń',danger:true}))return;S.cfg.fixed=S.cfg.fixed.filter(x=>x.id!=fid);render();delFixedDb(fid);return}
   const amount=pg(r.a),day=Math.round(pnum(r.d));
-  if(!r.n.trim())return toast('Podaj nazwę opłaty','bad');
-  if(amount<=0)return toast('Podaj kwotę większą od zera','bad');
+  if(!r.n.trim())return toast('Podaj nazwę','bad');
+  if(amount<=0&&!(inc&&r.v=='1'))return toast('Podaj kwotę większą od zera','bad');
   if(day<1||day>31)return toast('Dzień miesiąca musi być od 1 do 31','bad');
   if(!r.s)return toast('Wybierz pozycję budżetu','bad');
-  const body={id:f?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:r.s,acc:r.c};
+  const body={id:f?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:r.s,acc:r.c,kind};
+  if(inc){body.vary=r.v=='1';body.ppk=r.p||''}
   let tgt=f;if(f)Object.assign(f,body);else{tgt=body;S.cfg.fixed.push(body)}
   render();saveFixed(tgt)}
-async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==fid),paid=fixedPaid(fid,S.ym);
-  if(paid){const ym=paid.date.slice(0,7);if(await putTx(ym,paid.id,{deleted:true}))toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:()=>putTx(ym,paid.id,{deleted:false})});return}
+const lastOf=(f,pred)=>liveOf(S.tx).filter(t=>pred(t)&&t.date<S.ym+'-01').sort((a,b)=>b.date.localeCompare(a.date))[0];
+async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==fid),paid=fixedPaid(fid,S.ym),inc=f.kind=='inc';
+  if(paid){const ym=paid.date.slice(0,7),linked=liveOf(S.tx).filter(t=>t.ppkOf===paid.id);
+    if(await putTx(ym,paid.id,{deleted:true})){linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));
+      toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:()=>{putTx(ym,paid.id,{deleted:false});linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}))}})}return}
   const due=fixedDate(f,S.ym),date=td().startsWith(S.ym)?td():due;
-  const r=await ask({title:'Zapłacono: '+f.name,text:'Kwotę możesz zmienić, jeśli w tym miesiącu rachunek był inny.',fields:[
-    {id:'a',label:'Kwota (zł)',type:'decimal',value:f2(f.amount)},
-    {id:'d',label:'Data zapłaty',type:'date',value:date},
-    {id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()}],ok:'Odhacz'});
+  if(!inc){
+    const r=await ask({title:'Zapłacono: '+f.name,text:'Kwotę możesz zmienić, jeśli w tym miesiącu rachunek był inny.',fields:[
+      {id:'a',label:'Kwota (zł)',type:'decimal',value:f2(f.amount)},
+      {id:'d',label:'Data zapłaty',type:'date',value:date},
+      {id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()}],ok:'Odhacz'});
+    if(!r)return;const amt=pg(r.a);
+    if(amt<=0)return toast('Podaj kwotę większą od zera','bad');
+    if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');
+    S.justChecked=f.id;
+    if(await putTx(S.ym,'t'+rid(),{type:'exp',amount:amt,date:r.d,sub:f.sub,acc:r.c,to:'',who:S.who,note:f.name,fixedId:f.id,deleted:false,ts:Date.now()})){
+      const exps=S.cfg.fixed.filter(x=>(x.kind||'exp')=='exp'),all=exps.every(x=>x.id==f.id||fixedPaid(x.id,S.ym));
+      if(all&&exps.length>1){toast('Wszystkie opłaty w tym miesiącu zapłacone! 🎉');confetti()}else toast('Zapłacono: '+f.name+' ✓')}
+    return}
+  // income: suggest last month's actual amount; PPK contributions from the payslip
+  const last=lastOf(f,t=>t.fixedId===f.id),lastOwn=f.ppk?lastOf(f,t=>t.ppk=='own'&&t.acc===f.ppk&&t.fixedRef===f.id):null,lastEmp=f.ppk?lastOf(f,t=>t.ppk=='emp'&&t.acc===f.ppk&&t.fixedRef===f.id):null;
+  const sug=f.vary?'':f2(last?last.amount:f.amount);
+  const fields=[{id:'a',label:'Kwota, która wpłynęła (zł)',type:'decimal',value:sug,ph:'z aplikacji banku'},
+    {id:'d',label:'Data wpływu',type:'date',value:date},
+    {id:'c',label:'Na konto',type:'select',value:f.acc,options:accOpts()}];
+  if(f.ppk){fields.push({id:'o',label:'PPK – moja wpłata (zł, z paska wypłaty)',type:'decimal',value:lastOwn?f2(lastOwn.amount):'',ph:'np. 180'});
+    fields.push({id:'e',label:'PPK – wpłata pracodawcy (zł)',type:'decimal',value:lastEmp?f2(lastEmp.amount):'',ph:'np. 135'})}
+  const r=await ask({title:'Wpłynęło: '+f.name,text:(last?`W poprzednim wpływie: ${zl(last.amount)}. `:'')+'Wpisz dokładną kwotę z banku.'+(f.ppk?'\nWpłaty PPK nie liczą się do budżetu – trafiają na konto „'+accN(f.ppk)+'”.':''),fields,ok:'Odhacz'});
   if(!r)return;const amt=pg(r.a);
-  if(amt<=0)return toast('Podaj kwotę większą od zera','bad');
+  if(amt<=0)return toast('Podaj kwotę, która wpłynęła','bad');
   if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');
-  S.justChecked=f.id;
-  if(await putTx(S.ym,'t'+rid(),{type:'exp',amount:amt,date:r.d,sub:f.sub,acc:r.c,to:'',who:S.who,note:f.name,fixedId:f.id,deleted:false,ts:Date.now()})){
-    const all=S.cfg.fixed.every(x=>x.id==f.id||fixedPaid(x.id,S.ym));
-    if(all&&S.cfg.fixed.length>1){toast('Wszystkie opłaty w tym miesiącu zapłacone! 🎉');confetti()}else toast('Zapłacono: '+f.name+' ✓')}}
+  S.justChecked=f.id;const iid='t'+rid();
+  if(await putTx(S.ym,iid,{type:'inc',amount:amt,date:r.d,sub:f.sub,acc:r.c,to:'',who:S.who,note:f.name,fixedId:f.id,deleted:false,ts:Date.now()})){
+    if(f.ppk){const own=pg(r.o),emp=pg(r.e),base={date:r.d,sub:'',acc:f.ppk,to:'',who:S.who,deleted:false,ts:Date.now(),ppkOf:iid,fixedRef:f.id};
+      if(own>0)putTx(S.ym,'t'+rid(),{...base,type:'inc',amount:own,note:'PPK – moja wpłata',ppk:'own'});
+      if(emp>0)putTx(S.ym,'t'+rid(),{...base,type:'inc',amount:emp,note:'PPK – wpłata pracodawcy',ppk:'emp'})}
+    toast(`Wpłynęło: ${f.name} ${zl(amt)} ✓`)}}
 
-function calendarExport(){if(!S.cfg?.fixed?.length)return toast('Najpierw dodaj opłaty stałe','bad');
+function calendarExport(){if(!S.cfg?.fixed?.some(f=>(f.kind||'exp')=='exp'))return toast('Najpierw dodaj opłaty stałe','bad');
   const blob=new Blob([buildIcs(S.cfg.fixed,td())],{type:'text/calendar'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='oplaty-stale.ics';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
   ask({title:'Dodaj do kalendarza',text:'Otwórz pobrany plik „oplaty-stale.ics” i wybierz „Dodaj wszystkie” (iPhone) albo kalendarz, do którego mają trafić.\n\nKażda opłata pojawi się co miesiąc w dniu terminu, z przypomnieniem dzień wcześniej o 18:00.\n\nJeśli zmienisz opłaty, usuń stare wydarzenia i dodaj plik ponownie.',ok:'Rozumiem',cancel:'Zamknij'})}
@@ -816,11 +845,11 @@ function togInv(id){S.invOpen[id]=!S.invOpen[id];render()}
 
 /* ---------- investment accounts ---------- */
 /* contributed = opening balance + money moved in − money moved out; value change = sum of value updates (adj) */
-function invAccStats(cfg,tx,id,before){const a=cfg.accs.find(x=>x.id==id);let paid=a?.open||0,chg=0,last=null;
+function invAccStats(cfg,tx,id,before){const a=cfg.accs.find(x=>x.id==id);let paid=a?.open||0,chg=0,last=null,own=0,emp=0;
   for(const t of tx){if(t.date>=before)continue;
-    if(t.acc===id){if(t.type=='adj'){chg+=t.amount;if(!last||t.date>last)last=t.date}else if(t.type=='inc'||t.type=='invs')paid+=t.amount;else paid-=t.amount}
+    if(t.acc===id){if(t.type=='adj'){chg+=t.amount;if(!last||t.date>last)last=t.date}else if(t.type=='inc'||t.type=='invs'){paid+=t.amount;if(t.ppk=='own')own+=t.amount;if(t.ppk=='emp')emp+=t.amount}else paid-=t.amount}
     if(t.type=='tr'&&t.to===id)paid+=t.amount}
-  const value=paid+chg;return{paid,chg,value,pct:paid>0?chg/paid*100:null,last}}
+  const value=paid+chg;return{paid,chg,value,pct:paid>0?chg/paid*100:null,last,own,emp}}
 async function updateValue(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id),tom=addDays(td(),1),cur=balance(S.cfg,liveOf(S.tx),id,tom);
   const r=await ask({title:'Aktualna wartość: '+a.name,text:`W aplikacji: ${zl(cur)}\nWpisz, ile jest teraz warte konto w aplikacji brokera. Różnicę zapiszę jako zysk albo stratę (nie wpływa na wydatki).`,fields:[{id:'v',label:'Wartość dziś (zł)',type:'decimal',value:f2(cur)}],ok:'Zapisz wartość'});
   if(!r||!r.v.trim())return;const d=pg(r.v)-cur;if(!d)return toast('Wartość się zgadza');
@@ -971,7 +1000,7 @@ function txMatches(t,sm,F,ym){
   return q.split(/\s+/).every(w=>hay.includes(w.replace(',','.'))||hay.includes(w))}
 function txRowH(t,sm){const k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
   const cls=k=='invs'?'inv':k;
-  const title=k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'📈 Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'📈 Zakup: '+t.note:k=='invs'?'📉 Sprzedaż: '+t.note:(t.fixedId?'📌 ':'')+(sm[t.sub]?.name||'Bez pozycji');
+  const title=t.ppk?'🏦 '+t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'📈 Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'📈 Zakup: '+t.note:k=='invs'?'📉 Sprzedaż: '+t.note:(t.fixedId?'📌 ':'')+(sm[t.sub]?.name||'Bez pozycji');
   return`<button class="tx" onclick="openTx('${t.id}')"><span class="info"><b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew':esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'?`<div class="note">${esc(t.note)}</div>`:''}</span><span class="amt num t-${cls}">${sg}${zl(Math.abs(t.amount))}</span></button>`}
 function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx);
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
@@ -1153,7 +1182,7 @@ function render(){
   const pct=(a,p)=>p?Math.round(a/p*100)+'% planu':'brak planu';
   let h='';
   const al=dueAlerts(S.cfg.fixed||[],tx,td());
-  const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Opłaty stałe do zapłacenia</b>${al.map(x=>`<span class="it"><span>${esc(x.f.name)} · ${zl(x.f.amount)}</span><span class="when ${x.when=='late'?'late':''}">${x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
+  const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+zl(x.f.amount)}</span><span class="when ${x.when=='late'?'late':''}">${x.when=='inc'?'jeszcze nie odhaczony':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
 
   if(S.tab=='dash'){
     setTimeout(autoPlan,0);
@@ -1183,16 +1212,21 @@ function render(){
     h+=S.ana=='y'?anaYear({cfg:S.cfg,tx,ym:S.ym,savAt}):anaMonth({cfg:S.cfg,tx,ym:S.ym})}
 
   else if(S.tab=='fix'){
-    const fx=(S.cfg.fixed||[]).slice().sort((a,b)=>(+a.day)-(+b.day)||a.name.localeCompare(b.name,'pl'));
     if(S.ym==td().slice(0,7)||al.some(x=>x.due.startsWith(S.ym)))h+=alertH;
-    const isCur=td().startsWith(S.ym),today=+td().slice(8);
-    if(!fx.length)h+=catsEmpty('Nie masz jeszcze opłat stałych.<br>Dodaj np. czynsz, prąd albo Spotify, a co miesiąc odhaczysz je na liście.');
-    else{const rows=fx.map(f=>({f,paid:fixedPaid(f.id,S.ym)}));const done=rows.filter(r=>r.paid),left=rows.filter(r=>!r.paid);
-      const sumPaid=done.reduce((a,r)=>a+r.paid.amount,0),sumLeft=left.reduce((a,r)=>a+r.f.amount,0);
-      h+=`<div class="prog"><div class="r1"><b>Zapłacone ${done.length} z ${rows.length}</b><span class="num">${zl(sumPaid)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:#86efac"></i></div><div class="mini">Zostało do zapłaty: <b class="num" style="color:var(--fg)">${zl(sumLeft)}</b></div></div>`;
-      h+=`<div class="list">${rows.map(({f,paid})=>{const late=!paid&&isCur&&today>Math.min(+f.day,daysIn(S.ym));
-        return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?'zapłacono '+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc)):(late?'<span class="late">po terminie</span> · ':'')+'termin do '+f.day+'. · '+esc(accN(f.acc))}</span></button><span class="num">${zl(paid?paid.amount:f.amount)}</span></div>`}).join('')}</div>`}
-    h+=`<div class="btns" style="justify-content:center"><button class="btn dark" onclick="editFixed()">+ Dodaj opłatę stałą</button></div><div class="mini" style="text-align:center">Stuknij kwadracik, żeby odhaczyć. Stuknij nazwę, żeby zmienić opłatę.</div>${fx.length?`<div class="card"><h3>📅 Przypomnienia w telefonie</h3><div class="mini">Dodaj opłaty do kalendarza telefonu. Dzień przed terminem o 18:00 dostaniesz powiadomienie, nawet gdy aplikacja jest zamknięta.</div><button class="btn primary" onclick="calendarExport()">Dodaj opłaty do kalendarza</button></div>`:''}`}
+    const isCur=td().startsWith(S.ym),today=+td().slice(8),all=(S.cfg.fixed||[]).slice().sort((a,b)=>(+a.day)-(+b.day)||a.name.localeCompare(b.name,'pl'));
+    const row=(f,paid)=>{const inc=f.kind=='inc',late=!paid&&isCur&&today>Math.min(+f.day,daysIn(S.ym));
+      const ppk=paid&&inc?liveOf(S.tx).filter(t=>t.ppkOf===paid.id):[];
+      return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?(inc?'wpłynęło ':'zapłacono ')+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc))+(ppk.length?' · PPK '+zl0(ppk.reduce((a,t)=>a+t.amount,0)):''):(late?`<span class="late">${inc?'jeszcze nie odhaczony':'po terminie'}</span> · `:'')+(inc?'zwykle do ':'termin do ')+f.day+'. · '+esc(accN(f.acc))+(inc&&f.ppk?' · z PPK':'')}</span></button><span class="num ${inc?'t-inc':''}">${paid?zl(paid.amount):inc&&f.vary?'—':(inc?'~':'')+zl(f.amount)}</span></div>`};
+    const block=(kind)=>{const fx=all.filter(f=>(f.kind||'exp')==kind),inc=kind=='inc';
+      let x=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">${inc?'📥 Przychody stałe':'📤 Opłaty stałe'}</span><button class="btn sm dark" onclick="editFixed(null,'${kind}')">+ ${inc?'Przychód':'Opłata'}</button></div>`;
+      if(!fx.length)return x+`<div class="mini" style="padding:0 6px">${inc?'Dodaj np. pensje – co miesiąc odhaczysz, ile faktycznie wpłynęło, razem z wpłatami na PPK.':'Dodaj np. czynsz, prąd albo Spotify – co miesiąc odhaczysz je na liście.'}</div>`;
+      const rows=fx.map(f=>({f,paid:fixedPaid(f.id,S.ym)})),done=rows.filter(r=>r.paid),left=rows.filter(r=>!r.paid);
+      const sumDone=done.reduce((a,r)=>a+r.paid.amount,0),sumLeft=left.reduce((a,r)=>a+(r.f.vary?0:r.f.amount),0);
+      x+=`<div class="prog"><div class="r1"><b>${inc?'Wpłynęło':'Zapłacone'} ${done.length} z ${rows.length}</b><span class="num">${zl(sumDone)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:${inc?'#93c5fd':'#86efac'}"></i></div><div class="mini">${inc?'Jeszcze oczekiwane: ok. ':'Zostało do zapłaty: '}<b class="num" style="color:var(--fg)">${zl(sumLeft)}</b></div></div>`;
+      return x+`<div class="list">${rows.map(r=>row(r.f,r.paid)).join('')}</div>`};
+    if(!all.length)h+=catsEmpty('Dodaj stałe przychody (np. pensje) i opłaty (np. czynsz, prąd, Spotify).<br>Co miesiąc odhaczysz je na liście, a wpisy same trafią do rejestru.');
+    h+=block('inc')+block('exp');
+    h+=`<div class="mini" style="text-align:center">Stuknij kwadracik, żeby odhaczyć. Stuknij nazwę, żeby zmienić.</div>${all.some(f=>(f.kind||'exp')=='exp')?`<div class="card"><h3>📅 Przypomnienia w telefonie</h3><div class="mini">Dodaj opłaty do kalendarza telefonu. Dzień przed terminem o 18:00 dostaniesz powiadomienie, nawet gdy aplikacja jest zamknięta.</div><button class="btn primary" onclick="calendarExport()">Dodaj opłaty do kalendarza</button></div>`:''}`}
 
   else if(S.tab=='sav'){
     const tom=addDays(td(),1),SV=a=>(a.grp=='sav'||a.grp=='inv');
@@ -1207,7 +1241,7 @@ function render(){
       return`<section class="chart"><div class="ct"><b>🛟 ${title}</b><span class="mini">średnie wydatki domu: ${zl0(avgE)}/mies. (${past.length?'ostatnie '+past.length+' mies.':'ten miesiąc'})</span></div><div class="cush"><span class="num">${m.toFixed(1).replace('.',',')}</span><span>mies. życia bez przychodów</span></div><div class="gbar"><i style="width:${Math.min(100,m/6*100).toFixed(1)}%"></i></div><div class="mini ${lvl[0]=='bad'?'t-exp':''}">${lvl[1]}</div></section>`};
     const accRow=a=>{const e=balance(S.cfg,tx,a.id,end),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0,inv=a.grp=='inv';let extra='';
       if(inv){const st=invAccStats(S.cfg,tx,a.id,tom),ago=st.last?Math.floor((Date.now()-new Date(st.last+'T12:00:00'))/864e5):null;
-        extra=`<div class="mini">wpłacono ${zl0(st.paid)} · <b class="${st.chg>=0?'t-inc':'t-exp'}">${st.chg>=0?'+':''}${zl0(st.chg)}${st.pct!==null?' ('+(st.chg>=0?'+':'')+st.pct.toFixed(1).replace('.',',')+'%)':''}</b></div><div class="mini">${st.last?`wartość z ${st.last.split('-').reverse().join('.')}${ago>30?' · <b class="t-exp">warto zaktualizować</b>':ago>0?' ('+ago+' dni temu)':' (dziś)'}`:'wartości jeszcze nie aktualizowano'}</div>`}
+        extra=`${st.own||st.emp?`<div class="mini">🏦 moje wpłaty <b style="color:var(--fg)">${zl0(st.own)}</b> · pracodawca <b style="color:var(--fg)">${zl0(st.emp)}</b></div>`:''}<div class="mini">wpłacono ${zl0(st.paid)} · <b class="${st.chg>=0?'t-inc':'t-exp'}">${st.chg>=0?'+':''}${zl0(st.chg)}${st.pct!==null?' ('+(st.chg>=0?'+':'')+st.pct.toFixed(1).replace('.',',')+'%)':''}</b></div><div class="mini">${st.last?`wartość z ${st.last.split('-').reverse().join('.')}${ago>30?' · <b class="t-exp">warto zaktualizować</b>':ago>0?' ('+ago+' dni temu)':' (dziś)'}`:'wartości jeszcze nie aktualizowano'}</div>`}
       return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${inv?'<span class="badge">inwest.</span>':''}${esc(a.name)}</b>${a.archived?'<span class="mini">usunięte</span>':`<button class="btn sm" style="padding:3px 9px" aria-label="Edytuj konto" onclick="editSavAcc('${a.id}')">⋯</button>`}</div><div class="mini">w tym miesiącu: <span class="${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</span></div>${extra}
         ${a.archived?'':`<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="openTx(null,{type:'tr',to:'${a.id}'})">↓ Wpłać</button><button class="chip" onclick="openTx(null,{type:'tr',from:'${a.id}'})">↑ Wypłać</button>${inv?`<button class="chip" style="background:#ede9fe;color:#5b21b6" onclick="updateValue('${a.id}')">✎ Wartość</button>`:''}</div>`}</div><div class="r"><b class="num">${zl(e)}</b></div></div>`};
     const goalsH=owner=>{const goals=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())})).filter(g=>goalOwner(g)==owner).sort((a,b)=>(a.ts||0)-(b.ts||0));
@@ -1321,7 +1355,8 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
     if(s.exists()){const raw=s.data(),c=fromDoc(clone(raw));const leg=c.legacy;delete c.legacy;S.cfg=c;S.savTarget=raw.savTarget||0;render();if(leg&&!s.metadata.fromCache)saveCfg();
       if(!raw.invAcc&&!s.metadata.fromCache&&!leg){[['ainvM','Inwestycje Mati','Mati'],['ainvW','Inwestycje Wercia','Wercia']].forEach(([id,n,o])=>{if(!c.accs.some(a=>a.id==id)){const a={id,name:n,grp:'inv',owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{invAcc:true});render()}
       if(!raw.ikeAcc&&!s.metadata.fromCache&&!leg){[['aikeM','IKE Mati','inv','Mati'],['aikzeM','IKZE Mati','inv','Mati'],['aikeW','IKE Wercia','inv','Wercia'],['aikzeW','IKZE Wercia','inv','Wercia'],['apodu','Poduszka bezpieczeństwa','sav','Wspólne']].forEach(([id,n,g,o])=>{if(!c.accs.some(a=>a.id==id||a.name==n)){const a={id,name:n,grp:g,owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{ikeAcc:true});render()}
-      if(!raw.wspAcc&&!s.metadata.fromCache&&!leg){if(!c.accs.some(a=>a.id=='awsp'||/^oszczędności wspólne$/i.test(a.name))){const a={id:'awsp',name:'Oszczędności wspólne',grp:'sav',owner:'Wspólne',open:0};const pi=c.accs.findIndex(x=>x.id=='apodu');if(pi>=0){c.accs.splice(pi,0,a);saveAcc(a);c.accs.slice(pi+1).forEach(saveAcc)}else{c.accs.push(a);saveAcc(a)}}merge(H,{wspAcc:true});render()}}
+      if(!raw.wspAcc&&!s.metadata.fromCache&&!leg){if(!c.accs.some(a=>a.id=='awsp'||/^oszczędności wspólne$/i.test(a.name))){const a={id:'awsp',name:'Oszczędności wspólne',grp:'sav',owner:'Wspólne',open:0};const pi=c.accs.findIndex(x=>x.id=='apodu');if(pi>=0){c.accs.splice(pi,0,a);saveAcc(a);c.accs.slice(pi+1).forEach(saveAcc)}else{c.accs.push(a);saveAcc(a)}}merge(H,{wspAcc:true});render()}
+      if(!raw.ppkAcc&&!s.metadata.fromCache&&!leg){[['appkM','PPK Mati','Mati'],['appkW','PPK Wercia','Wercia']].forEach(([id,n,o])=>{if(!c.accs.some(a=>a.id==id||a.name==n)){const a={id,name:n,grp:'inv',owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{ppkAcc:true});render()}}
     else if(!s.metadata.fromCache&&!seeding){seeding=true;S.cfg=seed();render();saveCfg()}
   },onErr));
   unsub.push(onSnapshot(MC(),{includeMetadataChanges:true},s=>{const all=[];S.months=new Set();
