@@ -29,7 +29,7 @@ html{padding-top:env(safe-area-inset-top,0px)}
 body{margin:0}
 img{max-width:100%}
 [hidden]{display:none!important}
-body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.4;padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+body{background:var(--bg);transition:background-color .4s ease;color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.4;padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--head)}
 input,select,button{font:inherit;color:inherit}
 input,select{font-size:16px}
@@ -455,7 +455,8 @@ const SEASON=[
   ['#ede5e0','#d9cbc3','🍁'],  // listopad – mglista jesień
   ['#e1efe7','#c3dece','🎄']   // grudzień – zimowa jodła
 ];
-function applySeason(){const m=+S.ym.slice(5)-1,[c,l]=SEASON[m];const r=document.documentElement.style;r.setProperty('--head',c);r.setProperty('--head-line',l);
+const tint=(hex,k)=>{const n=parseInt(hex.slice(1),16),f=v=>Math.round(255-(255-v)*k);return'#'+[f(n>>16),f(n>>8&255),f(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('')};
+function applySeason(){const m=+S.ym.slice(5)-1,[c,l]=SEASON[m];const r=document.documentElement.style;r.setProperty('--head',c);r.setProperty('--head-line',l);r.setProperty('--bg',tint(c,.38));
   const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.setAttribute('content',c)}
 const pastel=i=>{const h=HUES[i%HUES.length];return`--c:hsl(${h} 72% 89%);--c2:hsl(${h} 70% 97%);--c3:hsl(${h} 50% 26%);--c4:hsl(${h} 58% 68%)`};
 
