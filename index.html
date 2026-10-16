@@ -464,9 +464,24 @@ async function addSub(ci){if(guard())return;const r=await ask({title:'Nowa pozyc
   if(!r||!r.n.trim())return;const c=S.cfg.cats[ci],s={id:'s'+rid(),name:r.n.trim()};c.subs.push(s);render();saveSub(c,s)}
 async function renSub(ci,si){if(guard())return;const s=S.cfg.cats[ci].subs[si];const r=await ask({title:'Zmień nazwę',fields:[{id:'n',label:'Nazwa',value:s.name}]});
   if(!r||!r.n.trim())return;s.name=r.n.trim();render();saveSub(S.cfg.cats[ci],s)}
-async function delSub(ci,si){if(guard())return;const s=S.cfg.cats[ci].subs[si];
-  if(liveOf(S.tx).some(t=>t.sub===s.id)||(S.cfg.fixed||[]).some(f=>f.sub===s.id))return ask({title:'Nie można usunąć',text:`„${s.name}” ma zapisane transakcje albo opłatę stałą. Możesz zmienić jej nazwę.`,ok:'Rozumiem',cancel:'Zamknij'});
-  if(!await ask({title:'Usunąć pozycję?',text:s.name,ok:'Usuń',danger:true}))return;const c=S.cfg.cats[ci];c.subs.splice(si,1);render();delSubDb(c,s)}
+async function delSub(ci,si){if(guard())return;const c=S.cfg.cats[ci],s=c.subs[si];
+  const txs=S.tx.filter(t=>t.sub===s.id),live=liveOf(txs),fx=(S.cfg.fixed||[]).filter(f=>f.sub===s.id),plans=Object.entries(S.plans).filter(([ym,p])=>p[s.id]);
+  if(!live.length&&!fx.length){if(!await ask({title:'Usunąć pozycję?',text:s.name,ok:'Usuń',danger:true}))return;
+    for(const[ym]of plans)w(updateDoc(doc(PLC(),ym),{[s.id]:deleteField()}));c.subs.splice(si,1);render();delSubDb(c,s);return}
+  const opts=S.cfg.cats.filter(k=>k.type==c.type).map(k=>({group:k.name,items:k.subs.filter(x=>x.id!==s.id).map(x=>[x.id,x.name])})).filter(g=>g.items.length);
+  if(!opts.length)return ask({title:'Nie można usunąć',text:'Nie ma innej pozycji tego rodzaju, do której można przenieść wpisy.',ok:'OK',cancel:'Zamknij'});
+  const plf=(n,a,b,c)=>n+' '+(n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c);
+  const parts=[live.length?plf(live.length,'wpis','wpisy','wpisów'):'',fx.length?plf(fx.length,'opłata stała','opłaty stałe','opłat stałych'):'',plans.length?`plan z ${plans.length} mies.`:''].filter(Boolean).join(', ');
+  const r=await ask({title:'Połącz z inną pozycją',text:`„${s.name}” jest w użyciu (${parts}).\nWybierz pozycję, do której wszystko przeniosę. Potem „${s.name}” zostanie usunięta.`,
+    fields:[{id:'t',label:'Przenieś do',type:'select',value:'',options:[['','— wybierz —'],...opts]}],ok:'Połącz i usuń',danger:true});
+  if(!r)return;if(!r.t)return toast('Wybierz pozycję docelową','bad');
+  const tgt=r.t,byM={};
+  txs.forEach(t=>{const ym=t.date.slice(0,7);(byM[ym]=byM[ym]||{})[t.id]={sub:tgt}});
+  for(const[ym,m]of Object.entries(byM))merge(doc(MC(),ym),{tx:m});
+  for(const[ym,p]of plans)w(updateDoc(doc(PLC(),ym),{[tgt]:(p[tgt]||0)+p[s.id],[s.id]:deleteField()}));
+  for(const f of fx){f.sub=tgt;saveFixed(f)}
+  const ix=c.subs.indexOf(s);if(ix>=0)c.subs.splice(ix,1);render();delSubDb(c,s);
+  toast('Przeniesiono do: '+(subsMap(S.cfg)[tgt]?.name||''))}
 function setWho(v){S.who=v;ls.set('mw_who',v);render()}
 
 /* ---------- fixed costs ---------- */
