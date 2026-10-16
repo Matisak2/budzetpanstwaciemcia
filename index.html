@@ -38,7 +38,7 @@ button{cursor:pointer;background:none;border:0;padding:0}
 .mini{color:var(--muted);font-size:12px}
 
 /* header */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--head);color:var(--head-fg);border-bottom:1px solid #d9e0fb}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--head);color:var(--head-fg);border-bottom:1px solid var(--head-line,#d9e0fb);transition:background-color .4s ease}
 .top .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:44px 1fr 44px 44px;align-items:center;padding-block:6px}
 .hb{height:44px;border-radius:12px;font-size:24px;line-height:1;color:var(--head-fg)}
 .hb.gear{font-size:19px}
@@ -407,6 +407,23 @@ accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati"
 
 /* pastel colour per category: --c header, --c2 rows, --c3 dark text/bar of the same hue */
 const HUES=[150,205,28,340,265,48,185,12,295,95,228,320,62,168,245,0];
+/* header colour of the shown month – soft pastels that follow the seasons */
+const SEASON=[
+  ['#e4eef9','#cbdcf0','❄️'],  // styczeń – mroźny błękit
+  ['#ebe7f6','#d6cfee','❄️'],  // luty – szronowy liliowy
+  ['#e2f4e4','#c5e6c9','🌱'],  // marzec – pierwsza zieleń
+  ['#fbe5ee','#f3c9d9','🌸'],  // kwiecień – kwitnące wiśnie
+  ['#efe4f7','#dccbee','💜'],  // maj – bzy
+  ['#fdf4cf','#f3e3a0','☀️'],  // czerwiec – słońce
+  ['#fde6d6','#f6cbae','🍑'],  // lipiec – brzoskwinia
+  ['#fbeccb','#f0d79f','🌾'],  // sierpień – żniwa
+  ['#eef0d6','#dadfb0','🍐'],  // wrzesień – babie lato
+  ['#fce1cf','#f2c2a3','🍂'],  // październik – złota jesień
+  ['#ede5e0','#d9cbc3','🍁'],  // listopad – mglista jesień
+  ['#e1efe7','#c3dece','🎄']   // grudzień – zimowa jodła
+];
+function applySeason(){const m=+S.ym.slice(5)-1,[c,l]=SEASON[m];const r=document.documentElement.style;r.setProperty('--head',c);r.setProperty('--head-line',l);
+  const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.setAttribute('content',c)}
 const pastel=i=>{const h=HUES[i%HUES.length];return`--c:hsl(${h} 72% 89%);--c2:hsl(${h} 70% 97%);--c3:hsl(${h} 50% 26%);--c4:hsl(${h} 58% 68%)`};
 
 /* ---------- state ---------- */
@@ -1055,7 +1072,7 @@ function trioH(type,name,plan,act,planInput){const st=status(type,plan,act);
 function render(){
   document.querySelectorAll('.tabs [data-tab]').forEach(b=>{if(b.dataset.tab==S.tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   if(S.tab=='set')$('gearBtn').setAttribute('aria-current','page');else $('gearBtn').removeAttribute('aria-current');
-  const[y,m]=S.ym.split('-').map(Number);$('mlabel').textContent=S.tab=='ana'&&S.ana=='y'?'Rok '+y:MN[m-1]+' '+y;
+  const[y,m]=S.ym.split('-').map(Number);applySeason();$('mlabel').textContent=S.tab=='ana'&&S.ana=='y'?'Rok '+y:SEASON[m-1][2]+' '+MN[m-1]+' '+y;
   if(!S.cfg)return;
   const ae=document.activeElement;if(ae&&ae.tagName=='INPUT'&&$('app').contains(ae)){S.pend=true;return}S.pend=false;
   const tx=liveOf(S.tx),sm=subsMap(S.cfg),end=S.ym+'-32',start=S.ym+'-00',pl=S.plans[S.ym]||{},act=actuals(S.cfg,tx,S.ym);
