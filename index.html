@@ -120,6 +120,10 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .alert .it{display:flex;justify-content:space-between;gap:8px;font-size:13px}
 .alert .it .when{font-weight:800;color:#c2410c;white-space:nowrap}
 .alert .it .when.late{color:#be123c}
+.trend{display:inline-flex;align-items:center;gap:3px;border-radius:999px;padding:2px 8px;font-weight:800;font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.trend.up{background:#16a34a;color:#fff}
+.trend.down{background:#ffe4e6;color:#be123c}
+.kpi .tr{margin-top:5px}
 .prog{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px}
 
 /* investments */
@@ -632,6 +636,11 @@ function render(){
   const tot=g=>S.cfg.accs.filter(a=>a.grp==g).reduce((a,c)=>a+balance(S.cfg,tx,c.id,end),0);
   const invList=Object.entries(S.inv).map(([id,it])=>({id,...it,st:invStats(it)})).sort((a,b)=>(a.name||'').localeCompare(b.name||'','pl'));
   const invPln=invList.reduce((a,i)=>a+i.st.pln,0);
+  /* savings = savings accounts + money put into investments, at a given date; change over the shown month */
+  const invAt=before=>invList.reduce((a,i)=>a+i.st.lots.filter(l=>l.date<before).reduce((b,l)=>b+(l.pln||0),0),0);
+  const savAt=before=>S.cfg.accs.filter(a=>a.grp=='sav').reduce((a,c)=>a+balance(S.cfg,tx,c.id,before),0)+invAt(before);
+  const savEnd=savAt(end),savDelta=savEnd-savAt(start);
+  const trendH=d=>d>0?`<span class="trend up" title="Przybyło w tym miesiącu">▲ +${zl0(d)}</span>`:d<0?`<span class="trend down" title="Ubyło w tym miesiącu">▼ −${zl0(-d)}</span>`:'';
   const pct=(a,p)=>p?Math.round(a/p*100)+'% planu':'brak planu';
   let h='';
   const al=dueAlerts(S.cfg.fixed||[],tx,td());
@@ -643,7 +652,7 @@ function render(){
       <div class="kpi k-em"><div class="l">Przychody</div><div class="v num">${zl(inc)}</div><div class="s">plan ${zl0(pinc)} · ${pct(inc,pinc)}</div></div>
       <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(exp)}</div><div class="s">plan ${zl0(pexp)} · ${pct(exp,pexp)}</div></div>
       <div class="kpi k-sk"><div class="l">Bilans miesiąca</div><div class="v num">${zl(inc-exp)}</div><div class="s">plan ${zl0(pinc-pexp)}</div></div>
-      <div class="kpi k-in"><div class="l">Na kontach</div><div class="v num">${zl(tot('cur'))}</div><div class="s">oszczędności ${zl0(tot('sav'))}</div></div></div>`;
+      <div class="kpi k-in"><div class="l">Na kontach</div><div class="v num">${zl(tot('cur'))}</div><div class="s">oszczędności ${zl0(savEnd)}</div>${savDelta?`<div class="tr">${trendH(savDelta)}</div>`:''}</div></div>`;
     h+=S.cfg.cats.map((c,i)=>{const pa=c.subs.reduce((a,s)=>a+(pl[s.id]||0),0),ac=c.subs.reduce((a,s)=>a+(act[s.id]||0),0),o=S.open[c.id];
       return`<section class="cat" style="${pastel(i)}"><button class="ch" onclick="tog('${c.id}')" aria-expanded="${!!o}">${trioH(c.type,`<span class="nm"><span class="chev">${o?'▾':'▸'}</span>${esc(catL(c))}</span>`,pa,ac)}</button>`+
         (o?c.subs.map(s=>{const a=act[s.id]||0,p=pl[s.id]||0;
@@ -673,7 +682,7 @@ function render(){
 
   else if(S.tab=='sav'){
     const savAccs=S.cfg.accs.filter(a=>a.grp=='sav');
-    h+=`<div class="worth"><div class="l">Oszczędności + wpłacone na inwestycje</div><div class="v num">${zl(tot('sav')+invPln)}</div><div class="s">na kontach ${zl(tot('sav'))} · w inwestycjach ${zl(invPln)}</div></div>`;
+    h+=`<div class="worth"><div class="l">Oszczędności + wpłacone na inwestycje</div><div class="v num">${zl(savEnd)} ${trendH(savDelta)}</div><div class="s">na kontach ${zl(tot('sav'))} · w inwestycjach ${zl(invPln)}</div></div>`;
     h+=`<div class="list"><div class="grp-h sav"><span>KONTA OSZCZĘDNOŚCIOWE</span><span class="num">${zl(tot('sav'))}</span></div>${savAccs.map(a=>{const e=balance(S.cfg,tx,a.id,end),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0;
       return`<div class="acc"><div><b>${esc(a.name)}</b><div class="mini">w tym miesiącu: <span class="${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</span></div><button class="chip" onclick="openTx(null,{type:'tr',to:'${a.id}'})">↓ Wpłać na to konto</button></div><div class="r"><b class="num">${zl(e)}</b></div></div>`}).join('')||'<div class="acc mini">Brak kont oszczędnościowych – dodasz je w ⚙️ Ustawieniach.</div>'}</div>`;
     h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">Inwestycje</span><button class="btn sm dark" onclick="editInv()">+ Dodaj inwestycję</button></div>`;
