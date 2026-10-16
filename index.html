@@ -273,22 +273,22 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const isDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'');
 const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
-const DEF=[["3. ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Premia Mati","Premia Wercia","Sprzedaż rzeczy","Zwroty","Odsetki i cashback","Dodatkowe przychody"]],
-["4. KREDYTY I POŻYCZKI","exp",["Pożyczka Tomalka","Pożyczka Dziadkowie","Pożyczka Mama","Spłata sprzętu na raty","Allegro Pay/raty"]],
-["5. JEDZENIE I GASTRONOMIA","exp",["Zakupy spożywcze do domu","Restauracje i wyjścia na miasto","Kawa, lunch w pracy i przekąski na mieście","Jedzenie z dowozem","Słodycze i wypieki","Alkohol i napoje"]],
-["6. ZDROWIE","exp",["Badania i wizyty lekarskie","Lekarstwa","Witaminy i suplementy","Stomatolog","Optyk","Ubezpieczenie zdrowotne"]],
-["7. UBRANIA I OBUWIE","exp",["Ubrania i buty Wercia","Ubrania i buty Mati","Dodatki i biżuteria"]],
-["8. MIESZKANIE / DOM","exp",["Czynsz i fundusz remontowy","Prąd","Gaz","Woda i kanalizacja","Ogrzewanie","Wywóz śmieci","Rata kredytu hipotecznego","Środki czystości","Wyposażenie i naprawy","Balkon i rośliny","Podatki od nieruchomości","Ubezpieczenie mieszkania","Rozliczenie ze wspólnotą"]],
-["9. SUBSKRYPCJE I TELEKOMUNIKACJA","exp",["Pakiet Orange","Telefon Wercia","Spotify","Apple One + iCloud","Disney+ / Netflix / VOD","Plan Revolut","Subskrypcje aplikacji"]],
-["10. AUTO I TRANSPORT","exp",["Paliwo","Serwis i naprawy","Przegląd techniczny","Ubezpieczenie OC/AC","Opony i akcesoria","Myjnia","Parkingi i autostrady","Komunikacja miejska","Taxi / Bolt / Uber"]],
-["11. DBANIE O SIEBIE I SPORT","exp",["Kosmetyki i higiena","Fryzjer / Barber","Kosmetyczka i zabiegi","Masaże","Karnety i wejścia sportowe","Odżywki treningowe","Sprzęt sportowy"]],
-["12. PRACA I ROZWÓJ","exp",["Składki OIL","Kursy i szkolenia","Certyfikaty i egzaminy","Literatura medyczna","Odzież medyczna i sprzęt"]],
-["13. ROZRYWKA, HOBBY I WAKACJE","exp",["Drobne przyjemności Wercia","Drobne przyjemności Mati","Hobby i DIY","Gry planszowe i wideo","Imprezy i spotkania","Kino, teatr, koncerty","Książki i audiobooki","Wakacje i wyjazdy","Loterie i zakłady"]],
-["14. ZWIERZĘTA (KOTY)","exp",["Karma","Przysmaki i suplementy","Żwirek i higiena","Weterynarz","Zabawki i akcesoria"]],
-["15. PREZENTY I OKAZJE","exp",["Prezenty dla drugiej połówki","Prezenty dla rodziny","Prezenty dla znajomych","Wesela i uroczystości","Święta","Kwiaty i upominki"]],
-["16. DODATKOWE UBEZPIECZENIA","exp",["Ubezpieczenie na życie","Ubezpieczenie NNW / OC zawodowe","Ubezpieczenie podróżne","Ubezpieczenie kredytu"]],
-["17. INNE WYDATKI","exp",["Opłaty bankowe","Poczta i przesyłki","Urząd i opłaty","Kary i mandaty","Udzielone pożyczki"]],
-["18. DZIECI (PRZYSZŁOŚĆ)","exp",["Żłobek/przedszkole","Wyprawka","Ubranka i zabawki","Zajęcia dodatkowe"]]];
+const DEF=[ ["ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Premia Mati","Premia Wercia","Sprzedaż rzeczy","Zwroty","Odsetki i cashback","Dodatkowe przychody"]],
+ ["KREDYTY I POŻYCZKI","exp",["Pożyczka Tomalka","Pożyczka Dziadkowie","Pożyczka Mama","Spłata sprzętu na raty","Allegro Pay/raty"]],
+ ["JEDZENIE I GASTRONOMIA","exp",["Zakupy spożywcze do domu","Restauracje i wyjścia na miasto","Kawa, lunch w pracy i przekąski na mieście","Jedzenie z dowozem","Słodycze i wypieki","Alkohol i napoje"]],
+ ["ZDROWIE","exp",["Badania i wizyty lekarskie","Lekarstwa","Witaminy i suplementy","Stomatolog","Optyk","Ubezpieczenie zdrowotne"]],
+ ["UBRANIA I OBUWIE","exp",["Ubrania i buty Wercia","Ubrania i buty Mati","Dodatki i biżuteria"]],
+ ["MIESZKANIE / DOM","exp",["Czynsz i fundusz remontowy","Prąd","Gaz","Woda i kanalizacja","Ogrzewanie","Wywóz śmieci","Rata kredytu hipotecznego","Środki czystości","Wyposażenie i naprawy","Balkon i rośliny","Podatki od nieruchomości","Ubezpieczenie mieszkania","Rozliczenie ze wspólnotą"]],
+ ["SUBSKRYPCJE I TELEKOMUNIKACJA","exp",["Pakiet Orange","Telefon Wercia","Spotify","Apple One + iCloud","Disney+ / Netflix / VOD","Plan Revolut","Subskrypcje aplikacji"]],
+ ["AUTO I TRANSPORT","exp",["Paliwo","Serwis i naprawy","Przegląd techniczny","Ubezpieczenie OC/AC","Opony i akcesoria","Myjnia","Parkingi i autostrady","Komunikacja miejska","Taxi / Bolt / Uber"]],
+ ["DBANIE O SIEBIE I SPORT","exp",["Kosmetyki i higiena","Fryzjer / Barber","Kosmetyczka i zabiegi","Masaże","Karnety i wejścia sportowe","Odżywki treningowe","Sprzęt sportowy"]],
+ ["PRACA I ROZWÓJ","exp",["Składki OIL","Kursy i szkolenia","Certyfikaty i egzaminy","Literatura medyczna","Odzież medyczna i sprzęt"]],
+ ["ROZRYWKA, HOBBY I WAKACJE","exp",["Drobne przyjemności Wercia","Drobne przyjemności Mati","Hobby i DIY","Gry planszowe i wideo","Imprezy i spotkania","Kino, teatr, koncerty","Książki i audiobooki","Wakacje i wyjazdy","Loterie i zakłady"]],
+ ["ZWIERZĘTA (KOTY)","exp",["Karma","Przysmaki i suplementy","Żwirek i higiena","Weterynarz","Zabawki i akcesoria"]],
+ ["PREZENTY I OKAZJE","exp",["Prezenty dla drugiej połówki","Prezenty dla rodziny","Prezenty dla znajomych","Wesela i uroczystości","Święta","Kwiaty i upominki"]],
+ ["DODATKOWE UBEZPIECZENIA","exp",["Ubezpieczenie na życie","Ubezpieczenie NNW / OC zawodowe","Ubezpieczenie podróżne","Ubezpieczenie kredytu"]],
+ ["INNE WYDATKI","exp",["Opłaty bankowe","Poczta i przesyłki","Urząd i opłaty","Kary i mandaty","Udzielone pożyczki"]],
+ ["DZIECI (PRZYSZŁOŚĆ)","exp",["Żłobek/przedszkole","Wyprawka","Ubranka i zabawki","Zajęcia dodatkowe"]]];
 const seed=()=>({v:1,fixed:[],cats:DEF.map((c,i)=>({id:'c'+i,name:c[0],type:c[1],subs:c[2].map((s,j)=>({id:'c'+i+'s'+j,name:s}))})),
 accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","cur"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],open:0}))});
 
@@ -301,6 +301,8 @@ const S={cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:
 let seeding=false;
 
 /* ---------- pure money logic ---------- */
+const cleanCat=n=>String(n||'').replace(/^\s*\d+\s*[.)]\s*/,'').trim();
+const catL=c=>(S.cfg.cats.indexOf(c)+1)+'. '+cleanCat(c.name);
 const subsMap=cfg=>{const m={};cfg.cats.forEach(c=>c.subs.forEach(s=>m[s.id]={...s,cat:c}));return m};
 const liveOf=tx=>tx.filter(t=>!t.deleted&&isDate(t.date));
 function balance(cfg,tx,id,before){let b=cfg.accs.find(a=>a.id===id)?.open||0;
@@ -367,7 +369,7 @@ function ask({title,text='',fields=[],ok='Zapisz',cancel='Anuluj',danger=false,a
     d.onkeydown=e=>{if(e.key=='Enter'&&e.target.tagName=='INPUT'){e.preventDefault();$('dlgOk').click()}if(e.key=='Escape')done(null)};
   })}
 const accOpts=()=>[{group:'Konta bieżące',items:S.cfg.accs.filter(a=>a.grp=='cur').map(a=>[a.id,a.name])},{group:'Oszczędności',items:S.cfg.accs.filter(a=>a.grp=='sav').map(a=>[a.id,a.name])}];
-const subOpts=type=>S.cfg.cats.filter(c=>!type||c.type==type).map(c=>({group:c.name,items:c.subs.map(s=>[s.id,s.name])}));
+const subOpts=type=>S.cfg.cats.filter(c=>!type||c.type==type).map(c=>({group:catL(c),items:c.subs.map(s=>[s.id,s.name])}));
 
 /* ---------- storage (Firebase Firestore) ---------- */
 const H=doc(fdb,'households','main');
@@ -389,6 +391,8 @@ const saveCfg=()=>w(setDoc(H,toDoc(S.cfg)));
 const saveAcc=a=>merge(H,{accsM:{[a.id]:strip(a,S.cfg.accs.indexOf(a))}});
 const delAccDb=id=>w(updateDoc(H,{['accsM.'+id]:deleteField()}));
 const saveSub=(c,s)=>merge(H,{catsM:{[c.id]:{...strip(c,S.cfg.cats.indexOf(c)),subsM:{[s.id]:strip(s,c.subs.indexOf(s))}}}});
+const saveCat=c=>merge(H,{catsM:{[c.id]:strip(c,S.cfg.cats.indexOf(c))}});
+const delCatDb=id=>w(updateDoc(H,{['catsM.'+id]:deleteField()}));
 const delSubDb=(c,s)=>w(updateDoc(H,{[`catsM.${c.id}.subsM.${s.id}`]:deleteField()}));
 const saveFixed=f=>merge(H,{fixedM:{[f.id]:strip(f,S.cfg.fixed.indexOf(f))}});
 const delFixedDb=id=>w(updateDoc(H,{['fixedM.'+id]:deleteField()}));
@@ -405,7 +409,7 @@ function openTx(id,pre){if(guard())return;
   if(t&&t.type=='adj'){delTx(id);return}
   if(t&&t.type=='inv'){ask({title:'Zakup inwestycji',text:`${t.note} – ${zl(t.amount)}\nTen wpis zmienisz lub usuniesz w zakładce Oszczędności.`,ok:'Przejdź',cancel:'Zamknij'}).then(r=>{if(r){S.tab='sav';render()}});return}
   S.edit=t?id:null;
-  $('ms').innerHTML='<option value="">— wybierz —</option>'+S.cfg.cats.map(c=>`<optgroup label="${esc(c.name)}">${c.subs.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</optgroup>`).join('');
+  $('ms').innerHTML='<option value="">— wybierz —</option>'+S.cfg.cats.map(c=>`<optgroup label="${esc(catL(c))}">${c.subs.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</optgroup>`).join('');
   const ao=accOpts().map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(a=>`<option value="${a[0]}">${esc(a[1])}</option>`).join('')}</optgroup>`).join('');$('mc').innerHTML=ao;$('mto').innerHTML=ao;
   setType(t?t.type:(pre?.type||'exp'));
   $('mw').value=(t&&t.who)||S.who;
@@ -460,7 +464,7 @@ async function editAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id
   if(!r)return;
   if(r=='alt'){if(!await ask({title:'Usunąć konto?',text:a.name,ok:'Usuń',danger:true}))return;S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);render();delAccDb(id);return}
   if(r.n.trim())a.name=r.n.trim();a.grp=r.g;a.open=pg(r.o);render();saveAcc(a)}
-async function addSub(ci){if(guard())return;const r=await ask({title:'Nowa pozycja',text:S.cfg.cats[ci].name,fields:[{id:'n',label:'Nazwa'}],ok:'Dodaj'});
+async function addSub(ci){if(guard())return;const r=await ask({title:'Nowa pozycja',text:catL(S.cfg.cats[ci]),fields:[{id:'n',label:'Nazwa'}],ok:'Dodaj'});
   if(!r||!r.n.trim())return;const c=S.cfg.cats[ci],s={id:'s'+rid(),name:r.n.trim()};c.subs.push(s);render();saveSub(c,s)}
 async function renSub(ci,si){if(guard())return;const s=S.cfg.cats[ci].subs[si];const r=await ask({title:'Zmień nazwę',fields:[{id:'n',label:'Nazwa',value:s.name}]});
   if(!r||!r.n.trim())return;s.name=r.n.trim();render();saveSub(S.cfg.cats[ci],s)}
@@ -468,7 +472,7 @@ async function delSub(ci,si){if(guard())return;const c=S.cfg.cats[ci],s=c.subs[s
   const txs=S.tx.filter(t=>t.sub===s.id),live=liveOf(txs),fx=(S.cfg.fixed||[]).filter(f=>f.sub===s.id),plans=Object.entries(S.plans).filter(([ym,p])=>p[s.id]);
   if(!live.length&&!fx.length){if(!await ask({title:'Usunąć pozycję?',text:s.name,ok:'Usuń',danger:true}))return;
     for(const[ym]of plans)w(updateDoc(doc(PLC(),ym),{[s.id]:deleteField()}));c.subs.splice(si,1);render();delSubDb(c,s);return}
-  const opts=S.cfg.cats.filter(k=>k.type==c.type).map(k=>({group:k.name,items:k.subs.filter(x=>x.id!==s.id).map(x=>[x.id,x.name])})).filter(g=>g.items.length);
+  const opts=S.cfg.cats.filter(k=>k.type==c.type).map(k=>({group:catL(k),items:k.subs.filter(x=>x.id!==s.id).map(x=>[x.id,x.name])})).filter(g=>g.items.length);
   if(!opts.length)return ask({title:'Nie można usunąć',text:'Nie ma innej pozycji tego rodzaju, do której można przenieść wpisy.',ok:'OK',cancel:'Zamknij'});
   const plf=(n,a,b,c)=>n+' '+(n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c);
   const parts=[live.length?plf(live.length,'wpis','wpisy','wpisów'):'',fx.length?plf(fx.length,'opłata stała','opłaty stałe','opłat stałych'):'',plans.length?`plan z ${plans.length} mies.`:''].filter(Boolean).join(', ');
@@ -482,6 +486,15 @@ async function delSub(ci,si){if(guard())return;const c=S.cfg.cats[ci],s=c.subs[s
   for(const f of fx){f.sub=tgt;saveFixed(f)}
   const ix=c.subs.indexOf(s);if(ix>=0)c.subs.splice(ix,1);render();delSubDb(c,s);
   toast('Przeniesiono do: '+(subsMap(S.cfg)[tgt]?.name||''))}
+async function editCat(ci){if(guard())return;const c=S.cfg.cats[ci],empty=!c.subs.length;
+  const r=await ask({title:'Kategoria '+(ci+1),fields:[{id:'n',label:'Nazwa (numer dodaje się sam)',value:cleanCat(c.name)}],alt:empty?'Usuń kategorię':null});
+  if(!r)return;
+  if(r=='alt'){if(!await ask({title:'Usunąć kategorię?',text:cleanCat(c.name),ok:'Usuń',danger:true}))return;S.cfg.cats.splice(ci,1);render();delCatDb(c.id);S.cfg.cats.forEach(saveCat);return}
+  if(!r.n.trim())return;c.name=cleanCat(r.n);render();saveCat(c)}
+async function addCat(){if(guard())return;
+  const r=await ask({title:'Nowa kategoria',fields:[{id:'n',label:'Nazwa',ph:'np. EDUKACJA'},{id:'t',label:'Rodzaj',type:'select',value:'exp',options:[['exp','Wydatki'],['inc','Przychody']]}],ok:'Dodaj'});
+  if(!r||!r.n.trim())return;const c={id:'c'+rid(),name:cleanCat(r.n),type:r.t,subs:[]};S.cfg.cats.push(c);render();saveCat(c);toast('Dodano kategorię – dodaj do niej pozycje')}
+function moveCat(ci,d){if(guard())return;const j=ci+d;if(j<0||j>=S.cfg.cats.length)return;const a=S.cfg.cats;[a[ci],a[j]]=[a[j],a[ci]];render();saveCat(a[ci]);saveCat(a[j])}
 function setWho(v){S.who=v;ls.set('mw_who',v);render()}
 
 /* ---------- fixed costs ---------- */
@@ -590,7 +603,7 @@ async function importFile(file){if(guard())return;let o;
     else{const sm={},am={};S.cfg.cats.forEach(c=>c.subs.forEach(s=>sm[s.name]=s.id));S.cfg.accs.forEach(a=>am[a.name]=a.id);
       o.categories.forEach(c=>{const bil=c.typ=='BILANS_KONTA'||c.typ=='BILANS_OSZCZ';(c.podkategorie||[]).forEach(nm=>{
         if(bil){if(!am[nm]){am[nm]='a'+rid();S.cfg.accs.push({id:am[nm],name:nm,grp:c.typ=='BILANS_KONTA'?'cur':'sav',open:0})}}
-        else if(!sm[nm]){let k=S.cfg.cats.find(x=>x.name==c.nazwa);if(!k){k={id:'c'+rid(),name:c.nazwa,type:c.typ=='PRZYCHOD'?'inc':'exp',subs:[]};S.cfg.cats.push(k)}sm[nm]='s'+rid();k.subs.push({id:sm[nm],name:nm})}})});
+        else if(!sm[nm]){let k=S.cfg.cats.find(x=>cleanCat(x.name)==cleanCat(c.nazwa));if(!k){k={id:'c'+rid(),name:cleanCat(c.nazwa),type:c.typ=='PRZYCHOD'?'inc':'exp',subs:[]};S.cfg.cats.push(k)}sm[nm]='s'+rid();k.subs.push({id:sm[nm],name:nm})}})});
       const ob=o.openingBalancesBase||o.openingBalancesJan||{};S.cfg.accs.forEach(a=>{if(ob[a.name]!==undefined)a.open=Math.round(ob[a.name]*100)});
       await saveCfg();
       ok=await writeTxs(o.transactions.filter(t=>isDate(t.date)).map(t=>['imp_'+t.id,{type:t.type=='Przychód'?'inc':t.type=='Wydatek'?'exp':'tr',amount:Math.round(Math.abs(t.amount)*100),date:t.date,sub:sm[t.subcategory]||'',acc:am[t.account]||'',to:am[t.targetAccount]||'',who:(/^\[(Mati|Wercia)\]/.exec(t.note||'')||[])[1]||'',note:String(t.note||'').replace(/^\[(Mati|Wercia)\]\s*/,''),deleted:false,ts:Date.now()}]));
@@ -632,7 +645,7 @@ function render(){
       <div class="kpi k-sk"><div class="l">Bilans miesiąca</div><div class="v num">${zl(inc-exp)}</div><div class="s">plan ${zl0(pinc-pexp)}</div></div>
       <div class="kpi k-in"><div class="l">Na kontach</div><div class="v num">${zl(tot('cur'))}</div><div class="s">oszczędności ${zl0(tot('sav'))}</div></div></div>`;
     h+=S.cfg.cats.map((c,i)=>{const pa=c.subs.reduce((a,s)=>a+(pl[s.id]||0),0),ac=c.subs.reduce((a,s)=>a+(act[s.id]||0),0),o=S.open[c.id];
-      return`<section class="cat" style="${pastel(i)}"><button class="ch" onclick="tog('${c.id}')" aria-expanded="${!!o}">${trioH(c.type,`<span class="nm"><span class="chev">${o?'▾':'▸'}</span>${esc(c.name)}</span>`,pa,ac)}</button>`+
+      return`<section class="cat" style="${pastel(i)}"><button class="ch" onclick="tog('${c.id}')" aria-expanded="${!!o}">${trioH(c.type,`<span class="nm"><span class="chev">${o?'▾':'▸'}</span>${esc(catL(c))}</span>`,pa,ac)}</button>`+
         (o?c.subs.map(s=>{const a=act[s.id]||0,p=pl[s.id]||0;
           return`<div class="sub">${trioH(c.type,`<span class="n">${esc(s.name)}</span>`,p,a,`<input class="planin" value="${fmtIn(p)}" placeholder="0" inputmode="decimal" aria-label="Plan: ${esc(s.name)}" onchange="setPlan('${s.id}',this.value)">`)}</div>`}).join(''):'')+`</section>`}).join('');
     h+=`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="copyPlan()">Skopiuj plan z poprzedniego miesiąca</button></div>`}
@@ -680,7 +693,7 @@ function render(){
   else{
     h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div>${S.cfg.accs.map(a=>`<div class="rowx"><span><b>${esc(a.name)}</b><br><span class="mini">${a.grp=='cur'?'bieżące':'oszczędności'} · saldo początkowe ${zl(a.open)}</span></span><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></div>`).join('')}</div>
-    <div class="card"><h3>Pozycje budżetu</h3><div class="mini">Stuknij nazwę, żeby ją zmienić.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><b>${esc(c.name)}</b><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
+    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button style="font-weight:800;text-align:left;flex:1;min-width:0" onclick="editCat(${ci})">${esc(catL(c))} ✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button><button class="btn" onclick="logout()">Wyloguj</button></div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
   $('app').innerHTML=h}
 function tog(id){S.open[id]=!S.open[id];render()}
@@ -730,7 +743,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(PLC(),s=>{const p={};s.docs.forEach(d=>p[d.id]={...d.data()});S.plans=p;render()},onErr));
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
-Object.assign(window,{calendarExport,goFixed,$,S,render,tog,togInv,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,editInv,addLot,delLot,exportJson,logout});
+Object.assign(window,{editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,togInv,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,editInv,addLot,delLot,exportJson,logout});
 </script>
 </body>
 </html>
