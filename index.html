@@ -221,6 +221,8 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .pink .badge{background:#fce7f3;color:#be185d}
 .pink .chip[style]{background:#fae8ff!important;color:#a21caf!important}
 .pink .trend.up{background:#fbcfe8;color:#9d174d}
+.seg.seg2{display:grid;grid-template-columns:1fr 1fr;width:100%}
+.seg.seg2 button{padding:9px 4px;font-size:14px}
 .recgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
 .recgrid b{font-size:15px}
 .recrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);font-size:13px}
@@ -783,15 +785,17 @@ async function setSavTarget(){if(guard())return;const r=await ask({title:'Ile ch
   if(!r)return;merge(H,{savTarget:Math.max(0,pg(r.v))});toast('Zapisano cel miesięczny')}
 function setSub(k){S.sub=k;render()}
 /* bulk reconcile screen in the Accounts tab */
-const recAccs=()=>{const o={cur:0,sav:1,inv:2};return S.cfg.accs.filter(a=>!a.archived).slice().sort((a,b)=>o[a.grp]-o[b.grp])};
-function openRecon(){if(guard())return;S.recon=true;S.recVals={};window.scrollTo(0,0);render()}
+const recAccs=()=>{const o={cur:0,sav:1,inv:2},cur=(S.recScope||'cur')=='cur';return S.cfg.accs.filter(a=>!a.archived&&(cur?a.grp=='cur':a.grp!='cur')).slice().sort((a,b)=>o[a.grp]-o[b.grp])};
+function setRecScope(k){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});S.recScope=k;render()}
+function openRecon(scope){if(guard())return;S.recon=true;S.recVals={};S.recScope=scope||'cur';window.scrollTo(0,0);render()}
 function closeRecon(){S.recon=false;render()}
-function recRead(){const tx=liveOf(S.tx),tom=addDays(td(),1);return recAccs().map(a=>{const el=$('rv_'+a.id),app=balance(S.cfg,tx,a.id,tom),raw=el?el.value.trim():'';return{a,app,filled:raw!=='',real:raw===''?app:pg(raw)}})}
+function recRead(all){const tx=liveOf(S.tx),tom=addDays(td(),1),list=all?S.cfg.accs.filter(a=>!a.archived):recAccs();
+  return list.map(a=>{const el=$('rv_'+a.id),app=balance(S.cfg,tx,a.id,tom),raw=(el?el.value:(S.recVals[a.id]||'')).trim();return{a,app,filled:raw!=='',real:raw===''?app:pg(raw)}})}
 function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(),app=r.reduce((s,x)=>s+x.app,0),real=r.reduce((s,x)=>s+x.real,0),n=r.filter(x=>x.filled).length,d=real-app;
   $('recApp').textContent=zl(app);$('recReal').textContent=zl(real);$('recN').textContent=n?`uzupełniono ${n} z ${r.length}`:'nic jeszcze nie wpisano';
   const el=$('recDiff');el.textContent=(d>0?'+':'')+zl(d);el.className='num '+(d>0?'t-inc':d<0?'t-exp':'');
   r.forEach(x=>{const c=$('rd_'+x.a.id);if(c){const dd=x.real-x.app;c.textContent=x.filled&&dd?(dd>0?'+':'')+zl(dd):'';c.className='rdiff '+(dd>0?'t-inc':'t-exp')}})}
-async function applyRecon(){const r=recRead().filter(x=>x.filled&&x.real!==x.app);
+async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(true).filter(x=>x.filled&&x.real!==x.app);
   if(!r.length)return toast('Wszystko się zgadza – nic do zmiany');
   const ops=planRecon(r.map(x=>({id:x.a.id,d:x.real-x.app,inv:x.a.grp=='inv'})));
   const lines=ops.map(o=>o.kind=='tr'?`⇄ ${accN(o.from)} → ${accN(o.to)}: ${zl(o.amount)}`:o.kind=='val'?`📈 ${accN(o.acc)}: zmiana wartości ${o.amount>0?'+':''}${zl(o.amount)}`:`⚖️ ${accN(o.acc)}: wyrównanie ${o.amount>0?'+':''}${zl(o.amount)}`).join('\n');
@@ -1161,9 +1165,10 @@ function render(){
 
   else if(S.tab=='acc'&&S.recon){
     const tom=addDays(td(),1),accs=recAccs(),app=accs.reduce((x,a)=>x+balance(S.cfg,tx,a.id,tom),0),GH={cur:'KONTA BIEŻĄCE',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE, IKE, IKZE'};
-    h+=`<div class="worth rectop"><div class="l">⚖️ Wyrównaj wszystkie salda · stan na dziś ${td().split('-').reverse().join('.')}</div>
+    h+=`<div class="seg seg2">${[['cur','Konta bieżące'],['sav','Oszczędności i inwestycje']].map(([k,l])=>`<button aria-pressed="${(S.recScope||'cur')==k}" onclick="setRecScope('${k}')">${l}</button>`).join('')}</div>`;
+    h+=`<div class="worth rectop"><div class="l">⚖️ ${(S.recScope||'cur')=='cur'?'Konta bieżące':'Oszczędności i inwestycje'} · stan na dziś ${td().split('-').reverse().join('.')}</div>
       <div class="recgrid"><div><div class="mini">W aplikacji</div><b class="num" id="recApp">${zl(app)}</b></div><div><div class="mini">Wpisane</div><b class="num" id="recReal">${zl(app)}</b></div><div><div class="mini">Różnica</div><b class="num" id="recDiff">0,00 zł</b></div></div><div class="mini" id="recN">nic jeszcze nie wpisano</div></div>
-      <div class="note">Wpisz, ile <b>faktycznie</b> jest na kontach (z aplikacji banku). Puste pole = bez zmian. Różnice między kontami zapiszę jako przelewy, a resztę jako wyrównanie.</div>`;
+      <div class="note">Wpisz, ile <b>faktycznie</b> jest na kontach (z aplikacji banku). Puste pole = bez zmian. Możesz uzupełnić jedną albo obie zakładki – „Dalej” zapisze wszystko, co wpisałeś. Różnice między kontami zapiszę jako przelewy, a resztę jako wyrównanie.</div>`;
     let g0='';h+=`<div class="list">`+accs.map(a=>{const b=balance(S.cfg,tx,a.id,tom),hd=a.grp!=g0?`<div class="grp-h ${a.grp}"><span>${GH[a.grp]}</span></div>`:'';g0=a.grp;
       return hd+`<div class="recrow"><div style="min-width:0"><b>${esc(a.name)}</b><div class="mini">w aplikacji: <span class="num">${zl(b)}</span></div><div class="rdiff" id="rd_${a.id}"></div></div><input id="rv_${a.id}" class="planin" style="max-width:130px" inputmode="decimal" value="${esc((S.recVals||{})[a.id]||'')}" placeholder="${f2(b)}" oninput="recSum()" autocomplete="off"></div>`}).join('')+`</div>`;
     h+=`<div class="g2"><button class="btn" onclick="closeRecon()">Anuluj</button><button class="btn primary" onclick="applyRecon()">Dalej</button></div>`}
@@ -1244,7 +1249,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,addSell,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,togInv,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,editInv,addLot,delLot,exportJson,logout});
+Object.assign(window,{setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,addSell,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,togInv,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,editInv,addLot,delLot,exportJson,logout});
 </script>
 </body>
 </html>
