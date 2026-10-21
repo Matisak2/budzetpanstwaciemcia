@@ -17,7 +17,7 @@ export const DEF=[ ["ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Pr
  ["INNE WYDATKI","exp",["Opłaty bankowe","Poczta i przesyłki","Urząd i opłaty","Kary i mandaty","Udzielone pożyczki"]],
  ["DZIECI (PRZYSZŁOŚĆ)","exp",["Żłobek/przedszkole","Wyprawka","Ubranka i zabawki","Zajęcia dodatkowe"]]];
 export const seed=()=>({v:1,fixed:[],cats:DEF.map((c,i)=>({id:'c'+i,name:c[0],type:c[1],hue:HUES[i%HUES.length],subs:c[2].map((s,j)=>({id:'c'+i+'s'+j,name:s}))})),
-accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","cur"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"],["Inwestycje Mati","inv"],["Inwestycje Wercia","inv"],["IKE Mati","inv"],["IKZE Mati","inv"],["IKE Wercia","inv"],["IKZE Wercia","inv"],["PPK Mati","inv"],["PPK Wercia","inv"],["Oszczędności wspólne","sav"],["Poduszka bezpieczeństwa","sav"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],open:0}))});
+accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","sub","Wspólne"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"],["Inwestycje Mati","inv"],["Inwestycje Wercia","inv"],["IKE Mati","inv"],["IKZE Mati","inv"],["IKE Wercia","inv"],["IKZE Wercia","inv"],["PPK Mati","inv"],["PPK Wercia","inv"],["Oszczędności wspólne","sav"],["Poduszka bezpieczeństwa","sav"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],...(a[2]?{owner:a[2]}:{}),open:0}))});
 
 /* pastel colour per category: --c header, --c2 rows, --c3 dark text/bar of the same hue */
 export const HUES=[150,205,28,340,265,48,185,12,295,95,228,320,62,168,245,0];
@@ -40,4 +40,8 @@ export const tint=(hex,k)=>{const n=parseInt(hex.slice(1),16),f=v=>Math.round(25
 /* each category keeps its own hue (cat.hue), so moving it on the list never changes its colour */
 export const catHue=(c,i)=>c.hue??HUES[i%HUES.length];
 export const freeHue=cats=>{const used=new Set(cats.map((c,i)=>catHue(c,i)));return HUES.find(h=>!used.has(h))??HUES[cats.length%HUES.length]};
+/* stronger tone of the category hue for chart marks (donut, bars) */
+export const catMark=h=>`hsl(${h} 58% 68%)`;
+/* person colours: Mati blue, Wercia pink, Wspólne mint */
+export const OWN=['Mati','Wercia','Wspólne'],OWN_COL={Mati:'#7fb0ec',Wercia:'#f0a3c3','Wspólne':'#6fd0a8'};
 export const pastel=h=>`--c:hsl(${h} 72% 89%);--c2:hsl(${h} 70% 97%);--c3:hsl(${h} 50% 26%);--c4:hsl(${h} 58% 68%)`;

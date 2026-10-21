@@ -10,14 +10,20 @@ export function balance(cfg,tx,id,before){let b=cfg.accs.find(a=>a.id===id)?.ope
 export function actuals(cfg,tx,ym){const sm=subsMap(cfg),act={};
   tx.forEach(t=>{if(!t.date.startsWith(ym))return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
     act[t.sub]=(act[t.sub]||0)+(t.type==s.cat.type?t.amount:-t.amount)});return act}
+/* budget state of a position or category; an empty plan counts as 0 zł, so any spending without a plan is "poza planem"
+   k: zero (nothing planned, nothing spent) · ok · near (≥85%) · full (exactly the plan) · over · low (income still missing) */
 export function status(type,plan,act){
-  if(!plan&&!act)return null;
-  if(!plan)return{k:'none',txt:'bez planu',pct:null};
+  if(!plan&&!act)return{k:'zero',txt:'0 zł',pct:null,msg:''};
+  if(type=='inc'){
+    if(!plan)return{k:'ok',txt:'✓ spoza planu',pct:100,msg:`wpłynęło spoza planu: ${zl(act)}`};
+    const pct=act/plan*100,r=Math.round(pct);
+    return act>=plan?{k:'ok',txt:'✓ '+r+'%',pct,msg:act>plan?`✓ wpłynęło ${zl(act-plan)} więcej`:'✓ wpłynęło wszystko'}:{k:'low',txt:r+'%',pct,msg:`brakuje ${zl(plan-act)}`}}
+  if(!plan)return{k:'over',txt:'▲ poza planem',pct:100,msg:`poza planem: ${zl(act)}`};
   const pct=act/plan*100,r=Math.round(pct);
-  if(type=='inc')return pct>=100?{k:'ok',txt:'✓ '+r+'%',pct}:{k:'low',txt:r+'%',pct};
-  if(pct>100)return{k:'over',txt:'▲ '+r+'%',pct};
-  if(pct>=85)return{k:'near',txt:'● '+r+'%',pct};
-  return{k:'ok',txt:'✓ '+r+'%',pct}}
+  if(act>plan)return{k:'over',txt:'▲ '+r+'%',pct,msg:`przekroczono o ${zl(act-plan)}`};
+  if(act==plan)return{k:'full',txt:'✓ 100%',pct,msg:'✓ plan wykonany co do grosza'};
+  if(pct>=85)return{k:'near',txt:'● '+r+'%',pct,msg:`zostało tylko ${zl(plan-act)}`};
+  return{k:'ok',txt:r+'%',pct,msg:`zostało ${zl(plan-act)}`}}
 /* old investments module: złoty put in and still held at a date (buys minus the average cost of what was sold) */
 export function invPln(it,before='9999-99-99'){
   const all=Object.values(it.lots||{}).filter(l=>!l.deleted&&l.date<before).sort((a,b)=>a.date.localeCompare(b.date)||(a.ts||0)-(b.ts||0));

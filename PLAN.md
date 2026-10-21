@@ -26,17 +26,17 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Pozycja „Zwroty” → „Zwrot podatku (PIT) i inne zwroty urzędowe”
 
 ## Etap 3. Wygląd, czytelność, konta osób
-- [ ] Kategoria z ikonką i kolorem w Rejestrze
-- [ ] Paski budżetu: puste pole = 0 zł, pastelowe kolory stanów, „zostało / przekroczono o”, pozycje bez planu przygaszone ale widoczne (BEZ kreski „gdzie powinniśmy być dziś”)
-- [ ] Ten sam kolor kategorii wszędzie (Budżet, Rejestr, Analiza, filtry)
-- [ ] Lżejszy, spójny wygląd: jednakowe ramki/zaokrąglenia/odstępy, cieńsze paski, mocniejsze liczby, odstęp legendy w wykresie pierścieniowym
-- [ ] Większe drobne napisy (min. 12–13 px)
-- [ ] Filtr na Budżecie: Wszystko / Przekroczone / Bez planu
-- [ ] Szukanie po kwocie: `>200`, `<50`, `100-300`
-- [ ] Przycisk + jako koło (najpierw podgląd dla Matiego)
-- [ ] Majątek według osób w 👛 Konta: pasek Mati / Wercia / Wspólne, przełącznik, rozbicie (bieżące, subkonta, oszczędności, inwestycje, zobowiązania); stuknięcie kafelka „Na kontach” na Budżecie pokazuje podział
-- [ ] Nowy rodzaj konta „Subkonto” (właściciel Mati / Wercia / Wspólne); „Subkonto Zwierzaki” i „Dzieciaczki” → subkonta wspólne; subkonta pokazywane osobno (nie wliczane do poduszki ani oszczędności)
-- [ ] Pełna edycja każdego konta: nazwa, rodzaj, właściciel, waluta, saldo początkowe
+- [x] Kategoria z ikonką i kolorem w Rejestrze
+- [x] Paski budżetu: puste pole = 0 zł, pastelowe kolory stanów, „zostało / przekroczono o”, pozycje bez planu przygaszone ale widoczne (BEZ kreski „gdzie powinniśmy być dziś”)
+- [x] Ten sam kolor kategorii wszędzie (Budżet, Rejestr, Analiza, filtry)
+- [x] Lżejszy, spójny wygląd: jednakowe ramki/zaokrąglenia/odstępy, cieńsze paski, mocniejsze liczby, odstęp legendy w wykresie pierścieniowym
+- [x] Większe drobne napisy (min. 12–13 px)
+- [x] Filtr na Budżecie: Wszystko / Przekroczone / Bez planu
+- [x] Szukanie po kwocie: `>200`, `<50`, `100-300`
+- [ ] Przycisk + jako koło (podgląd wysłany Matiemu, czeka na decyzję)
+- [x] Majątek według osób w 👛 Konta: pasek Mati / Wercia / Wspólne, przełącznik, rozbicie (bieżące, subkonta, oszczędności, inwestycje, zobowiązania); stuknięcie kafelka „Na kontach” na Budżecie pokazuje podział
+- [x] Nowy rodzaj konta „Subkonto” (właściciel Mati / Wercia / Wspólne); „Subkonto Zwierzaki” i „Dzieciaczki” → subkonta wspólne; subkonta pokazywane osobno (nie wliczane do poduszki ani oszczędności)
+- [x] Pełna edycja każdego konta: nazwa, rodzaj, właściciel, saldo początkowe (pole „waluta” dochodzi w etapie 6)
 
 ## Etap 4. Bailey i Ivo (przewodnicy)
 - Bailey (kotka, ur. 13.10.2025): ragdoll, biała z kremowym grzbietem, ciemnobrązowe uszy, brązowa łata na połowie pyszczka i czoła, niebieskie oczy, duży ciemnobrązowy ogon, dostojna mina. Kocha churu INABA i spanie pod kocem. Rola: spokojna strażniczka oszczędności (rachunki, plan, poduszka, terminy).

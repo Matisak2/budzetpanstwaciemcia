@@ -22,9 +22,9 @@ Adres: https://matisak2.github.io/budzetpanstwaciemcia/
 
 ## Model danych (Firestore, wszystko pod `households/main`)
 - `households/main` – ustawienia jako mapy (żeby dwa telefony nie nadpisywały sobie zmian):
-  `accsM{id:{name,grp:'cur'|'sav'|'inv',owner:'Mati'|'Wercia'|'Wspólne',open,archived?,o}}`,
+  `accsM{id:{name,grp:'cur'|'sub'|'sav'|'inv' (`sub` = subkonto, osobno od oszczędności i poduszki),owner:'Mati'|'Wercia'|'Wspólne',open,archived?,o}}`,
   `catsM{id:{name,type:'inc'|'exp',icon?,hue,o,subsM{id:{name,o}}}}` (`hue` = stały pastelowy kolor kategorii),
-  `fixedM{id:{name,amount,day,sub,acc,kind:'exp'|'inc',vary?,ppk?}}`, `savTarget` (cel oszczędzania; zapis ustawień przez `saveCfg` zachowuje go razem z innymi polami), flagi migracji (`invAcc`, `ikeAcc`, `wspAcc`, `ppkAcc`, `zwrotyRen`).
+  `fixedM{id:{name,amount,day,sub,acc,kind:'exp'|'inc',vary?,ppk?}}`, `savTarget` (cel oszczędzania; zapis ustawień przez `saveCfg` zachowuje go razem z innymi polami), flagi migracji (`invAcc`, `ikeAcc`, `wspAcc`, `ppkAcc`, `zwrotyRen`, `subAcc`).
 - `households/main/months/{YYYY-MM}` → `{tx:{id:{type,amount,date,sub,acc,to,who,note,deleted,ts,...}}}`
   - `type`: `exp`, `inc`, `tr` (przelew), `adj` (wyrównanie; `val:true` = zmiana wartości inwestycji), `inv`/`invs` (stary moduł inwestycji).
   - Kwoty w **groszach** (int). Usuwanie = `deleted:true` (umożliwia „Cofnij”).
@@ -36,8 +36,8 @@ Adres: https://matisak2.github.io/budzetpanstwaciemcia/
 
 ## Zakładki aplikacji
 Okienko transakcji: kwota z + / − (sumowanie), notatka, wybór pozycji w osobnym oknie (wyszukiwarka, „Ostatnio używane”, podpowiedź po notatce, kafelki kategorii), dzielenie paragonu, „Kto” według właściciela konta (osoba telefonu tylko z ⚙️), ↩️ zwrot.
-Budżet (plan / wydano / % z pastelowymi kategoriami, powitanie) · Rejestr (wyszukiwarka, filtry) · Stałe (przychody i opłaty stałe, PPK) · Analiza (miesiąc / rok) · Oszczędności (Razem / Mati / Wercia (różowa, kwiatki) / Wspólne; konta, IKE, IKZE, PPK, cele-koperty, poduszka) · Konta (salda, wyrównanie wszystkich sald naraz) · ⚙️ Ustawienia (kto korzysta z telefonu, konta, kategorie, kopia .json, import).
-Kolor nagłówka i tło zmieniają się co miesiąc (pastele pór roku, tablica `SEASON`).
+Budżet (plan / wydano / % z pastelowymi kategoriami, puste pole planu = 0 zł → wydatek bez planu jest „poza planem”; filtr Wszystko / Przekroczone / Bez planu; powitanie) · Rejestr (kategoria w jej kolorze, wyszukiwarka także po kwocie `>200`, `100-300`, filtry) · Stałe (przychody i opłaty stałe, PPK) · Analiza (miesiąc / rok) · Oszczędności (Razem / Mati / Wercia (różowa, kwiatki) / Wspólne; konta, IKE, IKZE, PPK, cele-koperty, poduszka) · Konta (Wszyscy / Mati / Wercia / Wspólne, grupy: bieżące, subkonta, oszczędności, inwestycje; wyrównanie wszystkich sald naraz) · ⚙️ Ustawienia (kto korzysta z telefonu, konta, kategorie, kopia .json, import).
+Kolor nagłówka i tło zmieniają się co miesiąc (pastele pór roku, tablica `SEASON`). Każda kategoria ma jeden kolor (`hue`) używany wszędzie: tło w Budżecie (`pastel`), ikonki w Rejestrze i oknie wyboru, wykresy w Analizie (`catMark`). Kolory osób: `OWN_COL` w `data.js`.
 
 ## Import danych
 ⚙️ → „Wczytaj kopię (.json)” obsługuje: pełną kopię (`format:'budzet-mw-2'`), starą wersję aplikacji oraz listę transakcji `format:'budzet-mw-tx'` (`{tx:[{id,date,type,amount(grosze),cat,sub,acc,to,note,who}]}`) z dopasowaniem nazw pozycji i kont. Stałe `id` zapobiegają duplikatom.
