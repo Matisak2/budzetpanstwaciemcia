@@ -1,4 +1,6 @@
-export const DEF=[ ["ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Premia Mati","Premia Wercia","Sprzedaż rzeczy","Zwroty","Odsetki i cashback","Dodatkowe przychody"]],
+/* income position for tax refunds; refunds for purchases lower the expense itself (↩️ in the transaction) */
+export const ZWROT_PIT='Zwrot podatku (PIT) i inne zwroty urzędowe';
+export const DEF=[ ["ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Premia Mati","Premia Wercia","Sprzedaż rzeczy",ZWROT_PIT,"Odsetki i cashback","Dodatkowe przychody"]],
  ["KREDYTY I POŻYCZKI","exp",["Pożyczka Tomalka","Pożyczka Dziadkowie","Pożyczka Mama","Spłata sprzętu na raty","Allegro Pay/raty"]],
  ["JEDZENIE I GASTRONOMIA","exp",["Zakupy spożywcze do domu","Restauracje i wyjścia na miasto","Kawa, lunch w pracy i przekąski na mieście","Jedzenie z dowozem","Słodycze i wypieki","Alkohol i napoje"]],
  ["ZDROWIE","exp",["Badania i wizyty lekarskie","Lekarstwa","Witaminy i suplementy","Stomatolog","Optyk","Ubezpieczenie zdrowotne"]],

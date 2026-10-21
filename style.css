@@ -79,7 +79,7 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .tx .info{min-width:0;font-size:13px}
 .tx .info b{display:block;overflow-wrap:anywhere}
 .tx .meta{color:var(--muted);font-size:12px}
-.tx .note{font-size:12.5px;margin-top:2px;overflow-wrap:anywhere}
+.tx .note{font-size:12.5px;margin-top:2px;overflow-wrap:anywhere;background:none;border:0;padding:0;border-radius:0;color:var(--muted)}
 .tx .amt{text-align:right;font-size:14.5px}
 .t-inc{color:var(--inc)} .t-exp{color:var(--exp)} .t-tr{color:var(--tr)} .t-adj{color:var(--adj)} .t-inv{color:var(--inv)}
 .filters{display:flex;flex-direction:column;gap:8px}
@@ -293,7 +293,7 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .typeseg button[aria-pressed=true][data-v=tr]{background:#dfe5ff;color:#3730a3}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fld{display:flex;flex-direction:column;gap:4px;min-width:0}
-.fld span{font-size:11.5px;font-weight:700;color:var(--muted)}
+.fld>span{font-size:11.5px;font-weight:700;color:var(--muted)}
 .fld input,.fld select{width:100%;border:1px solid #cbd5e1;background:#fff;border-radius:12px;padding:10px;min-width:0}
 #ma{font-weight:800;font-size:20px}
 .dlg{background:#fff;width:calc(100% - 24px);max-width:420px;border-radius:20px;padding:16px;margin-bottom:max(20px,env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;max-height:88%;overflow-y:auto}
@@ -312,3 +312,50 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .login .fld input{padding:12px}
 .err{color:#be123c;font-size:13px;min-height:1em}
 @media (prefers-reduced-motion:no-preference){.sheet,.dlg{animation:up .18s ease-out}@keyframes up{from{transform:translateY(16px);opacity:.6}}}
+
+/* amount field with + / − for adding up a receipt */
+.fld>span.calc{position:relative;display:block;font-size:inherit;font-weight:inherit;color:var(--fg)}
+.calc input{padding-right:76px}
+.cop{position:absolute;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:9px;background:#eef2ff;color:#3730a3;font-weight:900;font-size:18px;line-height:1}
+.cop[data-op="+"]{right:40px}.cop[data-op="-"]{right:6px}
+#maSum{min-height:0;font-weight:700;color:var(--accent-ink)}
+
+/* position picker button + picker sheet */
+.pickbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;text-align:left;border:1px solid #cbd5e1;border-radius:14px;padding:8px 10px;background:#fff}
+.pickbtn.on{background:var(--c2);border-color:var(--c4)}
+.pickbtn .pt{display:flex;flex-direction:column;min-width:0}
+.pickbtn .pt small{font-size:11px;font-weight:700;color:var(--c3);text-transform:uppercase;letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pickbtn .pt b{font-size:15px;overflow-wrap:anywhere}
+.pickbtn .ph{color:var(--muted);font-weight:700}
+.pickbtn .cico{margin-right:0;background:var(--c,#f1f5f9)}
+#msHint{color:var(--accent-ink);font-weight:700}
+#pick{z-index:55}
+.pick{max-height:88%;min-height:60%}
+.pq{width:100%;border:1px solid #cbd5e1;background:#fff;border-radius:12px;padding:11px 12px;font-size:16px}
+.pkbody{display:flex;flex-direction:column;gap:12px}
+.pkh{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.pchip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 12px;background:var(--c2);border:1px solid var(--c4);color:var(--c3);font-weight:700;font-size:13.5px;max-width:100%}
+.pchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pchip.sug{background:#fef9c3;border-color:#fde68a;color:#854d0e}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ptile{display:flex;align-items:center;gap:8px;text-align:left;border-radius:14px;padding:10px;background:var(--c);color:var(--c3);font-weight:800;font-size:12.5px;min-height:52px}
+.ptile .cico{margin-right:0;flex:none}
+.prow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 12px;border-top:1px solid var(--line);font-size:14.5px}
+.prow:first-child{border-top:0}
+.prow i{flex:none;width:10px;height:10px;border-radius:3px;background:var(--c4)}
+.prow small{display:block;font-size:11.5px;color:var(--muted);font-weight:700}
+.prow[aria-current=true]{background:var(--c2)}
+.pback{align-self:flex-start}
+
+/* split receipt rows */
+.split{display:flex;flex-direction:column;gap:8px;border:1px dashed #cbd5e1;border-radius:14px;padding:10px}
+.srow{display:grid;grid-template-columns:1fr 96px 30px;gap:6px;align-items:center}
+.srow .pickbtn{min-height:44px;padding:6px 8px}
+.srow .pickbtn .pt b{font-size:13.5px}
+.srow input{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:9px 8px;text-align:right;font-weight:700}
+.srow .x{color:var(--exp);font-weight:900;font-size:18px}
+#splitBtn{align-self:flex-start;background:none;color:#3730a3;padding-left:2px}
+
+/* refunds in the register */
+.tx .ref{font-size:12px;font-weight:700;color:var(--inc);margin-top:2px}

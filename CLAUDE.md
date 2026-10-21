@@ -24,17 +24,18 @@ Adres: https://matisak2.github.io/budzetpanstwaciemcia/
 - `households/main` – ustawienia jako mapy (żeby dwa telefony nie nadpisywały sobie zmian):
   `accsM{id:{name,grp:'cur'|'sav'|'inv',owner:'Mati'|'Wercia'|'Wspólne',open,archived?,o}}`,
   `catsM{id:{name,type:'inc'|'exp',icon?,hue,o,subsM{id:{name,o}}}}` (`hue` = stały pastelowy kolor kategorii),
-  `fixedM{id:{name,amount,day,sub,acc,kind:'exp'|'inc',vary?,ppk?}}`, `savTarget` (cel oszczędzania; zapis ustawień przez `saveCfg` zachowuje go razem z innymi polami), flagi migracji (`invAcc`, `ikeAcc`, `wspAcc`, `ppkAcc`).
+  `fixedM{id:{name,amount,day,sub,acc,kind:'exp'|'inc',vary?,ppk?}}`, `savTarget` (cel oszczędzania; zapis ustawień przez `saveCfg` zachowuje go razem z innymi polami), flagi migracji (`invAcc`, `ikeAcc`, `wspAcc`, `ppkAcc`, `zwrotyRen`).
 - `households/main/months/{YYYY-MM}` → `{tx:{id:{type,amount,date,sub,acc,to,who,note,deleted,ts,...}}}`
   - `type`: `exp`, `inc`, `tr` (przelew), `adj` (wyrównanie; `val:true` = zmiana wartości inwestycji), `inv`/`invs` (stary moduł inwestycji).
   - Kwoty w **groszach** (int). Usuwanie = `deleted:true` (umożliwia „Cofnij”).
-  - Dodatkowe pola: `fixedId` (odhaczona opłata/przychód stały), `ppk:'own'|'emp'` + `ppkOf` (wpłaty PPK powiązane z pensją).
+  - Dodatkowe pola: `fixedId` (odhaczona opłata/przychód stały), `ppk:'own'|'emp'` + `ppkOf` (wpłaty PPK powiązane z pensją), `refundOf` (zwrot: `type:'inc'` na pozycji wydatku → zmniejsza wydatek, nie jest przychodem), `split` (wspólny identyfikator części jednego paragonu; każda część to osobna transakcja). Usunięcie wydatku usuwa też jego zwroty i wpłaty PPK.
 - `households/main/plans/{YYYY-MM}` → `{subId: grosze}`
 - `households/main/goals/{id}` → cele-koperty `{name,target,alloc,deadline,owner}`
 - `households/main/inv/{id}` → stary moduł inwestycji (zakupy/sprzedaże) – tylko do odczytu/usunięcia.
 - `households/main/meta/backup` → data ostatniej kopii.
 
 ## Zakładki aplikacji
+Okienko transakcji: kwota z + / − (sumowanie), notatka, wybór pozycji w osobnym oknie (wyszukiwarka, „Ostatnio używane”, podpowiedź po notatce, kafelki kategorii), dzielenie paragonu, „Kto” według właściciela konta (osoba telefonu tylko z ⚙️), ↩️ zwrot.
 Budżet (plan / wydano / % z pastelowymi kategoriami, powitanie) · Rejestr (wyszukiwarka, filtry) · Stałe (przychody i opłaty stałe, PPK) · Analiza (miesiąc / rok) · Oszczędności (Razem / Mati / Wercia (różowa, kwiatki) / Wspólne; konta, IKE, IKZE, PPK, cele-koperty, poduszka) · Konta (salda, wyrównanie wszystkich sald naraz) · ⚙️ Ustawienia (kto korzysta z telefonu, konta, kategorie, kopia .json, import).
 Kolor nagłówka i tło zmieniają się co miesiąc (pastele pór roku, tablica `SEASON`).
 

@@ -60,5 +60,6 @@ export function agg(cfg,tx,prefix){const sm=subsMap(cfg),r={inc:0,exp:0,cat:{},s
     if(s.cat.type=='inc'){r.inc+=a;continue}
     r.exp+=a;r.cat[s.cat.id]=(r.cat[s.cat.id]||0)+a;r.sub[s.id]=(r.sub[s.id]||0)+a;
     if(t.type=='exp'){r.n++;const w=t.who||'—';r.who[w]=(r.who[w]||0)+t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)+t.amount;
-      const d=+t.date.slice(8);r.day[d]=(r.day[d]||0)+t.amount;if(t.fixedId)r.fixed+=t.amount;r.big.push(t)}}
+      const d=+t.date.slice(8);r.day[d]=(r.day[d]||0)+t.amount;if(t.fixedId)r.fixed+=t.amount;r.big.push(t)}
+    else if(t.refundOf){const w=t.who||'—';r.who[w]=(r.who[w]||0)-t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)-t.amount}}
   r.big.sort((a,b)=>b.amount-a.amount);r.big=r.big.slice(0,5);return r}

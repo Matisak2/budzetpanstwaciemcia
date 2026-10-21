@@ -3,7 +3,7 @@ import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,setPersist
 import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,onSnapshot,setDoc,deleteDoc,updateDoc,deleteField,waitForPendingWrites} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {CATS,catIcon,catsEmpty} from './art.js';
 import {PAL,P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
-import {HUES,SEASON,catHue,freeHue,pastel,seed,tint} from './data.js';
+import {HUES,SEASON,ZWROT_PIT,catHue,freeHue,pastel,seed,tint} from './data.js';
 import {actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,status,subsMap} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,isDate,ls,p2,pg,pnum,rid,sleep,td,zl,zl0} from './util.js';
 const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
@@ -101,48 +101,142 @@ const liveById=id=>S.tx.find(t=>t.id===id&&!t.deleted);
 const guard=()=>{if(!S.cfg){toast('Budżet jeszcze się wczytuje');return true}return false};
 
 /* ---------- transaction sheet ---------- */
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l').trim();
+const plu=(n,a,b,c)=>n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c;
+const catColor=c=>pastel(catHue(c,S.cfg.cats.indexOf(c)));
+/* amount field adds up a receipt: "12+8,50-3" → grosze */
+const calcAmt=v=>(String(v||'').replace(/\s/g,'').replace(/−/g,'-').match(/[+-]?[^+-]+/g)||[]).reduce((a,p)=>a+pg(p),0);
+/* refunds are income booked on the expense's own position, so they lower that expense instead of adding income */
+const refundsOf=id=>liveOf(S.tx).filter(x=>x.refundOf===id);
+/* the picker offers positions of this kind; a refund keeps its expense position */
+const pickKind=()=>S.etype=='inc'&&!S.refEdit?'inc':'exp';
+
 function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==t));
-  $('msWrap').hidden=t=='tr';$('mtoWrap').hidden=t!='tr';$('mwWrap').hidden=t=='tr';$('mcLab').textContent=t=='tr'?'Z konta':'Konto'}
+  $('msWrap').hidden=t=='tr';$('mtoWrap').hidden=t!='tr';$('mwWrap').hidden=t=='tr';$('mcLab').textContent=t=='tr'?'Z konta':'Konto';
+  const s=S.cfg&&subsMap(S.cfg)[$('ms').value];if(s&&s.cat.type!=pickKind())setMs('');
+  if(t=='tr'&&SP.length){SP=[];renderSplit()}updSplit()}
+function autoWho(){const a=S.cfg.accs.find(x=>x.id==$('mc').value),o=a&&accOwner(a);if(o=='Mati'||o=='Wercia')$('mw').value=o}
+
+/* position picker: search, recently used, the note's usual position, category tiles */
+const P={kind:'exp',cat:null,cb:null,cur:''};
+function openPick(cur,cb){P.kind=pickKind();P.cb=cb;P.cur=cur||'';P.cat=null;$('pq').value='';renderPick();$('pick').hidden=false;$('pkBody').scrollTop=0}
+const closePick=()=>{$('pick').hidden=true;P.cb=null};
+function recentSubs(kind,n){const sm=subsMap(S.cfg),seen=new Map();
+  liveOf(S.tx).filter(t=>sm[t.sub]&&sm[t.sub].cat.type==kind&&(t.type=='exp'||t.type=='inc')&&!t.fixedId&&!t.refundOf).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,80)
+    .forEach((t,i)=>{const x=seen.get(t.sub)||{n:0,i};x.n++;seen.set(t.sub,x)});
+  return[...seen].sort((a,b)=>b[1].n-a[1].n||a[1].i-b[1].i).slice(0,n).map(([id])=>sm[id])}
+/* the position usually chosen with this note: the same note first, then the same first word */
+function noteSub(note,kind){const k=norm(note);if(k.length<2)return null;const w=k.split(/\s+/)[0],sm=subsMap(S.cfg),ex={},fw={};
+  for(const t of liveOf(S.tx)){if(!t.note||!sm[t.sub]||sm[t.sub].cat.type!=kind||t.refundOf)continue;const n=norm(t.note);
+    if(n==k)ex[t.sub]=(ex[t.sub]||0)+1;else if(w.length>=3&&n.split(/\s+/)[0]==w)fw[t.sub]=(fw[t.sub]||0)+1}
+  for(const m of[ex,fw]){const e=Object.entries(m).sort((a,b)=>b[1]-a[1]),tot=e.reduce((a,x)=>a+x[1],0);if(e.length&&e[0][1]/tot>=.6)return sm[e[0][0]]}
+  return null}
+function paintPick(btn,sid){const s=sid&&subsMap(S.cfg)[sid];btn.className='pickbtn'+(s?' on':'');btn.style.cssText=s?catColor(s.cat):'';
+  btn.innerHTML=s?`<span class="cico">${catIcon(s.cat)}</span><span class="pt"><small>${esc(cleanCat(s.cat.name))}</small><b>${esc(s.name)}</b></span>`:'<span class="ph">— stuknij, żeby wybrać pozycję —</span>'}
+function setMs(sid,hint){$('ms').value=sid||'';paintPick($('msBtn'),sid);$('msHint').textContent=hint||'';updSplit()}
+function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.cats.filter(c=>c.type==kind),sm=subsMap(S.cfg);
+  const chip=(s,cls='')=>`<button type="button" class="pchip ${cls}" style="${catColor(s.cat)}" data-sid="${s.id}"><span>${esc(s.name)}</span></button>`;
+  const row=s=>`<button type="button" class="prow" style="${catColor(s.cat)}" data-sid="${s.id}"${s.id==P.cur?' aria-current="true"':''}><i></i><span><b>${esc(s.name)}</b><small>${catIcon(s.cat)} ${esc(cleanCat(s.cat.name))}</small></span></button>`;
+  let h='';
+  if(q){const ws=q.split(/\s+/),res=cats.flatMap(c=>c.subs.map(s=>sm[s.id])).filter(s=>{const hay=norm(s.name+' '+cleanCat(s.cat.name));return ws.every(w=>hay.includes(w))});
+    h=res.length?`<div class="list">${res.slice(0,40).map(row).join('')}</div>`:'<div class="empty" style="padding:20px">Nic nie znaleziono.<br>Spróbuj innych liter albo wybierz kategorię.</div>'}
+  else if(P.cat){const c=S.cfg.cats.find(x=>x.id==P.cat);
+    h=`<button type="button" class="btn sm pback" data-back="1">‹ Wszystkie kategorie</button><div class="pkh">${catIcon(c)} ${esc(cleanCat(c.name))}</div><div class="list">${c.subs.map(s=>row(sm[s.id])).join('')||'<div class="prow mini">Ta kategoria nie ma jeszcze pozycji – dodasz je w ⚙️.</div>'}</div>`}
+  else{const note=$('mn').value.trim(),sug=noteSub(note,kind),rec=recentSubs(kind,8).filter(s=>!sug||s.id!=sug.id);
+    if(sug)h+=`<div class="pkh">💡 Zwykle przy „${esc(note)}”</div><div class="chips">${chip(sug,'sug')}</div>`;
+    if(rec.length)h+=`<div class="pkh">Ostatnio używane</div><div class="chips">${rec.map(s=>chip(s)).join('')}</div>`;
+    h+=`<div class="pkh">Kategorie</div><div class="tiles">${cats.map(c=>`<button type="button" class="ptile" style="${catColor(c)}" data-cat="${c.id}"><span class="cico">${catIcon(c)}</span><span>${esc(cleanCat(c.name))}</span></button>`).join('')}</div>`}
+  $('pkBody').innerHTML=h}
+
+/* receipt split: extra rows with their own position and amount; the main position gets the rest */
+let SP=[];
+const splitLeft=()=>calcAmt($('ma').value)-SP.reduce((a,x)=>a+Math.max(0,calcAmt(x.amt)),0);
+function updSplit(){const on=SP.length>0;$('splitWrap').hidden=!on;$('splitBtn').hidden=on||!!S.edit||S.etype=='tr';
+  if(on){const left=splitLeft();$('msHint').textContent=`na tę pozycję zostaje ${zl(left)}`;$('msHint').style.color=left>0?'':'var(--exp)'}else $('msHint').style.color=''}
+function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class="srow"><button type="button" class="pickbtn" data-i="${i}"></button><input inputmode="decimal" placeholder="0,00" value="${esc(x.amt)}" data-i="${i}" aria-label="Kwota tej pozycji" autocomplete="off"><button type="button" class="x" data-x="${i}" aria-label="Usuń tę pozycję">×</button></div>`).join('');
+  $('splitRows').querySelectorAll('.pickbtn').forEach(b=>paintPick(b,SP[+b.dataset.i].sub));
+  if(!SP.length&&!$('ms').value)$('msHint').textContent='';updSplit()}
+
 function openTx(id,pre){if(guard())return;
   const t=id?liveById(id):null;
   if(t&&t.type=='adj'){ask({title:'Wyrównanie salda',text:`${accN(t.acc)}: ${t.amount>0?'+':''}${zl(t.amount)} (${t.date})\nUsunąć to wyrównanie?`,ok:'Usuń',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&t.ppk){ask({title:t.note,text:`${accN(t.acc)}: ${zl(t.amount)} (${t.date.split('-').reverse().join('.')})\nTa wpłata jest powiązana z pensją. Żeby ją zmienić, odznacz i odhacz pensję ponownie w 📌 Stałe.`,ok:'Usuń wpłatę',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTen starszy wpis usuniesz w zakładce Oszczędności.`,ok:'Przejdź',cancel:'Zamknij'}).then(r=>{if(r){S.tab='sav';render()}});return}
-  S.edit=t?id:null;
-  $('ms').innerHTML='<option value="">— wybierz —</option>'+S.cfg.cats.map(c=>`<optgroup label="${esc(catL(c))}">${c.subs.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</optgroup>`).join('');
+  S.edit=t?id:null;S.refEdit=!!t?.refundOf;S.autoSub=false;SP=[];
   const ao=accOpts().map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(a=>`<option value="${a[0]}">${esc(a[1])}</option>`).join('')}</optgroup>`).join('');$('mc').innerHTML=ao;$('mto').innerHTML=ao;
-  setType(t?t.type:(pre?.type||'exp'));
+  $('ms').value='';setType(t?t.type:(pre?.type||'exp'));
   $('mw').value=(t&&t.who)||S.who;
-  $('ma').value=t?f2(t.amount):'';
+  $('ma').value=t?f2(t.amount):'';$('maSum').textContent='';
   $('md').value=t?t.date:(td().startsWith(S.ym)?td():S.ym+'-01');
-  $('ms').value=t?(t.sub||''):'';
   if(t){$('mc').value=t.acc;$('mto').value=t.to||''}else{const last=ls.get('mw_acc_'+S.who);if(last&&S.cfg.accs.some(a=>a.id==last))$('mc').value=last}
   if(pre?.from){$('mc').value=pre.from;const c=S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived);if(c)$('mto').value=c.id}
   if(pre?.to)$('mto').value=pre.to;
   if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o){if(pre?.to)$('mc').value=o.value;else $('mto').value=o.value}}
+  if(!t)autoWho();
   $('mn').value=t?(t.note||''):'';
-  $('shTitle').textContent=t?'Edytuj transakcję':pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;
+  setMs(t?t.sub:'');renderSplit();
+  const left=t&&t.type=='exp'?t.amount-refundsOf(t.id).reduce((a,x)=>a+x.amount,0):0;
+  $('shRef').hidden=!(left>0);
+  $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;
   $('sheet').hidden=false;if(!t)setTimeout(()=>$('ma').focus(),80)}
-const closeSheet=()=>{$('sheet').hidden=true;S.edit=null};
+const closeSheet=()=>{$('sheet').hidden=true;S.edit=null;S.refEdit=false;SP=[];closePick()};
 async function saveTx(){if(guard())return;
-  const type=S.etype,amount=pg($('ma').value),date=$('md').value;
+  const type=S.etype,amount=calcAmt($('ma').value),date=$('md').value;
   if(amount<=0)return toast('Podaj kwotę większą od zera','bad');
   if(!isDate(date))return toast('Wybierz datę','bad');
   if(type!='tr'&&!$('ms').value)return toast('Wybierz pozycję budżetu','bad');
   if(type=='tr'&&$('mc').value==$('mto').value)return toast('Wybierz dwa różne konta','bad');
-  if(type!='tr'){S.who=$('mw').value;ls.set('mw_who',S.who)}
+  const parts=type=='tr'||S.edit?[]:SP.map(x=>({sub:x.sub,amount:calcAmt(x.amt)}));
+  if(parts.some(x=>!x.sub))return toast('Wybierz pozycję w każdym wierszu paragonu','bad');
+  if(parts.some(x=>x.amount<=0))return toast('Podaj kwotę w każdym wierszu paragonu','bad');
+  const main=amount-parts.reduce((a,x)=>a+x.amount,0);
+  if(main<=0)return toast('Pozycje paragonu przekraczają jego kwotę','bad');
   ls.set('mw_acc_'+S.who,$('mc').value);
   const old=S.edit?liveById(S.edit):null,id=old?old.id:'t'+rid();
-  const body={type,amount,date,sub:type=='tr'?'':$('ms').value,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?S.who:$('mw').value,note:$('mn').value.trim(),deleted:false,ts:Date.now()};
-  if(old&&old.fixedId)body.fixedId=old.fixedId;
+  const base={type,date,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?S.who:$('mw').value,note:$('mn').value.trim(),deleted:false,ts:Date.now()};
+  const body={...base,amount:main,sub:type=='tr'?'':$('ms').value};
+  if(old)for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];
+  const g=parts.length?'g'+rid():'';if(g)body.split=g;
   closeSheet();
-  const ok=await putTx(date.slice(0,7),id,body);
-  if(ok&&old&&old.date.slice(0,7)!=date.slice(0,7))await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
-  if(ok){toast(old?'Zapisano zmiany':'Dodano '+zl(amount));if(date.slice(0,7)!=S.ym){S.ym=date.slice(0,7);render()}}}
-async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id);
+  const ym=date.slice(0,7),ok=await putTx(ym,id,body);
+  if(ok)for(const x of parts)putTx(ym,'t'+rid(),{...base,amount:x.amount,sub:x.sub,split:g});
+  if(ok&&old&&old.date.slice(0,7)!=ym)await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
+  if(ok){const n=parts.length+1;toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${zl(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})`:'Dodano '+zl(amount));if(ym!=S.ym){S.ym=ym;render()}}}
+async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
   linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));
-  toast('Usunięto '+zl(Math.abs(t.amount))+(linked.length?' razem z wpłatami PPK':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
+  toast('Usunięto '+zl(Math.abs(t.amount))+(linked.length?linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
+async function markRefund(id){const t=liveById(id);if(!t)return;const done=refundsOf(id).reduce((a,x)=>a+x.amount,0),left=t.amount-done;
+  if(left<=0)return toast('Ten wydatek jest już w całości zwrócony');
+  const r=await ask({title:'↩️ Zwrot: '+(subsMap(S.cfg)[t.sub]?.name||''),text:`Wydatek ${zl(t.amount)} z ${t.date.split('-').reverse().join('.')}${done?`, zwrócono już ${zl(done)}`:''}.\nZwrot zmniejszy wydatek w tej samej pozycji – nie liczy się jako przychód.`,
+    fields:[{id:'a',label:'Ile wróciło (zł)',type:'decimal',value:f2(left)},{id:'d',label:'Data zwrotu',type:'date',value:td()},{id:'c',label:'Na konto',type:'select',value:t.acc,options:accOpts()}],ok:'Zapisz zwrot'});
+  if(!r)return;const amt=pg(r.a);
+  if(amt<=0)return toast('Podaj kwotę zwrotu','bad');
+  if(amt>left)return toast('Zwrot może wynieść najwyżej '+zl(left),'bad');
+  if(!isDate(r.d))return toast('Wybierz datę zwrotu','bad');
+  closeSheet();const rym=r.d.slice(0,7),tid='t'+rid();
+  if(await putTx(rym,tid,{type:'inc',amount:amt,date:r.d,sub:t.sub,acc:r.c,to:'',who:t.who||S.who,note:t.note||'',refundOf:id,deleted:false,ts:Date.now()}))
+    toast('Zapisano zwrot '+zl(amt),'',{label:'Cofnij',fn:()=>putTx(rym,tid,{deleted:true})})}
+
+$('msBtn').onclick=()=>openPick($('ms').value,sid=>{S.autoSub=false;setMs(sid)});
+$('pkBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.sid){const cb=P.cb;closePick();if(cb)cb(b.dataset.sid)}
+  else if(b.dataset.cat){P.cat=b.dataset.cat;renderPick()}
+  else if(b.dataset.back){P.cat=null;renderPick()}};
+$('pq').oninput=()=>{P.cat=null;renderPick()};
+$('pkClose').onclick=closePick;$('pick').onclick=e=>{if(e.target===$('pick'))closePick()};
+$('mn').oninput=()=>{if(S.edit||S.etype=='tr'||($('ms').value&&!S.autoSub))return;const s=noteSub($('mn').value,pickKind());
+  if(s){S.autoSub=true;setMs(s.id,'💡 podpowiedziane po notatce – stuknij, żeby zmienić')}else if(S.autoSub){S.autoSub=false;setMs('')}};
+$('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]\s*\d/.test(v)?'= '+zl(calcAmt(v)):'';updSplit()};
+document.querySelectorAll('.cop').forEach(b=>{b.onpointerdown=b.onmousedown=e=>e.preventDefault();
+  b.onclick=()=>{const el=$('ma');el.value=el.value.replace(/[+\-−\s]+$/,'')+b.dataset.op;el.focus();el.oninput()}});
+$('splitBtn').onclick=()=>{SP=[{sub:'',amt:''}];renderSplit()};
+$('splitAdd').onclick=()=>{SP.push({sub:'',amt:''});renderSplit()};
+$('splitRows').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.x!=null){SP.splice(+b.dataset.x,1);renderSplit()}
+  else if(b.dataset.i!=null){const i=+b.dataset.i;openPick(SP[i].sub,sid=>{SP[i].sub=sid;renderSplit()})}};
+$('splitRows').oninput=e=>{const i=e.target.dataset.i;if(i!=null){SP[+i].amt=e.target.value;updSplit()}};
+$('shRef').onclick=()=>S.edit&&markRefund(S.edit);
 
 /* ---------- budget / accounts actions ---------- */
 function setPlan(sid,v){if(guard())return;const ym=S.ym,val=pg(v);
@@ -462,23 +556,24 @@ function txMatches(t,sm,F,ym){
   const q=F.q.trim().toLowerCase();if(!q)return true;
   const s=sm[t.sub],amt=(Math.abs(t.amount)/100).toFixed(2);
   const hay=[t.note,s?.name,s?cleanCat(s.cat.name):'',accN(t.acc),t.to?accN(t.to):'',t.who,t.date,t.date.split('-').reverse().join('.'),amt,amt.replace('.',','),amt.replace(/\.00$/,''),
-    {exp:'wydatek',inc:'przychód',tr:'przelew',inv:'zakup inwestycja',invs:'sprzedaż inwestycja',adj:'wyrównanie'}[t.type]].join(' ').toLowerCase();
+    {exp:'wydatek',inc:'przychód',tr:'przelew',inv:'zakup inwestycja',invs:'sprzedaż inwestycja',adj:'wyrównanie'}[t.type],t.refundOf?'zwrot':'',t.split?'paragon':''].join(' ').toLowerCase();
   return q.split(/\s+/).every(w=>hay.includes(w.replace(',','.'))||hay.includes(w))}
-function txRowH(t,sm){const k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
+function txRowH(t,sm,rf={}){const k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
   const cls=k=='invs'?'inv':k;
-  const title=t.ppk?'🏦 '+t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'📈 Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'📈 Zakup: '+t.note:k=='invs'?'📉 Sprzedaż: '+t.note:(t.fixedId?'📌 ':'')+(sm[t.sub]?.name||'Bez pozycji');
-  return`<button class="tx" onclick="openTx('${t.id}')"><span class="info"><b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew':esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'?`<div class="note">${esc(t.note)}</div>`:''}</span><span class="amt num t-${cls}">${sg}${zl(Math.abs(t.amount))}</span></button>`}
+  const title=t.ppk?'🏦 '+t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'📈 Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'📈 Zakup: '+t.note:k=='invs'?'📉 Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(sm[t.sub]?.name||''):(t.fixedId?'📌 ':'')+(sm[t.sub]?.name||'Bez pozycji');
+  return`<button class="tx" onclick="openTx('${t.id}')"><span class="info"><b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew':esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'?`<div class="note">${esc(t.note)}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${zl(rf[t.id])} z ${zl(t.amount)}</div>`:''}</span><span class="amt num t-${cls}">${sg}${zl(Math.abs(t.amount))}</span></button>`}
 function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx);
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
-  const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m';
+  const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m',rf={};
+  tx.forEach(t=>{if(t.refundOf)rf[t.refundOf]=(rf[t.refundOf]||0)+t.amount});
   if(!l.length)return filtered?catsEmpty('Nic nie znaleziono.<br>Zmień wyszukiwanie albo filtry.',1):catsEmpty('Brak transakcji w tym miesiącu.<br>Dodaj pierwszą okrągłym przyciskiem ＋ w prawym dolnym rogu.');
   let h='';
-  if(filtered){const e=l.filter(t=>t.type=='exp').reduce((a,t)=>a+t.amount,0),i=l.filter(t=>t.type=='inc').reduce((a,t)=>a+t.amount,0);
+  if(filtered){const e=l.filter(t=>t.type=='exp').reduce((a,t)=>a+t.amount,0)-l.filter(t=>t.refundOf).reduce((a,t)=>a+t.amount,0),i=l.filter(t=>t.type=='inc'&&!t.refundOf).reduce((a,t)=>a+t.amount,0);
     h+=`<div class="fsum"><b>${l.length} ${l.length==1?'wpis':(l.length%10>=2&&l.length%10<=4&&(l.length%100<10||l.length%100>=20))?'wpisy':'wpisów'}</b>${e?` · wydatki <b class="t-exp">${zl(e)}</b>`:''}${i?` · przychody <b class="t-inc">${zl(i)}</b>`:''}</div>`}
   const days={};l.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));
   const yr=F.scope!='m';
   h+=Object.entries(days).slice(0,400).map(([d,ts])=>{const dd=new Date(d+'T12:00:00').toLocaleDateString('pl-PL',yr?{weekday:'short',day:'numeric',month:'long',year:'numeric'}:{weekday:'long',day:'numeric',month:'long'});
-    return`<div class="day">${esc(dd)}</div><div class="list">${ts.map(t=>txRowH(t,sm)).join('')}</div>`}).join('');
+    return`<div class="day">${esc(dd)}</div><div class="list">${ts.map(t=>txRowH(t,sm,rf)).join('')}</div>`}).join('');
   return h}
 let qT=null;
 function setQ(v){S.f.q=v;clearTimeout(qT);qT=setTimeout(()=>{const el=$('txlist');if(el)el.innerHTML=txListH()},150)}
@@ -732,7 +827,7 @@ document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.d
 $('gearBtn').onclick=()=>goTab(S.tab=='set'?'dash':'set');
 $('addBtn').onclick=()=>openTx();
 $('mt').querySelectorAll('button').forEach(b=>b.onclick=()=>setType(b.dataset.v));
-$('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}};
+$('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}autoWho()};
 $('shCancel').onclick=closeSheet;$('shSave').onclick=saveTx;$('shDel').onclick=()=>S.edit&&delTx(S.edit);
 $('sheet').onclick=e=>{if(e.target===$('sheet'))closeSheet()};
 $('fileIn').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importFile(f)};
@@ -740,7 +835,7 @@ function showTip(e){const m=e.target.closest('[data-tip]');if(!m)return;const bo
   box.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));m.classList.add('sel')}
 $('app').addEventListener('click',showTip);$('app').addEventListener('mouseover',e=>{if(matchMedia('(hover:hover)').matches)showTip(e)});
 document.addEventListener('focusout',()=>{if(S.pend)setTimeout(render,60)});
-document.addEventListener('keydown',e=>{if(e.key=='Escape'&&!$('sheet').hidden&&$('dlg').hidden)closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key!='Escape'||!$('dlg').hidden)return;if(!$('pick').hidden)closePick();else if(!$('sheet').hidden)closeSheet()});
 window.addEventListener('unhandledrejection',e=>err(e.reason||'błąd'));
 
 function syncLabel(md){$('sync').textContent=md.hasPendingWrites?'zapisywanie…':md.fromCache?'offline – zapisze się później':'zsynchronizowano'}
@@ -766,6 +861,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(H,s=>{
     if(s.exists()){const raw=s.data(),c=fromDoc(clone(raw));const leg=c.legacy;delete c.legacy;S.hraw=raw;S.cfg=c;S.savTarget=raw.savTarget||0;render();if(leg&&!s.metadata.fromCache)saveCfg();
       if(!leg&&!s.metadata.fromCache&&c.cats.some(k=>k.hue==null))c.cats.forEach((k,i)=>{if(k.hue==null){k.hue=HUES[i%HUES.length];saveCat(k)}});
+      if(!raw.zwrotyRen&&!s.metadata.fromCache&&!leg){for(const k of c.cats.filter(x=>x.type=='inc'))for(const x of k.subs)if(x.name.trim()=='Zwroty'){x.name=ZWROT_PIT;saveSub(k,x)}merge(H,{zwrotyRen:true})}
       if(!raw.invAcc&&!s.metadata.fromCache&&!leg){[['ainvM','Inwestycje Mati','Mati'],['ainvW','Inwestycje Wercia','Wercia']].forEach(([id,n,o])=>{if(!c.accs.some(a=>a.id==id)){const a={id,name:n,grp:'inv',owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{invAcc:true});render()}
       if(!raw.ikeAcc&&!s.metadata.fromCache&&!leg){[['aikeM','IKE Mati','inv','Mati'],['aikzeM','IKZE Mati','inv','Mati'],['aikeW','IKE Wercia','inv','Wercia'],['aikzeW','IKZE Wercia','inv','Wercia'],['apodu','Poduszka bezpieczeństwa','sav','Wspólne']].forEach(([id,n,g,o])=>{if(!c.accs.some(a=>a.id==id||a.name==n)){const a={id,name:n,grp:g,owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{ikeAcc:true});render()}
       if(!raw.wspAcc&&!s.metadata.fromCache&&!leg){if(!c.accs.some(a=>a.id=='awsp'||/^oszczędności wspólne$/i.test(a.name))){const a={id:'awsp',name:'Oszczędności wspólne',grp:'sav',owner:'Wspólne',open:0};const pi=c.accs.findIndex(x=>x.id=='apodu');if(pi>=0){c.accs.splice(pi,0,a);saveAcc(a);c.accs.slice(pi+1).forEach(saveAcc)}else{c.accs.push(a);saveAcc(a)}}merge(H,{wspAcc:true});render()}

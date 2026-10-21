@@ -57,18 +57,27 @@
     <button data-v="exp" aria-pressed="true">Wydatek</button><button data-v="inc" aria-pressed="false">Przychód</button><button data-v="tr" aria-pressed="false">Przelew</button>
   </div>
   <div class="g2">
-    <label class="fld"><span>Kwota (zł)</span><input id="ma" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+    <label class="fld"><span id="maLab">Kwota (zł)</span><span class="calc"><input id="ma" inputmode="decimal" placeholder="0,00" autocomplete="off"><button type="button" class="cop" data-op="+" aria-label="Dodaj kolejną kwotę">+</button><button type="button" class="cop" data-op="-" aria-label="Odejmij kwotę">−</button></span><small class="mini" id="maSum"></small></label>
     <label class="fld"><span>Data</span><input id="md" type="date"></label>
   </div>
-  <label class="fld" id="msWrap"><span>Pozycja budżetu</span><select id="ms"></select></label>
+  <label class="fld"><span>Notatka</span><input id="mn" placeholder="np. Biedronka (opcjonalnie)" autocomplete="off"></label>
+  <div class="fld" id="msWrap"><span>Pozycja budżetu</span><button type="button" class="pickbtn" id="msBtn"></button><input type="hidden" id="ms"><small class="mini" id="msHint"></small>
+    <div id="splitWrap" class="split" hidden><div id="splitRows"></div><button type="button" class="btn sm" id="splitAdd">+ Kolejna pozycja</button></div>
+    <button type="button" class="btn sm" id="splitBtn">✂️ Podziel paragon na kilka pozycji</button></div>
   <div class="g2">
     <label class="fld"><span id="mcLab">Konto</span><select id="mc"></select></label>
     <label class="fld" id="mtoWrap" hidden><span>Na konto</span><select id="mto"></select></label>
     <label class="fld" id="mwWrap"><span>Kto</span><select id="mw"><option>Mati</option><option>Wercia</option></select></label>
   </div>
-  <label class="fld"><span>Notatka</span><input id="mn" placeholder="opcjonalnie" autocomplete="off"></label>
   <div class="g2"><button class="btn" id="shCancel">Anuluj</button><button class="btn primary" id="shSave">Zapisz</button></div>
+  <button class="btn sm" id="shRef" hidden style="align-self:center">↩️ Oznacz zwrot</button>
   <button class="btn sm" id="shDel" hidden style="align-self:center;color:var(--exp);background:none">Usuń transakcję</button>
+</div></div>
+
+<div id="pick" class="ov" hidden><div class="sheet pick" role="dialog" aria-modal="true" aria-labelledby="pkTitle">
+  <div class="r1"><h2 id="pkTitle">Wybierz pozycję</h2><button type="button" class="btn sm" id="pkClose">Zamknij</button></div>
+  <input id="pq" class="pq" type="search" enterkeyhint="search" placeholder="🔍 Wpisz kilka liter, np. kaw" autocomplete="off">
+  <div id="pkBody" class="pkbody"></div>
 </div></div>
 
 <div id="dlg" class="ov" hidden><div class="dlg" role="dialog" aria-modal="true" id="dlgBody"></div></div>

@@ -11,19 +11,19 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Strzałki w widoku „Rok” przeskakiwały na styczeń
 - [x] Import listy transakcji bez `id` dublował wpisy (teraz `id` z treści wiersza)
 - [x] `sw.js`: błąd przy zapisie plików do cache; wszystkie pliki aplikacji w kopii offline
-- [ ] Sprawdzić z Matim w konsoli Firebase: wyłączone zakładanie nowych kont (Authentication → Settings)
+- [x] Sprawdzić z Matim w konsoli Firebase: wyłączone zakładanie nowych kont (Authentication → Settings)
 - [x] Podział aplikacji na pliki (`index.html`, `style.css`, `js/*.js`)
 - [x] Usunięty stary moduł inwestycji (zostaje lista „Starsze wpisy” z możliwością usunięcia)
 - [x] Stały kolor każdej kategorii (`hue`), wybór koloru w edycji kategorii
 - [x] Ten plan w repozytorium
 
 ## Etap 2. Wpisywanie transakcji
-- [ ] Nowy wybór pozycji: wyszukiwarka, „Ostatnio używane”, kafelki kategorii, podpowiedź po notatce (np. „Biedronka” → Zakupy spożywcze)
-- [ ] Liczenie w polu kwoty (`12+8,50`)
-- [ ] Dzielenie paragonu na kilka pozycji
-- [ ] Pole „Kto” ustawia się samo według właściciela konta
-- [ ] ↩️ Oznacz zwrot (pełny/częściowy): zmniejsza wydatek w tej samej pozycji, nie zawyża przychodów; w Rejestrze „zwrócono X z Y zł”
-- [ ] Pozycja „Zwroty” → „Zwrot podatku (PIT) i inne zwroty urzędowe”
+- [x] Nowy wybór pozycji: wyszukiwarka, „Ostatnio używane”, kafelki kategorii, podpowiedź po notatce (np. „Biedronka” → Zakupy spożywcze)
+- [x] Liczenie w polu kwoty (przyciski + i − przy kwocie) (`12+8,50`)
+- [x] Dzielenie paragonu na kilka pozycji
+- [x] Pole „Kto” ustawia się samo według właściciela konta
+- [x] ↩️ Oznacz zwrot (pełny/częściowy): zmniejsza wydatek w tej samej pozycji, nie zawyża przychodów; w Rejestrze „zwrócono X z Y zł”
+- [x] Pozycja „Zwroty” → „Zwrot podatku (PIT) i inne zwroty urzędowe”
 
 ## Etap 3. Wygląd, czytelność, konta osób
 - [ ] Kategoria z ikonką i kolorem w Rejestrze
