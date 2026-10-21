@@ -7,21 +7,24 @@ Adres: https://matisak2.github.io/budzetpanstwaciemcia/
 - Mati jest lekarzem, **nie programuje**. Pisz po polsku, prosto, krok po kroku („za rączkę”) przy każdej czynności technicznej.
 - Zmiany robisz sam: edytujesz pliki, testujesz, robisz commit i **push na `main`** – GitHub Pages publikuje w 1–2 min. Mati tylko odświeża aplikację.
 - Przed większą zmianą krótko zaproponuj plan; drobne poprawki rób od razu.
+- **Plan rozwoju jest w `PLAN.md`** (12 etapów uzgodnionych z Matim). Przed pracą przeczytaj go, a po skończeniu etapu odhacz zrobione punkty. Kolejny etap zaczynaj dopiero na wyraźną komendę Matiego. Przed każdym etapem poproś o pobranie kopii (⚙️ → Pobierz kopię).
+- Dane wpisane przez Matiego i Wercię nigdy nie mogą zniknąć: zmiany w modelu danych rób jako migrację istniejących wpisów.
 - Estetyka jest ważna (szczególnie dla Werci): **delikatne pastele**, zaokrąglone kształty, czcionka Nunito, czytelność. Unikaj ciemnych, mocnych kolorów.
 
 ## Architektura
-- Jeden plik `index.html` (HTML + CSS + JS jako `<script type="module">`), bez build stepu i bez frameworków.
+- Bez build stepu i bez frameworków. `index.html` (sam HTML), `style.css`, moduły ES w `js/`:
+  `util.js` (formatowanie, kwoty, daty), `data.js` (domyślne kategorie i konta, kolory pór roku i kategorii), `art.js` (rysunki kotów, ikonki kategorii), `logic.js` (czyste obliczenia: salda, plan, opłaty stałe, agregaty), `charts.js` (wykresy SVG), `app.js` (stan, Firebase, ekrany, akcje). Funkcje wywoływane z `onclick` są wystawione na `window` na końcu `app.js`.
 - **Firebase** (projekt `budzet-panstwa-ciemcia`): Auth e-mail/hasło + **Firestore** z trwałym cache offline. SDK z gstatic, wersja zamrożona 10.14.1.
 - Reguły Firestore (ustawione w konsoli Firebase, nie w repo): odczyt/zapis tylko dla dwóch zalogowanych adresów e-mail właścicieli w ścieżce `households/main/**`.
 - Stara „Realtime Database” z pierwszej wersji aplikacji **nie jest używana** – reguły ustawione na `false`.
-- PWA: `manifest.json`, `sw.js` (index.html: sieć najpierw; SDK Firebase i fonty: cache). **Przy każdej zmianie podbij `CACHE` w `sw.js`** (`budzet-mw-vN`).
+- PWA: `manifest.json`, `sw.js` (pliki aplikacji: sieć najpierw, kopia offline; SDK Firebase i fonty: cache). **Przy każdej zmianie podbij `CACHE` w `sw.js`** (`budzet-mw-vN`), a nowy plik dopisz do listy `SHELL`.
 - Ikony: `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` – żółty domek z dwoma ragdollami (ciemny: brązowe uszy, czoło i łata na jednej połowie pyszczka; jasny: biały z morelowymi uszami).
 
 ## Model danych (Firestore, wszystko pod `households/main`)
 - `households/main` – ustawienia jako mapy (żeby dwa telefony nie nadpisywały sobie zmian):
   `accsM{id:{name,grp:'cur'|'sav'|'inv',owner:'Mati'|'Wercia'|'Wspólne',open,archived?,o}}`,
-  `catsM{id:{name,type:'inc'|'exp',icon?,o,subsM{id:{name,o}}}}`,
-  `fixedM{id:{name,amount,day,sub,acc,kind:'exp'|'inc',vary?,ppk?}}`, `savTarget`, flagi migracji (`invAcc`, `ikeAcc`, `wspAcc`, `ppkAcc`).
+  `catsM{id:{name,type:'inc'|'exp',icon?,hue,o,subsM{id:{name,o}}}}` (`hue` = stały pastelowy kolor kategorii),
+  `fixedM{id:{name,amount,day,sub,acc,kind:'exp'|'inc',vary?,ppk?}}`, `savTarget` (cel oszczędzania; zapis ustawień przez `saveCfg` zachowuje go razem z innymi polami), flagi migracji (`invAcc`, `ikeAcc`, `wspAcc`, `ppkAcc`).
 - `households/main/months/{YYYY-MM}` → `{tx:{id:{type,amount,date,sub,acc,to,who,note,deleted,ts,...}}}`
   - `type`: `exp`, `inc`, `tr` (przelew), `adj` (wyrównanie; `val:true` = zmiana wartości inwestycji), `inv`/`invs` (stary moduł inwestycji).
   - Kwoty w **groszach** (int). Usuwanie = `deleted:true` (umożliwia „Cofnij”).
@@ -39,4 +42,4 @@ Kolor nagłówka i tło zmieniają się co miesiąc (pastele pór roku, tablica 
 ⚙️ → „Wczytaj kopię (.json)” obsługuje: pełną kopię (`format:'budzet-mw-2'`), starą wersję aplikacji oraz listę transakcji `format:'budzet-mw-tx'` (`{tx:[{id,date,type,amount(grosze),cat,sub,acc,to,note,who}]}`) z dopasowaniem nazw pozycji i kont. Stałe `id` zapobiegają duplikatom.
 
 ## Testowanie
-Brak testów w repo. Sprawdzaj w przeglądarce headless (Playwright) z podmienionymi modułami Firebase (stub `firebase-app/auth/firestore`), na szerokości 390 px. Przed push: `node --check` na wyciętym skrypcie modułu.
+Brak testów w repo. Sprawdzaj w przeglądarce headless (Playwright) z podmienionymi modułami Firebase (stub `firebase-app/auth/firestore`), na szerokości 390 px. Przed push: `eslint` z regułą `no-undef` na `js/` (wyłapuje brakujące importy między modułami) i `node --check` na plikach.
