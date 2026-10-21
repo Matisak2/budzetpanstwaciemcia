@@ -33,7 +33,8 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Większe drobne napisy (min. 12–13 px)
 - [x] Filtr na Budżecie: Wszystko / Przekroczone / Bez planu
 - [x] Szukanie po kwocie: `>200`, `<50`, `100-300`
-- [ ] Przycisk + jako koło (podgląd wysłany Matiemu, czeka na decyzję)
+- [x] Przycisk + jako koło – Mati wybrał: zostaje zaokrąglony kwadrat
+- [x] Kolejność kont: strzałki ↑ ↓ w ⚙️ (w obrębie rodzaju konta)
 - [x] Majątek według osób w 👛 Konta: pasek Mati / Wercia / Wspólne, przełącznik, rozbicie (bieżące, subkonta, oszczędności, inwestycje, zobowiązania); stuknięcie kafelka „Na kontach” na Budżecie pokazuje podział
 - [x] Nowy rodzaj konta „Subkonto” (właściciel Mati / Wercia / Wspólne); „Subkonto Zwierzaki” i „Dzieciaczki” → subkonta wspólne; subkonta pokazywane osobno (nie wliczane do poduszki ani oszczędności)
 - [x] Pełna edycja każdego konta: nazwa, rodzaj, właściciel, saldo początkowe (pole „waluta” dochodzi w etapie 6)
