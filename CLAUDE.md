@@ -13,11 +13,12 @@ Adres: https://matisak2.github.io/budzetpanstwaciemcia/
 
 ## Architektura
 - Bez build stepu i bez frameworków. `index.html` (sam HTML), `style.css`, moduły ES w `js/`:
-  `util.js` (formatowanie, kwoty, daty), `data.js` (domyślne kategorie i konta, kolory pór roku i kategorii), `art.js` (rysunki kotów, ikonki kategorii), `logic.js` (czyste obliczenia: salda, plan, opłaty stałe, agregaty), `charts.js` (wykresy SVG), `app.js` (stan, Firebase, ekrany, akcje). Funkcje wywoływane z `onclick` są wystawione na `window` na końcu `app.js`.
+  `util.js` (formatowanie, kwoty, daty), `data.js` (domyślne kategorie i konta, kolory pór roku i kategorii), `art.js` (rysunki kotów, ikonki kategorii), `logic.js` (czyste obliczenia: salda, plan, opłaty stałe, agregaty), `charts.js` (wykresy SVG), `cats.js` (Bailey i Ivo: pozy, miny, dodatki, sceny; rysunki generowane w kodzie, cache, każda kopia z własnymi id gradientów), `guide.js` (komunikaty kotków, święta i urodziny, „Pierwsze kroki”, „Co nowego” – przy każdym etapie dopisz wpis na początek `NEWS`), `app.js` (stan, Firebase, ekrany, akcje). Funkcje wywoływane z `onclick` są wystawione na `window` na końcu `app.js`.
 - **Firebase** (projekt `budzet-panstwa-ciemcia`): Auth e-mail/hasło + **Firestore** z trwałym cache offline. SDK z gstatic, wersja zamrożona 10.14.1.
 - Reguły Firestore (ustawione w konsoli Firebase, nie w repo): odczyt/zapis tylko dla dwóch zalogowanych adresów e-mail właścicieli w ścieżce `households/main/**`.
 - Stara „Realtime Database” z pierwszej wersji aplikacji **nie jest używana** – reguły ustawione na `false`.
 - PWA: `manifest.json`, `sw.js` (pliki aplikacji: sieć najpierw, kopia offline; SDK Firebase i fonty: cache). **Przy każdej zmianie podbij `CACHE` w `sw.js`** (`budzet-mw-vN`), a nowy plik dopisz do listy `SHELL`.
+- Bailey (kotka, ur. 13.10.2025, ciemne uszy, brązowa łata na połowie pyszczka, ciemny ogon) i Ivo (kocur, ur. 16.03.2026, prawie biały, morelowe uszy, rude nad oczami, na co dzień spokojna mina, naburmuszony tylko przy irytacji). Ustawienie na telefonie: `mw_kotki` = lots / few / off.
 - Ikony: `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` – żółty domek z dwoma ragdollami (ciemny: brązowe uszy, czoło i łata na jednej połowie pyszczka; jasny: biały z morelowymi uszami).
 
 ## Model danych (Firestore, wszystko pod `households/main`)

@@ -1,7 +1,9 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,setPersistence,browserLocalPersistence} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,onSnapshot,setDoc,deleteDoc,updateDoc,deleteField,waitForPendingWrites} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {CATS,catIcon,catsEmpty} from './art.js';
+import {catIcon,catsEmpty} from './art.js';
+import {scene} from './cats.js';
+import {CELEBRATE,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
 import {HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
 import {actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,status,subsMap} from './logic.js';
@@ -25,20 +27,37 @@ function confetti(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)re
   const box=document.createElement('div');box.className='confetti';const cols=['#fbcfe8','#bbf0d6','#dfe5ff','#fde68a','#fecdd3','#c7f0dd','#e9d5ff'];
   for(let i=0;i<70;i++){const p=document.createElement('i');p.style.left=Math.random()*100+'%';p.style.background=cols[i%cols.length];p.style.animationDelay=(Math.random()*.6)+'s';p.style.animationDuration=(1.8+Math.random()*1.4)+'s';p.style.transform=`rotate(${Math.random()*360}deg)`;if(i%3==0)p.style.borderRadius='50%';box.append(p)}
   document.body.append(box);setTimeout(()=>box.remove(),3800)}
+kotki.mode=ls.get('mw_kotki')||'lots';
+/* greeting on the Budget screen: Bailey or Ivo says one thing (special day, something to fix, good news or an everyday line) */
 function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=td(),ym=today.slice(0,7),who=S.who;
   const [hi,em]=hr<5?['Dobranoc','🌙']:hr<12?['Dzień dobry','☀️']:hr<18?['Miłego dnia','🌤️']:hr<23?['Dobry wieczór','🌆']:['Dobranoc','🌙'];
   const tx=liveOf(txAll),A=agg(cfg,tx,ym),pl=S.plans[ym]||{},pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,x)=>b+(pl[x.id]||0),0),0);
-  const dl=daysIn(ym)-(+today.slice(8))+1,msgs=[];
-  if(pexp>0){const left=pexp-A.exp;msgs.push(left>=0?`Do końca miesiąca ${dl} ${dl==1?'dzień':'dni'} – w budżecie zostało jeszcze ${zl0(left)} 💚`:`Plan wydatków przekroczony o ${zl0(-left)} – nic straconego, w przyszłym miesiącu pójdzie lepiej 💪`)}
-  const sv=S.cfg.accs.filter(a=>a.grp=='sav'||a.grp=='inv'),sd=sv.reduce((x,a)=>x+balance(cfg,tx,a.id,ym+'-32')-balance(cfg,tx,a.id,ym+'-00'),0);
-  if(sd>0)msgs.push(`W tym miesiącu odłożyliście już ${zl0(sd)} 🐷 Brawo!`);
-  const soon=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp').filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym))});
-  if(soon.length)msgs.push(`W ciągu kilku dni ${soon.length==1?'termin opłaty „'+soon[0].name+'”':'terminy '+soon.length+' opłat stałych'} – zerknij do 📌`);
-  const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({g,p:goalAlloc(g)/g.target*100})).sort((a,b)=>b.p-a.p)[0];
-  if(gl&&gl.p>0)msgs.push(`Cel „${gl.g.name}” jest już w ${Math.floor(gl.p)}% – coraz bliżej! ✨`);
-  msgs.push('Koty przypominają: najlepsze rzeczy w życiu są za darmo – na przykład drzemka 🐾','Mruczki mówią: dziś też warto wpisać wydatki 🐱','Dzień bez zbędnych wydatków to dzień, z którego koty byłyby dumne 😺','Małe kroki, wielkie oszczędności – trzymamy kciuki (i łapki) 🐾');
-  const doy=Math.floor((now-new Date(now.getFullYear(),0,0))/864e5),msg=msgs[(doy+(hr<12?0:1))%msgs.length];
-  return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${esc(msg)}</span></div><div class="gcats">${CATS}</div></section>`}
+  const sv=cfg.accs.filter(a=>a.grp=='sav'||a.grp=='inv'),sd=sv.reduce((x,a)=>x+balance(cfg,tx,a.id,ym+'-32')-balance(cfg,tx,a.id,ym+'-00'),0);
+  const unpaid=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym)));
+  const late=unpaid.filter(f=>fixedDate(f,ym)<today).map(f=>f.name),soon=unpaid.filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)}).map(f=>f.name);
+  const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({name:g.name,pct:goalAlloc(g)/g.target*100})).sort((a,b)=>b.pct-a.pct)[0]||null;
+  const act=actuals(cfg,tx,ym),treats=cfg.cats.reduce((a,c)=>a+c.subs.filter(x=>isTreat(x.name)).reduce((b,x)=>b+Math.max(0,act[x.id]||0),0),0);
+  const g=greeting({name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats});
+  if(g.scene.startsWith('birthday')&&kotki.mode!='off'&&!ls.get('mw_bd_'+today)){ls.set('mw_bd_'+today,'1');setTimeout(confetti,400)}
+  const pic=kotki.mode=='off'?'':`<div class="gcats${WIDE.has(g.scene)?' w':''}">${scene(g.scene,'kot',g.arg)}</div>`;
+  return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${kotki.mode=='off'?'':`<em class="who">${g.who}:</em> `}${esc(g.text)}</span></div>${pic}</section>`}
+/* Bailey & Ivo slides: first steps, "Co nowego", celebrations */
+function catSlides(slides,done='Gotowe'){return new Promise(res=>{const d=$('dlg');let i=0;
+  const fin=()=>{d.hidden=true;d.onclick=null;d.onkeydown=null;res()};
+  const draw=()=>{const sl=slides[i],last=i==slides.length-1;
+    $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(sl.scene,'kot',sl.arg)}<h2>${esc(sl.title)}</h2><p class="dtext">${esc(sl.text)}</p></div>${slides.length>1?`<div class="dots">${slides.map((_,j)=>`<i class="${j==i?'on':''}"></i>`).join('')}</div>`:''}<div class="${slides.length>1?'g2':'btns'}">${slides.length>1?`<button class="btn" id="csBack">${i?'Wstecz':'Pomiń'}</button>`:''}<button class="btn primary" id="csNext" style="${slides.length>1?'':'flex:1'}">${last?done:'Dalej'}</button></div>`;
+    if($('csBack'))$('csBack').onclick=()=>{if(i){i--;draw()}else fin()};$('csNext').onclick=()=>{if(!last){i++;draw()}else fin()}};
+  d.onclick=e=>{if(e.target===d)fin()};d.onkeydown=e=>{if(e.key=='Escape')fin()};draw();d.hidden=false})}
+const showTour=()=>catSlides(TOUR(S.who),'Zaczynamy!');
+function showNews(all){const seen=all?0:+(ls.get('mw_news')||0),list=NEWS.filter(x=>x.v>seen);ls.set('mw_news',String(NEWS_V));
+  return catSlides((list.length?list:NEWS.slice(0,1)).map(x=>({scene:x.scene,title:'Co nowego · '+x.title,text:x.items.map(t=>'• '+t).join('\n')})),'Super!')}
+/* once per session, after the budget has loaded: first steps on a new phone, otherwise "Co nowego" after an update */
+function maybeIntro(){if(S.introDone||!S.cfg||!$('dlg').hidden||!$('sheet').hidden)return;S.introDone=true;
+  if(!ls.get('mw_tour')&&kotki.mode!='off'){ls.set('mw_tour','1');ls.set('mw_news',String(NEWS_V));showTour()}
+  else if(+(ls.get('mw_news')||0)<NEWS_V)showNews()}
+/* a celebration: confetti + Bailey & Ivo (or just a message when they are switched to "few"/"off") */
+function celebrate(c){confetti();if(kotki.mode=='lots')catSlides([c],'Hura!');else toast(c.title)}
+function setKotki(v){kotki.mode=v;ls.set('mw_kotki',v);render()}
 
 /* ---------- UI helpers ---------- */
 function toast(msg,kind,action){const t=$('toast');t.textContent='';const sp=document.createElement('span');sp.textContent=msg;t.append(sp);
@@ -201,6 +220,7 @@ async function saveTx(){if(guard())return;
   const ym=date.slice(0,7),ok=await putTx(ym,id,body);
   if(ok)for(const x of parts)putTx(ym,'t'+rid(),{...base,amount:x.amount,sub:x.sub,split:g});
   if(ok&&old&&old.date.slice(0,7)!=ym)await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
+  const sm2=subsMap(S.cfg);if(ok&&!old&&kotki.mode=='lots'&&[body.sub,...parts.map(x=>x.sub)].some(x=>isTreat(sm2[x]?.name)))setTimeout(()=>toast(treatJoke(Math.floor(Date.now()/1000))),1900);
   if(ok){const n=parts.length+1;toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${zl(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})`:'Dodano '+zl(amount));if(ym!=S.ym){S.ym=ym;render()}}}
 async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
@@ -346,7 +366,7 @@ async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.
     S.justChecked=f.id;
     if(await putTx(S.ym,'t'+rid(),{type:'exp',amount:amt,date:r.d,sub:f.sub,acc:r.c,to:'',who:S.who,note:f.name,fixedId:f.id,deleted:false,ts:Date.now()})){
       const exps=S.cfg.fixed.filter(x=>(x.kind||'exp')=='exp'),all=exps.every(x=>x.id==f.id||fixedPaid(x.id,S.ym));
-      if(all&&exps.length>1){toast('Wszystkie opłaty w tym miesiącu zapłacone! 🎉');confetti()}else toast('Zapłacono: '+f.name+' ✓')}
+      if(all&&exps.length>1)celebrate(CELEBRATE.allPaid(S.who));else toast('Zapłacono: '+f.name+' ✓')}
     return}
   // income: suggest last month's actual amount; PPK contributions from the payslip
   const last=lastOf(f,t=>t.fixedId===f.id),lastOwn=f.ppk?lastOf(f,t=>t.ppk=='own'&&t.acc===f.ppk&&t.fixedRef===f.id):null,lastEmp=f.ppk?lastOf(f,t=>t.ppk=='emp'&&t.acc===f.ppk&&t.fixedRef===f.id):null;
@@ -425,7 +445,7 @@ async function allocGoal(gid,dir){if(guard())return;const g=S.goals[gid],have=go
   if(dir>0&&v>free)return toast('Możesz przydzielić najwyżej '+zl(free),'bad');
   if(dir<0&&v>have)return toast('W kopercie jest tylko '+zl(have),'bad');
   const nv=have+dir*v;merge(doc(GOALS(),gid),{alloc:nv,saved:nv});
-  if(dir>0&&nv>=g.target&&have<g.target){setTimeout(()=>{confetti();toast('🎉 Cel „'+g.name+'” osiągnięty!')},150);return}
+  if(dir>0&&nv>=g.target&&have<g.target){setTimeout(()=>celebrate(CELEBRATE.goal(S.who,g.name)),150);return}
   toast(`${dir>0?'Przydzielono':'Zabrano'} ${zl(v)}`,'',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),{alloc:have,saved:have})})}
 async function setSavTarget(){if(guard())return;const r=await ask({title:'Ile chcecie odkładać co miesiąc?',text:'Liczy się wszystko, co przybyło na kontach oszczędnościowych i inwestycjach w danym miesiącu. Wpisz 0, żeby wyłączyć.',fields:[{id:'v',label:'Kwota miesięcznie (zł)',type:'decimal',value:S.savTarget?f2(S.savTarget):'',ph:'np. 2000'}]});
   if(!r)return;merge(H,{savTarget:Math.max(0,pg(r.v))});toast('Zapisano cel miesięczny')}
@@ -584,7 +604,7 @@ function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m',rf={};
   tx.forEach(t=>{if(t.refundOf)rf[t.refundOf]=(rf[t.refundOf]||0)+t.amount});
-  if(!l.length)return filtered?catsEmpty('Nic nie znaleziono.<br>Zmień wyszukiwanie albo filtry.',1):catsEmpty('Brak transakcji w tym miesiącu.<br>Dodaj pierwszą okrągłym przyciskiem ＋ w prawym dolnym rogu.');
+  if(!l.length)return filtered?catsEmpty('Nic nie znaleziono.<br>Zmień wyszukiwanie albo filtry.',1,'lupa'):catsEmpty('Brak transakcji w tym miesiącu.<br>Dodaj pierwszą przyciskiem ＋ w prawym dolnym rogu.',0,'box');
   let h='';
   if(filtered){const e=l.filter(t=>t.type=='exp').reduce((a,t)=>a+t.amount,0)-l.filter(t=>t.refundOf).reduce((a,t)=>a+t.amount,0),i=l.filter(t=>t.type=='inc'&&!t.refundOf).reduce((a,t)=>a+t.amount,0);
     h+=`<div class="fsum"><b>${l.length} ${l.length==1?'wpis':(l.length%10>=2&&l.length%10<=4&&(l.length%100<10||l.length%100>=20))?'wpisy':'wpisów'}</b>${e?` · wydatki <b class="t-exp">${zl(e)}</b>`:''}${i?` · przychody <b class="t-inc">${zl(i)}</b>`:''}</div>`}
@@ -616,7 +636,7 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
   const cur=td().slice(0,7);
   if(ym==cur&&pexp>0){const dl=daysIn(ym)-(+td().slice(8))+1,left=pexp-A.exp;
     h+=`<div class="note ${left<0?'bad':''}">${left>=0?`💡 Do końca miesiąca możecie wydać jeszcze <b>${zl(left)}</b>, czyli ok. <b>${zl(Math.floor(left/dl))}</b> dziennie (${dl} dni).`:`⚠️ Plan wydatków przekroczony o <b>${zl(-left)}</b>.`}</div>`}
-  if(!A.exp&&!A.inc)return h+catsEmpty(`Brak przychodów i wydatków w miesiącu: ${mName}.`);
+  if(!A.exp&&!A.inc)return h+catsEmpty(`Brak przychodów i wydatków w miesiącu: ${mName}.`,0,'sleep');
   // structure donut
   const catRows=Object.entries(A.cat).filter(([,v])=>v>0).map(([id,v])=>({id,v,l:cleanCat(cats[id]?.name)})).sort((a,b)=>b.v-a.v);
   const top=catRows.slice(0,5),rest=catRows.slice(5).reduce((a,r)=>a+r.v,0);
@@ -731,7 +751,7 @@ function render(){
     const nOver=S.cfg.cats.reduce((a,c)=>a+c.subs.filter(s=>c.type=='exp'&&stOf(c,s).k=='over').length,0),nNo=S.cfg.cats.reduce((a,c)=>a+c.subs.filter(s=>!(pl[s.id]||0)).length,0);
     h+=`<div class="seg seg3 bfilt">${[['all','Wszystko'],['over','▲ Przekroczone'+(nOver?` (${nOver})`:'')],['none','Bez planu'+(nNo?` (${nNo})`:'')]].map(([k,l])=>`<button aria-pressed="${BF==k}" onclick="setBF('${k}')">${l}</button>`).join('')}</div>`;
     const shownCats=S.cfg.cats.map((c,i)=>({c,i,subs:c.subs.filter(s=>keep(c,s))})).filter(x=>BF=='all'||x.subs.length);
-    if(!shownCats.length)h+=`<div class="empty">${BF=='over'?'🎉 W tym miesiącu nic nie przekroczyło planu.':'💚 Każda pozycja ma już swój plan.'}</div>`;
+    if(!shownCats.length)h+=BF=='over'?catsEmpty('🎉 W tym miesiącu nic nie przekroczyło planu.',1,'happy'):catsEmpty('💚 Każda pozycja ma już swój plan.',1,'ivoHappy');
     h+=shownCats.map(({c,i,subs})=>{const pa=c.subs.reduce((a,s)=>a+(pl[s.id]||0),0),ac=c.subs.reduce((a,s)=>a+(act[s.id]||0),0),o=BF=='all'?S.open[c.id]:!S.fold[c.id];
       return`<section class="cat${status(c.type,pa,ac).k=='zero'?' dim':''}" style="${pastel(catHue(c,i))}"><button class="ch" onclick="tog('${c.id}')" aria-expanded="${!!o}">${trioH(c.type,`<span class="nm"><span class="chev">${o?'▾':'▸'}</span><span class="cico">${catIcon(c)}</span>${esc(catL(c))}</span>`,pa,ac)}</button>`+
         (o?subs.map(s=>{const a=act[s.id]||0,p=pl[s.id]||0;
@@ -762,7 +782,7 @@ function render(){
       const sumDone=done.reduce((a,r)=>a+r.paid.amount,0),sumLeft=left.reduce((a,r)=>a+(r.f.vary?0:r.f.amount),0);
       x+=`<div class="prog"><div class="r1"><b>${inc?'Wpłynęło':'Zapłacone'} ${done.length} z ${rows.length}</b><span class="num">${zl(sumDone)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:${inc?'#93c5fd':'#86efac'}"></i></div><div class="mini">${inc?'Jeszcze oczekiwane: ok. ':'Zostało do zapłaty: '}<b class="num" style="color:var(--fg)">${zl(sumLeft)}</b></div></div>`;
       return x+`<div class="list">${rows.map(r=>row(r.f,r.paid)).join('')}</div>`};
-    if(!all.length)h+=catsEmpty('Dodaj stałe przychody (np. pensje) i opłaty (np. czynsz, prąd, Spotify).<br>Co miesiąc odhaczysz je na liście, a wpisy same trafią do rejestru.');
+    if(!all.length)h+=catsEmpty('Dodaj stałe przychody (np. pensje) i opłaty (np. czynsz, prąd, Spotify).<br>Co miesiąc odhaczysz je na liście, a wpisy same trafią do rejestru.',0,'bell');
     h+=block('inc')+block('exp');
     h+=`<div class="mini" style="text-align:center">Stuknij kwadracik, żeby odhaczyć. Stuknij nazwę, żeby zmienić.</div>${all.some(f=>(f.kind||'exp')=='exp')?`<div class="card"><h3>📅 Przypomnienia w telefonie</h3><div class="mini">Dodaj opłaty do kalendarza telefonu. Dzień przed terminem o 18:00 dostaniesz powiadomienie, nawet gdy aplikacja jest zamknięta.</div><button class="btn primary" onclick="calendarExport()">Dodaj opłaty do kalendarza</button></div>`:''}`}
 
@@ -787,7 +807,7 @@ function render(){
       let x=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">${owner=='Wspólne'?'Wspólne cele':'Cele: '+owner}</span><button class="btn sm dark" onclick="editGoal(null,'${owner}')">+ Dodaj cel</button></div>`;
       if(goals.length)x+=`<div class="envtop ${free<0?'neg':''}"><div><div class="mini">${free<0?'Przydzielono więcej, niż jest na kontach':'Do przydzielenia'}</div><div class="num big">${zl(free)}</div></div><div class="mini" style="text-align:right">na kontach ${zl0(pool)}<br>w celach ${zl0(alloc)}</div></div>`;
       if(free<0)x+=`<div class="note bad">⚠️ Na kontach jest mniej, niż przydzieliliście do celów. Zabierzcie ${zl(-free)} z któregoś celu.</div>`;
-      if(!goals.length)x+=`<div class="empty" style="padding:12px">Cele działają jak koperty: część pieniędzy z kont powyżej przydzielacie na konkretny cel, np. ${owner=='Wspólne'?'Wakacje, Remont':'Nowy laptop, Kurs'}.</div>`;
+      if(!goals.length)x+=catsEmpty(`Cele działają jak koperty: część pieniędzy z kont powyżej przydzielacie na konkretny cel, np. ${owner=='Wspólne'?'Wakacje, Remont':'Nowy laptop, Kurs'}.`,1,'envelope');
       x+=goals.map(g=>{const p=g.pr,wd=Math.min(100,p.pct);
         return`<div class="goal"><div class="r1"><b>${p.done?'🎉 ':''}${esc(g.name)}</b><span class="pill ${p.done?'ok':'low'}">${Math.floor(p.pct)}%</span></div><div class="gbar"><i style="width:${wd.toFixed(1)}%"></i></div>
           <div class="r1 mini"><span><b class="num" style="color:var(--fg)">${zl0(p.saved)}</b> z ${zl0(g.target)}</span><span>${p.done?'Cel osiągnięty!':'brakuje '+zl0(p.left)}</span></div>
@@ -804,7 +824,7 @@ function render(){
         <div class="kpis" style="gap:8px"><div class="kpi k-em"><div class="l">${MN[+S.ym.slice(5)-1]}</div><div class="v num ${savDelta<0?'t-exp':''}">${savDelta>0?'+':''}${zl(savDelta)}</div>${tg?`<div class="s">cel ${zl0(tg)} · ${Math.max(0,Math.round(savDelta/tg*100))}%</div>`:''}</div><div class="kpi k-sk"><div class="l">Rok ${S.ym.slice(0,4)}</div><div class="v num ${yDelta<0?'t-exp':''}">${yDelta>0?'+':''}${zl(yDelta)}</div>${tg?`<div class="s">cel ${zl0(tg*(+S.ym.slice(5)))} do końca ${MNG[+S.ym.slice(5)-1]}</div>`:''}</div></div>
         ${tg?`<div class="gbar"><i style="width:${Math.min(100,Math.max(0,savDelta/tg*100)).toFixed(1)}%"></i></div><div class="mini">${savDelta>=tg?'🎉 Cel na ten miesiąc osiągnięty!':`Do celu w tym miesiącu brakuje ${zl0(tg-Math.max(0,savDelta))}.`}</div>`:''}
         <button class="btn sm" style="align-self:flex-start" onclick="setSavTarget()">${tg?'Zmień cel miesięczny ('+zl0(tg)+')':'+ Ustaw cel: ile odkładać co miesiąc'}</button></section>`;
-      if(tg&&savDelta>=tg&&S.ym==td().slice(0,7)&&!ls.get('mw_conf_'+S.ym)){ls.set('mw_conf_'+S.ym,'1');setTimeout(()=>{confetti();toast('🎉 Cel oszczędzania na ten miesiąc osiągnięty!')},300)}
+      if(tg&&savDelta>=tg&&S.ym==td().slice(0,7)&&!ls.get('mw_conf_'+S.ym)){ls.set('mw_conf_'+S.ym,'1');setTimeout(()=>celebrate(CELEBRATE.saving(S.who)),300)}
       h+=cushion(savAt(tom),'Wszystkie oszczędności wystarczą na');
       const gl=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())}));
       if(gl.length)h+=`<section class="chart"><div class="ct"><b>Wszystkie cele</b></div>${hbarsH(gl.map(g=>({l:g.name+' · '+goalOwner(g),v:g.pr.saved,c:cols[goalOwner(g)],dot:cols[goalOwner(g)],note:`${Math.floor(g.pr.pct)}% z ${zl0(g.target)}`})))}</section>`;
@@ -854,6 +874,7 @@ function render(){
     h+='</div>'}
 
   else{
+    h+=`<div class="card"><h3>🐾 Bailey i Ivo</h3><div class="seg seg3">${[['lots','Dużo'],['few','Mało'],['off','Wyłączone']].map(([k,l])=>`<button aria-pressed="${kotki.mode==k}" onclick="setKotki('${k}')">${l}</button>`).join('')}</div><div class="mini">Dużo – rysunki, porady i żarty. Mało – rysunki i tylko ważne komunikaty. Wyłączone – bez kotków. Ustawienie dotyczy tego telefonu.</div><div class="btns"><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button><button class="btn sm" onclick="showNews(true)">Co nowego</button></div></div>`;
     h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div><div class="seg seg2 acctabs">${Object.entries(ACCTAB).map(([g,l])=>`<button aria-pressed="${S.accTab==g}" onclick="setAccTab('${g}')">${{cur:'💳',sub:'🗂️',sav:'🐷',inv:'📈'}[g]} ${l} (${S.cfg.accs.filter(a=>a.grp==g&&!a.archived).length})</button>`).join('')}</div>${(()=>{const list=S.cfg.accs.filter(a=>a.grp==S.accTab&&!a.archived);
       return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)} · saldo początkowe ${zl(a.open)}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
@@ -890,7 +911,7 @@ window.addEventListener('unhandledrejection',e=>err(e.reason||'błąd'));
 function syncLabel(md){$('sync').textContent=md.hasPendingWrites?'zapisywanie…':md.fromCache?'offline – zapisze się później':'zsynchronizowano'}
 let unsub=[];
 setPersistence(auth,browserLocalPersistence).catch(()=>{});
-applySeason();$('lcats').innerHTML=CATS;
+applySeason();if(kotki.mode!='off')$('lcats').innerHTML=scene('duo');
 async function login(){$('lerr').textContent='';$('loginBtn').disabled=true;
   try{await signInWithEmailAndPassword(auth,$('em').value.trim(),$('pw').value)}
   catch(e){$('lerr').textContent=({'auth/invalid-credential':'Zły e-mail lub hasło.','auth/invalid-email':'To nie wygląda na adres e-mail.','auth/too-many-requests':'Za dużo prób. Spróbuj za kilka minut.','auth/network-request-failed':'Brak internetu.','auth/unauthorized-domain':'Ten adres strony nie jest dodany w Firebase (Authentication → Settings → Authorized domains).'})[e.code]||('Błąd logowania: '+e.code)}
@@ -905,10 +926,10 @@ async function logout(){
 onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   $('login').hidden=!!u;$('main').hidden=!u;
   if(!u){S.cfg=null;return}
-  $('app').innerHTML='<div class="load">Wczytywanie budżetu…</div>';
+  $('app').innerHTML=`<div class="load">${kotki.mode=='off'?'':scene('window')}Wczytywanie budżetu…</div>`;
   const onErr=e=>{err(e);if(e?.code=='permission-denied')$('app').innerHTML='<div class="load">Brak dostępu do danych.<br><br>Sprawdź reguły Firestore albo czy ten e-mail jest na liście.</div>'};
   unsub.push(onSnapshot(H,s=>{
-    if(s.exists()){const raw=s.data(),c=fromDoc(clone(raw));const leg=c.legacy;delete c.legacy;S.hraw=raw;S.cfg=c;S.savTarget=raw.savTarget||0;render();if(leg&&!s.metadata.fromCache)saveCfg();
+    if(s.exists()){const raw=s.data(),c=fromDoc(clone(raw));const leg=c.legacy;delete c.legacy;S.hraw=raw;S.cfg=c;S.savTarget=raw.savTarget||0;render();setTimeout(maybeIntro,700);if(leg&&!s.metadata.fromCache)saveCfg();
       if(!leg&&!s.metadata.fromCache&&c.cats.some(k=>k.hue==null))c.cats.forEach((k,i)=>{if(k.hue==null){k.hue=HUES[i%HUES.length];saveCat(k)}});
       if(!raw.zwrotyRen&&!s.metadata.fromCache&&!leg){for(const k of c.cats.filter(x=>x.type=='inc'))for(const x of k.subs)if(x.name.trim()=='Zwroty'){x.name=ZWROT_PIT;saveSub(k,x)}merge(H,{zwrotyRen:true})}
       if(!raw.subAcc&&!s.metadata.fromCache&&!leg){c.accs.forEach(a=>{if(a.grp=='cur'&&/zwierzak|dzieciacz/i.test(a.name)){a.grp='sub';a.owner='Wspólne';saveAcc(a)}});merge(H,{subAcc:true})}
@@ -927,4 +948,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

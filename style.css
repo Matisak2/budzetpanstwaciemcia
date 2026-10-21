@@ -385,3 +385,21 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .acctabs button+button{border-left:0}
 .acctabs button:nth-child(n+3){border-top:1px solid var(--line)}
 .acctabs button:nth-child(even){border-left:1px solid var(--line)}
+
+/* Bailey & Ivo */
+.kot{display:block;width:100%;height:auto}
+.greet .gcats{flex:none;width:86px}
+.greet .gcats.w{width:128px}
+.greet .gcats svg{width:100%}
+.greet .who{font-style:normal;font-weight:800}
+.ecats{width:150px;margin:0 auto 10px}
+.ecats.sm{width:104px}
+.ecats svg{width:100%;margin:0}
+.load .kot{width:min(260px,80%);margin:0 auto 14px}
+.lcats .kot{width:190px;margin:4px auto 0}
+.cslide{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.cslide .kot{width:min(230px,72%)}
+.cslide h2{font-size:18px}
+.dots{display:flex;justify-content:center;gap:6px}
+.dots i{width:7px;height:7px;border-radius:50%;background:#e2e8f0}
+.dots i.on{background:#f9a8d4}

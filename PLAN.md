@@ -44,10 +44,10 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - Bailey (kotka, ur. 13.10.2025): ragdoll, biała z kremowym grzbietem, ciemnobrązowe uszy, brązowa łata na połowie pyszczka i czoła, niebieskie oczy, duży ciemnobrązowy ogon, dostojna mina. Kocha churu INABA i spanie pod kocem. Rola: spokojna strażniczka oszczędności (rachunki, plan, poduszka, terminy).
 - Ivo (kocur, ur. 16.03.2026): prawie biały, morelowo-różowe uszy, kremowe cieniowanie na czole, niebieskie oczy, ogon z kremową końcówką, lekko naburmuszona mina. Śpi we wrzosach, kocha piłeczki z dzwoneczkiem, naśladuje Bailey. Rola: wesoły łasuch i mistrz świętowania (cele, drobne, konfetti, podsumowania).
 - Oba: wskakują do kartonów, bawią się w kociego berka. Zwracają się do Matiego i Werci po imieniu.
-- [ ] Ok. 40 póz z „klocków” (pozy + miny + dodatki + stroje sezonowe), wiernie według zdjęć; m.in. parapet tyłem, balon „1”, za kierownicą, na stosie kartek, we wrzosach, za liściem, naburmuszony Ivo, koc, karton, piłeczka, churu, berek, skarbonka, moneta, dzwoneczek, lupa, kalkulator, koperta, puchar, tort, czapeczki; dodatki sezonowe (zima, wiosna, lato, jesień, święta, walentynki, Halloween)
-- [ ] Miejsca: powitanie, pierwsze kroki, „Co nowego” po każdym etapie, puste ekrany, ładowanie, „Na dziś”, podsumowania, delikatne ostrzeżenia, objaśnienia ⓘ
-- [ ] Ok. 100 komunikatów (urodziny, święta, żarty przy smaczkach dla kotów)
-- [ ] Najwyżej jeden dymek na ekran; ustawienie „Kotki: dużo / mało / wyłączone”
+- [x] Styl B (bardziej realistyczny, zaakceptowany): 5 póz (siedzi, leży, tyłem, śpi pod kocem, wygląda z kartonu) × 6 min × 13 dodatków → 31 gotowych scen w `js/cats.js`. Pierwotnie: ok. 40 póz z „klocków” (pozy + miny + dodatki + stroje sezonowe), wiernie według zdjęć; m.in. parapet tyłem, balon „1”, za kierownicą, na stosie kartek, we wrzosach, za liściem, naburmuszony Ivo, koc, karton, piłeczka, churu, berek, skarbonka, moneta, dzwoneczek, lupa, kalkulator, koperta, puchar, tort, czapeczki; dodatki sezonowe (zima, wiosna, lato, jesień, święta, walentynki, Halloween)
+- [x] Miejsca: powitanie, pierwsze kroki, „Co nowego” po każdym etapie, puste ekrany, ładowanie, „Na dziś”, podsumowania, delikatne ostrzeżenia, objaśnienia ⓘ
+- [x] Ok. 100 komunikatów (`js/guide.js`) (urodziny, święta, żarty przy smaczkach dla kotów)
+- [x] Najwyżej jeden dymek na ekran; ustawienie „Kotki: dużo / mało / wyłączone”
 
 ## Etap 5. Drobne
 - [ ] Reguły w ⚙️: z jakiego konta, na jakie, zaokrąglenie do 5 albo 10 zł, mnożnik ×1/×2/×3/×4/×5/×10, ☑️ „pełne drobne przy równej kwocie” (np. 15,00 zł → 5 zł × mnożnik); kilka reguł
