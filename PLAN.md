@@ -50,9 +50,9 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Najwyżej jeden dymek na ekran; ustawienie „Kotki: dużo / mało / wyłączone”
 
 ## Etap 5. Drobne
-- [ ] Reguły w ⚙️: z jakiego konta, na jakie, zaokrąglenie do 5 albo 10 zł, mnożnik ×1/×2/×3/×4/×5/×10, ☑️ „pełne drobne przy równej kwocie” (np. 15,00 zł → 5 zł × mnożnik); kilka reguł
-- [ ] Przy wydatku z konta z regułą: złota moneta 🪙 z wyliczoną kwotą, **domyślnie zaznaczona**
-- [ ] Zapis jako przelew „🪙 drobne”; po edycji lub usunięciu wydatku drobne zostają bez zmian; liczone od dnia włączenia
+- [x] Reguły w ⚙️: z jakiego konta, na jakie, zaokrąglenie do 5 albo 10 zł, mnożnik ×1/×2/×3/×4/×5/×10, ☑️ „pełne drobne przy równej kwocie” (np. 15,00 zł → 5 zł × mnożnik); kilka reguł
+- [x] Przy wydatku z konta z regułą: złota moneta 🪙 z wyliczoną kwotą, **domyślnie zaznaczona**
+- [x] Zapis jako przelew „🪙 drobne”; po edycji lub usunięciu wydatku drobne zostają bez zmian; liczone od dnia włączenia
 - (Revolut Matiego: zaokrąglenie do 5 zł, ×2, pełne drobne włączone)
 
 ## Etap 6. Waluty

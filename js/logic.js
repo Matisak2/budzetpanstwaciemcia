@@ -32,6 +32,9 @@ export function invPln(it,before='9999-99-99'){
     if(l.kind=='sell'){if(qty<=0)continue;const k=Math.min(q,qty);pln-=Math.round(pln/qty*k);qty-=k;if(qty<1e-9){qty=0;pln=0}}
     else{qty+=q;pln+=l.pln||0}}
   return pln}
+/* "drobne": a card payment rounded up to the next full 5 / 10 zł, the difference × multiplier is put aside;
+   an exact amount (e.g. 15,00) gives a full step only when rule.full is on – this is how Revolut does it */
+export function roundUp(amt,r){const st=(+r.step||5)*100,rem=amt%st,base=rem?st-rem:(r.full?st:0);return base*(+r.mult||1)}
 export const fixedDate=(f,ym)=>ym+'-'+p2(Math.min(Math.max(1,+f.day||1),daysIn(ym)));
 /* unpaid fixed costs that are overdue this month, due today or due tomorrow (tomorrow may already be next month) */
 export function dueAlerts(fixed,tx,today){const out=[],tom=addDays(today,1);

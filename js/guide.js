@@ -116,6 +116,7 @@ export function greeting(c){const sp=special(c);if(sp)return{...sp,text:fill(sp.
   if(urgent.length)return mk(pick(urgent),c);
   if(c.soon.length)info.push([B,'bell',c.soon.length==1?`W ciągu kilku dni termin opłaty „${c.soon[0]}”. Przypominam z dzwoneczkiem 🔔`:`W ciągu kilku dni terminy ${c.soon.length} opłat stałych – zerknij do 📌`]);
   if(c.plan>0&&c.left>=0)info.push(c.left<c.plan*.15?[B,'lupa',`Do końca miesiąca ${c.dl} ${c.dl==1?'dzień':'dni'}, a w budżecie zostało ${zl0(c.left)}. Ostrożnie, {n} – jesteśmy blisko limitu.`]:[B,'',`Do końca miesiąca ${c.dl} ${c.dl==1?'dzień':'dni'} – w budżecie zostało jeszcze ${zl0(c.left)} 💚`]);
+  if(c.coins>0)info.push([I,'coin',`Z drobnych w tym miesiącu odłożyło się już ${zl0(c.coins)} 🪙 Moneta do monety, {n}!`]);
   if(c.saved>0)info.push([I,'coin',`W tym miesiącu odłożyliście już ${zl0(c.saved)} 🐷 Brawo! Ja odłożyłem jedną monetę. Też się liczy.`]);
   if(c.goal&&c.goal.pct>0)info.push([I,'envelope',`Cel „${c.goal.name}” jest już w ${Math.floor(c.goal.pct)}%. Coraz bliżej! ✨`]);
   if(c.backupDays>=30)info.push([B,'',`Ostatnia kopia danych była ${c.backupDays} dni temu. Zrobisz nową? Ja zawsze mam zapasowy koc.`]);
@@ -142,6 +143,7 @@ export const TOUR=n=>[
 ];
 /* what changed – shown once per phone after an update; the newest entry first */
 export const NEWS=[
+  {v:5,title:'Drobne 🪙',scene:'coin',items:['W ⚙️ → „🪙 Drobne” ustawisz regułę: z którego konta, na które, zaokrąglenie do 5 albo 10 zł i mnożnik.','Przy wydatku z tego konta pojawi się złota moneta z kwotą drobnych. Odznacz ją, gdy bank ich nie liczy (np. BLIK).','Drobne widać pod wydatkiem w Rejestrze i w Oszczędnościach.']},
   {v:4,title:'Poznajcie nas! 🐾',scene:'happy',items:['Bailey i Ivo zamieszkali w aplikacji – witają na Budżecie i podpowiadają, co warto zrobić.','Pamiętamy o urodzinach, świętach i Dniu Kota.','W ⚙️ → „Bailey i Ivo” ustawisz, ile nas ma być: dużo, mało albo wcale.']},
 ];
 export const NEWS_V=NEWS[0].v;
