@@ -1,6 +1,7 @@
 /* Bailey & Ivo – the app's guides, drawn from building blocks: pose + face + accessories.
    Bailey (she): white ragdoll with a cream back, dark brown ears, a brown patch over one half of the face and forehead, deep blue eyes, big dark brown tail.
-   Ivo (he): almost white, apricot ears, cream shading on the forehead, pale blue eyes, white tail with a cream tip, slightly smaller, famous grumpy look.
+   Ivo (he): almost white, apricot ears, cream forehead with a little ginger above both eyes, pale blue eyes, white tail with a cream tip, slightly smaller;
+   calm face by default – the grumpy look only when something annoys him (e.g. an overspent budget).
    Every cat is drawn in a 200×200 box (ground at y≈192) and placed in a scene with x / y / scale. */
 const INK='#3b2a22',W='#ffffff',SHADE='#ede5dc',NOSE='#f2a1b3',BLUSH='#f7b7c4';
 const LOOK={
@@ -29,7 +30,7 @@ function head(who,face){const L=LOOK[who];
   const skull=`<ellipse cx="100" cy="78" rx="52" ry="45" fill="${W}" ${sw()}/>`;
   /* Bailey: brown patch over the left half of the face and forehead, muzzle stays white */
   const mask=L.mask?`<path d="M100 35 C72 34 50 50 49.5 76 C49 92 54 102 60 108 C70 104 80 100 88 98 C94 92 97 84 99 74 C100 60 101 46 100 35 Z" fill="${L.mask}"/><path d="M100 35 C72 34 50 50 49.5 76 C49 92 54 102 60 108" fill="none" ${sw()}/>`
-    :`<ellipse cx="100" cy="52" rx="24" ry="11" fill="#f6dcc2" opacity=".75"/><ellipse cx="73" cy="70" rx="12" ry="6" fill="#f6dcc2" opacity=".55"/><ellipse cx="127" cy="70" rx="12" ry="6" fill="#f6dcc2" opacity=".55"/>`;
+    :`<ellipse cx="100" cy="50" rx="22" ry="10" fill="#f6dcc2" opacity=".75"/><ellipse cx="78" cy="64" rx="13" ry="6" fill="#efb27d" opacity=".55" transform="rotate(-12 78 64)"/><ellipse cx="122" cy="64" rx="13" ry="6" fill="#efb27d" opacity=".55" transform="rotate(12 122 64)"/>`;
   const cheeks=face=='happy'||face=='wink'||face=='surprised'?`<ellipse cx="66" cy="99" rx="8" ry="5" fill="${BLUSH}" opacity=".7"/><ellipse cx="134" cy="99" rx="8" ry="5" fill="${BLUSH}" opacity=".7"/>`:'';
   const whisk=`<g stroke="#cfc6bd" stroke-width="2" stroke-linecap="round"><path d="M74 100 L44 95 M74 105 L46 108 M126 100 L156 95 M126 105 L154 108"/></g>`;
   return ears+skull+mask+cheeks+eyes(L,face)+`<path d="M95 93 L105 93 L100 99 Z" fill="${NOSE}" ${sw(2)}/>`+mouth(face)+whisk}
@@ -75,7 +76,7 @@ const ACC={
 };
 
 /* one cat in its 200×200 box, placed at x / y with scale s; acc = accessory names (drawn in front) */
-export function cat(who,{pose='sit',face=who=='ivo'?'grumpy':'calm',x=0,y=0,s=1,flip=false,acc=[]}={}){const L=LOOK[who];
+export function cat(who,{pose='sit',face='calm',x=0,y=0,s=1,flip=false,acc=[]}={}){const L=LOOK[who];
   let g=pose=='back'?backView(who):pose=='sleep'?sleeping(who):pose=='loaf'?bodyLoaf(L)+`<g transform="translate(-26 34)">${head(who,face)}</g>`:tailSit(L)+bodySit(L)+head(who,face);
   g+=acc.map(a=>ACC[a]||'').join('');
   return`<g transform="translate(${x} ${y}) scale(${s})${flip?' translate(200 0) scale(-1 1)':''}">${g}</g>`}
@@ -88,14 +89,15 @@ const windowFrame=w=>`<rect x="20" y="0" width="${w-40}" height="196" rx="10" fi
 
 /* ready-made scenes used in the app (viewBox sized to the scene) */
 const SCENES={
-  duo:{vb:'0 0 400 210',draw:()=>cat('bailey',{x:10,y:6})+cat('ivo',{x:200,y:16,s:.95,face:'grumpy'})},
+  duo:{vb:'0 0 400 210',draw:()=>cat('bailey',{x:10,y:6})+cat('ivo',{x:200,y:16,s:.95})},
+  grumpy:{vb:'0 0 230 210',draw:()=>cat('ivo',{x:4,y:4,face:'grumpy'})},
   happy:{vb:'0 0 400 210',draw:()=>cat('bailey',{x:10,y:6,face:'happy'})+cat('ivo',{x:200,y:16,s:.95,face:'happy'})},
   window:{vb:'0 0 400 260',draw:()=>windowFrame(400)+sill(196,400)+cat('bailey',{pose:'back',x:40,y:4,s:.96})+cat('ivo',{pose:'back',x:200,y:12,s:.9})},
   birthday:{vb:'0 0 300 230',draw:()=>balloon(4,0)+cat('bailey',{x:80,y:24,face:'happy',acc:['hat']})},
-  heather:{vb:'0 0 230 230',draw:()=>cat('ivo',{pose:'loaf',x:14,y:-6,face:'grumpy'})+`<g transform="translate(8 14)">${ACC.heather}</g>`},
+  heather:{vb:'0 0 230 230',draw:()=>cat('ivo',{pose:'loaf',x:14,y:-6,face:'calm'})+`<g transform="translate(8 14)">${ACC.heather}</g>`},
   sleep:{vb:'0 0 230 220',draw:()=>cat('bailey',{pose:'sleep',x:14,y:10})},
   bell:{vb:'0 0 230 210',draw:()=>cat('ivo',{x:4,y:4,face:'surprised',acc:['bell']})},
-  papers:{vb:'0 0 230 230',draw:()=>cat('ivo',{pose:'loaf',x:16,y:6,face:'grumpy',acc:['papers']})},
+  papers:{vb:'0 0 230 230',draw:()=>cat('ivo',{pose:'loaf',x:16,y:6,face:'calm',acc:['papers']})},
   box:{vb:'0 0 400 250',draw:()=>cat('bailey',{x:40,y:0,face:'calm'})+cat('ivo',{x:196,y:10,s:.92,face:'wink'})+box(48,104)},
   churu:{vb:'0 0 230 210',draw:()=>cat('bailey',{x:4,y:4,face:'happy',acc:['churu']})},
   coin:{vb:'0 0 230 210',draw:()=>cat('ivo',{x:4,y:4,face:'happy',acc:['coin']})},
