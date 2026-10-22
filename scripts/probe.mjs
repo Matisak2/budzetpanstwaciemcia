@@ -1,20 +1,17 @@
 // Temporary: checks the shape of public data pages (no Firebase, no household data).
-const get=async u=>{const r=await fetch(u,{headers:{'User-Agent':'Mozilla/5.0 (budzet-mw automat)'},redirect:'follow'});const b=Buffer.from(await r.arrayBuffer());return{s:r.status,u:r.url,b}};
-const txt=b=>{const s=b.toString('utf8');return s.includes('�')?new TextDecoder('windows-1250').decode(b):s};
-const strip=h=>h.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ');
-const around=(t,re,n=300)=>{const m=t.search(re);return m<0?'(brak)':t.slice(Math.max(0,m-80),m+n)};
+const get=async u=>{const r=await fetch(u,{headers:{'User-Agent':'Mozilla/5.0 (budzet-mw automat)'},redirect:'follow'});return{s:r.status,u:r.url,h:await r.text()}};
+const ids=h=>[...new Set([...h.matchAll(/\/fundusze-ppk\/([A-Z]{2,5}\d+)\/([a-z0-9-]+)/g)].map(m=>m[1]+'/'+m[2]))];
 const run=async(name,fn)=>{try{console.log('== '+name);await fn()}catch(e){console.log('ERR',e.message)}};
-await run('GUS strona',async()=>{const r=await get('https://stat.gov.pl/obszary-tematyczne/ceny-handel/wskazniki-cen/wskazniki-cen-towarow-i-uslug-konsumpcyjnych-pot-inflacja-/miesieczne-wskazniki-cen-towarow-i-uslug-konsumpcyjnych-od-1982-roku/');
-  const h=txt(r.b);console.log(r.s,h.length);console.log([...h.matchAll(/href="([^"]+\.(?:csv|xlsx?))"/gi)].map(m=>m[1]).join('\n'))});
-await run('GUS csv',async()=>{const r=await get('https://stat.gov.pl/download/gfx/portalinformacyjny/pl/defaultstronaopisowa/4741/1/1/miesieczne_wskazniki_cen_towarow_i_uslug_konsumpcyjnych_od_1982_roku.csv');
-  const t=txt(r.b),L=t.split(/\r?\n/);console.log(r.s,L.length);console.log(L.slice(0,3).join('\n'));const A=L.filter(l=>/analogiczny/i.test(l));console.log('analog',A.length);console.log(A.slice(-3).join('\n'))});
-await run('analizy lista',async()=>{const r=await get('https://www.analizy.pl/fundusze-ppk/notowania');const h=txt(r.b);console.log(r.s,h.length);
-  const M=[...h.matchAll(/href="\/fundusze-ppk\/([A-Z]{2,5}\d+)\/([^"]+)"[^>]*>([\s\S]{0,200}?)<\/a>/g)];console.log('links',M.length,new Set(M.map(m=>m[1])).size);console.log(M.slice(0,6).map(m=>m[1]+' | '+m[2]+' | '+strip(m[3])).join('\n'));
-  console.log('page?',[...h.matchAll(/href="([^"]*(?:page|strona)=\d+[^"]*)"/gi)].slice(0,5).map(m=>m[1]).join(' '));console.log(around(strip(h),/inPZU 2040/));});
-await run('analizy fundusz',async()=>{const r=await get('https://www.analizy.pl/fundusze-ppk/PZU56/ppk-inpzu-2040');const h=txt(r.b),t=strip(h);console.log(r.s,h.length);console.log(around(t,/jednostk/i,400));
-  console.log('ld',(h.match(/application\/ld\+json[^>]*>([\s\S]{0,400})/)||[])[1]||'-');console.log('meta',(h.match(/<meta[^>]+(?:description)[^>]+>/i)||[])[0]||'-')});
-await run('analizy bez sluga',async()=>{const r=await get('https://www.analizy.pl/fundusze-ppk/PZU56');console.log(r.s,r.u)});
-await run('analizy FIO',async()=>{const r=await get('https://www.analizy.pl/fundusze-inwestycyjne-otwarte/PCS83');console.log(r.s,r.u);console.log(around(strip(txt(r.b)),/jednostk/i,250))});
-await run('bankier',async()=>{const r=await get('https://www.bankier.pl/fundusze/notowania/BGK18');const t=strip(txt(r.b));console.log(r.s,t.length);console.log(around(t,/Kurs/,300))});
-await run('obligacje',async()=>{const r=await get('https://www.obligacjeskarbowe.pl/oferta-obligacji/');const t=strip(txt(r.b));console.log(r.s,r.u,t.length);console.log(around(t,/EDO/,700));console.log(around(t,/COI/,400))});
-await run('eurostat',async()=>{const r=await get('https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&geo=PL&coicop=CP00&sinceTimePeriod=2015-01');const j=JSON.parse(r.b.toString());console.log(r.s,Object.keys(j.value||{}).length,Object.keys(j.dimension.time.category.index).slice(-2))});
+await run('lista',async()=>{const r=await get('https://www.analizy.pl/fundusze-ppk/notowania');const h=r.h;
+  const i=h.search(/\/fundusze-ppk\/KAH31/);console.log(h.slice(Math.max(0,i-700),i+500).replace(/\s+/g,' '));
+  console.log('pag',[...new Set([...h.matchAll(/(?:href|data-[a-z-]+)="([^"]*(?:page|strona|offset|limit)[^"]*)"/gi)].map(m=>m[1]))].slice(0,10));
+  console.log('api',[...new Set([...h.matchAll(/["'](\/?api\/[^"']{3,120})["']/gi)].map(m=>m[1]))].slice(0,15));
+  console.log('json',[...new Set([...h.matchAll(/["'](https?:\/\/[^"']*\.json[^"']*)["']/gi)].map(m=>m[1]))].slice(0,8));
+  const j=h.search(/pagination|paginat|następna|Następna/i);console.log('paghtml',j<0?'-':h.slice(j-200,j+600).replace(/\s+/g,' '))});
+for(const u of ['https://www.analizy.pl/fundusze-ppk/notowania?page=2','https://www.analizy.pl/fundusze-ppk/notowania/2','https://www.analizy.pl/fundusze-ppk/notowania?strona=2','https://www.analizy.pl/fundusze-ppk/notowania?limit=500','https://www.analizy.pl/fundusze-ppk/notowania?pageSize=500','https://www.analizy.pl/fundusze-ppk'])
+  await run(u,async()=>{const r=await get(u);const L=ids(r.h);console.log(r.s,r.u,L.length,L.slice(0,4).join(' '))});
+await run('FIO lista',async()=>{const r=await get('https://www.analizy.pl/fundusze-inwestycyjne-otwarte/notowania');console.log(r.s,[...new Set([...r.h.matchAll(/\/fundusze-inwestycyjne-otwarte\/([A-Z]{2,5}\d+)\/([a-z0-9-]+)/g)].map(m=>m[1]+'/'+m[2]))].length)});
+await run('szukaj',async()=>{for(const u of ['https://www.analizy.pl/szukaj?q=PZU56','https://www.analizy.pl/api/search?q=inpzu%202040','https://www.analizy.pl/fundusze-ppk/PZU56/x']){const r=await get(u);console.log(u,r.s,r.u,r.h.length,ids(r.h).slice(0,3).join(' '))}});
+await run('ROD',async()=>{const r=await get('https://www.obligacjeskarbowe.pl/oferta-obligacji/');const t=r.h.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');console.log([...t.matchAll(/\(symbol: ([A-Z]{3})\)\s*([\d,]+)\s*%/g)].map(m=>m[1]+'='+m[2]).join(' '));
+  const k=t.search(/marż/i);console.log(k<0?'brak marży':t.slice(k-200,k+200))});
+await run('obl EDO strona',async()=>{const r=await get('https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-10-letnie-edo/');const t=r.h.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');console.log(r.s,r.u);const k=t.search(/marż/i);console.log(k<0?'-':t.slice(k-300,k+300))});
