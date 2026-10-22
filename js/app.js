@@ -9,6 +9,7 @@ import {CURS,HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,see
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,addM,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue} from './inv.js';
 import {ULGI,pitSummaryP,recurringP,automatStale,debtStateP,limitPropP,maturitiesP,remStateP,todayItems as todayItemsP,yearStateP} from './today.js';
 import {KINDS,TAXF,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
+import {yearBody,yearStats} from './report.js';
 import {anomalies,avgActuals,carStats,seasonal,actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,roundUp,status,subsMap} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,isDate,ls,p2,pg,pnum,rid,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt} from './util.js';
 const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
@@ -1387,7 +1388,7 @@ async function enablePush(){if(guard())return;
 async function disablePush(){const id=ls.get('mw_push');try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe()}catch(e){}
   if(id)w(deleteDoc(doc(PUSH(),id)));ls.set('mw_push','');S.pushOk=false;S.pushLost=false;render();toast('Powiadomienia wyłączone – okienka „Na dziś” wracają do aplikacji')}
 async function shareDemo(){const url=new URL('./demo/',location.href).href;try{if(navigator.share){await navigator.share({title:'Budżet M&W – demo',text:'Zobacz, jak działa nasz domowy budżet 🐾',url});return}await navigator.clipboard.writeText(url);toast('Skopiowano link: '+url)}catch(e){if(e?.name!='AbortError')toast(url)}}
-const demoCardH=()=>`<div class="card"><h3>🧪 Wersja demonstracyjna</h3><div class="mini">Dane są przykładowe i zapisują się tylko w tej przeglądarce. Kursy i ceny są przykładowe (w prawdziwej aplikacji pobiera je automat).</div><div class="btns"><button class="btn sm" onclick="MW_DEMO.rename()">✎ Imię drugiej osoby</button><button class="btn sm" onclick="MW_DEMO.reset()">↺ Zacznij od nowa</button></div></div>`;
+const demoCardH=()=>`<div class="card"><h3>🧪 Wersja demonstracyjna</h3><div class="mini">Dane są przykładowe i zapisują się tylko w tej przeglądarce. Kursy walut są prawdziwe (z NBP), ceny akcji i funduszy – przykładowe (w prawdziwej aplikacji wszystko pobiera automat).</div><div class="btns"><button class="btn sm" onclick="MW_DEMO.rename()">✎ Imię drugiej osoby</button><button class="btn sm" onclick="MW_DEMO.reset()">↺ Zacznij od nowa</button></div></div>`;
 const pushCardH=()=>`<div class="card"><h3>🔔 Powiadomienia</h3><div class="mini">${S.pushOk?'✓ Włączone na tym telefonie: rano ok. 7:30 „Na dziś” (gdy coś czeka), o 20:00 przypomnienie, gdy dziś nic nie wpisano. Okienka „Na dziś” nie wyskakują już same – dzwonek 🔔 zostaje.':S.pushLost?'⚠️ Powiadomienia na tym telefonie przestały działać (wyłączone w ustawieniach telefonu albo cofnięta zgoda). Do czasu ponownego włączenia okienka „Na dziś” pokazują się w aplikacji.':'Prawdziwe powiadomienia na telefon, także gdy aplikacja jest zamknięta. Każde z Was włącza je na swoim telefonie.'}</div>
   <div class="btns" style="gap:6px">${S.pushOk?'<button class="btn sm" onclick="disablePush()">Wyłącz</button>':`<button class="btn sm primary" onclick="enablePush()">${S.pushLost?'Włącz ponownie':'Włącz powiadomienia'}</button>`}</div></div>`;
 const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw});
@@ -1438,8 +1439,7 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
     <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów${prate!==null&&rate!==null?` · ${prevName}: ${prate.toFixed(0)}%`:''}</div></div></div>
     <div class="mini" style="text-align:center">Strzałki porównują z miesiącem: ${prevName}.</div>`+fxNote(A.fx);
   const cur=td().slice(0,7);
-  if(ym==cur&&pexp>0){const dl=daysIn(ym)-(+td().slice(8))+1,left=pexp-A.exp;
-    h+=`<div class="note ${left<0?'bad':''}">${left>=0?`💡 Do końca miesiąca możecie wydać jeszcze <b>${zl(left)}</b>, czyli ok. <b>${zl(Math.floor(left/dl))}</b> dziennie (${dl} dni).`:`⚠️ Plan wydatków przekroczony o <b>${zl(-left)}</b>.`}</div>`}
+  if(ym==cur&&pexp>0&&A.exp>pexp)h+=`<div class="note bad">⚠️ Plan wydatków przekroczony o <b>${zl(A.exp-pexp)}</b>.</div>`;
   h+=monthSumH(cfg,tx,ym);
   if(!A.exp&&!A.inc)return h+catsEmpty(`Brak przychodów i wydatków w miesiącu: ${mName}.`,0,'sleep');
   const an=anomalies(cfg,tx,ym);if(an.length)h+=`<section class="chart"><div class="ct"><b>🔎 Nietypowo dużo</b><span class="mini">w porównaniu ze średnią z 3 miesięcy</span></div>${an.slice(0,5).map(x=>`<div class="r1"><span>${esc(x.sub.name)}</span><b class="t-exp num">+${x.pct}% · ${zl0(x.v)} <span class="mini">(zwykle ${zl0(x.avg)})</span></b></div>`).join('')}</section>`;
@@ -1588,9 +1588,13 @@ function render(){
       <div class="frow">${sel('scope',[['m','Ten miesiąc'],['y','Cały rok '+S.ym.slice(0,4)],['a','Wszystko']])}${sel('type',[['','Wszystkie rodzaje'],['exp','Wydatki'],['inc','Przychody'],['tr','Przelewy'],['inv','Inwestycje'],['adj','Wyrównania']])}${sel('who',[['','Wszyscy'],['Mati','Mati'],['Wercia','Wercia']])}${sel('acc',[['','Wszystkie konta'],...accOpts()])}${sel('cat',[['','Wszystkie kategorie'],...S.cfg.cats.map(c=>[c.id,catL(c)])],fc?catColor(fc)+';background:var(--c);color:var(--c3);border-color:var(--c4);font-weight:700':'')}</div>
       ${active?`<button class="btn sm" style="align-self:flex-start" onclick="clearF()">✕ Wyczyść filtry</button>`:''}</div><div id="txlist">${txListH()}</div>`}
 
+  else if(S.tab=='ana'&&S.report)h+=`<div class="r1 noprint"><button class="btn sm" onclick="closeReport()">‹ Analiza</button><button class="btn sm primary" onclick="window.print()">🖨️ Zapisz jako PDF / drukuj</button></div>
+    <div class="mini noprint">Na telefonie: „Zapisz jako PDF” otwiera okno drukowania – wybierz „Zapisz jako PDF” albo udostępnij plik.</div>
+    <div class="report">${yearBody(yearStats({cfg:S.cfg,tx,hraw:S.hraw},S.report,td()),new URL('./',location.href).href.replace(/demo\/$/,''))}</div>`;
   else if(S.tab=='ana'){
     h+=`<button class="btn sm" style="align-self:flex-start" onclick="goTab('dash')">‹ Budżet</button>`;
     h+=`<div class="r1" style="gap:8px;flex-wrap:wrap;justify-content:center"><div class="seg">${[['m','Miesiąc'],['y','Rok']].map(([k,l])=>`<button aria-pressed="${S.ana==k}" onclick="setAna('${k}')">${l}</button>`).join('')}</div><div class="seg">${[['basic','Podstawowa'],['full','Pełna']].map(([k,l])=>`<button aria-pressed="${(anaFull()?'full':'basic')==k}" onclick="setAnaMode('${k}')">${l}</button>`).join('')}</div></div>`;
+    if(S.ana=='y')h+=`<button class="anabtn" onclick="openReport('${S.ym.slice(0,4)}')"><span>🖨️</span><b>Podsumowanie roku ${S.ym.slice(0,4)}</b><small>jedna strona do zapisania jako PDF albo wydruku</small><i>›</i></button>`;
     h+=S.ana=='y'?anaYear({cfg:S.cfg,tx,ym:S.ym,savAt,full:anaFull()}):anaMonth({cfg:S.cfg,tx,ym:S.ym,full:anaFull()})}
 
   else if(S.tab=='fix'&&S.slip)h+=slipH();
@@ -1771,6 +1775,8 @@ function txMenu(id){const t=liveById(id);if(!t)return;const d=$('dlg'),sm=subsMa
   app.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y,dt=Date.now()-sw.at;sw=null;
     if(Math.abs(dx)>80&&Math.abs(dy)<Math.abs(dx)*0.5&&dt<800)mv(dx<0?1:-1)},{passive:true})}
 /* 📖 every feature: a list by section, tap = what it is for and how to use it */
+function openReport(y){S.report=y;window.scrollTo(0,0);render()}
+function closeReport(){S.report=null;window.scrollTo(0,0);render()}
 function openHelp(open){goTab('set');S.help=true;S.helpOpen=open||'';render()}
 function closeHelp(){S.help=false;window.scrollTo(0,0);render()}
 function helpFilter(v){const q=v.trim().toLowerCase();document.querySelectorAll('#app details.hlp').forEach(d=>{d.hidden=!!q&&!d.textContent.toLowerCase().includes(q)});
@@ -1790,7 +1796,7 @@ function openFind(){if(!S.cfg)return;const d=$('dlg');
   d.hidden=false;const q=$('fdQ');q.oninput=()=>findRun(q.value);findRun('');setTimeout(()=>q.focus(),60);
   d.onclick=e=>{if(e.target===d||e.target.closest('[data-x]')){d.hidden=true;return}const b=e.target.closest('[data-go],.tx');if(!b)return;d.hidden=true;if(b.dataset.go)findGo(b.dataset.go)}}
 function findRun(raw){const v=raw.trim(),el=$('fdRes');if(!v){el.innerHTML='<div class="mini">Szukam we wpisach (notatka, pozycja, konto, kwota), w pozycjach budżetu, kontach, instrumentach i opłatach stałych.</div>';return}
-  const low=s=>String(s||'').toLowerCase(),q=low(v),sm=subsMap(S.cfg),grp=(t,L)=>L.length?`<div class="h2">${t}</div>${L.join('')}`:'',row=(go,ic,t,s)=>`<button class="frow" data-go="${go}"><span>${ic}</span><b>${esc(t)}</b><small>${esc(s)}</small></button>`;
+  const low=s=>String(s||'').toLowerCase(),q=low(v),sm=subsMap(S.cfg),grp=(t,L)=>L.length?`<div class="h2">${t}</div>${L.join('')}`:'',row=(go,ic,t,s)=>`<button class="fhit" data-go="${go}"><span>${ic}</span><b>${esc(t)}</b><small>${esc(s)}</small></button>`;
   const subs=S.cfg.cats.flatMap(c=>c.subs.map(s=>({s,c}))).filter(x=>low(x.s.name).includes(q)).slice(0,5).map(x=>row('sub:'+x.s.id,catIcon(x.c),x.s.name,cleanCat(x.c.name)));
   const accs=S.cfg.accs.filter(a=>!a.archived&&low(a.name).includes(q)).slice(0,4).map(a=>row('acc:'+a.id,'👛',a.name,ACCTAB[a.grp]||''));
   const ins=Object.entries(S.hold).filter(([,x])=>!x.deleted&&(low(x.name).includes(q)||low(x.ticker).includes(q))).slice(0,4).map(([,x])=>row('inst:'+x.acc,IICON[x.kind]||'📈',x.name,accN(x.acc)));
@@ -1804,7 +1810,7 @@ function findGo(g){const i=g.indexOf(':'),k=g.slice(0,i),id=g.slice(i+1);if(k=='
   if(k=='fix'){S.fixSub='fix';goTab('fix');return editFixed(id)}
   if(k=='acc'){const a=accById(id);return goTab(a&&(a.grp=='sav'||a.grp=='inv')?'sav':'acc')}
   if(k=='inst'){goTab('sav');return openInst(id)}}
-const goTab=t=>{S.help=false;if(t=='maj')t=ls.get('mw_maj')=='acc'?'acc':'sav';if(t=='sav'||t=='acc')ls.set('mw_maj',t);S.tab=t;S.recon=false;S.slip=null;S.proj=null;S.instAcc=null;S.values=false;window.scrollTo(0,0);render()};
+const goTab=t=>{S.help=false;S.report=null;if(t=='maj')t=ls.get('mw_maj')=='acc'?'acc':'sav';if(t=='sav'||t=='acc')ls.set('mw_maj',t);S.tab=t;S.recon=false;S.slip=null;S.proj=null;S.instAcc=null;S.values=false;window.scrollTo(0,0);render()};
 document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
 $('gearBtn').onclick=()=>goTab(S.tab=='set'?'dash':'set');
 $('addBtn').onclick=()=>openTx();
@@ -1868,4 +1874,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
 if(!DEMO&&'serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});navigator.serviceWorker.addEventListener('message',e=>{const u=e.data?.go;if(u){const g=goFromHash(new URL(u,location.href).hash);if(g)runGo(g)}})}
 window.addEventListener('hashchange',()=>{const g=goFromHash(location.hash);if(g&&S.cfg){window.history.replaceState(null,'',location.pathname+location.search);runGo(g)}});
 S.goPending=goFromHash(location.hash);if(S.goPending)window.history.replaceState(null,'',location.pathname+location.search);
-Object.assign(window,{openHelp,closeHelp,helpFilter,shareDemo,showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{openReport,closeReport,openHelp,closeHelp,helpFilter,shareDemo,showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

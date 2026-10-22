@@ -1,19 +1,21 @@
 // 📧 E-mails of Budżet M&W (GitHub Actions): the backup on the first Sunday of a month (~21:00, only to Mati)
-// and the summary of the previous month on the 1st (~9:00, to both). Sender: Mati's Gmail with an app password (secrets GMAIL_USER, GMAIL_APP_PASSWORD).
+// and the summary of the previous month on the 1st (~9:00, to both); on 1 January also the summary of the whole previous year. Sender: Mati's Gmail with an app password (secrets GMAIL_USER, GMAIL_APP_PASSWORD).
 // Recipients are the e-mails people log in with (households/main/users). Logs contain only counts.
 import nodemailer from 'nodemailer';
 import {gzipSync} from 'node:zlib';
 import {getAuth} from 'firebase-admin/auth';
 import {addMonths} from '../js/util.js';
 import {db,household,warsaw} from './common.mjs';
-import {backupDoc,monthStats,summaryHtml,summaryText} from './mail-lib.mjs';
+import {APP,backupDoc,monthStats,summaryHtml,summaryText} from './mail-lib.mjs';
+import {yearHtml,yearStats,yearText} from '../js/report.js';
 const H=db().doc('households/main'),{today,hour,weekday}=warsaw(),mode=process.env.MODE||'auto',ym=today.slice(0,7);
 const user=process.env.GMAIL_USER,pass=(process.env.GMAIL_APP_PASSWORD||'').replace(/\s/g,'');
 if(!user||!pass){console.error('Brak sekretów GMAIL_USER / GMAIL_APP_PASSWORD.');process.exit(1)}
 const logRef=H.collection('market').doc('maillog'),log=(await logRef.get()).data()||{};
 const doBackup=mode=='test-kopia'||(mode=='auto'&&weekday=='Sun'&&+today.slice(8)<=7&&hour>=21&&log.backup!=ym);
+const doYear=mode=='test-rok'||(mode=='auto'&&today.slice(5)=='01-01'&&hour>=9&&hour<14&&log.year!=today.slice(0,4));
 const doSum=mode=='test-podsumowanie'||(mode=='auto'&&+today.slice(8)==1&&hour>=9&&hour<14&&log.sum!=ym);
-if(!doBackup&&!doSum){console.log('– to nie pora na maile');process.exit(0)}
+if(!doBackup&&!doSum&&!doYear){console.log('– to nie pora na maile');process.exit(0)}
 const D=await household(H);
 /* recipients: everyone who can log in (Firebase accounts) plus what the phones remember; the backup only to Mati */
 const people=Object.values(D.users||{}).filter(u=>u.email);
@@ -32,4 +34,8 @@ if(doSum){const st=monthStats(D,addMonths(ym,-1));
   await tr.sendMail({from,to:all,subject:`📊 Budżet M&W – podsumowanie miesiąca`,text:summaryText(st),html:summaryHtml(st)});
   if(mode=='auto')await logRef.set({sum:ym,sumAt:today},{merge:true});
   console.log(`✓ podsumowanie wysłane do ${all.length} ${all.length==1?'osoby':'osób'}`)}
+if(doYear){const y=mode=='test-rok'?today.slice(0,4):String(+today.slice(0,4)-1),st=yearStats(D,y,today);
+  await tr.sendMail({from,to:all,subject:`🎉 Budżet M&W – podsumowanie roku ${y}`,text:yearText(st),html:yearHtml(st,APP)});
+  if(mode=='auto')await logRef.set({year:today.slice(0,4),yearAt:today},{merge:true});
+  console.log(`✓ podsumowanie roku wysłane do ${all.length} ${all.length==1?'osoby':'osób'}`)}
 process.exit(0);

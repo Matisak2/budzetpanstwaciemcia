@@ -1,5 +1,5 @@
 # 📧 Maile Budżetu M&W: kopia zapasowa w pierwszą niedzielę miesiąca (~21:00, tylko do Matiego)
-# i podsumowanie poprzedniego miesiąca 1. dnia miesiąca (~9:00, do obojga). Potrzebuje sekretów GMAIL_USER i GMAIL_APP_PASSWORD.
+# i podsumowanie poprzedniego miesiąca 1. dnia miesiąca (~9:00, do obojga); 1 stycznia także podsumowanie całego roku. Potrzebuje sekretów GMAIL_USER i GMAIL_APP_PASSWORD.
 name: Maile
 on:
   schedule:
@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       tryb:
-        description: 'test-kopia = kopia teraz do Matiego, test-podsumowanie = podsumowanie poprzedniego miesiąca teraz do obojga'
+        description: 'test-kopia = kopia teraz do Matiego, test-podsumowanie = podsumowanie poprzedniego miesiąca teraz do obojga, test-rok = podsumowanie bieżącego roku teraz do obojga'
         type: choice
-        options: [test-kopia, test-podsumowanie, auto]
+        options: [test-kopia, test-podsumowanie, test-rok, auto]
         default: test-kopia
 permissions:
   contents: read

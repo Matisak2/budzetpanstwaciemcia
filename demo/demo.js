@@ -82,8 +82,13 @@
     const today=iso(new Date());st['households/main/market/rates']={...(st['households/main/market/rates']||{}),...marketFor(today)};st['households/main/meta/backup']={at:Date.now()};
     D.store=st;LS.set('demo_db',JSON.stringify(st));LS.set('demo_mw_who',p.role);if(!LS.get('demo_mw_news'))LS.set('demo_mw_news','9999');
     if(document.body)watch();else document.addEventListener('DOMContentLoaded',watch);
-    ready();const t=window.setInterval(()=>{if(window.setWho&&window.S?.cfg){window.clearInterval(t);if(window.S.who!=p.role)window.setWho(p.role)}},100)}
+    ready();liveFx();const t=window.setInterval(()=>{if(window.setWho&&window.S?.cfg){window.clearInterval(t);if(window.S.who!=p.role)window.setWho(p.role)}},100)}
 
+  /* real exchange rates from the public NBP table (only public data; prices of shares and funds stay sample ones) */
+  function liveFx(){if(!window.fetch)return;const ctl=new window.AbortController(),to=setTimeout(()=>ctl.abort(),6000);
+    fetch('https://api.nbp.pl/api/exchangerates/tables/A?format=json',{signal:ctl.signal}).then(r=>r.ok?r.json():null).then(j=>{clearTimeout(to);const t=Array.isArray(j)?j[0]:null,fx={};
+      for(const x of t?.rates||[])if(x.code&&x.mid>0)fx[x.code]=x.mid;if(!Object.keys(fx).length)return;
+      const r=D.store['households/main/market/rates']||{};D.store['households/main/market/rates']={...r,fx,fxDate:t.effectiveDate||r.fxDate,src:{...(r.src||{}),fx:'NBP'}};D.touch?.()}).catch(()=>{})}
   /* the partner's name can be changed later (⚙️ → Wersja demonstracyjna); names inside the sample data change with it */
   D.rename=()=>{const p=people();if(!p)return;const v=(window.prompt('Imię drugiej osoby:',p.partner)||'').trim().slice(0,20);if(!v||v==p.partner)return;
     const re=new RegExp('(^|[^\\p{L}])'+p.partner.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?=$|[^\\p{L}])','gu');
