@@ -7,7 +7,7 @@ import {CELEBRATE,HELP,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} f
 import {PAL,P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,gainSvg,sankeySvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
 import {CURS,HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,addM,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue} from './inv.js';
-import {ULGI,pitSummaryP,recurringP,automatStale,debtStateP,limitPropP,maturitiesP,remStateP,todayItems as todayItemsP,yearStateP} from './today.js';
+import {ULGI,pitSummaryP,recurringP,automatStale,debtStateP,savedP,saveSplitP,limitPropP,maturitiesP,remStateP,todayItems as todayItemsP,yearStateP} from './today.js';
 import {KINDS,TAXF,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
 import {yearBody,yearStats} from './report.js';
 import {anomalies,avgActuals,carStats,seasonal,actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,roundUp,status,subsMap} from './logic.js';
@@ -174,7 +174,7 @@ const refundsOf=id=>liveOf(S.tx).filter(x=>x.refundOf===id);
 const pickKind=()=>S.etype=='inc'&&!S.refEdit?'inc':'exp';
 
 function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==t));
-  if(S.cfg){updCoin();updFx();updDebt();updProj();updX()}
+  if(S.cfg){updCoin();updFx();updDebt();updProj();updX();updSave()}
   $('msWrap').hidden=t=='tr';$('mtoWrap').hidden=t!='tr';$('mwWrap').hidden=t=='tr';$('mcLab').textContent=t=='tr'?'Z konta':'Konto';
   const s=S.cfg&&subsMap(S.cfg)[$('ms').value];if(s&&s.cat.type!=pickKind())setMs('');
   if(t=='tr'&&SP.length){SP=[];renderSplit()}updSplit()}
@@ -196,6 +196,23 @@ function updFx(){if(!S.cfg)return;const t=S.etype,cA=accCur($('mc').value),cB=ac
   const card=t!='tr'&&cA=='PLN'&&!S.refEdit;$('fxBtn').hidden=!card||S.fxOpen;$('fxCard').hidden=!card||!S.fxOpen;
   if(card&&S.fxOpen){const a=calcAmt($('ma').value),b=calcAmt($('fxa').value);
     $('fxCardRate').textContent=a>0&&b>0?`💱 ${fxRate($('fxc').value,b,'PLN',a)} – dopiszę do notatki`:'„Kwota (zł)” to tyle, ile pobrał bank. Wpisz też kwotę w walucie – kurs policzę sam.'}}
+/* 💰 a transfer into / out of an account that collects money for paying off liabilities: how much of it is for which one */
+let SV={mode:'',ids:'',auto:''};
+const saveDebtsOf=acc=>{const tx=liveOf(S.tx).filter(t=>t.id!==S.edit),own=(S.edit&&liveById(S.edit)?.save)||{};
+  return acc?debtList('owe').filter(d=>d.saveAcc==acc).map(d=>({d,saved:savedP(d.id,tx),left:debtState(d).left})).filter(x=>x.left>0||x.saved>0||own[x.d.id]):[]};
+function updSave(){if(!S.cfg)return;const tr=S.etype=='tr',to=tr?saveDebtsOf($('mto').value):[],from=tr&&!to.length?saveDebtsOf($('mc').value):[],L=to.length?to:from,mode=to.length?'in':from.length?'out':'';
+  $('msaveWrap').hidden=!mode;if(!mode){SV={mode:'',ids:'',auto:SV.auto};return}
+  const ids=mode+L.map(x=>x.d.id).join();
+  if(ids!=SV.ids){const prev={};$('msaveRows').querySelectorAll('input').forEach(i=>prev[i.dataset.sv]=i.value);
+    if(!SV.auto&&mode=='in'&&L.length==1)SV.auto=L[0].d.id;
+    $('msaveRows').innerHTML=L.map(x=>`<label class="svrow"><span>${esc(dIcon(x.d)+' '+x.d.name)}<small>odłożone ${zl(x.saved)}${x.left?' z '+zl(x.left):''}</small></span><input inputmode="decimal" placeholder="0,00" autocomplete="off" data-sv="${x.d.id}" value="${esc(prev[x.d.id]||'')}" aria-label="Kwota dla: ${esc(x.d.name)}"></label>`).join('');
+    $('msaveRows').querySelectorAll('input').forEach(i=>i.oninput=()=>{if(i.dataset.sv==SV.auto)SV.auto='x';updSaveHint()});SV.ids=ids;SV.mode=mode;SV.L=L}
+  const a=$('msaveRows').querySelector(`input[data-sv="${SV.auto}"]`);if(a){const v=calcAmt($('ma').value);a.value=v>0?f2(v):''}
+  $('msaveLab').textContent=mode=='in'?'💰 Odkładasz na spłatę? Ile z tej wpłaty na którą pożyczkę:':'💰 Zabierasz z odłożonych na spłatę? Wpisz, z której pożyczki:';updSaveHint()}
+function updSaveHint(){if(!SV.mode)return;const amt=calcAmt($('ma').value),sum=[...$('msaveRows').querySelectorAll('input')].reduce((a,i)=>a+Math.max(0,calcAmt(i.value)),0),acc=SV.mode=='in'?$('mto').value:$('mc').value;
+  const tx=liveOf(S.tx).filter(t=>t.id!==S.edit),s=saveSplitP(S.cfg,tx,S.debts,acc,td());
+  $('msaveHint').textContent=SV.mode=='in'?(sum>amt?`Wpisano ${zl(sum)} – więcej niż cała wpłata.`:amt>sum?`Reszta (${zl(amt-sum)}) zostaje wolna na koncie.`:'Cała wpłata idzie na spłatę.')
+    :`Zostaw puste, jeśli bierzesz wolne pieniądze (wolne teraz: ${zl(Math.max(0,s.free))}).`}
 function autoWho(){const a=S.cfg.accs.find(x=>x.id==$('mc').value),o=a&&accOwner(a);if(o=='Mati'||o=='Wercia')$('mw').value=o}
 
 /* position picker: search, recently used, the note's usual position, category tiles */
@@ -241,6 +258,7 @@ function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class="srow"
 function openTx(id,pre){if(guard())return;
   const t=id?liveById(id):null;
   if(t&&(t.type=='lend'||t.lendOf||t.debtIn)){ask({title:t.note,text:`${accN(t.acc)}: ${am(t.amount,t.acc)} (${t.date.split('-').reverse().join('.')})\nTen wpis należy do ${t.debtIn?'zobowiązania':'należności'} w 👛 Konta.`,ok:'Pokaż',cancel:'Zamknij',alt:'Usuń wpis'}).then(r=>{if(r=='alt')delTx(id);else if(r){S.tab='acc';S.accView=t.debtIn?'owe':'lent';render()}});return}
+  if(t&&t.payoff){const d=S.debts[t.debt],it=liveOf(S.tx).find(x=>x.payOf===t.id);ask({title:t.note,text:`${accN(t.acc)}: ${am(t.amount,t.acc)} (${t.date.split('-').reverse().join('.')})${it?`\n💸 odsetki i opłaty: ${am(it.amount,it.acc)} – są w Budżecie`:''}\nSpłata ${d?'„'+d.name+'” ':''}nie liczy się w Budżecie. Usunięcie przywróci dług${it?' i usunie odsetki':''}.`,ok:'Pokaż',cancel:'Zamknij',alt:'Usuń wpis'}).then(r=>{if(r=='alt')delTx(id);else if(r){S.tab='acc';S.accView='owe';render()}});return}
   const sp=t&&(t.slip?t:t.slipOf?liveById(t.slipOf):null);
   if(sp&&sp.slip&&incById(sp.slip)){ask({title:'Wpis z paska pensji',text:`${sp.note} – ${sp.date.split('-').reverse().join('.')}\nTen wpis powstał z paska. Zmień go w pasku, a wszystko przeliczy się samo.`,ok:'Otwórz pasek',cancel:'Zamknij',alt:'Usuń wpis'}).then(r=>{if(r=='alt')delTx(id);else if(r)openSlip(sp.slip,sp.date.slice(0,7))});return}
   if(t&&t.type=='adj'){ask({title:'Wyrównanie salda',text:`${accN(t.acc)}: ${t.amount>0?'+':''}${zl(t.amount)} (${t.date})\nUsunąć to wyrównanie?`,ok:'Usuń',danger:true}).then(r=>{if(r)delTx(id)});return}
@@ -265,6 +283,7 @@ function openTx(id,pre){if(guard())return;
   setMs(t?t.sub:pre?.sub||(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');fillProj(t?.proj||pre?.proj||'');$('mlit').value=t?.lit?String(t.lit).replace('.',','):'';$('modo').value=t?.odo||'';S.coinOn=true;updCoin();
   if(!$('fxc').options.length)$('fxc').innerHTML=CURS.map(([c,n])=>`<option value="${c}">${c} – ${esc(n)}</option>`).join('');
   $('ma2').value=t?.amount2?f2(t.amount2):'';S.fxOpen=!!t?.fxCur;$('fxc').value=t?.fxCur||'EUR';$('fxa').value=t?.fxAmt?f2(t.fxAmt):'';updFx();
+  SV={mode:'',ids:'',auto:t?'x':pre?.saveFor||''};$('msaveRows').innerHTML='';updSave();if(t?.save)$('msaveRows').querySelectorAll('input').forEach(i=>{const v=+t.save[i.dataset.sv]||0;if(v)i.value=f2(Math.abs(v))});updSaveHint();
   const left=t&&t.type=='exp'?t.amount-refundsOf(t.id).reduce((a,x)=>a+x.amount,0):0;
   $('shRef').hidden=!(left>0);
   $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;$('shNext').hidden=!!t;
@@ -281,6 +300,10 @@ async function saveTx(next){if(guard())return;
   if(two&&amount2<=0)return toast(`Podaj, ile wpłynie na drugie konto (${curSym(cB)})`,'bad');
   const fxAmt=type!='tr'&&cA=='PLN'&&S.fxOpen&&!S.refEdit?calcAmt($('fxa').value):0,fxCur=fxAmt>0?$('fxc').value:'';
   const auto=two?'💱 kurs '+fxRate(cA,amount,cB,amount2):fxCur?`💱 ${money(fxAmt,fxCur)} · kurs ${fxRate(fxCur,fxAmt,'PLN',amount)}`:'';
+  let save=null;if(type=='tr'&&SV.mode){save={};const lim=SV.mode=='in'?(two?amount2:amount):amount;let sum=0;
+    for(const i of $('msaveRows').querySelectorAll('input')){const v=calcAmt(i.value),x=SV.L.find(x=>x.d.id==i.dataset.sv);if(v<0)return toast('Kwota odkładania nie może być ujemna','bad');if(!v||!x)continue;
+      if(SV.mode=='out'&&v>x.saved)return toast(`Na „${x.d.name}” odłożono tylko ${zl(x.saved)}`,'bad');save[x.d.id]=SV.mode=='in'?v:-v;sum+=v}
+    if(sum>lim)return toast(SV.mode=='in'?'Na pożyczki wpisano więcej, niż wynosi wpłata':'Z odłożonych wpisano więcej, niż wynosi wypłata','bad')}
   const parts=type=='tr'||S.edit?[]:SP.map(x=>({sub:x.sub,amount:calcAmt(x.amt)}));
   if(parts.some(x=>!x.sub))return toast('Wybierz pozycję w każdym wierszu paragonu','bad');
   if(parts.some(x=>x.amount<=0))return toast('Podaj kwotę w każdym wierszu paragonu','bad');
@@ -291,6 +314,7 @@ async function saveTx(next){if(guard())return;
   const base={type,date,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?S.who:$('mw').value,note:[stripFx($('mn').value.trim()),auto].filter(Boolean).join(' · '),deleted:false,ts:Date.now()};
   const body={...base,amount:main,sub:type=='tr'?'':$('ms').value};
   if(two)body.amount2=amount2;else if(old?.amount2)body.amount2=null;
+  if(old?.save&&old.type=='tr'){const z={};Object.keys(old.save).forEach(k=>z[k]=0);save={...z,...(save||{})}}if(save&&Object.keys(save).length)body.save=save;
   if(fxCur){body.fxCur=fxCur;body.fxAmt=fxAmt}else if(old?.fxCur){body.fxCur='';body.fxAmt=0}
   const proj=type!='tr'&&!$('mprojWrap').hidden?$('mproj').value:'';if(proj){body.proj=proj;base.proj=proj}else if(old?.proj)body.proj='';
   const lit=!$('mcarWrap').hidden?pnum($('mlit').value)||0:0,odo=!$('mcarWrap').hidden?Math.round(pnum($('modo').value))||0:0;if(lit)body.lit=lit;else if(old?.lit)body.lit=0;if(odo)body.odo=odo;else if(old?.odo)body.odo=0;
@@ -310,10 +334,10 @@ async function saveTx(next){if(guard())return;
   if(ok&&debt&&S.debts[debt]?.mode=='bank'&&!old)setTimeout(()=>toast('Rata zapisana. Wpisz, ile zostało wg banku.','',{label:'✎ Pozostało',fn:()=>setDebtLeft(debt)}),1500);
   if(ok&&next===true){openTx(null,{type:keep.type});$('mc').value=keep.acc;$('md').value=keep.date;$('mw').value=keep.who;updX()}
   if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):''));if(ym!=S.ym){S.ym=ym;render()}}}
-async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id);
+async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
   linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));
-  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
+  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.payOf)?' razem z odsetkami':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
 async function markRefund(id){const t=liveById(id);if(!t)return;const done=refundsOf(id).reduce((a,x)=>a+x.amount,0),left=t.amount-done;
   if(left<=0)return toast('Ten wydatek jest już w całości zwrócony');
   const r=await ask({title:'↩️ Zwrot: '+(subsMap(S.cfg)[t.sub]?.name||''),text:`Wydatek ${am(t.amount,t.acc)} z ${t.date.split('-').reverse().join('.')}${done?`, zwrócono już ${am(done,t.acc)}`:''}.\nZwrot zmniejszy wydatek w tej samej pozycji – nie liczy się jako przychód.`,
@@ -336,12 +360,12 @@ $('pkClose').onclick=closePick;$('pick').onclick=e=>{if(e.target===$('pick'))clo
 $('mn').oninput=()=>{if(S.edit||S.etype=='tr'||($('ms').value&&!S.autoSub))return;const s=noteSub($('mn').value,pickKind());
   if(s){S.autoSub=true;setMs(s.id,'💡 podpowiedziane po notatce – stuknij, żeby zmienić')}else if(S.autoSub){S.autoSub=false;setMs('')}};
 $('ma').addEventListener('input',()=>updX());
-$('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]\s*\d/.test(v)?'= '+am(calcAmt(v),$('mc').value):'';updSplit();updCoin();updFx()};
+$('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]\s*\d/.test(v)?'= '+am(calcAmt(v),$('mc').value):'';updSplit();updCoin();updFx();updSave()};
 $('mproj').onchange=()=>updProj();
 $('mwar').onchange=()=>{if($('mwar').value=='date'&&!$('mward').value)$('mward').value=addM($('md').value||td(),24);updX()};
 $('mulga').onchange=()=>updX();$('mulgaBtn').onclick=()=>{S.ulgaOpen=true;updX()};
 $('mulga').innerHTML='<option value="">— bez ulgi —</option>'+Object.entries(ULGI).map(([k,u])=>`<option value="${k}">${u.n}</option>`).join('');
-$('ma2').oninput=$('fxa').oninput=$('fxc').onchange=$('mto').onchange=()=>updFx();
+$('ma2').oninput=$('fxa').oninput=$('fxc').onchange=()=>updFx();$('mto').onchange=()=>{updFx();updSave()};
 $('fxBtn').onclick=()=>{S.fxOpen=true;updFx();$('fxa').focus()};
 $('md').onchange=()=>updCoin();
 $('rnd').onclick=()=>{S.coinOn=!S.coinOn;updCoin()};
@@ -456,13 +480,15 @@ async function editFixed(fid,kind,pre){if(guard())return;
   if(inc){body.vary=r.v=='1';body.ppk=r.p||''}
   let tgt=f0;if(f0)Object.assign(f0,body);else{tgt=body;S.cfg.fixed.push(body)}
   render();saveFixed(tgt)}
-async function editFixedTr(f){const savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv'||a.grp=='sub')&&!a.archived);
+async function editFixedTr(f){const savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv'||a.grp=='sub')&&!a.archived),svd=debtList('owe').filter(d=>d.saveAcc&&(debtState(d).left>0||d.id==f?.saveFor));
   const r=await ask({title:f?'Stały przelew':'Nowy stały przelew na oszczędności',fields:[{id:'n',label:'Nazwa',value:f?.name||'',ph:'np. Oszczędności co miesiąc'},{id:'a',label:'Kwota (zł)',type:'decimal',value:f?f2(f.amount):''},
     {id:'d',label:'Dzień miesiąca (1–31)',type:'int',value:f?.day||10},{id:'c',label:'Z konta',type:'select',value:f?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&accOwner(a)==S.who)?.id||'',options:accOpts()},
-    {id:'t',label:'Na konto',type:'select',value:f?.to||savs[0]?.id||'',options:savs.map(a=>[a.id,a.name])}],ok:f?'Zapisz':'Dodaj',alt:f?'Usuń przelew':null});
+    {id:'t',label:'Na konto',type:'select',value:f?.to||savs[0]?.id||'',options:savs.map(a=>[a.id,a.name])},
+    ...(svd.length||f?.saveFor?[{id:'sf',label:'💰 Odkładanie na spłatę pożyczki',type:'select',value:f?.saveFor||'',options:[['','— nie —'],...svd.map(d=>[d.id,`${d.name} (na „${accN(d.saveAcc)}”)`])]}]:[])],ok:f?'Zapisz':'Dodaj',alt:f?'Usuń przelew':null});
   if(!r)return;if(r=='alt'){S.cfg.fixed=S.cfg.fixed.filter(x=>x!==f);render();delFixedDb(f.id);return}
   const amount=gr(r.a),day=Math.round(pnum(r.d));if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(day<1||day>31)return toast('Dzień miesiąca musi być od 1 do 31','bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
-  const body={id:f?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:'',acc:r.c,to:r.t,kind:'tr'};let tgt=f;if(f)Object.assign(f,body);else{tgt=body;S.cfg.fixed.push(body)}render();saveFixed(tgt)}
+  const sd=r.sf&&S.debts[r.sf];if(sd&&sd.saveAcc!=r.t)return toast(`Na „${sd.name}” odkładasz na koncie „${accN(sd.saveAcc)}” – wybierz je w polu „Na konto”`,'bad');
+  const body={id:f?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:'',acc:r.c,to:r.t,kind:'tr',saveFor:sd?r.sf:''};let tgt=f;if(f)Object.assign(f,body);else{tgt=body;S.cfg.fixed.push(body)}render();saveFixed(tgt)}
 const lastOf=(f,pred)=>liveOf(S.tx).filter(t=>pred(t)&&t.date<S.ym+'-01').sort((a,b)=>b.date.localeCompare(a.date))[0];
 async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==fid),paid=fixedPaid(fid,S.ym),inc=f.kind=='inc';
   const src=inc&&!paid&&incs().find(x=>x.fixed==fid);if(src)return openSlip(src.id);
@@ -472,7 +498,8 @@ async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.
   const due=fixedDate(f,S.ym),date=td().startsWith(S.ym)?td():due;
   if(f.kind=='tr'){const r=await ask({title:'Przelano: '+f.name,fields:[{id:'a',label:'Kwota (zł)',type:'decimal',value:f2(f.amount)},{id:'d',label:'Data',type:'date',value:date},{id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()},{id:'t',label:'Na konto',type:'select',value:f.to,options:accOpts()}],ok:'Odhacz'});
     if(!r)return;const amt=pg(r.a);if(amt<=0)return toast('Podaj kwotę','bad');if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
-    S.justChecked=f.id;if(await putTx(S.ym,'t'+rid(),{type:'tr',amount:amt,date:r.d,sub:'',acc:r.c,to:r.t,who:S.who,note:'🐷 '+f.name,fixedId:f.id,deleted:false,ts:Date.now()}))toast('Odłożono: '+zl(amt)+' 🐷');return}
+    const sf=f.saveFor&&S.debts[f.saveFor]?.saveAcc==r.t?f.saveFor:'';
+    S.justChecked=f.id;if(await putTx(S.ym,'t'+rid(),{type:'tr',amount:amt,date:r.d,sub:'',acc:r.c,to:r.t,who:S.who,note:'🐷 '+f.name,fixedId:f.id,...(sf?{save:{[sf]:amt}}:{}),deleted:false,ts:Date.now()}))toast('Odłożono: '+zl(amt)+(sf?' na spłatę: '+S.debts[sf].name:'')+' 🐷');return}
   if(!inc){
     const r=await ask({title:'Zapłacono: '+f.name,text:'Kwotę możesz zmienić, jeśli w tym miesiącu rachunek był inny.',fields:[
       {id:'a',label:'Kwota (zł)',type:'decimal',value:f2(f.amount)},
@@ -723,9 +750,9 @@ function txMatches(t,sm,F,ym,AQ){
   return q.split(/\s+/).every(w=>hay.includes(w.replace(',','.'))||hay.includes(w))}
 function txRowH(t,sm,rf={},cn={}){const M=v=>am(v,t.acc),k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'||k=='lend'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
   const cls=k=='invs'?'inv':k=='lend'?'tr':t.lendOf||t.debtIn?'tr':k,s=sm[t.sub],c=s&&(k=='exp'||k=='inc')?s.cat:null;
-  const title=t.ppk||k=='lend'||t.lendOf||t.debtIn?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
-  const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.roundOf?'🪙':k=='lend'||t.lendOf?'🔺':t.debtIn?'🔻':k=='tr'?'⇄':k=='adj'?(t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
-  return`<button class="tx" data-id="${t.id}" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">🔻 spłata: ${esc(S.debts[t.debt].name)}</div>`:''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
+  const title=t.ppk||k=='lend'||t.lendOf||t.debtIn||t.payoff?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
+  const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.payoff?'✅':t.roundOf?'🪙':k=='lend'||t.lendOf?'🔺':t.debtIn?'🔻':k=='tr'?'⇄':k=='adj'?(t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
+  return`<button class="tx" data-id="${t.id}" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.payoff?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">${t.payoff?'nie liczy się w Budżecie – to oddanie pożyczki':'🔻 spłata: '+esc(S.debts[t.debt].name)}</div>`:''}${t.save&&k=='tr'?Object.entries(t.save).filter(([i,v])=>v&&S.debts[i]).map(([i,v])=>`<div class="coinl" style="color:#a16207">💰 ${v>0?'na spłatę':'z odłożonych'}: ${esc(S.debts[i].name)} ${M(Math.abs(v))}</div>`).join(''):''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
 function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q.trim());
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m',rf={};
@@ -736,7 +763,7 @@ function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q
   if(!l.length)return filtered?catsEmpty('Nic nie znaleziono.<br>Zmień wyszukiwanie albo filtry.',1,'lupa'):catsEmpty('Brak transakcji w tym miesiącu.<br>Dodaj pierwszą przyciskiem ＋ w prawym dolnym rogu.',0,'box');
   let h='';
   if(filtered){const E={},I={},ad=(m,t,v)=>{const c=accCur(t.acc);m[c]=(m[c]||0)+v};
-    l.forEach(t=>{if(t.type=='exp')ad(E,t,t.amount);else if(t.refundOf)ad(E,t,-t.amount);else if(t.type=='inc')ad(I,t,t.amount)});
+    l.forEach(t=>{if(t.type=='exp'&&!t.payoff)ad(E,t,t.amount);else if(t.refundOf)ad(E,t,-t.amount);else if(t.type=='inc')ad(I,t,t.amount)});
     const sx=m=>((m.PLN?zl(m.PLN):'')+fxPlus({...m,PLN:0})).replace(/^ \+ /,''),e=sx(E),i=sx(I);
     h+=`<div class="fsum"><b>${lv.length} ${plu(lv.length,'wpis','wpisy','wpisów')}</b>${e?` · wydatki <b class="t-exp">${e}</b>`:''}${i?` · przychody <b class="t-inc">${i}</b>`:''}</div>`}
   const days={};lv.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));
@@ -1160,12 +1187,14 @@ function debtsH(dir){const L=debtList(dir).map(d=>({d,st:debtState(d)})),act=L.f
     if(old.length)h+=`<div class="note">💡 W pozycji „Udzielone pożyczki” jest ${old.length} ${plu(old.length,'wydatek','wydatki','wydatków')} (${zl(old.reduce((a,t)=>a+t.amount,0))}). Pożyczka to nie wydatek – ktoś Wam ją odda. <button class="btn sm primary" onclick="moveLent()">Przenieś do należności</button></div>`}
   h+=`<button class="btn dark" onclick="editDebt(null,'${dir}')">+ ${owe?'Dodaj zobowiązanie':'Pożyczyliśmy komuś'}</button>`;
   if(!L.length)h+=catsEmpty(owe?'Dodaj kredyt, raty albo pożyczkę. Raty w Budżecie zostają wydatkami, a tu zobaczysz, ile jeszcze zostało.':'Zapisz, komu pożyczyliście pieniądze i do kiedy ma oddać. Przypomnę o terminie.',1,'envelope');
+  const tx=liveOf(S.tx),svH=(d,st)=>{if(!owe||!d.saveAcc||!st.left)return'';const sv=savedP(d.id,tx),pc=Math.min(100,sv/st.left*100);
+    return`<div class="dsave"><div class="r1"><span>💰 Odłożone na „${esc(accN(d.saveAcc))}”</span><b class="num">${zl(sv)}</b></div><div class="gbar"><i style="width:${Math.max(0,pc).toFixed(1)}%"></i></div><div class="mini">${sv>=st.left?'✓ Uzbierane – możesz spłacić całość':`${Math.floor(Math.max(0,pc))}% · brakuje ${zl(st.left-sv)}`}</div></div>`};
   const card=({d,st})=>`<div class="debt${st.late?' late':''}"><div class="r1"><b>${dIcon(d)} ${esc(d.name)}</b><b class="num">${zl(st.left)}</b></div>
     <div class="mini">${esc(d.party||'')}${d.party?' · ':''}${owe?'spłaca':'pieniądze'}: ${esc(d.payer||'Wspólne')}${d.inst?` · rata ${zl(d.inst)}${d.day?` do ${d.day}.`:''}`:''}${d.rate?` · ${esc(String(d.rate).replace('.',','))}%${d.rtype=='var'?' zmienne':' stałe'}`:''}</div>
     <div class="gbar"><i style="width:${st.pc.toFixed(1)}%"></i></div>
     <div class="mini">${owe?'spłacono':'oddano'} ${zl((d.start||0)-st.left)} z ${zl(d.start||0)} (${Math.round(st.pc)}%)${st.left?(owe?(st.end?` · szacowany koniec: ${MN[+st.end.slice(5)-1].toLowerCase()} ${st.end.slice(0,4)}`:d.until?` · do ${d.until.split('-').reverse().join('.')}`:''):(d.until?` · termin zwrotu ${d.until.split('-').reverse().join('.')}`:'')):' · ✓ '+(owe?'spłacone':'oddane')}${d.mode=='bank'&&st.src!='auto'?` · wg banku z ${st.src.split('-').reverse().join('.')}`:''}</div>
-    ${st.late?'<div class="mini t-exp"><b>⚠️ Termin zwrotu minął</b></div>':''}${d.note?`<div class="mini">📝 ${esc(d.note)}</div>`:''}
-    <div class="btns" style="gap:6px;margin-top:4px">${st.left?(owe?`<button class="chip" onclick="openTx(null,{type:'exp',debt:'${d.id}'})">+ Rata</button>${d.mode=='bank'?`<button class="chip" onclick="setDebtLeft('${d.id}')">✎ Pozostało</button>`:''}`:`<button class="chip" onclick="lentBack('${d.id}')">↩️ Zwrot</button>`):''}<button class="chip" onclick="editDebt('${d.id}')">Edytuj</button></div></div>`;
+    ${svH(d,st)}${st.late?'<div class="mini t-exp"><b>⚠️ Termin zwrotu minął</b></div>':''}${d.note?`<div class="mini">📝 ${esc(d.note)}</div>`:''}
+    <div class="btns" style="gap:6px;margin-top:4px">${st.left?(owe?`<button class="chip" onclick="openTx(null,{type:'exp',debt:'${d.id}'})">+ Rata</button>${d.saveAcc?`<button class="chip sv" onclick="openTx(null,{type:'tr',to:'${d.saveAcc}',saveFor:'${d.id}'})">💰 Odłóż</button>${savedP(d.id,tx)>0?`<button class="chip" onclick="openTx(null,{type:'tr',from:'${d.saveAcc}',saveFor:'${d.id}'})">↑ Weź z odłożonych</button>`:''}`:''}<button class="chip" onclick="payoffDebt('${d.id}')">✅ Spłać całość</button>${d.mode=='bank'?`<button class="chip" onclick="setDebtLeft('${d.id}')">✎ Pozostało</button>`:''}`:`<button class="chip" onclick="lentBack('${d.id}')">↩️ Zwrot</button>`):''}<button class="chip" onclick="editDebt('${d.id}')">Edytuj</button></div></div>`;
   h+=act.map(card).join('');
   if(done.length)h+=`<div class="h2">${owe?'Spłacone':'Oddane'}</div>`+done.map(card).join('');
   return h}
@@ -1178,18 +1207,34 @@ async function editDebt(id,dir){if(guard())return;const d0=id?S.debts[id]:null;d
     {id:'d',label:'Data',type:'date',value:d0?.date||td()}];
   if(owe)f.push({id:'m',label:'Jak liczyć, ile zostało',type:'select',value:d0?.mode||'auto',options:[['bank','Kredyt w banku – wpisuję „pozostało” z aplikacji banku'],['auto','Sama odejmuj spłaty (np. pożyczka prywatna, raty 0%)']]},
     {id:'i',label:'Rata miesięczna (zł, zwykle)',type:'decimal',value:d0?.inst?f2(d0.inst):''},{id:'dy',label:'Dzień raty (1–31)',type:'int',value:d0?.day||''},
-    {id:'r',label:'Oprocentowanie (%)',type:'decimal',value:d0?.rate!=null?String(d0.rate).replace('.',','):''},{id:'rt',label:'Oprocentowanie',type:'select',value:d0?.rtype||'fix',options:[['fix','Stałe'],['var','Zmienne (np. WIBOR / WIRON + marża)']]});
+    {id:'r',label:'Oprocentowanie (%)',type:'decimal',value:d0?.rate!=null?String(d0.rate).replace('.',','):''},{id:'rt',label:'Oprocentowanie',type:'select',value:d0?.rtype||'fix',options:[['fix','Stałe'],['var','Zmienne (np. WIBOR / WIRON + marża)']]},
+    {id:'sa',label:'💰 Zbieram na spłatę całości na koncie',type:'select',value:d0?.saveAcc||'',options:[['','— nie zbieram —'],...accOpts()]});
   f.push({id:'u',label:owe?'Do kiedy (ostatnia rata)':'Termin zwrotu',type:'date',value:d0?.until||''},{id:'t',label:'Warunki, notatki',value:d0?.note||''});
   if(!d0)f.push({id:'c',label:owe?'Pieniądze wpłynęły na konto':'Pieniądze wyszły z konta',type:'select',value:'',options:[['','— nie zapisuj ruchu na koncie —'],...accOpts()]});
   const r=await ask({title:d0?(owe?'Zobowiązanie':'Należność'):(owe?'Nowe zobowiązanie':'Pożyczyliśmy komuś'),fields:f,ok:d0?'Zapisz':'Dodaj',alt:d0?'Usuń':null});
   if(!r)return;if(r=='alt'){if(!await ask({title:'Usunąć?',text:d0.name+'\nWpisy w rejestrze zostaną.',ok:'Usuń',danger:true}))return;merge(doc(DEBTS(),id),{deleted:true});return toast('Usunięto')}
   const start=gr(r.a);if(!r.n.trim()||start<=0)return toast('Podaj nazwę i kwotę','bad');if(!isDate(r.d))return toast('Wybierz datę','bad');
   const body={dir,kind:r.k,name:r.n.trim(),party:r.p.trim(),payer:r.w,start,date:r.d,until:isDate(r.u)?r.u:'',note:r.t.trim(),deleted:false,ts:Date.now()};
-  if(owe){body.mode=r.m;body.inst=gr(r.i);body.day=Math.round(pnum(r.dy))||0;body.rate=r.r.trim()?pn(r.r):null;body.rtype=r.rt}
+  if(owe){body.mode=r.m;body.inst=gr(r.i);body.day=Math.round(pnum(r.dy))||0;body.rate=r.r.trim()?pn(r.r):null;body.rtype=r.rt;body.saveAcc=r.sa||''}
   const did=id||'d'+rid();merge(doc(DEBTS(),did),body);
   if(!d0&&r.c){const ym=r.d.slice(0,7);putTx(ym,'t'+rid(),owe?{type:'inc',amount:start,date:r.d,sub:'',acc:r.c,to:'',who:S.who,note:'🔻 Pożyczka od '+(body.party||body.name),debtIn:did,deleted:false,ts:Date.now()}
     :{type:'lend',amount:start,date:r.d,sub:'',acc:r.c,to:'',who:S.who,note:'🔺 Pożyczka dla '+(body.party||body.name),lendId:did,deleted:false,ts:Date.now()})}
   toast(d0?'Zapisano':owe?'Dodano zobowiązanie':'Zapisano pożyczkę')}
+/* ✅ paying off at once: the principal goes back to the lender and is not a budget expense (the loan was not income either) –
+   only interest and fees count, on a position of their own; what was put aside for this liability is used up first */
+async function payoffDebt(id){if(guard())return;const d=dById(id);if(!d)return;const st=debtState(d),saved=d.saveAcc?savedP(id,liveOf(S.tx)):0;
+  const est=+d.rate>0&&st.left?Math.round(st.left*d.rate/1200):0,subs=S.cfg.cats.filter(c=>c.type=='exp').flatMap(c=>c.subs),isub=(subs.find(s=>/odsetk/i.test(s.name))||subs.find(s=>/kredyt|pożycz|raty|opłaty bank/i.test(s.name)))?.id||d.sub||'';
+  const r=await ask({title:'✅ Spłata całości: '+d.name,text:`Spłata kapitału nie liczy się w Budżecie – oddajesz pożyczone pieniądze. Do Budżetu trafią tylko odsetki i opłaty.${saved>0?`\n💰 Odłożone: ${zl(saved)} na „${accN(d.saveAcc)}”.`:''}${est?`\nPrzy ${String(d.rate).replace('.',',')}% odsetki za miesiąc od ${zl(st.left)} to ok. ${zl(est)} – dokładną kwotę poda bank.`:''}`,
+    fields:[{id:'a',label:'Spłacony kapitał (zł)',type:'decimal',value:f2(st.left)},{id:'i',label:'Odsetki i opłaty (zł, z banku)',type:'decimal',value:'',ph:'0,00'},
+      {id:'s',label:'Pozycja na odsetki',type:'select',value:isub,options:[['','— wybierz —'],...subOpts('exp')]},
+      {id:'c',label:'Z konta',type:'select',value:d.saveAcc||S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived&&accOwner(a)==S.who)?.id||'',options:accOpts()},{id:'d',label:'Data',type:'date',value:td()}],ok:'Zapisz spłatę'});
+  if(!r)return;const P=gr(r.a),I=gr(r.i);if(P<=0)return toast('Podaj spłacony kapitał','bad');if(I<0)return toast('Odsetki nie mogą być ujemne','bad');if(!isDate(r.d))return toast('Wybierz datę','bad');if(I&&!r.s)return toast('Wybierz pozycję na odsetki','bad');
+  const full=P>=st.left,here=r.c==d.saveAcc,use=Math.max(0,full?saved:here?Math.min(saved,P+I):0),ui=here?Math.min(I,use):0,up=use-ui;
+  const ym=r.d.slice(0,7),pid='t'+rid(),who=d.payer=='Mati'||d.payer=='Wercia'?d.payer:S.who,base={date:r.d,acc:r.c,to:'',who,deleted:false,ts:Date.now()};
+  if(!await putTx(ym,pid,{...base,type:'exp',amount:P,sub:'',note:'Spłata całości: '+d.name,debt:id,payoff:true,...(up?{save:{[id]:-up}}:{})}))return;
+  if(I)putTx(ym,'t'+rid(),{...base,type:'exp',amount:I,sub:r.s,note:'💸 Odsetki od spłaty pożyczki: '+d.name,debtInt:id,payOf:pid,...(ui?{save:{[id]:-ui}}:{})});
+  if(d.mode=='bank')merge(doc(DEBTS(),id),{left:{[r.d]:Math.max(0,st.left-P)}});
+  toast(full?'Pożyczka spłacona w całości 🎉'+(saved>P+I&&saved?` · ${zl(saved-P-I)} z odłożonych jest teraz wolne`:''):'Zapisano spłatę '+zl(P))}
 async function setDebtLeft(id){if(guard())return;const d=dById(id);if(!d)return;const st=debtState(d);
   const r=await ask({title:'Pozostało do spłaty: '+d.name,text:'Wpisz kwotę z aplikacji banku (kapitał do spłaty).',fields:[{id:'a',label:'Pozostało (zł)',type:'decimal',value:f2(st.left)},{id:'d',label:'Stan na dzień',type:'date',value:td()}]});
   if(!r)return;if(!isDate(r.d))return toast('Wybierz datę','bad');merge(doc(DEBTS(),id),{left:{[r.d]:gr(r.a)}});toast('Zapisano')}
@@ -1345,12 +1390,12 @@ function inflationH(cfg,tx,y){const cur=td().slice(0,7),last=y<cur.slice(0,4)?12
 function exportCsv(y){const sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>!y||t.date.startsWith(y)).sort((a,b)=>a.date.localeCompare(b.date));if(!L.length)return toast('Brak wpisów do eksportu','bad');
   const TY={exp:'wydatek',inc:'przychód',tr:'przelew',adj:'wyrównanie',inv:'zakup inwestycji',invs:'sprzedaż inwestycji',lend:'pożyczka'},q=v=>{const s=String(v??'');return/[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
   const rows=[['Data','Rodzaj','Kwota','Waluta','Kategoria','Pozycja','Konto','Na konto','Kto','Notatka','Projekt'],...L.map(t=>{const s=sm[t.sub];
-    return[t.date,t.refundOf?'zwrot':TY[t.type]||t.type,((t.type=='exp'||t.type=='lend'||t.type=='inv'?-1:1)*t.amount/100).toFixed(2).replace('.',','),accCur(t.acc),s?cleanCat(s.cat.name):'',s?.name||'',accN(t.acc),t.to?accN(t.to):'',t.who||'',t.note||'',t.proj?projById(t.proj)?.name||'':'']})];
+    return[t.date,t.refundOf?'zwrot':t.payoff?'spłata zobowiązania':TY[t.type]||t.type,((t.type=='exp'||t.type=='lend'||t.type=='inv'?-1:1)*t.amount/100).toFixed(2).replace('.',','),accCur(t.acc),s?cleanCat(s.cat.name):'',s?.name||'',accN(t.acc),t.to?accN(t.to):'',t.who||'',t.note||'',t.proj?projById(t.proj)?.name||'':'']})];
   downloadBlob(new Blob(['﻿'+rows.map(r=>r.map(q).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'}),`budzet-${y||'wszystko'}.csv`);toast(`Pobrano ${L.length} ${plu(L.length,'wpis','wpisy','wpisów')} do Excela ✓`)}
 /* 🎁 Money Wrapped: the year told by Bailey and Ivo */
 function wrapped(y){const tx=liveOf(S.tx),cfg=S.cfg,Y=agg(cfg,tx,y),sm=subsMap(cfg);if(!Y.exp&&!Y.inc)return toast('Brak danych za rok '+y,'bad');
-  const cats=Object.entries(Y.cat).sort((a,b)=>b[1]-a[1]),top=cats[0]&&cfg.cats.find(c=>c.id==cats[0][0]),big=tx.filter(t=>t.date.startsWith(y)&&t.type=='exp').sort((a,b)=>b.amount-a.amount)[0];
-  const words={};tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&t.note).forEach(t=>{const w=t.note.trim().split(/\s+/)[0].toLowerCase();if(w.length>2)words[w]=(words[w]||0)+1});
+  const cats=Object.entries(Y.cat).sort((a,b)=>b[1]-a[1]),top=cats[0]&&cfg.cats.find(c=>c.id==cats[0][0]),big=tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&!t.payoff).sort((a,b)=>b.amount-a.amount)[0];
+  const words={};tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&!t.payoff&&t.note).forEach(t=>{const w=t.note.trim().split(/\s+/)[0].toLowerCase();if(w.length>2)words[w]=(words[w]||0)+1});
   const fav=Object.entries(words).sort((a,b)=>b[1]-a[1])[0],ms=Array.from({length:12},(_,i)=>({i,a:agg(cfg,tx,y+'-'+p2(i+1))})).filter(x=>x.a.inc||x.a.exp),best=ms.length?ms.reduce((p,c)=>c.a.inc-c.a.exp>p.a.inc-p.a.exp?c:p):null;
   const treats=tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&isTreat(sm[t.sub]?.name)).reduce((a,t)=>a+t.amount,0),n=tx.filter(t=>t.date.startsWith(y)).length;
   const sv=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)),sd=sv.reduce((x,a)=>x+balance(cfg,tx,a.id,y+'-12-32')-balance(cfg,tx,a.id,y+'-00'),0);
@@ -1399,7 +1444,7 @@ function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='today')return showToday();if(a=='add')return openTx(null,{type:['exp','inc','tr'].includes(g.type)?g.type:'exp',...(g.amount?{amount:pg(g.amount)}:{}),...(g.note?{note:g.note}:{})});
   if(a=='pit'){S.fixSub='pay';S.payView='y';S.ym=(g.y||String(+td().slice(0,4)-1))+'-12';return goTab('fix')}if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);
   if(a=='pay'){S.fixSub='pay';return goTab('fix')}if(a=='year')return goYear();if(a=='rem'){S.fixSub='rem';return goTab('fix')}
-  if(a=='lent'){S.accView='lent';return goTab('acc')}if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
+  if(a=='lent'||a=='owe'){S.accView=a;return goTab('acc')}if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
   if(a=='tr')return openTx(null,{type:'tr',to:g.to});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);
@@ -1443,7 +1488,7 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
   if(ym==cur&&pexp>0&&A.exp>pexp)h+=`<div class="note bad">⚠️ Plan wydatków przekroczony o <b>${zl(A.exp-pexp)}</b>.</div>`;
   h+=monthSumH(cfg,tx,ym);
   if(!A.exp&&!A.inc)return h+catsEmpty(`Brak przychodów i wydatków w miesiącu: ${mName}.`,0,'sleep');
-  const an=anomalies(cfg,tx,ym);if(an.length)h+=`<section class="chart"><div class="ct"><b>🔎 Nietypowo dużo</b><span class="mini">w porównaniu ze średnią z 3 miesięcy</span></div>${an.slice(0,5).map(x=>`<div class="r1"><span>${esc(x.sub.name)}</span><b class="t-exp num">+${x.pct}% · ${zl0(x.v)} <span class="mini">(zwykle ${zl0(x.avg)})</span></b></div>`).join('')}</section>`;
+  const an=anomalies(cfg,tx,ym);if(an.length)h+=`<section class="chart"><div class="ct"><b>🔎 Nietypowo dużo</b><span class="mini">w porównaniu ze średnią z 3 miesięcy</span></div>${an.slice(0,5).map(x=>`<div class="r1"><span>${esc(x.sub.name)}</span><b class="t-exp num" style="text-align:right">+${x.pct}% · ${zl0(x.v)}<span class="mini" style="display:block">(zwykle ${zl0(x.avg)})</span></b></div>`).join('')}</section>`;
   // structure donut
   const catRows=Object.entries(A.cat).filter(([,v])=>v>0).map(([id,v])=>({id,v,l:cleanCat(cats[id]?.name)})).sort((a,b)=>b.v-a.v);
   const top=catRows.slice(0,5),rest=catRows.slice(5).reduce((a,r)=>a+r.v,0);
@@ -1514,6 +1559,9 @@ function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Object.fro
 
 /* ---------- render ---------- */
 const accN=id=>S.cfg.accs.find(a=>a.id===id)?.name||'?';
+/* 💰 an account that collects money for paying off liabilities: what of it is for which one, the rest is free */
+const saveInH=id=>{const s=saveSplitP(S.cfg,liveOf(S.tx),S.debts,id,td());if(!s.sum)return'';
+  return`<div class="mini svin">💰 w tym na spłatę: ${s.L.filter(x=>x.saved).map(x=>`${esc(x.d.name)} ${zl0(x.saved)}`).join(' · ')} · <b class="${s.free<0?'t-exp':''}">wolne ${zl0(s.free)}</b></div>`};
 const barH=st=>st.pct===null?'<div class="bar"></div>':`<div class="bar ${st.k}"><i style="width:${Math.min(100,Math.max(0,st.pct)).toFixed(1)}%"></i></div>`;
 function trioH(type,name,plan,act,planInput,fx){const st=status(type,plan,act);
   return`<div class="r1">${name}<span class="pill ${st.k}">${esc(st.txt)}</span></div><div class="trio"><span><em>Plan</em>${planInput||`<b>${zl(plan)}</b>`}</span><span><em>${type=='inc'?'Wpłynęło':'Wydano'}</em><b>${zl(act)}</b>${fx?`<small class="fxs">${fx.startsWith('−')?'':'+ '}${esc(fx)}</small>`:''}</span></div>${barH(st)}${st.msg?`<div class="smsg ${st.k}">${esc(st.msg)}</div>`:''}`}
@@ -1551,7 +1599,7 @@ function render(){
   const pct=(a,p)=>p?' · '+Math.round(a/p*100)+'% planu':'';
   let h='';
   const al=dueAlerts(S.cfg.fixed||[],tx,td());
-  const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+am(x.f.amount,x.f.acc)}</span><span class="when ${x.when=='late'?'late':''}">${x.when=='inc'?'jeszcze nie odhaczony':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
+  const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+am(x.f.amount,x.f.acc)}</span><span class="when ${x.when=='late'?'late':''}">${x.when=='inc'?'czeka na odhaczenie':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
 
   if(S.tab=='dash'&&S.proj)h+=projPageH();
   else if(S.tab=='dash'){
@@ -1613,7 +1661,7 @@ function render(){
     const isCur=td().startsWith(S.ym),today=+td().slice(8),all=(S.cfg.fixed||[]).slice().sort((a,b)=>(+a.day)-(+b.day)||a.name.localeCompare(b.name,'pl'));
     const row=(f,paid)=>{const inc=f.kind=='inc',late=!paid&&isCur&&today>Math.min(+f.day,daysIn(S.ym));
       const ppk=paid&&inc?liveOf(S.tx).filter(t=>t.ppkOf===paid.id):[];
-      return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?(inc?'wpłynęło ':'zapłacono ')+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc))+(ppk.length?' · PPK '+zl0(ppk.reduce((a,t)=>a+t.amount,0)):''):(late?`<span class="late">${inc?'jeszcze nie odhaczony':'po terminie'}</span> · `:'')+(inc?'zwykle do ':'termin do ')+f.day+'. · '+esc(accN(f.acc))+(f.kind=='tr'?' → '+esc(accN(f.to)):'')+(inc&&f.ppk?' · z PPK':'')}</span></button><span class="num ${inc?'t-inc':''}">${paid?am(paid.amount,paid.acc):inc&&f.vary?'—':(inc?'~':'')+am(f.amount,f.acc)}</span></div>`};
+      return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?(inc?'wpłynęło ':'zapłacono ')+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc))+(ppk.length?' · PPK '+zl0(ppk.reduce((a,t)=>a+t.amount,0)):''):(late?`<span class="late">${inc?'czeka na odhaczenie':'po terminie'}</span> · `:'')+(inc?'zwykle do ':'termin do ')+f.day+'. · '+esc(accN(f.acc))+(f.kind=='tr'?' → '+esc(accN(f.to)):'')+(inc&&f.ppk?' · z PPK':'')}</span></button><span class="num ${inc?'t-inc':''}">${paid?am(paid.amount,paid.acc):inc&&f.vary?'—':(inc?'~':'')+am(f.amount,f.acc)}</span></div>`};
     const block=(kind)=>{const fx=all.filter(f=>(f.kind||'exp')==kind),inc=kind=='inc',trf=kind=='tr';
       let x=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">${inc?'📥 Przychody stałe':trf?'🐷 Stałe przelewy na oszczędności':'📤 Opłaty stałe'}</span><button class="btn sm dark" onclick="editFixed(null,'${kind}')">+ ${inc?'Przychód':trf?'Przelew':'Opłata'}</button></div>`;
       if(!fx.length)return x+`<div class="mini" style="padding:0 6px">${inc?'Dodaj np. pensje – co miesiąc odhaczysz, ile faktycznie wpłynęło, razem z wpłatami na PPK.':trf?'Np. 500 zł co miesiąc z konta bieżącego na oszczędności – odhaczasz, gdy przelew wyjdzie.':'Dodaj np. czynsz, prąd albo Spotify – co miesiąc odhaczysz je na liście.'}</div>`;
@@ -1644,7 +1692,7 @@ function render(){
       if(wr=='ike'||wr=='ikze'){const y=td().slice(0,4),lim=limitOf(a,y,S.hraw?.limits),p=paidInYear(liveOf(S.tx),a.id,y);extra+=`<div class="mini">🛡️ ${wr.toUpperCase()} ${y}: wpłacono ${zl0(p)} z ${zl0(lim)}</div>`}
       if(inv){const st=invAccStats(S.cfg,tx,a.id,tom),ago=st.last?Math.floor((Date.now()-new Date(st.last+'T12:00:00'))/864e5):null;
         extra=`${st.own||st.emp?`<div class="mini">🏦 moje wpłaty <b style="color:var(--fg)">${zl0(st.own)}</b> · pracodawca <b style="color:var(--fg)">${zl0(st.emp)}</b></div>`:''}<div class="mini">wpłacono ${zl0(st.paid)} · <b class="${st.chg>=0?'t-inc':'t-exp'}">${st.chg>=0?'+':''}${zl0(st.chg)}${st.pct!==null?' ('+(st.chg>=0?'+':'')+st.pct.toFixed(1).replace('.',',')+'%)':''}</b></div><div class="mini">${st.last?`wartość z ${st.last.split('-').reverse().join('.')}${ago>30?' · <b class="t-exp">warto zaktualizować</b>':ago>0?' ('+ago+' dni temu)':' (dziś)'}`:'wartości jeszcze nie aktualizowano'}</div>`}
-      return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${inv?'<span class="badge">inwest.</span>':''}${esc(a.name)}</b>${a.archived?'<span class="mini">usunięte</span>':`<button class="btn sm" style="padding:3px 9px" aria-label="Edytuj konto" onclick="editSavAcc('${a.id}')">⋯</button>`}</div><div class="mini">w tym miesiącu: <span class="${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${money(dlt,CUR(a))}</span>${coinSum(S.ym,null,a.id)?` · 🪙 drobne ${money(coinSum(S.ym,null,a.id),CUR(a))}`:''}</div>${extra}
+      return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${inv?'<span class="badge">inwest.</span>':''}${esc(a.name)}</b>${a.archived?'<span class="mini">usunięte</span>':`<button class="btn sm" style="padding:3px 9px" aria-label="Edytuj konto" onclick="editSavAcc('${a.id}')">⋯</button>`}</div><div class="mini">w tym miesiącu: <span class="${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${money(dlt,CUR(a))}</span>${coinSum(S.ym,null,a.id)?` · 🪙 drobne ${money(coinSum(S.ym,null,a.id),CUR(a))}`:''}</div>${extra}${saveInH(a.id)}
         ${a.archived?'':`<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="openTx(null,{type:'tr',to:'${a.id}'})">↓ Wpłać</button><button class="chip" onclick="openTx(null,{type:'tr',from:'${a.id}'})">↑ Wypłać</button>${inv?(instsOf(a.id).length?'':`<button class="chip" style="background:#ede9fe;color:#5b21b6" onclick="updateValue('${a.id}')">✎ Wartość</button>`)+`<button class="chip" style="background:#e0f2fe;color:#075985" onclick="openInst('${a.id}')">📊 Instrumenty${instsOf(a.id).length?' ('+instsOf(a.id).length+')':''}</button>`:''}</div>`}</div><div class="r"><b class="num">${money(e,CUR(a))}</b></div></div>`};
     const goalsH=owner=>{const goals=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())})).filter(g=>goalOwner(g)==owner).sort((a,b)=>(a.ts||0)-(b.ts||0));
       const pool=poolNow(S.cfg,tx,owner),alloc=goals.reduce((a,g)=>a+g.pr.saved,0),free=pool-alloc;
@@ -1722,7 +1770,7 @@ function render(){
     if(!groups.length)h+=`<div class="empty">Brak kont – dodasz je w ⚙️ Ustawieniach.</div>`;
     h+=groups.map(g=>{const accs=S.cfg.accs.filter(a=>a.grp==g&&vis(a));
       return`<div class="list"><div class="grp-h ${g=='sub'?'subk':g}"><span>${GH[g]}</span><span class="num">${zl(accs.filter(isP).reduce((x,a)=>x+bal(a),0))}${fxPlus(fxOf(accs,bal))}</span></div>${accs.map(a=>{const e=bal(a),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0,M=v=>money(v,CUR(a));
-        return`<div class="acc"><div><b>${esc(a.name)}</b>${o=='all'?otag(accOwner(a)):''}<div class="mini">na początek: ${M(s0)}${isP(a)?'':` · <span class="curtag">${CUR(a)}</span>`}</div>${a.grp=='inv'?`<button class="chip" onclick="updateValue('${a.id}')">✎ Aktualizuj wartość</button>`:`<button class="chip" onclick="recon('${a.id}')">⚖️ Wyrównaj</button>`}</div><div class="r"><b class="num">${M(e)}</b><div class="mini ${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${M(dlt)}</div></div></div>`}).join('')}</div>`}).join('');
+        return`<div class="acc"><div><b>${esc(a.name)}</b>${o=='all'?otag(accOwner(a)):''}<div class="mini">na początek: ${M(s0)}${isP(a)?'':` · <span class="curtag">${CUR(a)}</span>`}</div>${saveInH(a.id)}${a.grp=='inv'?`<button class="chip" onclick="updateValue('${a.id}')">✎ Aktualizuj wartość</button>`:`<button class="chip" onclick="recon('${a.id}')">⚖️ Wyrównaj</button>`}</div><div class="r"><b class="num">${M(e)}</b><div class="mini ${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${M(dlt)}</div></div></div>`}).join('')}</div>`}).join('');
     const oldL=invList.filter(i=>o=='all'||(i.owner||'Wspólne')==o);
     if(oldL.length)h+=`<div class="list"><div class="grp-h inv"><span>STARSZE WPISY INWESTYCJI</span><span class="num">${zl(oldL.reduce((x,i)=>x+i.pln,0))}</span></div>${oldL.map(i=>`<div class="acc"><div><b>${esc(i.name)}</b><div class="mini">${esc(i.kind||'')} · ${esc(i.owner||'')}</div></div><div class="r"><b class="num">${zl(i.pln)}</b></div></div>`).join('')}</div>`;
     h+='</div>'}
@@ -1822,7 +1870,7 @@ document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.d
 $('gearBtn').onclick=()=>goTab(S.tab=='set'?'dash':'set');
 $('addBtn').onclick=()=>openTx();
 $('mt').querySelectorAll('button').forEach(b=>b.onclick=()=>setType(b.dataset.v));
-$('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}autoWho();updCoin();updFx()};
+$('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}autoWho();updCoin();updFx();updSave()};
 $('todayBtn').onclick=()=>{if(S.cfg)showToday()};
 $('shCancel').onclick=closeSheet;$('shSave').onclick=()=>saveTx();$('shNext').onclick=()=>saveTx(true);$('shDel').onclick=()=>S.edit&&delTx(S.edit);
 $('sheet').onclick=e=>{if(e.target===$('sheet'))closeSheet()};
@@ -1881,4 +1929,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
 if(!DEMO&&'serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});navigator.serviceWorker.addEventListener('message',e=>{const u=e.data?.go;if(u){const g=goFromHash(new URL(u,location.href).hash);if(g)runGo(g)}})}
 window.addEventListener('hashchange',()=>{const g=goFromHash(location.hash);if(g&&S.cfg){window.history.replaceState(null,'',location.pathname+location.search);runGo(g)}});
 S.goPending=goFromHash(location.hash);if(S.goPending)window.history.replaceState(null,'',location.pathname+location.search);
-Object.assign(window,{openReport,closeReport,openHelp,closeHelp,helpFilter,shareDemo,showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{payoffDebt,openReport,closeReport,openHelp,closeHelp,helpFilter,shareDemo,showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

@@ -14,9 +14,11 @@
   const names=p=>p.role=='Wercia'?{Mati:p.partner,Wercia:p.me}:{Mati:p.me,Wercia:p.partner};
   let MAP=null;const setMap=p=>{const n=names(p);MAP={Mati:n.Mati,Matiego:gen(n.Mati),Wercia:n.Wercia,Werci:gen(n.Wercia),Weronika:n.Wercia}};
   const RE=/(^|[^\p{L}\d])(Matiego|Mati|Wercia|Werci|Weronika)(?=$|[^\p{L}\d])/gu,sub=s=>s.replace(RE,(m,a,w)=>a+MAP[w]);
+  /* what we wrote last into a text or attribute – it is not replaced again, so a name equal to „Mati” / „Wercia” cannot loop or change twice */
+  const done=new WeakMap(),put=(n,k,v,set)=>{const m=done.get(n)||{};if(m[k]===v)return;const x=sub(v);m[k]=x;done.set(n,m);if(x!==v)set(x)};
   function fix(root){if(!MAP)return;const w=document.createTreeWalker(root,window.NodeFilter.SHOW_TEXT|window.NodeFilter.SHOW_ELEMENT);let n=root;
-    do{if(n.nodeType==3){if(RE.test(n.data)){RE.lastIndex=0;const p=n.parentNode;if(p&&p.nodeName!='TEXTAREA'&&p.nodeName!='SCRIPT'&&p.nodeName!='STYLE')n.data=sub(n.data)}RE.lastIndex=0}
-      else if(n.nodeType==1)for(const a of ['placeholder','aria-label','title']){const v=n.getAttribute&&n.getAttribute(a);if(v&&RE.test(v)){RE.lastIndex=0;n.setAttribute(a,sub(v))}RE.lastIndex=0}}
+    do{if(n.nodeType==3){if(RE.test(n.data)){RE.lastIndex=0;const p=n.parentNode;if(p&&p.nodeName!='TEXTAREA'&&p.nodeName!='SCRIPT'&&p.nodeName!='STYLE')put(n,'#',n.data,x=>{n.data=x})}RE.lastIndex=0}
+      else if(n.nodeType==1)for(const a of ['placeholder','aria-label','title']){const v=n.getAttribute&&n.getAttribute(a);if(v&&RE.test(v)){RE.lastIndex=0;const el=n;put(el,a,v,x=>el.setAttribute(a,x))}RE.lastIndex=0}}
     while((n=w.nextNode()))}
   const obs=new window.MutationObserver(L=>{for(const m of L){if(m.type=='characterData')fix(m.target);else m.addedNodes.forEach(x=>{if(x.nodeType==1||x.nodeType==3)fix(x)});if(m.type=='attributes')fix(m.target)}});
   const watch=()=>{fix(document.body);obs.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','aria-label','title']})};

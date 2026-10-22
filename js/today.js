@@ -1,6 +1,6 @@
 /* 🔔 „Na dziś” and the tidiness guard – pure functions shared by the app and the GitHub automat (no DOM, no Firebase).
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
-   and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
+   and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,addDays,addMonths,money,zl} from './util.js';
 import {balance,carStats,dueAlerts,subsMap} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS} from './inv.js';
@@ -23,6 +23,13 @@ export function debtStateP(d,tx,today){if(!d?.id)return{left:0,paid:0,pc:0,src:'
   const pc=d.start?Math.min(100,(1-left/d.start)*100):0,last3=pays.slice(-3),avg=last3.length?last3.reduce((a,t)=>a+t.amount,0)/last3.length:(d.inst||0);
   const months=left&&(d.inst||avg)>0?Math.ceil(left/(d.inst||avg)):null,end=months?addMonths(today.slice(0,7),months):null;
   return{left,paid,pc,src,end,pays,late:d.dir=='lent'&&!!d.until&&d.until<today&&left>0}}
+/* 💰 saving up for a one-time payoff: every liability counts what was put aside for it – tx.save{debtId:grosze}
+   (+ a transfer into the account, − money taken back, the payoff and its interest) */
+export const savedP=(id,tx)=>tx.reduce((a,t)=>a+(+t.save?.[id]||0),0);
+/* an account that holds money for payoffs: per liability, all together, the balance and what is left free */
+export function saveSplitP(cfg,tx,debts,acc,today){
+  const L=Object.entries(debts||{}).filter(([,d])=>!d.deleted&&d.dir=='owe'&&d.saveAcc==acc).map(([id,x])=>{const d={id,...x};return{d,saved:savedP(id,tx),left:debtStateP(d,tx,today).left}}).filter(x=>x.saved||x.left>0);
+  const sum=L.reduce((a,x)=>a+x.saved,0),bal=balance(cfg,tx,acc,addDays(today,1));return{L,sum,bal,free:bal-sum}}
 /* 🔔 reminders: days left, kilometres left for a car */
 export function remStateP(r,cfg,tx,today){const car=r.proj&&(cfg.projs||[]).find(p=>p.id==r.proj),odo=car?carStats(cfg,tx,car.id,car.odo0).odo:0;
   const days=r.next?dd(today,r.next):null,kmLeft=r.km&&car?(r.lastOdo||car.odo0||0)+r.km-odo:null;
@@ -47,7 +54,9 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
     add('dup:'+L.map(x=>x.id).sort().join(','),'👯',`Możliwy duplikat: ${L.length}× ${sm[t.sub]?.name||'wydatek'} ${money(t.amount,cm[t.acc])} (${dmy(t.date)})`,{a:'tx',id:t.id})}
   for(const t of tx){if(t.date<from)continue;
     if(t.acc&&!acc.has(t.acc)){add('acc:'+t.id,'❓',`Wpis z ${dmy(t.date)} (${zl(t.amount)}) ma konto, którego już nie ma`,{a:'tx',id:t.id});continue}
-    if((t.type=='exp'||(t.type=='inc'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.slip))&&!sm[t.sub])add('sub:'+t.id,'🏷️',`${t.type=='exp'?'Wydatek':'Przychód'} ${money(t.amount,cm[t.acc])} z ${dmy(t.date)} nie ma pozycji budżetu`,{a:'tx',id:t.id})}
+    if(((t.type=='exp'&&!t.payoff)||(t.type=='inc'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.slip))&&!sm[t.sub])add('sub:'+t.id,'🏷️',`${t.type=='exp'?'Wydatek':'Przychód'} ${money(t.amount,cm[t.acc])} z ${dmy(t.date)} nie ma pozycji budżetu`,{a:'tx',id:t.id})}
+  for(const a of cfg.accs.filter(a=>!a.archived)){const s=saveSplitP(cfg,tx,D.debts,a.id,today);if(s.L.length&&s.free<=-100)
+    add('save:'+a.id+':'+s.sum+':'+s.bal,'💰',`${a.name}: na koncie ${money(s.bal,a.cur)}, a odłożone na spłatę pożyczek to ${zl(s.sum)} – brakuje ${zl(-s.free)}. Może wypłata albo płatność z tego konta bez wybrania pożyczki?`,{a:'owe'})}
   for(const a of cfg.accs.filter(a=>a.grp=='cur'&&!a.archived)){const b=balance(cfg,tx,a.id,addDays(today,1));if(b<0)add('neg:'+a.id+':'+today.slice(0,7),'➖',`Ujemne saldo: ${a.name} ${money(b,a.cur)} – coś nie wpisane albo wyrównanie?`,{a:'acc'})}
   const ym=today.slice(0,7),pm=addMonths(ym,-1);
   for(const m of [pm,ym])for(const[id,sl]of Object.entries(slips?.[m]||{})){const src=(cfg.incs||[]).find(s=>s.id==id)||sl;if(src.kind=='b2b')continue;const diff=(sl.net||0)-calcNet(src,sl);
@@ -81,7 +90,7 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   const ym=today.slice(0,7),day=+today.slice(8),out=[],cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const accOf=id=>cfg.accs.find(a=>a.id==id);
   const add=(icon,text,go,label,k='',who=null)=>out.push({icon,text,go,label,k,who});const incs=cfg.incs||[];
   const st=automatStale(market,today);if(st)add('🤖',`Automat nie pobiera danych od ${st} dni. Sprawdź go na GitHubie.`,{a:'automat'},'Otwórz','bad');
-  for(const x of dueAlerts(cfg.fixed||[],tx,today))add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – jeszcze nie odhaczony`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(ownerOf(accOf(x.f.acc))));
+  for(const x of dueAlerts(cfg.fixed||[],tx,today))add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – czeka na odhaczenie`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(ownerOf(accOf(x.f.acc))));
   const live=new Set(tx.map(t=>t.id));
   for(const s of incs)if(day>=(s.day||10)){const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata zwykle do ${s.day||10}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}
   if(day>=14&&day<=20)for(const s of incs.filter(s=>s.kind=='b2b'))add('🧾',`JDG (${s.name}): do 20. zapłać ZUS, zdrowotną i podatek.`,{a:'pay'},'Pensje','',person(s.who));
@@ -91,6 +100,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const r of cfg.rems||[]){const s=remStateP(r,cfg,tx,today);if(s.due||s.late)add('🔔',`${r.name}${r.next?' – '+dmy(r.next):''}${s.kmLeft!=null?` · zostało ${s.kmLeft.toLocaleString('pl-PL')} km`:''}`,{a:'rem'},'Zobacz',s.late?'bad':'')}
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='lent'||!x.until)continue;const d={id,...x},s=debtStateP(d,tx,today);if(!s.left)continue;const n=dd(today,d.until);
     if(n<=7)add('🔺',`${d.party||d.name} – zwrot ${zl(s.left)} ${n<0?'po terminie ('+dmy(d.until)+')':n==0?'dziś':'za '+n+' '+plu(n,'dzień','dni','dni')}`,{a:'lent'},'Zobacz',n<0?'bad':'',person(d.payer))}
+  for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='owe'||!x.saveAcc)continue;const d={id,...x},s=debtStateP(d,tx,today),saved=savedP(id,tx),from=+d.day||1;
+    if(s.left>0&&saved>=s.left&&day>=from&&day<=from+2)add('💰',`${d.name}: uzbierane ${zl(saved)} – możesz spłacić całość (${zl(s.left)}).`,{a:'owe'},'Zobacz','',person(d.payer))}
   for(const m of maturitiesP(cfg,hold,today,30))add(IICON[m.it.kind],`${m.it.kind=='obl'?'Wykup':'Koniec lokaty'}: ${m.it.name} – ${dmy(m.end)}`,{a:'inst',acc:m.a.id},'Zobacz','',person(ownerOf(m.a)));
   const mo=+today.slice(5,7),y=today.slice(0,4),wr=cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   if(mo==12)for(const a of wr.filter(a=>wrapOf(a)=='ikze')){const left=limitOf(a,y,hraw?.limits)-paidInYear(tx,a.id,y);if(left>0)add('🛡️',`${a.name}: do 31.12 możesz wpłacić jeszcze ${zl(left)} (ulga w PIT).`,{a:'tr',to:a.id},'Wpłać','',person(ownerOf(a)))}
