@@ -4,11 +4,11 @@ import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,do
 import {catIcon,catsEmpty} from './art.js';
 import {scene} from './cats.js';
 import {CELEBRATE,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} from './guide.js';
-import {P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,gainSvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
+import {PAL,P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,gainSvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
 import {CURS,HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,addM,bondRates,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue,yearPlan} from './inv.js';
 import {KINDS,TAXF,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
-import {actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,roundUp,status,subsMap} from './logic.js';
+import {anomalies,avgActuals,carStats,seasonal,actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,roundUp,status,subsMap} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,isDate,ls,p2,pg,pnum,rid,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt} from './util.js';
 const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
 const auth=getAuth(fa);
@@ -133,12 +133,12 @@ const merge=(ref,body)=>w(setDoc(ref,body,{merge:true}));
 const toArr=m=>Object.entries(m||{}).map(([id,v])=>({...v,id})).sort((a,b)=>(a.o??0)-(b.o??0)||String(a.id).localeCompare(String(b.id)));
 const strip=(x,i)=>{const{o,subs,subsM,...r}=x;return{...r,o:i}};
 function fromDoc(d){
-  if(d.accsM||d.catsM||d.fixedM)return{accs:toArr(d.accsM).map(({o,...a})=>a),cats:toArr(d.catsM).map(({o,subsM,...c})=>({...c,subs:toArr(subsM).map(({o,...x})=>x)})),fixed:toArr(d.fixedM).map(({o,...f})=>f),round:toArr(d.roundM).map(({o,...r})=>r),incs:toArr(d.incM).map(({o,...x})=>x),years:toArr(d.yearM).map(({o,...x})=>x)};
-  return{accs:d.accs||[],cats:d.cats||[],fixed:d.fixed||[],round:[],incs:[],years:[],legacy:true}}
+  if(d.accsM||d.catsM||d.fixedM)return{accs:toArr(d.accsM).map(({o,...a})=>a),cats:toArr(d.catsM).map(({o,subsM,...c})=>({...c,subs:toArr(subsM).map(({o,...x})=>x)})),fixed:toArr(d.fixedM).map(({o,...f})=>f),round:toArr(d.roundM).map(({o,...r})=>r),incs:toArr(d.incM).map(({o,...x})=>x),years:toArr(d.yearM).map(({o,...x})=>x),projs:toArr(d.projM).map(({o,...x})=>x),rems:toArr(d.remM).map(({o,...x})=>x)};
+  return{accs:d.accs||[],cats:d.cats||[],fixed:d.fixed||[],round:[],incs:[],years:[],projs:[],rems:[],legacy:true}}
 function toDoc(cfg){const m=(arr,f)=>Object.fromEntries((arr||[]).map((x,i)=>[x.id,f?f(x,i):strip(x,i)]));
-  return{v:2,accsM:m(cfg.accs),catsM:m(cfg.cats,(c,i)=>({...strip(c,i),subsM:m(c.subs)})),fixedM:m(cfg.fixed),roundM:m(cfg.round),incM:m(cfg.incs),yearM:m(cfg.years)}}
+  return{v:2,accsM:m(cfg.accs),catsM:m(cfg.cats,(c,i)=>({...strip(c,i),subsM:m(c.subs)})),fixedM:m(cfg.fixed),roundM:m(cfg.round),incM:m(cfg.incs),yearM:m(cfg.years),projM:m(cfg.projs),remM:m(cfg.rems)}}
 /* rewrites accounts, categories and fixed items as a whole; other household fields (monthly saving goal, migration flags) are kept */
-const saveCfg=()=>{const keep=Object.fromEntries(Object.entries(S.hraw||{}).filter(([k])=>!['v','accsM','catsM','fixedM','roundM','incM','yearM','accs','cats','fixed'].includes(k)));
+const saveCfg=()=>{const keep=Object.fromEntries(Object.entries(S.hraw||{}).filter(([k])=>!['v','accsM','catsM','fixedM','roundM','incM','yearM','projM','remM','accs','cats','fixed'].includes(k)));
   return w(setDoc(H,{...keep,...toDoc(S.cfg),savTarget:S.savTarget||0}))};
 const saveAcc=a=>merge(H,{accsM:{[a.id]:strip(a,S.cfg.accs.indexOf(a))}});
 const delAccDb=id=>w(updateDoc(H,{['accsM.'+id]:deleteField()}));
@@ -167,7 +167,7 @@ const refundsOf=id=>liveOf(S.tx).filter(x=>x.refundOf===id);
 const pickKind=()=>S.etype=='inc'&&!S.refEdit?'inc':'exp';
 
 function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==t));
-  if(S.cfg){updCoin();updFx();updDebt()}
+  if(S.cfg){updCoin();updFx();updDebt();updProj()}
   $('msWrap').hidden=t=='tr';$('mtoWrap').hidden=t!='tr';$('mwWrap').hidden=t=='tr';$('mcLab').textContent=t=='tr'?'Z konta':'Konto';
   const s=S.cfg&&subsMap(S.cfg)[$('ms').value];if(s&&s.cat.type!=pickKind())setMs('');
   if(t=='tr'&&SP.length){SP=[];renderSplit()}updSplit()}
@@ -202,7 +202,7 @@ function noteSub(note,kind){const k=norm(note);if(k.length<2)return null;const w
   return null}
 function paintPick(btn,sid){const s=sid&&subsMap(S.cfg)[sid];btn.className='pickbtn'+(s?' on':'');btn.style.cssText=s?catColor(s.cat):'';
   btn.innerHTML=s?`<span class="cico">${catIcon(s.cat)}</span><span class="pt"><small>${esc(cleanCat(s.cat.name))}</small><b>${esc(s.name)}</b></span>`:'<span class="ph">— stuknij, żeby wybrać pozycję —</span>'}
-function setMs(sid,hint){$('ms').value=sid||'';paintPick($('msBtn'),sid);$('msHint').textContent=hint||'';updSplit()}
+function setMs(sid,hint){$('ms').value=sid||'';paintPick($('msBtn'),sid);$('msHint').textContent=hint||'';updSplit();updProj()}
 function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.cats.filter(c=>c.type==kind),sm=subsMap(S.cfg);
   const chip=(s,cls='')=>`<button type="button" class="pchip ${cls}" style="${catColor(s.cat)}" data-sid="${s.id}"><span>${esc(s.name)}</span></button>`;
   const row=s=>`<button type="button" class="prow" style="${catColor(s.cat)}" data-sid="${s.id}"${s.id==P.cur?' aria-current="true"':''}><i></i><span><b>${esc(s.name)}</b><small>${catIcon(s.cat)} ${esc(cleanCat(s.cat.name))}</small></span></button>`;
@@ -247,7 +247,7 @@ function openTx(id,pre){if(guard())return;
   if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o){if(pre?.to)$('mc').value=o.value;else $('mto').value=o.value}}
   if(!t)autoWho();
   $('mn').value=t?stripFx(t.note):'';
-  setMs(t?t.sub:(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');S.coinOn=true;updCoin();
+  setMs(t?t.sub:(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');fillProj(t?.proj||pre?.proj||'');$('mlit').value=t?.lit?String(t.lit).replace('.',','):'';$('modo').value=t?.odo||'';S.coinOn=true;updCoin();
   if(!$('fxc').options.length)$('fxc').innerHTML=CURS.map(([c,n])=>`<option value="${c}">${c} – ${esc(n)}</option>`).join('');
   $('ma2').value=t?.amount2?f2(t.amount2):'';S.fxOpen=!!t?.fxCur;$('fxc').value=t?.fxCur||'EUR';$('fxa').value=t?.fxAmt?f2(t.fxAmt):'';updFx();
   const left=t&&t.type=='exp'?t.amount-refundsOf(t.id).reduce((a,x)=>a+x.amount,0):0;
@@ -276,6 +276,8 @@ async function saveTx(){if(guard())return;
   const body={...base,amount:main,sub:type=='tr'?'':$('ms').value};
   if(two)body.amount2=amount2;else if(old?.amount2)body.amount2=null;
   if(fxCur){body.fxCur=fxCur;body.fxAmt=fxAmt}else if(old?.fxCur){body.fxCur='';body.fxAmt=0}
+  const proj=type!='tr'&&!$('mprojWrap').hidden?$('mproj').value:'';if(proj){body.proj=proj;base.proj=proj}else if(old?.proj)body.proj='';
+  const lit=!$('mcarWrap').hidden?pnum($('mlit').value)||0:0,odo=!$('mcarWrap').hidden?Math.round(pnum($('modo').value))||0:0;if(lit)body.lit=lit;else if(old?.lit)body.lit=0;if(odo)body.odo=odo;else if(old?.odo)body.odo=0;
   const debt=type=='exp'&&!$('mdebtWrap').hidden?$('mdebt').value:'';if(debt)body.debt=debt;else if(old?.debt)body.debt='';
   if(debt&&S.debts[debt]&&!S.debts[debt].sub&&body.sub)merge(doc(DEBTS(),debt),{sub:body.sub});
   if(old)for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];
@@ -315,6 +317,7 @@ $('pkClose').onclick=closePick;$('pick').onclick=e=>{if(e.target===$('pick'))clo
 $('mn').oninput=()=>{if(S.edit||S.etype=='tr'||($('ms').value&&!S.autoSub))return;const s=noteSub($('mn').value,pickKind());
   if(s){S.autoSub=true;setMs(s.id,'💡 podpowiedziane po notatce – stuknij, żeby zmienić')}else if(S.autoSub){S.autoSub=false;setMs('')}};
 $('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]\s*\d/.test(v)?'= '+am(calcAmt(v),$('mc').value):'';updSplit();updCoin();updFx()};
+$('mproj').onchange=()=>updProj();
 $('ma2').oninput=$('fxa').oninput=$('fxc').onchange=$('mto').onchange=()=>updFx();
 $('fxBtn').onclick=()=>{S.fxOpen=true;updFx();$('fxa').focus()};
 $('md').onchange=()=>updCoin();
@@ -640,7 +643,7 @@ async function importFile(file){if(guard())return;let o;
   if(!await ask({title:'Wczytać kopię?',text:`Znaleziono ${n} transakcji.\n${isNew?'Konta, pozycje budżetu i opłaty stałe zostaną zastąpione tymi z kopii.':'Brakujące konta i pozycje zostaną dopisane.'} Transakcje o tym samym numerze zostaną nadpisane, reszta zostaje.`,ok:'Wczytaj'}))return;
   toast('Wczytywanie…');
   try{let ok;
-    if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];S.cfg.incs=S.cfg.incs||[];S.cfg.years=S.cfg.years||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();
+    if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];S.cfg.incs=S.cfg.incs||[];S.cfg.years=S.cfg.years||[];S.cfg.projs=S.cfg.projs||[];S.cfg.rems=S.cfg.rems||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();
       ok=await writeTxs(o.tx.filter(t=>isDate(t.date)).map(t=>{const{id,...b}=t;return[id||('t'+rid()),b]}));
       ok=(await writePlans(o.plans||{}))&&ok;
       for(const[id,it]of Object.entries(o.inv||{}))ok=(await putInv(id,it))&&ok;
@@ -719,7 +722,7 @@ const putSlip=(ym,id,body)=>merge(doc(SLIPS(),ym),{s:{[id]:body}});
 const saveInc=x=>merge(H,{incM:{[x.id]:strip(x,incs().indexOf(x))}});
 const delIncDb=id=>w(updateDoc(H,{['incM.'+id]:deleteField()}));
 const gr=v=>{const x=pg(v||'0');return isFinite(x)?x:0};
-const fixSegH=()=>`<div class="seg seg3">${[['fix','📌 Opłaty'],['pay','💼 Pensje'],['year','📅 Roczne']].map(([k,l])=>`<button aria-pressed="${(S.fixSub||'fix')==k}" onclick="setFixSub('${k}')">${l}</button>`).join('')}</div>`;
+const fixSegH=()=>`<div class="seg seg4">${[['fix','📌 Opłaty'],['pay','💼 Pensje'],['year','📅 Roczne'],['rem','🔔 Przyp.']].map(([k,l])=>`<button aria-pressed="${(S.fixSub||'fix')==k}" onclick="setFixSub('${k}')">${l}</button>`).join('')}</div>`;
 function setFixSub(k){S.fixSub=k;S.slip=null;window.scrollTo(0,0);render()}
 function setPayView(k){S.payView=k;render()}
 const payTabH=T=>`<div class="ptbl">${[['Brutto / faktury',T.brutto],['ZUS (społeczne)',-T.zus],['Zdrowotna',-T.health],['Zaliczka na podatek',-T.tax],['PPK – moje wpłaty',-T.ppkOwn],['PPK – pracodawca (na PPK)',T.ppkEmp],['Potrącenia',-T.ded],['Netto na konto',T.net]].filter(([,v],i)=>v||i==0||i==7).map(([l,v],i,a)=>`<div class="r1${i==a.length-1?' tot':''}"><span>${l}</span><b class="num">${v<0?'−'+zl(-v):zl(v)}</b></div>`).join('')}${T.hours?`<div class="mini">${String(T.hours).replace('.',',')} h wpisanych godzin</div>`:''}</div>`;
@@ -1023,23 +1026,26 @@ function yearLineH(){const st=yearState(td().slice(0,7));if(!st||S.ym!=td().slic
   return`<button class="alert info" onclick="goYear()"><b>📅 Wydatki roczne: ${st.left?`w tym miesiącu odłóż jeszcze ${zl(st.left)}`:'✓ w tym miesiącu odłożone'}</b><span class="mini">${st.dep?`odłożono ${zl(st.dep)} z ${zl(st.need)} · `:''}na subkoncie ${zl(st.now)}${st.soon.length?' · ⏰ wkrótce: '+st.soon.map(x=>esc(x.it.name)).join(', '):''}</span></button>`}
 function goYear(){S.tab='fix';S.fixSub='year';S.slip=null;window.scrollTo(0,0);render()}
 function yearH(){const ym=S.ym,st=yearState(ym),id=yearAccId();let h='';
+  const sea=seasonal(S.cfg,liveOf(S.tx),td().slice(0,7)).filter(x=>!years().some(y=>y.sub==x.sub.id)).slice(0,3);
+  const seaH=sea.map(x=>`<div class="note">💡 Zeszłego roku w miesiącu ${MN[x.month-1].toLowerCase()}: <b>${esc(x.sub.name)} ${zl0(x.v)}</b> – dużo więcej niż zwykle. <button class="btn sm primary" onclick="editYear(null,${esc(JSON.stringify({name:x.sub.name,amount:x.v,month:x.month,sub:x.sub.id}))})">Dodać do wydatków rocznych?</button></div>`).join('');
   h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">📅 Wydatki roczne</span><button class="btn sm dark" onclick="editYear()">+ Wydatek roczny</button></div>`;
-  if(!years().length)return h+catsEmpty('Dodaj wydatki, które przychodzą raz w roku albo co kilka miesięcy: OC, przegląd, prezenty, wakacje.<br>Aplikacja policzy, ile odkładać co miesiąc na jedno wspólne subkonto.',0,'envelope');
+  if(!years().length)return h+seaH+catsEmpty('Dodaj wydatki, które przychodzą raz w roku albo co kilka miesięcy: OC, przegląd, prezenty, wakacje.<br>Aplikacja policzy, ile odkładać co miesiąc na jedno wspólne subkonto.',0,'envelope');
   h+=`<div class="worth wsp"><div class="l">Subkonto: ${id?esc(accN(id)):'—'} <button class="btn sm" style="padding:2px 8px" onclick="setYearAcc()">zmień</button></div><div class="v num">${zl(st?.now||0)}</div><div class="s">${st?`w tym miesiącu odłóż ${zl(st.need)}${st.dep?` · odłożono ${zl(st.dep)}`:''}`:''}</div>${st&&st.left?`<button class="btn sm primary" style="align-self:flex-start" onclick="openTx(null,{type:'tr',to:'${id}',amount:${st.left}})">🐷 Odłóż ${zl(st.left)}</button>`:''}</div>`;
   h+=`<div class="list">${(st?.list||[]).map(x=>{const it=x.it,pc=it.amount?x.fill/it.amount*100:0,dn=MN[+x.due.slice(5)-1].toLowerCase()+' '+x.due.slice(0,4);
     return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(it.name)}</b><b class="num">${zl(it.amount)}</b></div><div class="gbar"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div>
       <div class="mini">${x.months<=2&&x.fill<it.amount?'⏰ ':''}termin: ${dn}${+it.every!=12?` · co ${it.every} mies.`:''} · w kopercie ${zl(x.fill)}${x.need?` · odkładaj ok. ${zl(x.need)}/mies.`:' · ✓ uzbierane'}</div>
       <div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="payYear('${it.id}')">✓ Zapłacone</button><button class="chip" onclick="editYear('${it.id}')">Edytuj</button></div></div></div>`}).join('')}</div>`;
+  h+=seaH;
   return h+`<div class="mini" style="padding:0 4px">Pieniądze na subkoncie wypełniają koperty od najbliższego terminu. Po zapłacie odliczanie rusza od nowa.</div>`}
 async function setYearAcc(){if(guard())return;const subs=S.cfg.accs.filter(a=>(a.grp=='sub'||a.grp=='sav')&&!a.archived);
   const r=await ask({title:'Subkonto na wydatki roczne',fields:[{id:'a',label:'Konto',type:'select',value:yearAccId()||'',options:[['new','+ Nowe: Subkonto – wydatki roczne'],...subs.map(a=>[a.id,a.name])]}]});if(!r)return;
   let id=r.a;if(id=='new'){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);id=a.id}
   S.hraw={...S.hraw,yearAcc:id};merge(H,{yearAcc:id});render()}
-async function editYear(id){if(guard())return;const y0=id?years().find(x=>x.id==id):null;
-  const r=await ask({title:y0?'Wydatek roczny':'Nowy wydatek roczny',fields:[{id:'n',label:'Nazwa',value:y0?.name||'',ph:'np. OC samochodu, Prezenty świąteczne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:y0?f2(y0.amount):''},
-    {id:'m',label:'Miesiąc płatności',type:'select',value:String(y0?.month||+td().slice(5,7)),options:MN.map((n,i)=>[String(i+1),n])},
+async function editYear(id,pre){if(guard())return;const y0=id?years().find(x=>x.id==id):null;pre=pre||{};
+  const r=await ask({title:y0?'Wydatek roczny':'Nowy wydatek roczny',fields:[{id:'n',label:'Nazwa',value:y0?.name||pre.name||'',ph:'np. OC samochodu, Prezenty świąteczne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:y0?f2(y0.amount):pre.amount?f2(pre.amount):''},
+    {id:'m',label:'Miesiąc płatności',type:'select',value:String(y0?.month||pre.month||+td().slice(5,7)),options:MN.map((n,i)=>[String(i+1),n])},
     {id:'e',label:'Jak często',type:'select',value:String(y0?.every||12),options:[['12','Co rok'],['6','Co pół roku'],['3','Co kwartał'],['24','Co 2 lata']]},
-    {id:'s',label:'Pozycja budżetu',type:'select',value:y0?.sub||'',options:[['','— wybierz —'],...subOpts('exp')]}],ok:y0?'Zapisz':'Dodaj',alt:y0?'Usuń':null});
+    {id:'s',label:'Pozycja budżetu',type:'select',value:y0?.sub||pre.sub||'',options:[['','— wybierz —'],...subOpts('exp')]}],ok:y0?'Zapisz':'Dodaj',alt:y0?'Usuń':null});
   if(!r)return;if(r=='alt'){S.cfg.years=years().filter(x=>x!==y0);render();delYearDb(y0.id);return toast('Usunięto')}
   const amount=gr(r.a);if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');
   const body={id:y0?.id||'y'+rid(),name:r.n.trim(),amount,month:+r.m,every:+r.e,sub:r.s,...(y0?.last?{last:y0.last}:{})};
@@ -1121,6 +1127,96 @@ async function moveLent(){if(guard())return;const sid=S.cfg.cats.flatMap(c=>c.su
 /* the sheet: which liability an expense pays off */
 function fillDebt(sel){const L=debtList('owe').filter(d=>debtState(d).left>0||d.id==sel);$('mdebt').innerHTML='<option value="">— nie —</option>'+L.map(d=>`<option value="${d.id}">${esc(dIcon(d)+' '+d.name)}</option>`).join('');$('mdebt').value=sel||'';updDebt()}
 function updDebt(){$('mdebtWrap').hidden=!(S.etype=='exp'&&!S.refEdit&&$('mdebt').options.length>1)}
+/* ---------- 📝 planning: positions to plan, the 3-month average ---------- */
+function toPlanH(){const ym=S.ym,cur=td().slice(0,7);if(ym<cur)return'';const pl=S.plans[ym]||{},{avg}=avgActuals(S.cfg,liveOf(S.tx),ym,3);
+  const L=S.cfg.cats.flatMap(c=>c.subs.map(s=>({c,s}))).filter(x=>!pl[x.s.id]&&avg[x.s.id]>0);if(!L.length)return'';
+  const tot=L.filter(x=>x.c.type=='exp').reduce((a,x)=>a+avg[x.s.id],0);
+  return`<div class="note">📝 <b>Do zaplanowania: ${L.length} ${plu(L.length,'pozycja','pozycje','pozycji')}</b> bez planu, które w ostatnich miesiącach miały wpisy${tot?` (wydatki średnio ${zl0(tot)}/mies.)`:''}. Średnią widać w pustym polu planu.<br><button class="btn sm primary" style="margin-top:6px" onclick="fillAvg()">Wypełnij średnimi</button></div>`}
+async function fillAvg(){if(guard())return;const ym=S.ym,pl=S.plans[ym]||{},{avg,months}=avgActuals(S.cfg,liveOf(S.tx),ym,3),d={};
+  S.cfg.cats.forEach(c=>c.subs.forEach(s=>{if(!pl[s.id]&&avg[s.id]>0)d[s.id]=Math.ceil(avg[s.id]/1000)*1000}));const n=Object.keys(d).length;if(!n)return;
+  if(!await ask({title:'Wypełnić średnimi?',text:`${n} ${plu(n,'pozycja','pozycje','pozycji')} dostanie plan równy średniej z ${months} ${plu(months,'miesiąca','miesięcy','miesięcy')}, zaokrąglonej w górę do 10 zł. Pozycje z planem zostają bez zmian.`,ok:'Wypełnij'}))return;
+  merge(doc(PLC(),ym),d);toast('Wypełniono plan średnimi ✓')}
+/* ---------- 🏷️ projects and labels (cars, cats, trips) ---------- */
+const projs=()=>S.cfg.projs||[],projById=id=>projs().find(p=>p.id==id);
+const saveProj=x=>merge(H,{projM:{[x.id]:strip(x,projs().indexOf(x))}});
+const delProjDb=id=>w(updateDoc(H,{['projM.'+id]:deleteField()}));
+const PKIND=[['stały','Stały – liczy się do budżetu (np. 🐱 koty, 🏠 mieszkanie)'],['jedno','Jednorazowy – poza codziennym budżetem (np. ✈️ wyjazd, 🔨 remont)'],['car','🚗 Pojazd – tankowania, licznik, koszt km']];
+const projSpent=(p,tx)=>tx.filter(t=>t.proj===p.id).reduce((a,t)=>a+(t.type=='exp'?t.amount:t.type=='inc'&&t.refundOf?-t.amount:0),0);
+function projectsH(){const L=projs(),tx=liveOf(S.tx);let h=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">🏷️ Projekty</span><button class="btn sm dark" onclick="editProj()">+ Projekt</button></div>`;
+  if(!L.length)return h+`<div class="mini" style="padding:0 6px">Np. 🚗 auto, 🐱 Bailey i Ivo, ✈️ wakacje. Przy wydatku wybierzesz projekt, a tu zobaczysz, ile kosztuje.</div>`;
+  return h+`<div class="list">${L.map(p=>{const sp=projSpent(p,tx),pc=p.budget?sp/p.budget*100:null,st=p.budget?status('exp',p.budget,sp):null;
+    return`<button class="acc" style="text-align:left;width:100%" onclick="openProj('${p.id}')"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(p.icon||'🏷️')} ${esc(p.name)}</b><b class="num">${zl(sp)}</b></div>
+      <div class="mini">${p.kind=='car'?'pojazd · ':''}${p.inBudget===false?'poza codziennym budżetem':'liczy się do budżetu'}${p.budget?` · budżet ${zl0(p.budget)}`:''}${p.from?` · ${p.from.split('-').reverse().join('.')}${p.to?' – '+p.to.split('-').reverse().join('.'):''}`:''}</div>
+      ${st?`<div class="bar ${st.k}"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div><div class="smsg ${st.k}">${esc(st.msg)}</div>`:''}</div></button>`}).join('')}</div>`}
+async function editProj(id){if(guard())return;const p0=id?projById(id):null;
+  const r=await ask({title:p0?'Projekt':'Nowy projekt',fields:[{id:'n',label:'Nazwa',value:p0?.name||'',ph:'np. Toyota, Bailey i Ivo, Wakacje 2027'},{id:'i',label:'Ikonka (emoji)',value:p0?.icon||'',ph:'🚗 🐱 ✈️ 🔨'},
+    {id:'k',label:'Rodzaj',type:'select',value:p0?.kind||'stały',options:PKIND},
+    {id:'b',label:'Czy liczyć do codziennego budżetu',type:'select',value:p0?(p0.inBudget===false?'0':'1'):'',options:[['','Według rodzaju'],['1','Tak'],['0','Nie – osobno']]},
+    {id:'g',label:'Budżet projektu (zł, opcjonalnie)',type:'decimal',value:p0?.budget?f2(p0.budget):''},
+    {id:'f',label:'Od (opcjonalnie)',type:'date',value:p0?.from||''},{id:'t',label:'Do (opcjonalnie)',type:'date',value:p0?.to||''},
+    {id:'o',label:'Pojazd: przebieg na start (km)',type:'int',value:p0?.odo0||''}],ok:p0?'Zapisz':'Dodaj',alt:p0?'Usuń projekt':null});
+  if(!r)return;if(r=='alt'){if(!await ask({title:'Usunąć projekt?',text:p0.name+'\nWydatki zostaną w rejestrze, tylko bez etykiety projektu.',ok:'Usuń',danger:true}))return;S.cfg.projs=projs().filter(x=>x!==p0);S.proj=null;render();delProjDb(p0.id);return}
+  if(!r.n.trim())return toast('Podaj nazwę','bad');
+  const body={id:p0?.id||'p'+rid(),name:r.n.trim(),icon:r.i.trim()||(r.k=='car'?'🚗':r.k=='jedno'?'✈️':'🏷️'),kind:r.k,inBudget:r.b?r.b=='1':r.k!='jedno',budget:gr(r.g),from:isDate(r.f)?r.f:'',to:isDate(r.t)?r.t:'',odo0:Math.round(pnum(r.o))||0};
+  S.cfg.projs=projs();let x=p0;if(x)Object.assign(x,body);else{x=body;S.cfg.projs.push(x)}render();saveProj(x);toast(p0?'Zapisano projekt':'Dodano projekt')}
+function openProj(id){S.proj=id;window.scrollTo(0,0);render()}
+function closeProj(){S.proj=null;render()}
+function projPageH(){const p=projById(S.proj);if(!p){S.proj=null;return''}const tx=liveOf(S.tx),sm=subsMap(S.cfg),L=tx.filter(t=>t.proj===p.id).sort((a,b)=>b.date.localeCompare(a.date)),sp=projSpent(p,tx);
+  let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeProj()">‹ Budżet</button><div class="worth"><div class="l">${esc(p.icon||'🏷️')} ${esc(p.name)} · ${p.inBudget===false?'poza codziennym budżetem':'liczy się do budżetu'}</div><div class="v num">${zl(sp)}</div><div class="s">${L.length} ${plu(L.length,'wpis','wpisy','wpisów')}${p.budget?` · budżet ${zl(p.budget)} · zostało ${zl(p.budget-sp)}`:''}</div></div>`;
+  if(p.kind=='car'){const c=carStats(S.cfg,tx,p.id,p.odo0);
+    h+=`<div class="kpis"><div class="kpi k-sk"><div class="l">Przejechane</div><div class="v num">${c.km.toLocaleString('pl-PL')} km</div><div class="s">licznik ${c.odo?c.odo.toLocaleString('pl-PL')+' km':'—'}</div></div><div class="kpi k-ro"><div class="l">Koszt 1 km</div><div class="v num">${c.perKm?zl(Math.round(c.perKm)):'—'}</div><div class="s">wszystkie koszty</div></div>
+      <div class="kpi k-em"><div class="l">Spalanie</div><div class="v num">${c.l100?c.l100.toFixed(1).replace('.',',')+' l':'—'}</div><div class="s">na 100 km</div></div><div class="kpi k-in"><div class="l">Litr paliwa</div><div class="v num">${c.litre?zl(Math.round(c.litre)):'—'}</div><div class="s">średnio</div></div></div>
+      <div class="mini" style="padding:0 4px">Spalanie liczę, gdy przy tankowaniach wpiszesz litry i stan licznika (pola pojawią się przy pozycji „Paliwo” i tym projekcie).</div>`;
+    const rows=Object.entries(c.byCat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v],i)=>({l,v,c:PAL[i%PAL.length],dot:PAL[i%PAL.length]}));if(rows.length)h+=chartBox('Struktura kosztów','',hbarsH(rows,c.cost))}
+  else{const byCat={};L.forEach(t=>{const s=sm[t.sub];if(!s||t.type=='tr')return;const k=cleanCat(s.cat.name);byCat[k]=(byCat[k]||0)+(t.type=='exp'?t.amount:-t.amount)});
+    const rows=Object.entries(byCat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v],i)=>({l,v,c:PAL[i%PAL.length],dot:PAL[i%PAL.length]}));if(rows.length)h+=chartBox('Na co','według kategorii',hbarsH(rows,sp))}
+  const ms=[...new Set(L.map(t=>t.date.slice(0,7)))].sort().slice(-12);
+  if(ms.length>1)h+=chartBox('Miesiąc po miesiącu','',barsSvg(ms.map(m=>MN[+m.slice(5)-1].slice(0,3).toLowerCase()),[{name:'Koszty',color:C_EXP,values:ms.map(m=>L.filter(t=>t.date.startsWith(m)).reduce((a,t)=>a+(t.type=='exp'?t.amount:t.refundOf?-t.amount:0),0))}],{tipLabel:i=>MN[+ms[i].slice(5)-1]+' '+ms[i].slice(0,4)}));
+  h+=L.length?`<div class="list">${L.slice(0,100).map(t=>txRowH(t,sm)).join('')}</div>`:catsEmpty('Brak wpisów. Przy wydatku wybierz ten projekt w polu „🏷️ Projekt”.',1,'box');
+  return h+`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="editProj('${p.id}')">Edytuj projekt</button></div>`}
+/* the sheet: project label, litres and odometer for a vehicle */
+function fillProj(sel){$('mproj').innerHTML='<option value="">— brak —</option>'+projs().map(p=>`<option value="${p.id}">${esc((p.icon||'🏷️')+' '+p.name)}</option>`).join('');$('mproj').value=sel||'';updProj()}
+function updProj(){if(!S.cfg)return;const has=projs().length>0,p=projById($('mproj').value),s=subsMap(S.cfg)[$('ms').value];
+  $('mprojWrap').hidden=!has||S.etype=='tr';$('mcarWrap').hidden=!(p&&p.kind=='car'&&S.etype=='exp'&&s&&/paliw|tankow|benzyn|diesel|lpg|ładowan/i.test(s.name))}
+/* ---------- 🔔 reminders (📌 Stałe → Przypomnienia): insurance, inspection, tyres, service, cats' vaccinations ---------- */
+const rems=()=>S.cfg.rems||[];
+const saveRem=x=>merge(H,{remM:{[x.id]:strip(x,rems().indexOf(x))}});
+const delRemDb=id=>w(updateDoc(H,{['remM.'+id]:deleteField()}));
+const REM_PRE=[['','— własne —'],['🛡️ OC samochodu','12'],['🔧 Przegląd techniczny','12'],['🛞 Wymiana opon','6'],['🧰 Serwis / olej','12'],['💉 Szczepienie kotów','12'],['🐾 Odrobaczenie kotów','3'],['🏠 Ubezpieczenie mieszkania','12']];
+function remState(r){const today=td(),car=r.proj&&projById(r.proj),odo=car?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0;
+  const days=r.next?Math.round((new Date(r.next)-new Date(today))/864e5):null,kmLeft=r.km&&car?(r.lastOdo||car.odo0||0)+r.km-odo:null;
+  return{days,kmLeft,odo,due:(days!=null&&days<=14)||(kmLeft!=null&&kmLeft<=500),late:(days!=null&&days<0)||(kmLeft!=null&&kmLeft<0)}}
+function remsH(){const L=rems().map(r=>({r,st:remState(r)})).sort((a,b)=>(a.r.next||'9999').localeCompare(b.r.next||'9999'));
+  let h=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">🔔 Przypomnienia</span><button class="btn sm dark" onclick="editRem()">+ Przypomnienie</button></div>`;
+  if(!L.length)return h+catsEmpty('OC, przegląd, opony, serwis co X km, szczepienia Bailey i Ivo. Przypomnę w aplikacji, gdy termin się zbliży.',0,'bell');
+  return h+`<div class="list">${L.map(({r,st})=>`<div class="acc${st.late?' late':''}"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(r.name)}</b>${st.late?'<span class="pill over">po terminie</span>':st.due?'<span class="pill near">wkrótce</span>':''}</div>
+    <div class="mini">${r.next?`termin ${r.next.split('-').reverse().join('.')}${st.days!=null?` · ${st.days<0?Math.abs(st.days)+' dni temu':st.days==0?'dziś':'za '+st.days+' '+plu(st.days,'dzień','dni','dni')}`:''}`:''}${r.km?`${r.next?' · ':''}co ${r.km.toLocaleString('pl-PL')} km${st.kmLeft!=null?` · zostało ${st.kmLeft.toLocaleString('pl-PL')} km`:''}`:''}${+r.every?` · co ${r.every} mies.`:' · jednorazowe'}${r.proj&&projById(r.proj)?' · '+esc(projById(r.proj).name):''}</div>
+    ${r.note?`<div class="mini">📝 ${esc(r.note)}</div>`:''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="doneRem('${r.id}')">✓ Zrobione</button><button class="chip" onclick="editRem('${r.id}')">Edytuj</button></div></div></div>`).join('')}</div>`}
+async function editRem(id){if(guard())return;const r0=id?rems().find(x=>x.id==id):null,cars=projs().filter(p=>p.kind=='car');
+  const r=await ask({title:r0?'Przypomnienie':'Nowe przypomnienie',fields:[...(r0?[]:[{id:'p',label:'Gotowe',type:'select',value:'',options:REM_PRE.map(([n,e])=>[n?n+'|'+e:'',n||'— własne —'])}]),
+    {id:'n',label:'Nazwa (gdy własne)',value:r0?.name||'',ph:'np. Wymiana klocków'},{id:'d',label:'Termin',type:'date',value:r0?.next||''},
+    {id:'e',label:'Powtarzaj',type:'select',value:String(r0?.every??12),options:[['0','Jednorazowo'],['1','Co miesiąc'],['3','Co 3 miesiące'],['6','Co pół roku'],['12','Co rok'],['24','Co 2 lata']]},
+    ...(cars.length?[{id:'c',label:'Pojazd',type:'select',value:r0?.proj||'',options:[['','— nie dotyczy —'],...cars.map(p=>[p.id,p.name])]},{id:'k',label:'Albo co ile km (np. serwis)',type:'int',value:r0?.km||''}]:[]),
+    {id:'t',label:'Notatka',value:r0?.note||''}],ok:r0?'Zapisz':'Dodaj',alt:r0?'Usuń':null});
+  if(!r)return;if(r=='alt'){S.cfg.rems=rems().filter(x=>x!==r0);render();delRemDb(r0.id);return}
+  let name=r.n.trim(),every=+r.e;if(!name&&r.p){const[n,e]=r.p.split('|');name=n;if(!r0&&r.e=='12')every=+e}
+  if(!name)return toast('Podaj nazwę albo wybierz gotowe','bad');const km=Math.round(pnum(r.k||''))||0;if(!isDate(r.d)&&!km)return toast('Podaj termin albo liczbę km','bad');
+  const car=r.c?projById(r.c):null,body={id:r0?.id||'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),lastOdo:r0?.lastOdo??(car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0)};
+  S.cfg.rems=rems();let x=r0;if(x)Object.assign(x,body);else{x=body;S.cfg.rems.push(x)}render();saveRem(x);toast(r0?'Zapisano':'Dodano przypomnienie 🔔')}
+async function doneRem(id){const r=rems().find(x=>x.id==id);if(!r)return;const st=remState(r);
+  if(!+r.every&&!r.km){if(!await ask({title:'Zrobione: '+r.name,text:'To przypomnienie było jednorazowe – usunąć je?',ok:'Usuń'}))return;S.cfg.rems=rems().filter(x=>x!==r);render();delRemDb(r.id);return toast('Gotowe ✓')}
+  if(r.next&&+r.every)r.next=addM(r.next<td()?td():r.next,+r.every);if(r.km)r.lastOdo=st.odo;render();saveRem(r);toast('Gotowe ✓'+(r.next?' – następny termin '+r.next.split('-').reverse().join('.'):''))}
+/* ---------- 💧 cascade of surpluses: only a proposal, per person; current accounts (no subaccounts) above a buffer → savings ---------- */
+function cascadeH(o){const cfgc=(S.hraw?.cascade||{})[o]||{},buf=cfgc.buf||0,tom=addDays(td(),1),tx=liveOf(S.tx),ym=td().slice(0,7);
+  const to=accById(cfgc.to)?.id||S.cfg.accs.find(a=>(a.grp=='sav'||a.grp=='inv')&&!a.archived&&accOwner(a)==o&&!/poduszk/i.test(a.name))?.id;
+  const src=S.cfg.accs.filter(a=>a.grp=='cur'&&!a.archived&&isP(a)&&accOwner(a)==o);if(!src.length||!to)return'';
+  const unpaid=a=>(S.cfg.fixed||[]).filter(f=>(f.kind||'exp')!='inc'&&f.acc==a.id&&!fixedPaid(f.id,ym)).reduce((x,f)=>x+f.amount,0);
+  const L=src.map(a=>({a,sur:balance(S.cfg,tx,a.id,tom)-buf-unpaid(a),u:unpaid(a)})).filter(x=>x.sur>=10000);
+  return`<section class="chart"><div class="ct"><b>💧 Kaskada nadwyżek</b><button class="btn sm" onclick="setCascade('${o}')">⚙️</button></div><div class="mini">Propozycja: to, co na kontach bieżących ponad zapas ${zl0(buf)} i niezapłacone opłaty stałe, możesz przelać na „${esc(accN(to))}”.</div>
+    ${L.length?L.map(x=>`<div class="r1"><span>${esc(x.a.name)}${x.u?` <span class="mini">(po opłatach ${zl0(x.u)})</span>`:''}</span><button class="chip" onclick="openTx(null,{type:'tr',from:'${x.a.id}',to:'${to}',amount:${x.sur}})">→ ${zl(x.sur)}</button></div>`).join(''):'<div class="mini">Teraz nie ma nadwyżek do przelania.</div>'}</section>`}
+async function setCascade(o){if(guard())return;const c=(S.hraw?.cascade||{})[o]||{},savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&!a.archived);
+  const r=await ask({title:'Kaskada nadwyżek – '+o,fields:[{id:'b',label:'Zapas na każdym koncie bieżącym (zł)',type:'decimal',value:f2(c.buf||0)},{id:'t',label:'Przelewaj na',type:'select',value:c.to||'',options:[['','Pierwsze konto oszczędnościowe'],...savs.map(a=>[a.id,a.name])]}]});
+  if(!r)return;const v={buf:gr(r.b),to:r.t};S.hraw={...S.hraw,cascade:{...(S.hraw?.cascade||{}),[o]:v}};merge(H,{cascade:{[o]:v}});render()}
 /* ---------- analysis ---------- */
 /* every category is drawn in its own colour (the same hue as on the Budget screen); "other" stays neutral grey */
 const markOf=c=>c?catMark(catHue(c,S.cfg.cats.indexOf(c))):P_OTHER;
@@ -1142,6 +1238,7 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
   if(ym==cur&&pexp>0){const dl=daysIn(ym)-(+td().slice(8))+1,left=pexp-A.exp;
     h+=`<div class="note ${left<0?'bad':''}">${left>=0?`💡 Do końca miesiąca możecie wydać jeszcze <b>${zl(left)}</b>, czyli ok. <b>${zl(Math.floor(left/dl))}</b> dziennie (${dl} dni).`:`⚠️ Plan wydatków przekroczony o <b>${zl(-left)}</b>.`}</div>`}
   if(!A.exp&&!A.inc)return h+catsEmpty(`Brak przychodów i wydatków w miesiącu: ${mName}.`,0,'sleep');
+  const an=anomalies(cfg,tx,ym);if(an.length)h+=`<section class="chart"><div class="ct"><b>🔎 Nietypowo dużo</b><span class="mini">w porównaniu ze średnią z 3 miesięcy</span></div>${an.slice(0,5).map(x=>`<div class="r1"><span>${esc(x.sub.name)}</span><b class="t-exp num">+${x.pct}% · ${zl0(x.v)} <span class="mini">(zwykle ${zl0(x.avg)})</span></b></div>`).join('')}</section>`;
   // structure donut
   const catRows=Object.entries(A.cat).filter(([,v])=>v>0).map(([id,v])=>({id,v,l:cleanCat(cats[id]?.name)})).sort((a,b)=>b.v-a.v);
   const top=catRows.slice(0,5),rest=catRows.slice(5).reduce((a,r)=>a+r.v,0);
@@ -1240,8 +1337,9 @@ function render(){
   const al=dueAlerts(S.cfg.fixed||[],tx,td());
   const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+am(x.f.amount,x.f.acc)}</span><span class="when ${x.when=='late'?'late':''}">${x.when=='inc'?'jeszcze nie odhaczony':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
 
-  if(S.tab=='dash'){
-    setTimeout(autoPlan,0);
+  if(S.tab=='dash'&&S.proj)h+=projPageH();
+  else if(S.tab=='dash'){
+    setTimeout(autoPlan,0);const AVG=avgActuals(S.cfg,tx,S.ym,3).avg;
     if(S.ym==td().slice(0,7))h+=greetH(S.cfg,S.tx);
     h+=alertH;
     h+=yearLineH();
@@ -1255,6 +1353,7 @@ function render(){
     const BF=S.bf,stOf=(c,s)=>status(c.type,pl[s.id]||0,act[s.id]||0);
     const keep=(c,s)=>BF=='all'||(BF=='over'?c.type=='exp'&&stOf(c,s).k=='over':!(pl[s.id]||0));
     const nOver=S.cfg.cats.reduce((a,c)=>a+c.subs.filter(s=>c.type=='exp'&&stOf(c,s).k=='over').length,0),nNo=S.cfg.cats.reduce((a,c)=>a+c.subs.filter(s=>!(pl[s.id]||0)).length,0);
+    h+=toPlanH();
     h+=`<div class="seg seg3 bfilt">${[['all','Wszystko'],['over','▲ Przekroczone'+(nOver?` (${nOver})`:'')],['none','Bez planu'+(nNo?` (${nNo})`:'')]].map(([k,l])=>`<button aria-pressed="${BF==k}" onclick="setBF('${k}')">${l}</button>`).join('')}</div>`;
     const shownCats=S.cfg.cats.map((c,i)=>({c,i,subs:c.subs.filter(s=>keep(c,s))})).filter(x=>BF=='all'||x.subs.length);
     if(!shownCats.length)h+=BF=='over'?catsEmpty('🎉 W tym miesiącu nic nie przekroczyło planu.',1,'happy'):catsEmpty('💚 Każda pozycja ma już swój plan.',1,'ivoHappy');
@@ -1262,8 +1361,9 @@ function render(){
       const cfx=fxTxt(FX.cat[c.id]);
       return`<section class="cat${status(c.type,pa,ac).k=='zero'&&!cfx?' dim':''}" style="${pastel(catHue(c,i))}"><button class="ch" onclick="tog('${c.id}')" aria-expanded="${!!o}">${trioH(c.type,`<span class="nm"><span class="chev">${o?'▾':'▸'}</span><span class="cico">${catIcon(c)}</span>${esc(catL(c))}</span>`,pa,ac,'',cfx)}</button>`+
         (o?subs.map(s=>{const a=act[s.id]||0,p=pl[s.id]||0,sfx=fxTxt(FX.sub[s.id]);
-          return`<div class="sub${status(c.type,p,a).k=='zero'&&!sfx?' dim':''}">${trioH(c.type,`<span class="n">${esc(s.name)}</span>`,p,a,`<input class="planin" value="${fmtIn(p)}" placeholder="0" inputmode="decimal" aria-label="Plan: ${esc(s.name)}" onchange="setPlan('${s.id}',this.value)">`,sfx)}</div>`}).join(''):'')+`</section>`}).join('');
-    h+=`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="copyPlan()">Skopiuj plan z poprzedniego miesiąca</button></div>`}
+          return`<div class="sub${status(c.type,p,a).k=='zero'&&!sfx?' dim':''}">${trioH(c.type,`<span class="n">${esc(s.name)}</span>`,p,a,`<input class="planin" value="${fmtIn(p)}" placeholder="${AVG[s.id]&&!p?fmtIn(Math.ceil(AVG[s.id]/1000)*1000):'0'}" inputmode="decimal" aria-label="Plan: ${esc(s.name)}" onchange="setPlan('${s.id}',this.value)">`,sfx)}</div>`}).join(''):'')+`</section>`}).join('');
+    h+=`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="copyPlan()">Skopiuj plan z poprzedniego miesiąca</button></div>`;
+    h+=projectsH()}
 
   else if(S.tab=='tx'){
     const F=S.f,fc=F.cat&&S.cfg.cats.find(c=>c.id==F.cat),sel=(k,opts,st='')=>`<select aria-label="${k}" onchange="setF('${k}',this.value)"${st?` style="${st}"`:''}>${opts.map(o=>o.group?`<optgroup label="${esc(o.group)}">${o.items.map(i=>`<option value="${esc(i[0])}"${F[k]==i[0]?' selected':''}>${esc(i[1])}</option>`).join('')}</optgroup>`:`<option value="${esc(o[0])}"${F[k]==o[0]?' selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
@@ -1279,6 +1379,7 @@ function render(){
   else if(S.tab=='fix'&&S.slip)h+=slipH();
   else if(S.tab=='fix'&&S.fixSub=='pay')h+=fixSegH()+payH();
   else if(S.tab=='fix'&&S.fixSub=='year')h+=fixSegH()+yearH();
+  else if(S.tab=='fix'&&S.fixSub=='rem')h+=fixSegH()+remsH();
   else if(S.tab=='fix'){
     h+=fixSegH();
     if(S.ym==td().slice(0,7)||al.some(x=>x.due.startsWith(S.ym)))h+=alertH;
@@ -1358,6 +1459,7 @@ function render(){
       h+=actH(o);
       const grpL=(g,t)=>{const L=accs.filter(a=>a.grp==g);return L.length?`<div class="list"><div class="grp-h ${g}"><span>${t}</span><span class="num">${zl(L.filter(isP).reduce((x,a)=>x+balance(S.cfg,tx,a.id,end),0))}${fxPlus(fxOf(L,a=>balance(S.cfg,tx,a.id,end)))}</span></div>${L.map(accRow).join('')}</div>`:''};
       h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">Razem ${zl(tE)}${fxPlus(ownFx(o,end))}</span><button class="btn sm dark" onclick="addSavAcc('${o}')">+ Dodaj konto</button></div>`+(grpL('sav','OSZCZĘDNOŚCI')+grpL('inv','INWESTYCJE, IKE, IKZE, PPK')||'<div class="acc mini">Brak kont – dodaj pierwsze przyciskiem powyżej.</div>');
+      h+=cascadeH(o);
       h+=gainH(accs,'Wszystkie konta: '+o);
       h+=`<div class="mini" style="padding:0 4px">Konta „inwest.” (inwestycje, IKE, IKZE) mają zmienną wartość – raz na jakiś czas wpisz aktualną kwotę z aplikacji przyciskiem „✎ Wartość”. Przycisk ⋯ zmienia nazwę lub usuwa konto (pieniądze przejdą na inne konto).</div>`;
       h+=goalsH(o)+'</div>'}}}
@@ -1478,4 +1580,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

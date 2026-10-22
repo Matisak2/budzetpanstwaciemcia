@@ -10,8 +10,10 @@ export function balance(cfg,tx,id,before){let b=cfg.accs.find(a=>a.id===id)?.ope
     if(t.type=='tr'&&t.to===id)b+=t.amount2??t.amount}
   return b}
 /* budget sums count złoty only – other currencies are summed apart (agg().fx) */
-export function actuals(cfg,tx,ym){const sm=subsMap(cfg),act={},cm=curMap(cfg);
-  tx.forEach(t=>{if(!t.date.startsWith(ym)||(cm[t.acc]||'PLN')!='PLN')return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
+/* projects outside the everyday budget (one-off trips, renovations) are not counted in plans and analyses */
+export const outProj=cfg=>new Set((cfg.projs||[]).filter(p=>p.inBudget===false).map(p=>p.id));
+export function actuals(cfg,tx,ym){const sm=subsMap(cfg),act={},cm=curMap(cfg),op=outProj(cfg);
+  tx.forEach(t=>{if(!t.date.startsWith(ym)||(cm[t.acc]||'PLN')!='PLN'||(t.proj&&op.has(t.proj)))return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
     act[t.sub]=(act[t.sub]||0)+(t.type==s.cat.type?t.amount:-t.amount)});return act}
 /* budget state of a position or category; an empty plan counts as 0 zł, so any spending without a plan is "poza planem"
    k: zero (nothing planned, nothing spent) · ok · near (≥85%) · full (exactly the plan) · over · low (income still missing) */
@@ -68,9 +70,9 @@ export function planRecon(diffs){// diffs: [{id,d,inv,cur}] – transfers only b
     pos.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:x.d})});neg.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:-x.d})})}
   diffs.filter(x=>x.inv&&x.d).forEach(x=>ops.push({kind:'val',acc:x.id,amount:x.d}));
   return ops}
-export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),r={inc:0,exp:0,cat:{},sub:{},who:{},acc:{},day:{},fixed:0,big:[],n:0,fx:{inc:{},exp:{},cat:{},sub:{}}};
+export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outProj(cfg),r={inc:0,exp:0,cat:{},sub:{},who:{},acc:{},day:{},fixed:0,big:[],n:0,fx:{inc:{},exp:{},cat:{},sub:{}}};
   const add=(m,k,c,v)=>{const x=m[k]=m[k]||{};x[c]=(x[c]||0)+v};
-  for(const t of tx){if(!t.date.startsWith(prefix))continue;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))continue;
+  for(const t of tx){if(!t.date.startsWith(prefix)||(t.proj&&op.has(t.proj)))continue;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))continue;
     const a=(t.type==s.cat.type?1:-1)*t.amount,c=cm[t.acc]||'PLN';
     if(c!='PLN'){const F=r.fx;if(s.cat.type=='inc')F.inc[c]=(F.inc[c]||0)+a;else{F.exp[c]=(F.exp[c]||0)+a;add(F.cat,s.cat.id,c,a);add(F.sub,s.id,c,a)}continue}
     if(s.cat.type=='inc'){r.inc+=a;continue}
@@ -79,3 +81,25 @@ export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),r={inc:0
       const d=+t.date.slice(8);r.day[d]=(r.day[d]||0)+t.amount;if(t.fixedId)r.fixed+=t.amount;r.big.push(t)}
     else if(t.refundOf){const w=t.who||'—';r.who[w]=(r.who[w]||0)-t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)-t.amount}}
   r.big.sort((a,b)=>b.amount-a.amount);r.big=r.big.slice(0,5);return r}
+/* average of each position over the previous n months that have any data (plan hint, "Wypełnij średnimi", anomalies) */
+export function avgActuals(cfg,tx,ym,n=3){const first=(tx.map(t=>t.date).sort()[0]||'9999').slice(0,7),sums={};let k=0;
+  for(let i=1;i<=n;i++){const[y,m]=ym.split('-').map(Number),d=new Date(Date.UTC(y,m-1-i,1)).toISOString().slice(0,7);if(d<first)break;k++;
+    for(const[id,v]of Object.entries(actuals(cfg,tx,d)))sums[id]=(sums[id]||0)+v}
+  const r={};if(k)for(const[id,v]of Object.entries(sums))if(v>0)r[id]=Math.round(v/k);return{avg:r,months:k}}
+/* unusually high spending this month: at least 40% and 100 zł above the 3-month average */
+export function anomalies(cfg,tx,ym){const{avg,months}=avgActuals(cfg,tx,ym,3);if(months<2)return[];const act=actuals(cfg,tx,ym),sm=subsMap(cfg);
+  return Object.entries(act).filter(([id,v])=>sm[id]?.cat.type=='exp'&&avg[id]&&v>=avg[id]*1.4&&v-avg[id]>=10000).map(([id,v])=>({sub:sm[id],v,avg:avg[id],pct:Math.round((v/avg[id]-1)*100)})).sort((a,b)=>(b.v-b.avg)-(a.v-a.avg))}
+/* seasonality (after a year of data): a month where a position costs at least 3× its usual month and 300 zł */
+export function seasonal(cfg,tx,ym){const first=(tx.map(t=>t.date).sort()[0]||'9999').slice(0,7),[y,m]=ym.split('-').map(Number),start=new Date(Date.UTC(y-1,m-1,1)).toISOString().slice(0,7);
+  if(first>start)return[];const sm=subsMap(cfg),per={};
+  for(let i=0;i<12;i++){const d=new Date(Date.UTC(y-1,m-1+i,1)).toISOString().slice(0,7);for(const[id,v]of Object.entries(actuals(cfg,tx,d)))if(v>0&&sm[id]?.cat.type=='exp')(per[id]=per[id]||{})[d]=v}
+  const out=[];for(const[id,ms]of Object.entries(per)){const tot=Object.values(ms).reduce((a,v)=>a+v,0);
+    for(const[d,v]of Object.entries(ms)){const rest=(tot-v)/11;if(v>=30000&&v>=3*Math.max(rest,1))out.push({sub:sm[id],month:+d.slice(5),v})}}
+  return out.sort((a,b)=>b.v-a.v)}
+/* 🚗 a vehicle project: kilometres from the odometer, fuel use, price of a litre, cost per km */
+export function carStats(cfg,tx,pid,odo0=0){const sm=subsMap(cfg),L=tx.filter(t=>t.proj===pid&&(t.type=='exp'||(t.type=='inc'&&t.refundOf))).sort((a,b)=>a.date.localeCompare(b.date));
+  let cost=0;const byCat={};L.forEach(t=>{const v=t.type=='exp'?t.amount:-t.amount;cost+=v;const n=sm[t.sub]?.name||'Inne';byCat[n]=(byCat[n]||0)+v});
+  const fills=L.filter(t=>t.type=='exp'&&t.odo>0).sort((a,b)=>a.odo-b.odo),odos=fills.map(t=>t.odo).concat(odo0>0?[odo0]:[]);
+  const km=odos.length>1?Math.max(...odos)-Math.min(...odos):0,lit=L.filter(t=>t.lit>0),litSum=lit.reduce((a,t)=>a+t.lit,0),litCost=lit.reduce((a,t)=>a+t.amount,0);
+  const after=fills.length>1?fills.slice(1).filter(t=>t.lit>0).reduce((a,t)=>a+t.lit,0):0,span=fills.length>1?fills.at(-1).odo-fills[0].odo:0;
+  return{cost,byCat,km,odo:odos.length?Math.max(...odos):odo0,l100:span>0&&after>0?after/span*100:null,litre:litSum>0?litCost/litSum:null,perKm:km>0?cost/km:null,n:L.length}}

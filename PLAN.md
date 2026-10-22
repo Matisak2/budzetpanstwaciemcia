@@ -85,12 +85,12 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Raty łączą się z zobowiązaniem (kategoria w Budżecie zostaje prawdziwa); „Udzielone pożyczki” → należności
 
 ## Etap 10. Planowanie
-- [ ] „Do zaplanowania” i podpowiedź planu (średnia z 3 mies.) z „Wypełnij średnimi”
-- [ ] Projekty i etykiety: stałe (auto, koty, mieszkanie) liczą się do budżetu, jednorazowe (wyjazd, remont) domyślnie poza; opcjonalny budżet z paskiem
-- [ ] Pojazd: litry i stan licznika przy tankowaniu, spalanie, zł/km, struktura kosztów; kilka aut
-- [ ] 🔔 Przypomnienia w 📌 Stałe (OC, przegląd, opony, serwis co X km, szczepienia kotów)
-- [ ] Anomalie i automatyczna sezonowość (po roku danych)
-- [ ] Kaskada nadwyżek: tylko propozycja, osobno Mati / Wercia / Wspólne; źródło: konta bieżące bez subkont, zapas 0 zł (do zmiany); cel: tylko oszczędności i inwestycje
+- [x] „Do zaplanowania” i podpowiedź planu (średnia z 3 mies.) z „Wypełnij średnimi”
+- [x] Projekty i etykiety: stałe (auto, koty, mieszkanie) liczą się do budżetu, jednorazowe (wyjazd, remont) domyślnie poza; opcjonalny budżet z paskiem
+- [x] Pojazd: litry i stan licznika przy tankowaniu, spalanie, zł/km, struktura kosztów; kilka aut
+- [x] 🔔 Przypomnienia w 📌 Stałe (OC, przegląd, opony, serwis co X km, szczepienia kotów)
+- [x] Anomalie i automatyczna sezonowość (po roku danych)
+- [x] Kaskada nadwyżek: tylko propozycja, osobno Mati / Wercia / Wspólne; źródło: konta bieżące bez subkont, zapas 0 zł (do zmiany); cel: tylko oszczędności i inwestycje
 
 ## Etap 11. Analiza
 - [ ] Przełącznik „Podstawowa | Pełna” (tylko w Analizie, domyślnie Pełna)
