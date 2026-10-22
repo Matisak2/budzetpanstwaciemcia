@@ -56,7 +56,8 @@ function showNews(all){const seen=all?0:+(ls.get('mw_news')||0),list=NEWS.filter
 /* once per session, after the budget has loaded: first steps on a new phone, otherwise "Co nowego" after an update */
 function maybeIntro(){if(S.introDone||!S.cfg||!$('dlg').hidden||!$('sheet').hidden)return;S.introDone=true;
   if(!ls.get('mw_tour')&&kotki.mode!='off'){ls.set('mw_tour','1');ls.set('mw_news',String(NEWS_V));showTour()}
-  else if(+(ls.get('mw_news')||0)<NEWS_V)showNews()}
+  else if(+(ls.get('mw_news')||0)<NEWS_V)showNews();
+  else setTimeout(maybeToday,400)}
 /* a celebration: confetti + Bailey & Ivo (or just a message when they are switched to "few"/"off") */
 function celebrate(c){confetti();if(kotki.mode=='lots')catSlides([c],'Hura!');else toast(c.title)}
 /* drobne saved in a month (all rules, one rule, or into one account) */
@@ -479,7 +480,7 @@ function calendarExport(){if(!S.cfg?.fixed?.some(f=>(f.kind||'exp')=='exp'))retu
   const blob=new Blob([buildIcs(S.cfg.fixed,td())],{type:'text/calendar'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='oplaty-stale.ics';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
   ask({title:'Dodaj do kalendarza',text:'Otwórz pobrany plik „oplaty-stale.ics” i wybierz „Dodaj wszystkie” (iPhone) albo kalendarz, do którego mają trafić.\n\nKażda opłata pojawi się co miesiąc w dniu terminu, z przypomnieniem dzień wcześniej o 18:00.\n\nJeśli zmienisz opłaty, usuń stare wydarzenia i dodaj plik ponownie.',ok:'Rozumiem',cancel:'Zamknij'})}
-function goFixed(){S.ym=td().slice(0,7);S.tab='fix';window.scrollTo(0,0);render()}
+function goFixed(){S.ym=td().slice(0,7);S.tab='fix';S.fixSub='fix';S.slip=null;window.scrollTo(0,0);render()}
 
 /* ---------- investments ---------- */
 /* old investments module (first app version): shown read-only, can only be deleted together with its register entries */
@@ -1284,6 +1285,34 @@ function wrapped(y){const tx=liveOf(S.tx),cfg=S.cfg,Y=agg(cfg,tx,y),sm=subsMap(c
     ...(treats?[{scene:'churu',title:'Smaczki 😺',text:`Na smaczki dla nas wydaliście ${zl0(treats)}. Uważamy, że to za mało, ale dziękujemy.`}]:[]),
     {scene:'celebrate',title:'Do zobaczenia w '+(+y+1)+'!',text:'Bailey pilnuje planu, Ivo pilnuje świętowania. Dobrego roku!'}];
   catSlides(sl,'Super!')}
+/* ---------- 🔔 „Na dziś”: everything that needs attention, only inside the app (no calendar, no card) ---------- */
+function todayItems(){if(!S.cfg)return[];const today=td(),ym=today.slice(0,7),day=+today.slice(8),hr=new Date().getHours(),tx=liveOf(S.tx),out=[];
+  const add=(icon,text,act,label,k='')=>out.push({icon,text,act,label,k});
+  for(const x of dueAlerts(S.cfg.fixed||[],tx,today))add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – jeszcze nie odhaczony`:`${x.f.name} · ${am(x.f.amount,x.f.acc)} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,"closeToday();goFixed()",'Odhacz',x.when=='late'?'bad':'');
+  for(const s of incs())if(day>=(s.day||10)){const sl=slipOf(ym,s.id);if(!sl||!sl.booked||!liveById(sl.booked))add('💼',`Pasek: ${s.name} (${s.who}) – wypłata zwykle do ${s.day||10}.`,`closeToday();openSlip('${s.id}','${ym}')`,'Wpisz')}
+  if(incs().some(s=>s.kind=='b2b')&&day>=14&&day<=20)add('🧾','JDG: do 20. zapłać ZUS, zdrowotną i podatek.',"closeToday();S.fixSub='pay';goTab('fix')",'Pensje');
+  if(hr>=20&&!tx.some(t=>t.date==today&&!t.fixedId&&!t.ppk&&!t.roundOf))add('✍️','Po 20:00 – dziś nic jeszcze nie wpisano. Były jakieś wydatki?',"closeToday();openTx()",'Wpisz');
+  const ys=yearState(ym);if(ys){if(ys.left)add('📅',`Wydatki roczne: w tym miesiącu odłóż jeszcze ${zl(ys.left)}.`,"closeToday();goYear()",'Odłóż');ys.soon.forEach(x=>add('⏰',`Wkrótce: ${x.it.name} (${zl(x.it.amount)}) – ${MN[+x.due.slice(5)-1].toLowerCase()}, w kopercie ${zl(x.fill)}.`,"closeToday();goYear()",'Zobacz'))}
+  for(const r of rems()){const st=remState(r);if(st.due||st.late)add('🔔',`${r.name}${r.next?' – '+r.next.split('-').reverse().join('.'):''}${st.kmLeft!=null?` · zostało ${st.kmLeft.toLocaleString('pl-PL')} km`:''}`,"closeToday();S.fixSub='rem';goTab('fix')",'Zobacz',st.late?'bad':'')}
+  for(const d of debtList('lent')){const st=debtState(d);if(!st.left||!d.until)continue;const dd=Math.round((new Date(d.until)-new Date(today))/864e5);
+    if(dd<=7)add('🔺',`${d.party||d.name} – zwrot ${zl(st.left)} ${dd<0?'po terminie ('+d.until.split('-').reverse().join('.')+')':dd==0?'dziś':'za '+dd+' '+plu(dd,'dzień','dni','dni')}`,"closeToday();setAccView('lent');goTab('acc')",'Zobacz',dd<0?'bad':'')}
+  for(const m of maturities(30))add(IICON[m.it.kind],`${m.it.kind=='obl'?'Wykup':'Koniec lokaty'}: ${m.it.name} – ${m.end.split('-').reverse().join('.')}`,`closeToday();goTab('sav');openInst('${m.a.id}')`,'Zobacz');
+  const mo=+today.slice(5,7),y=today.slice(0,4),wr=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
+  if(mo==12)for(const a of wr.filter(a=>wrapOf(a)=='ikze')){const left=limitOf(a,y,S.hraw?.limits)-paidInYear(tx,a.id,y);if(left>0)add('🛡️',`${a.name}: do 31.12 możesz wpłacić jeszcze ${zl(left)} (ulga w PIT).`,`closeToday();openTx(null,{type:'tr',to:'${a.id}'})`,'Wpłać')}
+  if(mo==1&&wr.some(a=>['ike','ikze'].includes(wrapOf(a))))add('🛡️',`Nowy rok – sprawdź limity IKE i IKZE na ${y}.`,"closeToday();goTab('sav');editLimits()",'Limity');
+  if(S.tx.length){const b=S.backup,days=b?Math.floor((Date.now()-b.at)/864e5):null;if(!b||days>=30)add('💾',b?`Ostatnia kopia danych: ${days} dni temu.`:'Nie zrobiliście jeszcze kopii danych.',"closeToday();exportJson()",'Kopia')}
+  return out}
+function closeToday(){$('dlg').hidden=true}
+function showToday(){const L=todayItems(),d=$('dlg'),bad=L.some(x=>x.k=='bad');ls.set('mw_today',td());
+  $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(L.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${L.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>
+    ${L.length?`<div class="today">${L.map(x=>`<div class="titem ${x.k}"><span class="ti">${x.icon}</span><span class="tt">${esc(x.text)}</span><button class="chip" onclick="${x.act.replace(/"/g,'&quot;')}">${esc(x.label)}</button></div>`).join('')}</div>`:''}
+    <div class="g2" style="grid-template-columns:1fr"><button class="btn primary" id="tdOk">Zamknij</button></div>`;
+  d.hidden=false;$('tdOk').onclick=closeToday;d.onclick=e=>{if(e.target===d)closeToday()};updToday()}
+function updToday(){const n=todayItems().length,b=$('todayBtn');if(!b)return;b.dataset.n=n||'';b.setAttribute('aria-label',n?`Na dziś: ${n}`:'Na dziś')}
+/* the first time the app is opened on a given day, if anything is waiting */
+function maybeToday(){if(ls.get('mw_today')==td()||!$('dlg').hidden||!$('sheet').hidden)return;if(todayItems().length)showToday();else ls.set('mw_today',td())}
+/* while the app stays open: at 20:00 a gentle nudge when nothing was entered today */
+window.setInterval(()=>{if(!S.cfg)return;updToday();const today=td();if(new Date().getHours()>=20&&ls.get('mw_eve')!=today&&!liveOf(S.tx).some(t=>t.date==today&&!t.fixedId)){ls.set('mw_eve',today);toast((kotki.mode=='off'?'':'🐱 ')+'Już 20:00 – wpiszesz dzisiejsze wydatki?','',{label:'Wpisz',fn:()=>openTx()})}},60000);
 /* ---------- analysis ---------- */
 /* every category is drawn in its own colour (the same hue as on the Budget screen); "other" stays neutral grey */
 const markOf=c=>c?catMark(catHue(c,S.cfg.cats.indexOf(c))):P_OTHER;
@@ -1581,7 +1610,7 @@ function render(){
       return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)}${isP(a)?'':' · '+CUR(a)} · saldo początkowe ${money(a.open,CUR(a))}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button style="font-weight:800;text-align:left;flex:1;min-width:0" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))} ✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button><button class="btn" onclick="logout()">Wyloguj</button></div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
-  $('app').innerHTML=h;if(S.tab=='acc'&&S.recon&&$('recApp'))recSum();if(S.tab=='fix'&&S.slip)slipCalc()}
+  $('app').innerHTML=h;updToday();if(S.tab=='acc'&&S.recon&&$('recApp'))recSum();if(S.tab=='fix'&&S.slip)slipCalc()}
 function setAna(k){S.ana=k;render()}
 function tog(id){if(S.bf!='all')S.fold[id]=!S.fold[id];else S.open[id]=!S.open[id];render()}
 function autoPlan(){const ym=S.ym,cur=td().slice(0,7);
@@ -1593,12 +1622,13 @@ function autoPlan(){const ym=S.ym,cur=td().slice(0,7);
 /* ---------- wiring ---------- */
 $('prevM').onclick=()=>mv(-1);$('nextM').onclick=()=>mv(1);
 function mv(d){if(S.tab=='ana'&&S.ana=='y')d*=12;S.ym=addMonths(S.ym,d);render()}
-const goTab=t=>{S.tab=t;S.recon=false;window.scrollTo(0,0);render()};
+const goTab=t=>{S.tab=t;S.recon=false;S.slip=null;S.proj=null;S.instAcc=null;S.values=false;window.scrollTo(0,0);render()};
 document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
 $('gearBtn').onclick=()=>goTab(S.tab=='set'?'dash':'set');
 $('addBtn').onclick=()=>openTx();
 $('mt').querySelectorAll('button').forEach(b=>b.onclick=()=>setType(b.dataset.v));
 $('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}autoWho();updCoin();updFx()};
+$('todayBtn').onclick=()=>{if(S.cfg)showToday()};
 $('shCancel').onclick=closeSheet;$('shSave').onclick=saveTx;$('shDel').onclick=()=>S.edit&&delTx(S.edit);
 $('sheet').onclick=e=>{if(e.target===$('sheet'))closeSheet()};
 $('fileIn').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importFile(f)};
@@ -1652,4 +1682,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

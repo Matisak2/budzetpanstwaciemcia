@@ -25,7 +25,7 @@ button{cursor:pointer;background:none;border:0;padding:0}
 
 /* header */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--head);color:var(--head-fg);border-bottom:1px solid var(--head-line,#d9e0fb);transition:background-color .4s ease}
-.top .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:44px 1fr 44px 44px;align-items:center;padding-block:6px}
+.top .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:44px 1fr 44px 40px 40px;align-items:center;padding-block:6px}
 .hb{height:44px;border-radius:12px;font-size:24px;line-height:1;color:var(--head-fg)}
 .hb.gear{font-size:19px}
 .hb[aria-current=page]{background:rgb(30 41 59 / .08)}
@@ -475,3 +475,13 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .cgr{display:grid;grid-template-columns:repeat(12,1fr);gap:2px}
 .cgr i{display:block;height:16px;border-radius:4px}
 .cgm span{font-size:10px;text-align:center;color:var(--mut,#6b7280)}
+
+/* 🔔 Na dziś */
+.hb.today{font-size:18px;position:relative}
+.hb.today[data-n]:not([data-n=""])::after{content:attr(data-n);position:absolute;top:5px;right:2px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#fb7185;color:#fff;font-size:11px;font-weight:800;line-height:17px;font-family:inherit}
+.today{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;margin:6px 0}
+.titem{display:flex;align-items:center;gap:8px;background:#f8fafc;border-radius:14px;padding:8px 10px}
+.titem.bad{background:#fff1f2}
+.titem .ti{font-size:20px;flex:none}
+.titem .tt{flex:1;min-width:0;font-size:14px;font-weight:600}
+.titem .chip{flex:none}

@@ -100,7 +100,7 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Eksport do Excela, Money Wrapped
 
 ## Etap 12. Okno „Na dziś”
-- [ ] Opłaty, pensje, przypomnienie po 20:00 (gdy danego dnia nic nie wpisano), wydatki roczne, auto, należności, obligacje, limity, kopia – tylko w aplikacji, bez kalendarza
+- [x] Opłaty, pensje, przypomnienie po 20:00 (gdy danego dnia nic nie wpisano), wydatki roczne, auto, należności, obligacje, limity, kopia – tylko w aplikacji, bez kalendarza
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu.
