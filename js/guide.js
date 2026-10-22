@@ -143,6 +143,7 @@ export const TOUR=n=>[
 ];
 /* what changed – shown once per phone after an update; the newest entry first */
 export const NEWS=[
+  {v:6,title:'Waluty 🌍',scene:'happy',items:['Każde konto może mieć swoją walutę (⚙️ → Konta → Edytuj → Waluta) – euro, dolar, funt i każda inna z tabeli NBP. Kwoty nie są przeliczane na złote.','Wymiana walut to przelew z dwiema kwotami – kurs policzę sam i dopiszę do notatki.','Płacisz kartą złotówkową za granicą? Wpisz kwotę w zł, stuknij „🌍 Płatność w obcej walucie” i podaj kwotę w walucie.','W budżecie zobaczysz np. „wydano 820 zł + 45 €” – plan zostaje w złotych.']},
   {v:5,title:'Drobne 🪙',scene:'coin',items:['W ⚙️ → „🪙 Drobne” ustawisz regułę: z którego konta, na które, zaokrąglenie do 5 albo 10 zł i mnożnik.','Przy wydatku z tego konta pojawi się złota moneta z kwotą drobnych. Odznacz ją, gdy bank ich nie liczy (np. BLIK).','Drobne widać pod wydatkiem w Rejestrze i w Oszczędnościach.']},
   {v:4,title:'Poznajcie nas! 🐾',scene:'happy',items:['Bailey i Ivo zamieszkali w aplikacji – witają na Budżecie i podpowiadają, co warto zrobić.','Pamiętamy o urodzinach, świętach i Dniu Kota.','W ⚙️ → „Bailey i Ivo” ustawisz, ile nas ma być: dużo, mało albo wcale.']},
 ];

@@ -69,6 +69,9 @@
     <label class="fld" id="mtoWrap" hidden><span>Na konto</span><select id="mto"></select></label>
     <label class="fld" id="mwWrap"><span>Kto</span><select id="mw"><option>Mati</option><option>Wercia</option></select></label>
   </div>
+  <div id="fxTr" class="fxbox" hidden><label class="fld"><span id="ma2Lab">Wpłynie na konto</span><input id="ma2" inputmode="decimal" placeholder="0,00" autocomplete="off"></label><small class="mini" id="fxRate"></small></div>
+  <button type="button" class="btn sm" id="fxBtn" hidden style="align-self:flex-start">🌍 Płatność w obcej walucie</button>
+  <div id="fxCard" class="fxbox" hidden><div class="g2"><label class="fld"><span>Waluta</span><select id="fxc"></select></label><label class="fld"><span>Kwota w walucie</span><input id="fxa" inputmode="decimal" placeholder="0,00" autocomplete="off"></label></div><small class="mini" id="fxCardRate"></small></div>
   <button type="button" class="coin" id="rnd" aria-pressed="true" hidden></button>
   <div class="g2"><button class="btn" id="shCancel">Anuluj</button><button class="btn primary" id="shSave">Zapisz</button></div>
   <button class="btn sm" id="shRef" hidden style="align-self:center">↩️ Oznacz zwrot</button>

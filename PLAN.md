@@ -56,10 +56,10 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - (Revolut Matiego: zaokrąglenie do 5 zł, ×2, pełne drobne włączone)
 
 ## Etap 6. Waluty
-- [ ] Każda waluta z tabeli NBP (EUR, USD, GBP i inne)
-- [ ] Każde konto i transakcja w swojej walucie, **bez przeliczania na zł**
-- [ ] Sumy osobno dla każdej waluty; w budżecie „wydano 820 zł + 45 €”, plan w zł
-- [ ] Wymiana walut = przelew z dwiema kwotami, kurs sam w notatce; płatność kartą złotówkową za granicą: kwota w zł, kurs w notatce
+- [x] Każda waluta z tabeli NBP (EUR, USD, GBP i inne)
+- [x] Każde konto i transakcja w swojej walucie, **bez przeliczania na zł**
+- [x] Sumy osobno dla każdej waluty; w budżecie „wydano 820 zł + 45 €”, plan w zł
+- [x] Wymiana walut = przelew z dwiema kwotami, kurs sam w notatce; płatność kartą złotówkową za granicą: kwota w zł, kurs w notatce
 
 ## Etap 7. Pensje
 - [ ] Osobne listy źródeł dochodu Matiego i Werci, kilku pracodawców, każde źródło z kontem wpływu

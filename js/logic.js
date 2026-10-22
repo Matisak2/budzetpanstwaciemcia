@@ -2,13 +2,16 @@ import {addDays,daysIn,isDate,p2,zl} from './util.js';
 export const cleanCat=n=>String(n||'').replace(/^\s*\d+\s*[.)]\s*/,'').trim();
 export const subsMap=cfg=>{const m={};cfg.cats.forEach(c=>c.subs.forEach(s=>m[s.id]={...s,cat:c}));return m};
 export const liveOf=tx=>tx.filter(t=>!t.deleted&&isDate(t.date));
+/* currency of every account (PLN when not set) */
+export const curMap=cfg=>{const m={};cfg.accs.forEach(a=>m[a.id]=a.cur||'PLN');return m};
 export function balance(cfg,tx,id,before){let b=cfg.accs.find(a=>a.id===id)?.open||0;
   for(const t of tx){if(t.date>=before)continue;
     if(t.acc===id){if(t.type=='inc'||t.type=='adj'||t.type=='invs')b+=t.amount;else b-=t.amount}
-    if(t.type=='tr'&&t.to===id)b+=t.amount}
+    if(t.type=='tr'&&t.to===id)b+=t.amount2??t.amount}
   return b}
-export function actuals(cfg,tx,ym){const sm=subsMap(cfg),act={};
-  tx.forEach(t=>{if(!t.date.startsWith(ym))return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
+/* budget sums count złoty only – other currencies are summed apart (agg().fx) */
+export function actuals(cfg,tx,ym){const sm=subsMap(cfg),act={},cm=curMap(cfg);
+  tx.forEach(t=>{if(!t.date.startsWith(ym)||(cm[t.acc]||'PLN')!='PLN')return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
     act[t.sub]=(act[t.sub]||0)+(t.type==s.cat.type?t.amount:-t.amount)});return act}
 /* budget state of a position or category; an empty plan counts as 0 zł, so any spending without a plan is "poza planem"
    k: zero (nothing planned, nothing spent) · ok · near (≥85%) · full (exactly the plan) · over · low (income still missing) */
@@ -57,15 +60,19 @@ export function buildIcs(fixed,today){const esc2=t=>String(t).replace(/[\\;,]/g,
   L.push('END:VCALENDAR');return L.join('\r\n')+'\r\n'}
 
 /* bulk reconcile: diffs per account → transfers (too much → too little), leftovers → adjustments; investment accounts → value change */
-export function planRecon(diffs){// diffs: [{id,d,inv}]
-  const ops=[],pos=diffs.filter(x=>!x.inv&&x.d>0).map(x=>({...x})).sort((a,b)=>b.d-a.d),neg=diffs.filter(x=>!x.inv&&x.d<0).map(x=>({...x,d:-x.d})).sort((a,b)=>b.d-a.d);
-  let i=0,j=0;while(i<pos.length&&j<neg.length){const a=Math.min(pos[i].d,neg[j].d);ops.push({kind:'tr',from:neg[j].id,to:pos[i].id,amount:a});pos[i].d-=a;neg[j].d-=a;if(!pos[i].d)i++;if(!neg[j].d)j++}
-  pos.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:x.d})});neg.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:-x.d})});
+export function planRecon(diffs){// diffs: [{id,d,inv,cur}] – transfers only between accounts of the same currency
+  const ops=[];
+  for(const cur of [...new Set(diffs.map(x=>x.cur||'PLN'))]){const D=diffs.filter(x=>(x.cur||'PLN')==cur);
+    const pos=D.filter(x=>!x.inv&&x.d>0).map(x=>({...x})).sort((a,b)=>b.d-a.d),neg=D.filter(x=>!x.inv&&x.d<0).map(x=>({...x,d:-x.d})).sort((a,b)=>b.d-a.d);
+    let i=0,j=0;while(i<pos.length&&j<neg.length){const a=Math.min(pos[i].d,neg[j].d);ops.push({kind:'tr',from:neg[j].id,to:pos[i].id,amount:a});pos[i].d-=a;neg[j].d-=a;if(!pos[i].d)i++;if(!neg[j].d)j++}
+    pos.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:x.d})});neg.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:-x.d})})}
   diffs.filter(x=>x.inv&&x.d).forEach(x=>ops.push({kind:'val',acc:x.id,amount:x.d}));
   return ops}
-export function agg(cfg,tx,prefix){const sm=subsMap(cfg),r={inc:0,exp:0,cat:{},sub:{},who:{},acc:{},day:{},fixed:0,big:[],n:0};
+export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),r={inc:0,exp:0,cat:{},sub:{},who:{},acc:{},day:{},fixed:0,big:[],n:0,fx:{inc:{},exp:{},cat:{},sub:{}}};
+  const add=(m,k,c,v)=>{const x=m[k]=m[k]||{};x[c]=(x[c]||0)+v};
   for(const t of tx){if(!t.date.startsWith(prefix))continue;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))continue;
-    const a=(t.type==s.cat.type?1:-1)*t.amount;
+    const a=(t.type==s.cat.type?1:-1)*t.amount,c=cm[t.acc]||'PLN';
+    if(c!='PLN'){const F=r.fx;if(s.cat.type=='inc')F.inc[c]=(F.inc[c]||0)+a;else{F.exp[c]=(F.exp[c]||0)+a;add(F.cat,s.cat.id,c,a);add(F.sub,s.id,c,a)}continue}
     if(s.cat.type=='inc'){r.inc+=a;continue}
     r.exp+=a;r.cat[s.cat.id]=(r.cat[s.cat.id]||0)+a;r.sub[s.id]=(r.sub[s.id]||0)+a;
     if(t.type=='exp'){r.n++;const w=t.who||'—';r.who[w]=(r.who[w]||0)+t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)+t.amount;

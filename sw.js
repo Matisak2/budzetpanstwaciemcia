@@ -1,7 +1,7 @@
 /* Budżet M&W – service worker: the app opens without internet.
    App files (index.html, style.css, js/*): network first (so updates arrive together), cached copy when offline.
    Firebase SDK (versioned URLs) and fonts: cache first. Firestore/Auth traffic is never touched. */
-const CACHE = 'budzet-mw-v17';
+const CACHE = 'budzet-mw-v18';
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const SHELL = ['./', './index.html', './style.css', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png',
   './js/app.js', './js/util.js', './js/data.js', './js/art.js', './js/logic.js', './js/charts.js', './js/cats.js', './js/guide.js'];

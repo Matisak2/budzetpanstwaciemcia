@@ -3,6 +3,14 @@ export const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 export const MNG=['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
 export const MN=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
 export const zl=n=>(n/100).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł';
+/* other currencies: amounts in the smallest unit (cents), shown with their symbol; PLN stays „zł” */
+const SYM={PLN:'zł',EUR:'€',USD:'$',GBP:'£'};
+export const curSym=c=>SYM[c||'PLN']||c;
+export const money=(n,c)=>!c||c=='PLN'?zl(n):(n/100).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+curSym(c);
+/* {EUR:4500,USD:-1000} → "45,00 € − 10,00 $"; fxPlus adds them after a złoty sum: " + 45,00 € − 10,00 $" */
+const fxList=m=>Object.entries(m||{}).filter(([,v])=>v).sort((a,b)=>a[0].localeCompare(b[0]));
+export const fxPlus=m=>fxList(m).map(([c,v])=>(v<0?' − ':' + ')+money(Math.abs(v),c)).join('');
+export const fxTxt=m=>fxPlus(m).replace(/^ \+ /,'').replace(/^ − /,'−');
 export const zl0=n=>Math.round(n/100).toLocaleString('pl-PL')+' zł';
 /* amounts as typed or pasted: "1 234,56", "1.234,56", "1,234.56", "12,5"; for money a single separator followed by exactly 3 digits ("1.234") means thousands */
 export const pnum=(s,money)=>{s=String(s??'').replace(/\s/g,'').replace(/zł|pln|eur|usd|gbp|chf|€|\$/gi,'');

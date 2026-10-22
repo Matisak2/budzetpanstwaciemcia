@@ -5,9 +5,9 @@ import {catIcon,catsEmpty} from './art.js';
 import {scene} from './cats.js';
 import {CELEBRATE,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
-import {HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
+import {CURS,HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
 import {actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,roundUp,status,subsMap} from './logic.js';
-import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,isDate,ls,p2,pg,pnum,rid,sleep,td,zl,zl0} from './util.js';
+import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,isDate,ls,p2,pg,pnum,rid,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt} from './util.js';
 const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
 const auth=getAuth(fa);
 const fdb=initializeFirestore(fa,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
@@ -32,7 +32,7 @@ kotki.mode=ls.get('mw_kotki')||'lots';
 function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=td(),ym=today.slice(0,7),who=S.who;
   const [hi,em]=hr<5?['Dobranoc','🌙']:hr<12?['Dzień dobry','☀️']:hr<18?['Miłego dnia','🌤️']:hr<23?['Dobry wieczór','🌆']:['Dobranoc','🌙'];
   const tx=liveOf(txAll),A=agg(cfg,tx,ym),pl=S.plans[ym]||{},pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,x)=>b+(pl[x.id]||0),0),0);
-  const sv=cfg.accs.filter(a=>a.grp=='sav'||a.grp=='inv'),sd=sv.reduce((x,a)=>x+balance(cfg,tx,a.id,ym+'-32')-balance(cfg,tx,a.id,ym+'-00'),0);
+  const sv=cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)),sd=sv.reduce((x,a)=>x+balance(cfg,tx,a.id,ym+'-32')-balance(cfg,tx,a.id,ym+'-00'),0);
   const unpaid=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym)));
   const late=unpaid.filter(f=>fixedDate(f,ym)<today).map(f=>f.name),soon=unpaid.filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)}).map(f=>f.name);
   const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({name:g.name,pct:goalAlloc(g)/g.target*100})).sort((a,b)=>b.pct-a.pct)[0]||null;
@@ -58,7 +58,7 @@ function maybeIntro(){if(S.introDone||!S.cfg||!$('dlg').hidden||!$('sheet').hidd
 /* a celebration: confetti + Bailey & Ivo (or just a message when they are switched to "few"/"off") */
 function celebrate(c){confetti();if(kotki.mode=='lots')catSlides([c],'Hura!');else toast(c.title)}
 /* drobne saved in a month (all rules, one rule, or into one account) */
-const coinSum=(ym,r,to)=>liveOf(S.tx).filter(t=>t.roundOf&&t.date.startsWith(ym)&&(!r||t.acc==r.from&&t.to==r.to)&&(!to||t.to==to)).reduce((a,t)=>a+t.amount,0);
+const coinSum=(ym,r,to)=>liveOf(S.tx).filter(t=>t.roundOf&&t.date.startsWith(ym)&&(!r||t.acc==r.from&&t.to==r.to)&&(!to||t.to==to)&&(r||to||accCur(t.acc)=='PLN')).reduce((a,t)=>a+t.amount,0);
 async function editRound(id){if(guard())return;const r0=id?(S.cfg.round||[]).find(x=>x.id==id):null,opts=accOpts();
   const res=await ask({title:r0?'Reguła drobnych':'Nowa reguła drobnych',text:'Przykład: płacisz 12,34 zł → do pełnych 5 zł brakuje 2,66 zł → przy mnożniku ×2 odłożę 5,32 zł.\nDrobne liczą się od dnia dodania reguły.',fields:[
     {id:'f',label:'Z konta (nim płacisz kartą)',type:'select',value:r0?.from||'',options:[['','— wybierz —'],...opts]},
@@ -72,6 +72,7 @@ async function editRound(id){if(guard())return;const r0=id?(S.cfg.round||[]).fin
     S.cfg.round=S.cfg.round.filter(x=>x!==r0);render();delRoundDb(r0.id);return toast('Usunięto regułę drobnych')}
   if(!res.f||!res.t)return toast('Wybierz oba konta','bad');
   if(res.f==res.t)return toast('Wybierz dwa różne konta','bad');
+  if(accCur(res.f)!=accCur(res.t))return toast('Oba konta muszą mieć tę samą walutę','bad');
   if((S.cfg.round||[]).some(x=>x.from==res.f&&x!==r0))return toast('To konto ma już regułę drobnych','bad');
   const body={id:r0?.id||'r'+rid(),from:res.f,to:res.t,step:+res.s,mult:+res.m,full:res.q=='1',since:r0?.since||td()};
   S.cfg.round=S.cfg.round||[];let r=r0;if(r)Object.assign(r,body);else{r=body;S.cfg.round.push(r)}
@@ -101,6 +102,16 @@ function ask({title,text='',fields=[],ok='Zapisz',cancel='Anuluj',danger=false,a
     d.onclick=e=>{if(e.target===d)done(null)};
     d.onkeydown=e=>{if(e.key=='Enter'&&e.target.tagName=='INPUT'){e.preventDefault();$('dlgOk').click()}if(e.key=='Escape')done(null)};
   })}
+/* currencies: every account keeps its own; złoty sums stay złoty, other currencies are added as " + 45,00 €" */
+const CUR=a=>a?.cur||'PLN',accCur=id=>CUR(S.cfg.accs.find(a=>a.id==id)),isP=a=>CUR(a)=='PLN';
+const am=(n,id)=>money(n,accCur(id));
+const fxOf=(accs,f)=>{const m={};accs.forEach(a=>{const c=CUR(a);if(c!='PLN')m[c]=(m[c]||0)+f(a)});return m};
+const fxSmall=m=>{const t=fxPlus(m).trim();return t?`<small class="fxs">${esc(t)}</small>`:''};
+const CUR_OPTS=[['PLN','PLN – złoty polski'],...CURS.map(([c,n])=>[c,c+' – '+n])];
+const r4=x=>x.toLocaleString('pl-PL',{minimumFractionDigits:4,maximumFractionDigits:4});
+/* "1 EUR = 4,2856 zł" – złoty always on the right; without złoty: 1 of the source currency */
+function fxRate(c1,a1,c2,a2){if(c1=='PLN'){[c1,c2]=[c2,c1];[a1,a2]=[a2,a1]}return`1 ${c1} = ${r4(a2/a1)} ${curSym(c2)}`}
+const stripFx=n=>String(n||'').replace(/\s*(·\s*)?💱.*$/,'');
 const GRPN={cur:'Konto bieżące',sub:'Subkonto',sav:'Oszczędności',inv:'Inwestycje'};
 const accOwner=a=>a.owner||(/wercia|weronika/i.test(a.name)?'Wercia':/mati/i.test(a.name)?'Mati':'Wspólne');
 const accOpts=()=>[['cur','Konta bieżące'],['sub','Subkonta'],['sav','Oszczędności'],['inv','Inwestycje']].map(([g,l])=>({group:l,items:S.cfg.accs.filter(a=>a.grp==g&&!a.archived).map(a=>[a.id,a.name])})).filter(g=>g.items.length);
@@ -152,15 +163,23 @@ const refundsOf=id=>liveOf(S.tx).filter(x=>x.refundOf===id);
 const pickKind=()=>S.etype=='inc'&&!S.refEdit?'inc':'exp';
 
 function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==t));
-  if(S.cfg)updCoin();
+  if(S.cfg){updCoin();updFx()}
   $('msWrap').hidden=t=='tr';$('mtoWrap').hidden=t!='tr';$('mwWrap').hidden=t=='tr';$('mcLab').textContent=t=='tr'?'Z konta':'Konto';
   const s=S.cfg&&subsMap(S.cfg)[$('ms').value];if(s&&s.cat.type!=pickKind())setMs('');
   if(t=='tr'&&SP.length){SP=[];renderSplit()}updSplit()}
 /* 🪙 drobne: the rule of the chosen account, the rounding of this amount, on/off for this one expense (on by default) */
-const ruleOf=acc=>(S.cfg.round||[]).find(r=>r.from==acc&&S.cfg.accs.some(a=>a.id==r.to));
+const ruleOf=acc=>(S.cfg.round||[]).find(r=>r.from==acc&&S.cfg.accs.some(a=>a.id==r.to)&&accCur(r.from)==accCur(r.to));
 function updCoin(){const b=$('rnd'),r=S.etype=='exp'&&!S.edit&&ruleOf($('mc').value),d=$('md').value,amt=calcAmt($('ma').value);
   const v=r&&amt>0&&(!r.since||d>=r.since)?roundUp(amt,r):0;S.coin=v?{r,v}:null;b.hidden=!v;if(!v)return;
-  b.setAttribute('aria-pressed',S.coinOn);b.innerHTML=`<span class="cn">🪙</span><span class="ct"><b>Drobne +${zl(v)}</b><small>→ ${esc(accN(r.to))}${S.coinOn?'':' · nie odłożę'}</small></span><span class="ck">${S.coinOn?'✓':''}</span>`}
+  b.setAttribute('aria-pressed',S.coinOn);b.innerHTML=`<span class="cn">🪙</span><span class="ct"><b>Drobne +${am(v,r.from)}</b><small>→ ${esc(accN(r.to))}${S.coinOn?'':' · nie odłożę'}</small></span><span class="ck">${S.coinOn?'✓':''}</span>`}
+/* 🌍 currencies in the sheet: label of the amount, the second amount of an exchange, a card payment abroad */
+function updFx(){if(!S.cfg)return;const t=S.etype,cA=accCur($('mc').value),cB=accCur($('mto').value),two=t=='tr'&&cA!=cB;
+  $('maLab').textContent=`Kwota (${curSym(cA)})`;$('fxTr').hidden=!two;
+  if(two){$('ma2Lab').textContent=`Wpłynie na konto docelowe (${curSym(cB)})`;const a=calcAmt($('ma').value),b=calcAmt($('ma2').value);
+    $('fxRate').textContent=a>0&&b>0?`💱 ${fxRate(cA,a,cB,b)} – dopiszę do notatki`:'Wpisz obie kwoty z banku – kurs policzę sam.'}
+  const card=t!='tr'&&cA=='PLN'&&!S.refEdit;$('fxBtn').hidden=!card||S.fxOpen;$('fxCard').hidden=!card||!S.fxOpen;
+  if(card&&S.fxOpen){const a=calcAmt($('ma').value),b=calcAmt($('fxa').value);
+    $('fxCardRate').textContent=a>0&&b>0?`💱 ${fxRate($('fxc').value,b,'PLN',a)} – dopiszę do notatki`:'„Kwota (zł)” to tyle, ile pobrał bank. Wpisz też kwotę w walucie – kurs policzę sam.'}}
 function autoWho(){const a=S.cfg.accs.find(x=>x.id==$('mc').value),o=a&&accOwner(a);if(o=='Mati'||o=='Wercia')$('mw').value=o}
 
 /* position picker: search, recently used, the note's usual position, category tiles */
@@ -219,8 +238,10 @@ function openTx(id,pre){if(guard())return;
   if(pre?.to)$('mto').value=pre.to;
   if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o){if(pre?.to)$('mc').value=o.value;else $('mto').value=o.value}}
   if(!t)autoWho();
-  $('mn').value=t?(t.note||''):'';
+  $('mn').value=t?stripFx(t.note):'';
   setMs(t?t.sub:'');renderSplit();S.coinOn=true;updCoin();
+  if(!$('fxc').options.length)$('fxc').innerHTML=CURS.map(([c,n])=>`<option value="${c}">${c} – ${esc(n)}</option>`).join('');
+  $('ma2').value=t?.amount2?f2(t.amount2):'';S.fxOpen=!!t?.fxCur;$('fxc').value=t?.fxCur||'EUR';$('fxa').value=t?.fxAmt?f2(t.fxAmt):'';updFx();
   const left=t&&t.type=='exp'?t.amount-refundsOf(t.id).reduce((a,x)=>a+x.amount,0):0;
   $('shRef').hidden=!(left>0);
   $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;
@@ -232,6 +253,10 @@ async function saveTx(){if(guard())return;
   if(!isDate(date))return toast('Wybierz datę','bad');
   if(type!='tr'&&!$('ms').value)return toast('Wybierz pozycję budżetu','bad');
   if(type=='tr'&&$('mc').value==$('mto').value)return toast('Wybierz dwa różne konta','bad');
+  const cA=accCur($('mc').value),cB=type=='tr'?accCur($('mto').value):cA,two=cA!=cB,amount2=two?calcAmt($('ma2').value):0;
+  if(two&&amount2<=0)return toast(`Podaj, ile wpłynie na drugie konto (${curSym(cB)})`,'bad');
+  const fxAmt=type!='tr'&&cA=='PLN'&&S.fxOpen&&!S.refEdit?calcAmt($('fxa').value):0,fxCur=fxAmt>0?$('fxc').value:'';
+  const auto=two?'💱 kurs '+fxRate(cA,amount,cB,amount2):fxCur?`💱 ${money(fxAmt,fxCur)} · kurs ${fxRate(fxCur,fxAmt,'PLN',amount)}`:'';
   const parts=type=='tr'||S.edit?[]:SP.map(x=>({sub:x.sub,amount:calcAmt(x.amt)}));
   if(parts.some(x=>!x.sub))return toast('Wybierz pozycję w każdym wierszu paragonu','bad');
   if(parts.some(x=>x.amount<=0))return toast('Podaj kwotę w każdym wierszu paragonu','bad');
@@ -239,8 +264,10 @@ async function saveTx(){if(guard())return;
   if(main<=0)return toast('Pozycje paragonu przekraczają jego kwotę','bad');
   ls.set('mw_acc_'+S.who,$('mc').value);
   const old=S.edit?liveById(S.edit):null,id=old?old.id:'t'+rid();
-  const base={type,date,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?S.who:$('mw').value,note:$('mn').value.trim(),deleted:false,ts:Date.now()};
+  const base={type,date,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?S.who:$('mw').value,note:[stripFx($('mn').value.trim()),auto].filter(Boolean).join(' · '),deleted:false,ts:Date.now()};
   const body={...base,amount:main,sub:type=='tr'?'':$('ms').value};
+  if(two)body.amount2=amount2;else if(old?.amount2)body.amount2=null;
+  if(fxCur){body.fxCur=fxCur;body.fxAmt=fxAmt}else if(old?.fxCur){body.fxCur='';body.fxAmt=0}
   if(old)for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];
   const g=parts.length?'g'+rid():'';if(g)body.split=g;
   const coin=!old&&type=='exp'&&S.coinOn&&S.coin;
@@ -250,15 +277,15 @@ async function saveTx(){if(guard())return;
   if(ok&&coin)putTx(ym,'t'+rid(),{type:'tr',amount:coin.v,date,sub:'',acc:coin.r.from,to:coin.r.to,who:base.who,note:'🪙 drobne',roundOf:id,deleted:false,ts:Date.now()});
   if(ok&&old&&old.date.slice(0,7)!=ym)await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
   const sm2=subsMap(S.cfg);if(ok&&!old&&kotki.mode=='lots'&&[body.sub,...parts.map(x=>x.sub)].some(x=>isTreat(sm2[x]?.name)))setTimeout(()=>toast(treatJoke(Math.floor(Date.now()/1000))),1900);
-  if(ok){const n=parts.length+1;toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${zl(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+zl(coin.v):''}`:'Dodano '+zl(amount)+(coin?' · 🪙 +'+zl(coin.v):''));if(ym!=S.ym){S.ym=ym;render()}}}
+  if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):''));if(ym!=S.ym){S.ym=ym;render()}}}
 async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
   linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));
-  toast('Usunięto '+zl(Math.abs(t.amount))+(linked.length?linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
+  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
 async function markRefund(id){const t=liveById(id);if(!t)return;const done=refundsOf(id).reduce((a,x)=>a+x.amount,0),left=t.amount-done;
   if(left<=0)return toast('Ten wydatek jest już w całości zwrócony');
-  const r=await ask({title:'↩️ Zwrot: '+(subsMap(S.cfg)[t.sub]?.name||''),text:`Wydatek ${zl(t.amount)} z ${t.date.split('-').reverse().join('.')}${done?`, zwrócono już ${zl(done)}`:''}.\nZwrot zmniejszy wydatek w tej samej pozycji – nie liczy się jako przychód.`,
-    fields:[{id:'a',label:'Ile wróciło (zł)',type:'decimal',value:f2(left)},{id:'d',label:'Data zwrotu',type:'date',value:td()},{id:'c',label:'Na konto',type:'select',value:t.acc,options:accOpts()}],ok:'Zapisz zwrot'});
+  const r=await ask({title:'↩️ Zwrot: '+(subsMap(S.cfg)[t.sub]?.name||''),text:`Wydatek ${am(t.amount,t.acc)} z ${t.date.split('-').reverse().join('.')}${done?`, zwrócono już ${am(done,t.acc)}`:''}.\nZwrot zmniejszy wydatek w tej samej pozycji – nie liczy się jako przychód.`,
+    fields:[{id:'a',label:`Ile wróciło (${curSym(accCur(t.acc))})`,type:'decimal',value:f2(left)},{id:'d',label:'Data zwrotu',type:'date',value:td()},{id:'c',label:'Na konto',type:'select',value:t.acc,options:accOpts()}],ok:'Zapisz zwrot'});
   if(!r)return;const amt=pg(r.a);
   if(amt<=0)return toast('Podaj kwotę zwrotu','bad');
   if(amt>left)return toast('Zwrot może wynieść najwyżej '+zl(left),'bad');
@@ -276,7 +303,9 @@ $('pq').oninput=()=>{P.cat=null;renderPick()};
 $('pkClose').onclick=closePick;$('pick').onclick=e=>{if(e.target===$('pick'))closePick()};
 $('mn').oninput=()=>{if(S.edit||S.etype=='tr'||($('ms').value&&!S.autoSub))return;const s=noteSub($('mn').value,pickKind());
   if(s){S.autoSub=true;setMs(s.id,'💡 podpowiedziane po notatce – stuknij, żeby zmienić')}else if(S.autoSub){S.autoSub=false;setMs('')}};
-$('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]\s*\d/.test(v)?'= '+zl(calcAmt(v)):'';updSplit();updCoin()};
+$('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]\s*\d/.test(v)?'= '+am(calcAmt(v),$('mc').value):'';updSplit();updCoin();updFx()};
+$('ma2').oninput=$('fxa').oninput=$('fxc').onchange=$('mto').onchange=()=>updFx();
+$('fxBtn').onclick=()=>{S.fxOpen=true;updFx();$('fxa').focus()};
 $('md').onchange=()=>updCoin();
 $('rnd').onclick=()=>{S.coinOn=!S.coinOn;updCoin()};
 document.querySelectorAll('.cop').forEach(b=>{b.onpointerdown=b.onmousedown=e=>e.preventDefault();
@@ -298,18 +327,19 @@ async function copyPlan(){if(guard())return;const[y,m]=S.ym.split('-').map(Numbe
   if(!await ask({title:'Skopiować plan?',text:`Plan z miesiąca ${MN[+prev.slice(5)-1]} zastąpi plan na ${MN[m-1]}.`,ok:'Kopiuj'}))return;
   if(w(setDoc(doc(PLC(),S.ym),{...src})))toast('Skopiowano plan')}
 async function recon(id){if(guard())return;const before=S.ym+'-32',cur=balance(S.cfg,liveOf(S.tx),id,before),a=S.cfg.accs.find(x=>x.id==id);
-  const r=await ask({title:'Wyrównaj saldo',text:`${a.name}\nW aplikacji na koniec miesiąca: ${zl(cur)}`,fields:[{id:'v',label:'Rzeczywiste saldo (zł)',type:'decimal',value:f2(cur)}],ok:'Wyrównaj'});
+  const r=await ask({title:'Wyrównaj saldo',text:`${a.name}\nW aplikacji na koniec miesiąca: ${money(cur,CUR(a))}`,fields:[{id:'v',label:`Rzeczywiste saldo (${curSym(CUR(a))})`,type:'decimal',value:f2(cur)}],ok:'Wyrównaj'});
   if(!r||!r.v.trim())return;const d=pg(r.v)-cur;if(!d)return toast('Saldo się zgadza');
   const date=td().startsWith(S.ym)?td():S.ym+'-'+p2(daysIn(S.ym));
-  if(await putTx(S.ym,'t'+rid(),{type:'adj',amount:d,date,sub:'',acc:id,to:'',who:S.who,note:'Wyrównanie salda',deleted:false,ts:Date.now()}))toast('Dodano wyrównanie '+(d>0?'+':'')+zl(d))}
-async function addAcc(){if(guard())return;const r=await ask({title:'Nowe konto',fields:[{id:'n',label:'Nazwa'},{id:'g',label:'Rodzaj',type:'select',value:S.accTab,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:S.who,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]}],ok:'Dodaj'});
-  if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner:r.w,open:0};S.cfg.accs.push(a);S.accTab=r.g;render();saveAcc(a)}
+  if(await putTx(S.ym,'t'+rid(),{type:'adj',amount:d,date,sub:'',acc:id,to:'',who:S.who,note:'Wyrównanie salda',deleted:false,ts:Date.now()}))toast('Dodano wyrównanie '+(d>0?'+':'')+money(d,CUR(a)))}
+async function addAcc(){if(guard())return;const r=await ask({title:'Nowe konto',fields:[{id:'n',label:'Nazwa'},{id:'g',label:'Rodzaj',type:'select',value:S.accTab,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:S.who,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:'PLN',options:CUR_OPTS}],ok:'Dodaj'});
+  if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner:r.w,open:0,...(r.c!='PLN'?{cur:r.c}:{})};S.cfg.accs.push(a);S.accTab=r.g;render();saveAcc(a)}
 async function editAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id);
   const used=liveOf(S.tx).some(t=>t.acc===id||t.to===id);
-  const r=await ask({title:'Edytuj konto',fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:accOwner(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'o',label:'Saldo początkowe – przed pierwszą transakcją (zł)',type:'decimal',value:f2(a.open)}],alt:used?null:'Usuń konto'});
+  const r=await ask({title:'Edytuj konto',fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:accOwner(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS},{id:'o',label:`Saldo początkowe – przed pierwszą transakcją (${curSym(CUR(a))})`,type:'decimal',value:f2(a.open)}],alt:used?null:'Usuń konto'});
   if(!r)return;
   if(r=='alt'){if(!await ask({title:'Usunąć konto?',text:a.name,ok:'Usuń',danger:true}))return;S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);render();delAccDb(id);return}
-  if(r.n.trim())a.name=r.n.trim();a.owner=r.w;a.open=pg(r.o);
+  if(r.c!=CUR(a)&&used&&!await ask({title:'Zmienić walutę konta?',text:`${a.name}: ${CUR(a)} → ${r.c}\nKwoty nie zostaną przeliczone – zmieni się tylko waluta, w której są pokazane wszystkie wpisy tego konta.`,ok:'Zmień walutę'}))return;
+  if(r.n.trim())a.name=r.n.trim();a.owner=r.w;a.open=pg(r.o);if(r.c!=CUR(a))a.cur=r.c;
   if(r.g!=a.grp){a.grp=r.g;S.accTab=r.g;toEndOfKind(a);toast('Konto przeniesione do: '+ACCTAB[r.g])}else saveAcc(a);render()}
 async function addSub(ci){if(guard())return;const r=await ask({title:'Nowa pozycja',text:catL(S.cfg.cats[ci]),fields:[{id:'n',label:'Nazwa'}],ok:'Dodaj'});
   if(!r||!r.n.trim())return;const c=S.cfg.cats[ci],s={id:'s'+rid(),name:r.n.trim()};c.subs.push(s);render();saveSub(c,s)}
@@ -439,16 +469,16 @@ function invAccStats(cfg,tx,id,before){const a=cfg.accs.find(x=>x.id==id);let pa
     if(t.type=='tr'&&t.to===id)paid+=t.amount}
   const value=paid+chg;return{paid,chg,value,pct:paid>0?chg/paid*100:null,last,own,emp}}
 async function updateValue(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id),tom=addDays(td(),1),cur=balance(S.cfg,liveOf(S.tx),id,tom);
-  const r=await ask({title:'Aktualna wartość: '+a.name,text:`W aplikacji: ${zl(cur)}\nWpisz, ile jest teraz warte konto w aplikacji brokera. Różnicę zapiszę jako zysk albo stratę (nie wpływa na wydatki).`,fields:[{id:'v',label:'Wartość dziś (zł)',type:'decimal',value:f2(cur)}],ok:'Zapisz wartość'});
+  const r=await ask({title:'Aktualna wartość: '+a.name,text:`W aplikacji: ${money(cur,CUR(a))}\nWpisz, ile jest teraz warte konto w aplikacji brokera. Różnicę zapiszę jako zysk albo stratę (nie wpływa na wydatki).`,fields:[{id:'v',label:`Wartość dziś (${curSym(CUR(a))})`,type:'decimal',value:f2(cur)}],ok:'Zapisz wartość'});
   if(!r||!r.v.trim())return;const d=pg(r.v)-cur;if(!d)return toast('Wartość się zgadza');
   const ym=td().slice(0,7),tid='t'+rid();
   if(await putTx(ym,tid,{type:'adj',val:true,amount:d,date:td(),sub:'',acc:id,to:'',who:S.who,note:'Zmiana wartości',deleted:false,ts:Date.now()}))
-    toast(`${d>0?'Zysk':'Strata'} ${zl(Math.abs(d))} zapisany`,'',{label:'Cofnij',fn:()=>putTx(ym,tid,{deleted:true})})}
+    toast(`${d>0?'Zysk':'Strata'} ${money(Math.abs(d),CUR(a))} zapisany`,'',{label:'Cofnij',fn:()=>putTx(ym,tid,{deleted:true})})}
 
 /* ---------- savings goals as envelopes: money in savings + investment accounts is assigned to goals ---------- */
 const goalAlloc=g=>g.alloc??g.saved??0;
 const goalOwner=g=>g.owner||'Wspólne';
-const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&(!owner||accOwner(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
+const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)&&(!owner||accOwner(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
 function goalProgress(g,cfg,tx,today){const saved=goalAlloc(g);
   const pct=g.target?Math.max(0,saved/g.target*100):0,left=Math.max(0,g.target-saved);
   let months=null,perMonth=null;
@@ -488,14 +518,14 @@ function openRecon(scope){if(guard())return;S.recon=true;S.recVals={};S.recScope
 function closeRecon(){S.recon=false;render()}
 function recRead(all){const tx=liveOf(S.tx),tom=addDays(td(),1),list=all?S.cfg.accs.filter(a=>!a.archived):recAccs();
   return list.map(a=>{const el=$('rv_'+a.id),app=balance(S.cfg,tx,a.id,tom),raw=(el?el.value:(S.recVals[a.id]||'')).trim();return{a,app,filled:raw!=='',real:raw===''?app:pg(raw)}})}
-function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(),app=r.reduce((s,x)=>s+x.app,0),real=r.reduce((s,x)=>s+x.real,0),n=r.filter(x=>x.filled).length,d=real-app;
+function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(),rp=r.filter(x=>isP(x.a)),app=rp.reduce((s,x)=>s+x.app,0),real=rp.reduce((s,x)=>s+x.real,0),n=r.filter(x=>x.filled).length,d=real-app;
   $('recApp').textContent=zl(app);$('recReal').textContent=zl(real);$('recN').textContent=n?`uzupełniono ${n} z ${r.length}`:'nic jeszcze nie wpisano';
   const el=$('recDiff');el.textContent=(d>0?'+':'')+zl(d);el.className='num '+(d>0?'t-inc':d<0?'t-exp':'');
-  r.forEach(x=>{const c=$('rd_'+x.a.id);if(c){const dd=x.real-x.app;c.textContent=x.filled&&dd?(dd>0?'+':'')+zl(dd):'';c.className='rdiff '+(dd>0?'t-inc':'t-exp')}})}
+  r.forEach(x=>{const c=$('rd_'+x.a.id);if(c){const dd=x.real-x.app;c.textContent=x.filled&&dd?(dd>0?'+':'')+money(dd,CUR(x.a)):'';c.className='rdiff '+(dd>0?'t-inc':'t-exp')}})}
 async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(true).filter(x=>x.filled&&x.real!==x.app);
   if(!r.length)return toast('Wszystko się zgadza – nic do zmiany');
-  const ops=planRecon(r.map(x=>({id:x.a.id,d:x.real-x.app,inv:x.a.grp=='inv'})));
-  const lines=ops.map(o=>o.kind=='tr'?`⇄ ${accN(o.from)} → ${accN(o.to)}: ${zl(o.amount)}`:o.kind=='val'?`📈 ${accN(o.acc)}: zmiana wartości ${o.amount>0?'+':''}${zl(o.amount)}`:`⚖️ ${accN(o.acc)}: wyrównanie ${o.amount>0?'+':''}${zl(o.amount)}`).join('\n');
+  const ops=planRecon(r.map(x=>({id:x.a.id,d:x.real-x.app,inv:x.a.grp=='inv',cur:CUR(x.a)})));
+  const lines=ops.map(o=>o.kind=='tr'?`⇄ ${accN(o.from)} → ${accN(o.to)}: ${am(o.amount,o.from)}`:o.kind=='val'?`📈 ${accN(o.acc)}: zmiana wartości ${o.amount>0?'+':''}${am(o.amount,o.acc)}`:`⚖️ ${accN(o.acc)}: wyrównanie ${o.amount>0?'+':''}${am(o.amount,o.acc)}`).join('\n');
   const tr=ops.filter(o=>o.kind=='tr').length,adj=ops.filter(o=>o.kind=='adj').length;
   if(!await ask({title:'Zapisać te zmiany?',text:lines+`\n\n${tr?'Przelewy (⇄) przenoszą pieniądze między kontami i nie wpływają na budżet. ':''}${adj?'Wyrównania (⚖️) to różnica, której nie da się wyjaśnić przelewem – też nie liczą się do wydatków. ':''}`,ok:'Zapisz'}))return;
   const ym=td().slice(0,7),date=td(),ids=[];
@@ -506,25 +536,26 @@ async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S
   toast(`Zapisano ${ops.length} ${ops.length==1?'zmianę':ops.length<5?'zmiany':'zmian'}`,'',{label:'Cofnij',fn:()=>ids.forEach(id=>putTx(ym,id,{deleted:true}))})}
 /* savings / investment accounts managed from the Savings tab */
 async function addSavAcc(owner){if(guard())return;
-  const r=await ask({title:'Nowe konto – '+owner,fields:[{id:'n',label:'Nazwa',ph:owner=='Wspólne'?'np. Fundusz wakacyjny':'np. Konto oszczędnościowe '+owner}, {id:'g',label:'Rodzaj',type:'select',value:'sav',options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]}],ok:'Dodaj konto'});
-  if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner,open:0};S.cfg.accs.push(a);render();saveAcc(a);toast('Dodano konto: '+a.name)}
+  const r=await ask({title:'Nowe konto – '+owner,fields:[{id:'n',label:'Nazwa',ph:owner=='Wspólne'?'np. Fundusz wakacyjny':'np. Konto oszczędnościowe '+owner}, {id:'g',label:'Rodzaj',type:'select',value:'sav',options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'c',label:'Waluta',type:'select',value:'PLN',options:CUR_OPTS}],ok:'Dodaj konto'});
+  if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner,open:0,...(r.c!='PLN'?{cur:r.c}:{})};S.cfg.accs.push(a);render();saveAcc(a);toast('Dodano konto: '+a.name)}
 async function editSavAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id);
-  const r=await ask({title:'Konto: '+a.name,fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'w',label:'Czyje',type:'select',value:accOwner(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]}],alt:'Usuń konto'});
+  const r=await ask({title:'Konto: '+a.name,fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'w',label:'Czyje',type:'select',value:accOwner(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS}],alt:'Usuń konto'});
   if(!r)return;if(r=='alt')return removeSavAcc(id);
-  if(r.n.trim())a.name=r.n.trim();a.grp=r.g;a.owner=r.w;render();saveAcc(a)}
+  if(r.c!=CUR(a)&&liveOf(S.tx).some(t=>t.acc===id||t.to===id)&&!await ask({title:'Zmienić walutę konta?',text:`${a.name}: ${CUR(a)} → ${r.c}\nKwoty nie zostaną przeliczone – zmieni się tylko waluta, w której są pokazane.`,ok:'Zmień walutę'}))return;
+  if(r.n.trim())a.name=r.n.trim();a.grp=r.g;a.owner=r.w;if(r.c!=CUR(a))a.cur=r.c;render();saveAcc(a)}
 async function removeSavAcc(id){const a=S.cfg.accs.find(x=>x.id==id),tx=liveOf(S.tx),tom=addDays(td(),1),bal=balance(S.cfg,tx,id,tom),own=accOwner(a);
-  const others=S.cfg.accs.filter(x=>x.id!=id&&!x.archived&&(x.grp=='sav'||x.grp=='inv'));
+  const others=S.cfg.accs.filter(x=>x.id!=id&&!x.archived&&(x.grp=='sav'||x.grp=='inv')&&CUR(x)==CUR(a));
   const pref=others.find(x=>accOwner(x)==own&&x.grp=='sav'&&/oszcz/i.test(x.name))||others.find(x=>accOwner(x)==own&&x.grp=='sav')||others.find(x=>accOwner(x)==own)||others.find(x=>x.grp=='sav');
   let target=null;
   if(bal!==0){if(!pref)return ask({title:'Nie można usunąć',text:'Na tym koncie są pieniądze, a nie ma innego konta oszczędnościowego, na które można je przenieść.',ok:'OK',cancel:'Zamknij'});
-    const r=await ask({title:'Usunąć konto „'+a.name+'”?',text:`Na koncie jest ${zl(bal)}. Przeniosę tę kwotę na wybrane konto. Historia wpłat zostanie zachowana.`,fields:[{id:'t',label:'Przenieś pieniądze na',type:'select',value:pref.id,options:[...['Mati','Wercia','Wspólne'].map(o=>({group:o,items:others.filter(x=>accOwner(x)==o).map(x=>[x.id,x.name])})).filter(g=>g.items.length)]}],ok:'Przenieś i usuń',danger:true});
+    const r=await ask({title:'Usunąć konto „'+a.name+'”?',text:`Na koncie jest ${money(bal,CUR(a))}. Przeniosę tę kwotę na wybrane konto. Historia wpłat zostanie zachowana.`,fields:[{id:'t',label:'Przenieś pieniądze na',type:'select',value:pref.id,options:[...['Mati','Wercia','Wspólne'].map(o=>({group:o,items:others.filter(x=>accOwner(x)==o).map(x=>[x.id,x.name])})).filter(g=>g.items.length)]}],ok:'Przenieś i usuń',danger:true});
     if(!r)return;target=r.t}
   else if(!await ask({title:'Usunąć konto „'+a.name+'”?',text:'Konto jest puste. Historia zostanie zachowana.',ok:'Usuń',danger:true}))return;
   const ym=td().slice(0,7);
   if(target)putTx(ym,'t'+rid(),bal>0?{type:'tr',amount:bal,date:td(),sub:'',acc:id,to:target,who:S.who,note:'Zamknięcie konta '+a.name,deleted:false,ts:Date.now()}:{type:'tr',amount:-bal,date:td(),sub:'',acc:target,to:id,who:S.who,note:'Zamknięcie konta '+a.name,deleted:false,ts:Date.now()});
   const used=S.tx.some(t=>t.acc===id||t.to===id)||a.open;
   if(used){a.archived=true;saveAcc(a)}else{S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);delAccDb(id)}
-  render();toast(target?`Usunięto konto. ${zl(Math.abs(bal))} → ${accN(target)}`:'Usunięto konto')}
+  render();toast(target?`Usunięto konto. ${money(Math.abs(bal),CUR(a))} → ${accN(target)}`:'Usunięto konto')}
 
 /* ---------- backup ---------- */
 async function exportJson(){if(!S.cfg)return;
@@ -626,11 +657,11 @@ function txMatches(t,sm,F,ym,AQ){
   const hay=[t.note,s?.name,s?cleanCat(s.cat.name):'',accN(t.acc),t.to?accN(t.to):'',t.who,t.date,t.date.split('-').reverse().join('.'),amt,amt.replace('.',','),amt.replace(/\.00$/,''),
     {exp:'wydatek',inc:'przychód',tr:'przelew',inv:'zakup inwestycja',invs:'sprzedaż inwestycja',adj:'wyrównanie'}[t.type],t.refundOf?'zwrot':'',t.split?'paragon':''].join(' ').toLowerCase();
   return q.split(/\s+/).every(w=>hay.includes(w.replace(',','.'))||hay.includes(w))}
-function txRowH(t,sm,rf={},cn={}){const k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
+function txRowH(t,sm,rf={},cn={}){const M=v=>am(v,t.acc),k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
   const cls=k=='invs'?'inv':k,s=sm[t.sub],c=s&&(k=='exp'||k=='inc')?s.cat:null;
   const title=t.ppk?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
   const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.roundOf?'🪙':k=='tr'?'⇄':k=='adj'?(t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
-  return`<button class="tx" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew':esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&!t.ppk?`<div class="note">${esc(t.note)}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${zl(rf[t.id])} z ${zl(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${zl(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${zl(Math.abs(t.amount))}</span></button>`}
+  return`<button class="tx" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&!t.ppk?`<div class="note">${esc(t.note)}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
 function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q.trim());
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m',rf={};
@@ -640,8 +671,10 @@ function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q
   const lv=l.filter(t=>!(t.roundOf&&cn[t.roundOf]===t));
   if(!l.length)return filtered?catsEmpty('Nic nie znaleziono.<br>Zmień wyszukiwanie albo filtry.',1,'lupa'):catsEmpty('Brak transakcji w tym miesiącu.<br>Dodaj pierwszą przyciskiem ＋ w prawym dolnym rogu.',0,'box');
   let h='';
-  if(filtered){const e=l.filter(t=>t.type=='exp').reduce((a,t)=>a+t.amount,0)-l.filter(t=>t.refundOf).reduce((a,t)=>a+t.amount,0),i=l.filter(t=>t.type=='inc'&&!t.refundOf).reduce((a,t)=>a+t.amount,0);
-    h+=`<div class="fsum"><b>${lv.length} ${plu(lv.length,'wpis','wpisy','wpisów')}</b>${e?` · wydatki <b class="t-exp">${zl(e)}</b>`:''}${i?` · przychody <b class="t-inc">${zl(i)}</b>`:''}</div>`}
+  if(filtered){const E={},I={},ad=(m,t,v)=>{const c=accCur(t.acc);m[c]=(m[c]||0)+v};
+    l.forEach(t=>{if(t.type=='exp')ad(E,t,t.amount);else if(t.refundOf)ad(E,t,-t.amount);else if(t.type=='inc')ad(I,t,t.amount)});
+    const sx=m=>((m.PLN?zl(m.PLN):'')+fxPlus({...m,PLN:0})).replace(/^ \+ /,''),e=sx(E),i=sx(I);
+    h+=`<div class="fsum"><b>${lv.length} ${plu(lv.length,'wpis','wpisy','wpisów')}</b>${e?` · wydatki <b class="t-exp">${e}</b>`:''}${i?` · przychody <b class="t-inc">${i}</b>`:''}</div>`}
   const days={};lv.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));
   const yr=F.scope!='m';
   h+=Object.entries(days).slice(0,400).map(([d,ts])=>{const dd=new Date(d+'T12:00:00').toLocaleDateString('pl-PL',yr?{weekday:'short',day:'numeric',month:'long',year:'numeric'}:{weekday:'long',day:'numeric',month:'long'});
@@ -656,6 +689,8 @@ function clearF(){S.f={q:'',type:'',who:'',acc:'',cat:'',scope:'m'};if(document.
 /* every category is drawn in its own colour (the same hue as on the Budget screen); "other" stays neutral grey */
 const markOf=c=>c?catMark(catHue(c,S.cfg.cats.indexOf(c))):P_OTHER;
 
+/* spending and income in other currencies – not converted, so shown beside the charts */
+const fxNote=F=>{const e=fxTxt(F.exp),i=fxTxt(F.inc);return e||i?`<div class="note">🌍 W innych walutach (poza wykresami): ${e?`wydatki <b>${esc(e)}</b>`:''}${e&&i?' · ':''}${i?`przychody <b>${esc(i)}</b>`:''}</div>`:''};
 function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntries(cfg.cats.map(c=>[c.id,c]));
   const A=agg(cfg,tx,ym),Pm=agg(cfg,tx,addMonths(ym,-1)),pl=S.plans[ym]||{};
   const pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,s)=>b+(pl[s.id]||0),0),0);
@@ -666,7 +701,7 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
     <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(A.exp)}</div><div class="s">${deltaH(A.exp,Pm.exp,false)||'&nbsp;'}</div></div>
     <div class="kpi k-sk"><div class="l">Zostało (bilans)</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,pbal,true)||'&nbsp;'}</div></div>
     <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów${prate!==null&&rate!==null?` · ${prevName}: ${prate.toFixed(0)}%`:''}</div></div></div>
-    <div class="mini" style="text-align:center">Strzałki porównują z miesiącem: ${prevName}.</div>`;
+    <div class="mini" style="text-align:center">Strzałki porównują z miesiącem: ${prevName}.</div>`+fxNote(A.fx);
   const cur=td().slice(0,7);
   if(ym==cur&&pexp>0){const dl=daysIn(ym)-(+td().slice(8))+1,left=pexp-A.exp;
     h+=`<div class="note ${left<0?'bad':''}">${left>=0?`💡 Do końca miesiąca możecie wydać jeszcze <b>${zl(left)}</b>, czyli ok. <b>${zl(Math.floor(left/dl))}</b> dziennie (${dl} dni).`:`⚠️ Plan wydatków przekroczony o <b>${zl(-left)}</b>.`}</div>`}
@@ -706,13 +741,13 @@ function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Object.fro
   const cur=td().slice(0,7),months=Array.from({length:12},(_,i)=>y+'-'+p2(i+1));
   const M=months.map(m=>agg(cfg,tx,m)),Y=agg(cfg,tx,y),PY=agg(cfg,tx,String(+y-1));
   const elapsed=y<cur.slice(0,4)?12:y==cur.slice(0,4)?+cur.slice(5):0;
-  const bal=Y.inc-Y.exp,rate=Y.inc?bal/Y.inc*100:null,avgExp=elapsed?Y.exp/elapsed:0,avgInc=elapsed?Y.inc/elapsed:0;
+  const fxN=fxNote(Y.fx),bal=Y.inc-Y.exp,rate=Y.inc?bal/Y.inc*100:null,avgExp=elapsed?Y.exp/elapsed:0,avgInc=elapsed?Y.inc/elapsed:0;
   let h=`<div class="kpis">
     <div class="kpi k-em"><div class="l">Przychody ${y}</div><div class="v num">${zl(Y.inc)}</div><div class="s">śr. ${zl0(avgInc)}/mies. ${deltaH(Y.inc,PY.inc,true)}</div></div>
     <div class="kpi k-ro"><div class="l">Wydatki ${y}</div><div class="v num">${zl(Y.exp)}</div><div class="s">śr. ${zl0(avgExp)}/mies. ${deltaH(Y.exp,PY.exp,false)}</div></div>
     <div class="kpi k-sk"><div class="l">Zostało w roku</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,PY.inc-PY.exp,true)||'&nbsp;'}</div></div>
     <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów w roku</div></div></div>
-    <div class="mini" style="text-align:center">Strzałki porównują z rokiem ${+y-1}.</div>`;
+    <div class="mini" style="text-align:center">Strzałki porównują z rokiem ${+y-1}.</div>`+fxN;
   if(!Y.inc&&!Y.exp)return h+`<div class="empty">Brak danych za rok ${y}.</div>`;
   const ml=['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
   h+=chartBox('Przychody i wydatki','miesiąc po miesiącu',barsSvg(ml,[{name:'Przychody',color:C_INC,values:M.map(a=>Math.max(0,a.inc))},{name:'Wydatki',color:C_EXP,values:M.map(a=>Math.max(0,a.exp))}],{tipLabel:i=>MN[i]}),legendH([{l:'Przychody',c:C_INC},{l:'Wydatki',c:C_EXP}]));
@@ -738,11 +773,11 @@ function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Object.fro
 /* ---------- render ---------- */
 const accN=id=>S.cfg.accs.find(a=>a.id===id)?.name||'?';
 const barH=st=>st.pct===null?'<div class="bar"></div>':`<div class="bar ${st.k}"><i style="width:${Math.min(100,Math.max(0,st.pct)).toFixed(1)}%"></i></div>`;
-function trioH(type,name,plan,act,planInput){const st=status(type,plan,act);
-  return`<div class="r1">${name}<span class="pill ${st.k}">${esc(st.txt)}</span></div><div class="trio"><span><em>Plan</em>${planInput||`<b>${zl(plan)}</b>`}</span><span><em>${type=='inc'?'Wpłynęło':'Wydano'}</em><b>${zl(act)}</b></span></div>${barH(st)}${st.msg?`<div class="smsg ${st.k}">${esc(st.msg)}</div>`:''}`}
+function trioH(type,name,plan,act,planInput,fx){const st=status(type,plan,act);
+  return`<div class="r1">${name}<span class="pill ${st.k}">${esc(st.txt)}</span></div><div class="trio"><span><em>Plan</em>${planInput||`<b>${zl(plan)}</b>`}</span><span><em>${type=='inc'?'Wpłynęło':'Wydano'}</em><b>${zl(act)}</b>${fx?`<small class="fxs">${fx.startsWith('−')?'':'+ '}${esc(fx)}</small>`:''}</span></div>${barH(st)}${st.msg?`<div class="smsg ${st.k}">${esc(st.msg)}</div>`:''}`}
 /* tap on "Na kontach": current accounts split by person */
-function showWealth(){if(guard())return;const tx=liveOf(S.tx),end=S.ym+'-32',sumO=(o,g)=>S.cfg.accs.filter(a=>a.grp==g&&accOwner(a)==o).reduce((x,a)=>x+balance(S.cfg,tx,a.id,end),0);
-  const lines=OWN.map(o=>{const c=sumO(o,'cur'),sb=sumO(o,'sub');return`${o}: ${zl(c)}${sb?` · subkonta ${zl(sb)}`:''}`});
+function showWealth(){if(guard())return;const tx=liveOf(S.tx),end=S.ym+'-32',accs=(o,g)=>S.cfg.accs.filter(a=>a.grp==g&&accOwner(a)==o),b=a=>balance(S.cfg,tx,a.id,end),sumO=(o,g)=>accs(o,g).filter(isP).reduce((x,a)=>x+b(a),0);
+  const lines=OWN.map(o=>{const c=sumO(o,'cur'),sb=sumO(o,'sub'),fs=fxOf(accs(o,'sub'),b);return`${o}: ${zl(c)}${fxPlus(fxOf(accs(o,'cur'),b))}${sb||fxTxt(fs)?` · subkonta ${zl(sb)}${fxPlus(fs)}`:''}`});
   ask({title:'Na kontach bieżących',text:lines.join('\n')+'\n\nWszystkie konta, także oszczędności i inwestycje, zobaczysz w 👛 Konta.',ok:'Pokaż konta',cancel:'Zamknij'}).then(r=>{if(r)goTab('acc')})}
 function setBF(k){S.bf=k;render()}
 function setAccSub(k){S.accSub=k;window.scrollTo(0,0);render()}
@@ -754,20 +789,20 @@ function render(){
   const[y,m]=S.ym.split('-').map(Number);applySeason();$('mlabel').textContent=S.tab=='ana'&&S.ana=='y'?'Rok '+y:SEASON[m-1][2]+' '+MN[m-1]+' '+y;
   if(!S.cfg)return;
   const ae=document.activeElement;if(ae&&ae.tagName=='INPUT'&&$('app').contains(ae)){S.pend=true;return}S.pend=false;
-  const tx=liveOf(S.tx),sm=subsMap(S.cfg),end=S.ym+'-32',start=S.ym+'-00',pl=S.plans[S.ym]||{},act=actuals(S.cfg,tx,S.ym);
+  const tx=liveOf(S.tx),sm=subsMap(S.cfg),end=S.ym+'-32',start=S.ym+'-00',pl=S.plans[S.ym]||{},act=actuals(S.cfg,tx,S.ym),FX=agg(S.cfg,tx,S.ym).fx;
   const sum=(ty,f)=>S.cfg.cats.filter(c=>c.type==ty).reduce((a,c)=>a+c.subs.reduce((b,s)=>b+f(s),0),0);
   const inc=sum('inc',s=>act[s.id]||0),exp=sum('exp',s=>act[s.id]||0),pinc=sum('inc',s=>pl[s.id]||0),pexp=sum('exp',s=>pl[s.id]||0);
-  const tot=g=>S.cfg.accs.filter(a=>a.grp==g).reduce((a,c)=>a+balance(S.cfg,tx,c.id,end),0);
+  const tot=g=>S.cfg.accs.filter(a=>a.grp==g&&isP(a)).reduce((a,c)=>a+balance(S.cfg,tx,c.id,end),0),totFx=g=>fxOf(S.cfg.accs.filter(a=>a.grp==g),a=>balance(S.cfg,tx,a.id,end));
   const invList=Object.entries(S.inv).map(([id,it])=>({id,...it,pln:invPln(it)})).sort((a,b)=>(a.name||'').localeCompare(b.name||'','pl'));
   /* savings = savings accounts + money put into investments, at a given date; change over the shown month */
   const invAt=before=>invList.reduce((a,i)=>a+invPln(i,before),0);
-  const savAt=before=>S.cfg.accs.filter(a=>a.grp=='sav'||a.grp=='inv').reduce((a,c)=>a+balance(S.cfg,tx,c.id,before),0)+invAt(before);
+  const savAt=before=>S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)).reduce((a,c)=>a+balance(S.cfg,tx,c.id,before),0)+invAt(before);
   const savEnd=savAt(end),savDelta=savEnd-savAt(start);
   const trendH=d=>d>0?`<span class="trend up" title="Przybyło w tym miesiącu">▲ +${zl0(d)}</span>`:d<0?`<span class="trend down" title="Ubyło w tym miesiącu">▼ −${zl0(-d)}</span>`:'';
   const pct=(a,p)=>p?' · '+Math.round(a/p*100)+'% planu':'';
   let h='';
   const al=dueAlerts(S.cfg.fixed||[],tx,td());
-  const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+zl(x.f.amount)}</span><span class="when ${x.when=='late'?'late':''}">${x.when=='inc'?'jeszcze nie odhaczony':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
+  const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+am(x.f.amount,x.f.acc)}</span><span class="when ${x.when=='late'?'late':''}">${x.when=='inc'?'jeszcze nie odhaczony':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
 
   if(S.tab=='dash'){
     setTimeout(autoPlan,0);
@@ -775,10 +810,10 @@ function render(){
     h+=alertH;
     h+=backupH();
     h+=`<div class="kpis">
-      <div class="kpi k-em"><div class="l">Przychody</div><div class="v num">${zl(inc)}</div><div class="s">plan ${zl0(pinc)}${pct(inc,pinc)}</div></div>
-      <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(exp)}</div><div class="s">plan ${zl0(pexp)}${pct(exp,pexp)}</div></div>
+      <div class="kpi k-em"><div class="l">Przychody</div><div class="v num">${zl(inc)}${fxSmall(FX.inc)}</div><div class="s">plan ${zl0(pinc)}${pct(inc,pinc)}</div></div>
+      <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(exp)}${fxSmall(FX.exp)}</div><div class="s">plan ${zl0(pexp)}${pct(exp,pexp)}</div></div>
       <div class="kpi k-sk"><div class="l">Bilans miesiąca</div><div class="v num">${zl(inc-exp)}</div><div class="s">plan ${zl0(pinc-pexp)}</div></div>
-      <button class="kpi k-in kbtn" onclick="showWealth()" aria-label="Na kontach – pokaż podział na osoby"><div class="l">Na kontach ›</div><div class="v num">${zl(tot('cur'))}</div><div class="s">${S.cfg.accs.some(a=>a.grp=='sub')?`subkonta ${zl0(tot('sub'))} · `:''}oszczędności ${zl0(savEnd)}</div>${savDelta?`<div class="tr">${trendH(savDelta)}</div>`:''}</button></div>`;
+      <button class="kpi k-in kbtn" onclick="showWealth()" aria-label="Na kontach – pokaż podział na osoby"><div class="l">Na kontach ›</div><div class="v num">${zl(tot('cur'))}${fxSmall(totFx('cur'))}</div><div class="s">${S.cfg.accs.some(a=>a.grp=='sub')?`subkonta ${zl0(tot('sub'))}${fxPlus(totFx('sub'))} · `:''}oszczędności ${zl0(savEnd)}</div>${savDelta?`<div class="tr">${trendH(savDelta)}</div>`:''}</button></div>`;
     /* filter: everything / positions over plan (incl. spending without a plan) / positions with no plan */
     const BF=S.bf,stOf=(c,s)=>status(c.type,pl[s.id]||0,act[s.id]||0);
     const keep=(c,s)=>BF=='all'||(BF=='over'?c.type=='exp'&&stOf(c,s).k=='over':!(pl[s.id]||0));
@@ -787,9 +822,10 @@ function render(){
     const shownCats=S.cfg.cats.map((c,i)=>({c,i,subs:c.subs.filter(s=>keep(c,s))})).filter(x=>BF=='all'||x.subs.length);
     if(!shownCats.length)h+=BF=='over'?catsEmpty('🎉 W tym miesiącu nic nie przekroczyło planu.',1,'happy'):catsEmpty('💚 Każda pozycja ma już swój plan.',1,'ivoHappy');
     h+=shownCats.map(({c,i,subs})=>{const pa=c.subs.reduce((a,s)=>a+(pl[s.id]||0),0),ac=c.subs.reduce((a,s)=>a+(act[s.id]||0),0),o=BF=='all'?S.open[c.id]:!S.fold[c.id];
-      return`<section class="cat${status(c.type,pa,ac).k=='zero'?' dim':''}" style="${pastel(catHue(c,i))}"><button class="ch" onclick="tog('${c.id}')" aria-expanded="${!!o}">${trioH(c.type,`<span class="nm"><span class="chev">${o?'▾':'▸'}</span><span class="cico">${catIcon(c)}</span>${esc(catL(c))}</span>`,pa,ac)}</button>`+
-        (o?subs.map(s=>{const a=act[s.id]||0,p=pl[s.id]||0;
-          return`<div class="sub${status(c.type,p,a).k=='zero'?' dim':''}">${trioH(c.type,`<span class="n">${esc(s.name)}</span>`,p,a,`<input class="planin" value="${fmtIn(p)}" placeholder="0" inputmode="decimal" aria-label="Plan: ${esc(s.name)}" onchange="setPlan('${s.id}',this.value)">`)}</div>`}).join(''):'')+`</section>`}).join('');
+      const cfx=fxTxt(FX.cat[c.id]);
+      return`<section class="cat${status(c.type,pa,ac).k=='zero'&&!cfx?' dim':''}" style="${pastel(catHue(c,i))}"><button class="ch" onclick="tog('${c.id}')" aria-expanded="${!!o}">${trioH(c.type,`<span class="nm"><span class="chev">${o?'▾':'▸'}</span><span class="cico">${catIcon(c)}</span>${esc(catL(c))}</span>`,pa,ac,'',cfx)}</button>`+
+        (o?subs.map(s=>{const a=act[s.id]||0,p=pl[s.id]||0,sfx=fxTxt(FX.sub[s.id]);
+          return`<div class="sub${status(c.type,p,a).k=='zero'&&!sfx?' dim':''}">${trioH(c.type,`<span class="n">${esc(s.name)}</span>`,p,a,`<input class="planin" value="${fmtIn(p)}" placeholder="0" inputmode="decimal" aria-label="Plan: ${esc(s.name)}" onchange="setPlan('${s.id}',this.value)">`,sfx)}</div>`}).join(''):'')+`</section>`}).join('');
     h+=`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="copyPlan()">Skopiuj plan z poprzedniego miesiąca</button></div>`}
 
   else if(S.tab=='tx'){
@@ -808,7 +844,7 @@ function render(){
     const isCur=td().startsWith(S.ym),today=+td().slice(8),all=(S.cfg.fixed||[]).slice().sort((a,b)=>(+a.day)-(+b.day)||a.name.localeCompare(b.name,'pl'));
     const row=(f,paid)=>{const inc=f.kind=='inc',late=!paid&&isCur&&today>Math.min(+f.day,daysIn(S.ym));
       const ppk=paid&&inc?liveOf(S.tx).filter(t=>t.ppkOf===paid.id):[];
-      return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?(inc?'wpłynęło ':'zapłacono ')+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc))+(ppk.length?' · PPK '+zl0(ppk.reduce((a,t)=>a+t.amount,0)):''):(late?`<span class="late">${inc?'jeszcze nie odhaczony':'po terminie'}</span> · `:'')+(inc?'zwykle do ':'termin do ')+f.day+'. · '+esc(accN(f.acc))+(inc&&f.ppk?' · z PPK':'')}</span></button><span class="num ${inc?'t-inc':''}">${paid?zl(paid.amount):inc&&f.vary?'—':(inc?'~':'')+zl(f.amount)}</span></div>`};
+      return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?(inc?'wpłynęło ':'zapłacono ')+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc))+(ppk.length?' · PPK '+zl0(ppk.reduce((a,t)=>a+t.amount,0)):''):(late?`<span class="late">${inc?'jeszcze nie odhaczony':'po terminie'}</span> · `:'')+(inc?'zwykle do ':'termin do ')+f.day+'. · '+esc(accN(f.acc))+(inc&&f.ppk?' · z PPK':'')}</span></button><span class="num ${inc?'t-inc':''}">${paid?am(paid.amount,paid.acc):inc&&f.vary?'—':(inc?'~':'')+am(f.amount,f.acc)}</span></div>`};
     const block=(kind)=>{const fx=all.filter(f=>(f.kind||'exp')==kind),inc=kind=='inc';
       let x=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">${inc?'📥 Przychody stałe':'📤 Opłaty stałe'}</span><button class="btn sm dark" onclick="editFixed(null,'${kind}')">+ ${inc?'Przychód':'Opłata'}</button></div>`;
       if(!fx.length)return x+`<div class="mini" style="padding:0 6px">${inc?'Dodaj np. pensje – co miesiąc odhaczysz, ile faktycznie wpłynęło, razem z wpłatami na PPK.':'Dodaj np. czynsz, prąd albo Spotify – co miesiąc odhaczysz je na liście.'}</div>`;
@@ -826,7 +862,8 @@ function render(){
     const OWN=['Mati','Wercia','Wspólne'],cols={Mati:'#7fb0ec',Wercia:'#f0a3c3','Wspólne':'#6fd0a8'};
     if(!['all',...OWN].includes(S.sub))S.sub='all';
     h+=`<div class="seg seg4">${[['all','Razem'],['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']].map(([k,l])=>`<button aria-pressed="${S.sub==k}"${k=='Wercia'?' class="wbtn"':''} onclick="setSub('${k}')">${l}${k=='Wercia'?' 🌸':''}</button>`).join('')}</div>`;
-    const ownAt=(o,before)=>S.cfg.accs.filter(a=>SV(a)&&accOwner(a)==o).reduce((x,a)=>x+balance(S.cfg,tx,a.id,before),0);
+    const ownFx=(o,before)=>fxOf(S.cfg.accs.filter(a=>SV(a)&&(!o||accOwner(a)==o)),a=>balance(S.cfg,tx,a.id,before));
+    const ownAt=(o,before)=>S.cfg.accs.filter(a=>SV(a)&&isP(a)&&accOwner(a)==o).reduce((x,a)=>x+balance(S.cfg,tx,a.id,before),0);
     const cushion=(pool,title)=>{const curYm=td().slice(0,7),past=[];for(let k=1;k<=6;k++){const e=agg(S.cfg,tx,addMonths(curYm,-k)).exp;if(e>0)past.push(e)}
       const avgE=past.length?past.reduce((a,v)=>a+v,0)/past.length:agg(S.cfg,tx,curYm).exp;if(!(avgE>0))return'';
       const m=Math.max(0,pool/avgE),lvl=m<3?['bad','Warto ją powiększyć – zwykle radzi się mieć zapas na 3–6 miesięcy wydatków.']:m<6?['ok','Dobry poziom – zapas na 3–6 miesięcy to zalecane minimum.']:['ok','Bardzo bezpieczny poziom.'];
@@ -834,8 +871,8 @@ function render(){
     const accRow=a=>{const e=balance(S.cfg,tx,a.id,end),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0,inv=a.grp=='inv';let extra='';
       if(inv){const st=invAccStats(S.cfg,tx,a.id,tom),ago=st.last?Math.floor((Date.now()-new Date(st.last+'T12:00:00'))/864e5):null;
         extra=`${st.own||st.emp?`<div class="mini">🏦 moje wpłaty <b style="color:var(--fg)">${zl0(st.own)}</b> · pracodawca <b style="color:var(--fg)">${zl0(st.emp)}</b></div>`:''}<div class="mini">wpłacono ${zl0(st.paid)} · <b class="${st.chg>=0?'t-inc':'t-exp'}">${st.chg>=0?'+':''}${zl0(st.chg)}${st.pct!==null?' ('+(st.chg>=0?'+':'')+st.pct.toFixed(1).replace('.',',')+'%)':''}</b></div><div class="mini">${st.last?`wartość z ${st.last.split('-').reverse().join('.')}${ago>30?' · <b class="t-exp">warto zaktualizować</b>':ago>0?' ('+ago+' dni temu)':' (dziś)'}`:'wartości jeszcze nie aktualizowano'}</div>`}
-      return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${inv?'<span class="badge">inwest.</span>':''}${esc(a.name)}</b>${a.archived?'<span class="mini">usunięte</span>':`<button class="btn sm" style="padding:3px 9px" aria-label="Edytuj konto" onclick="editSavAcc('${a.id}')">⋯</button>`}</div><div class="mini">w tym miesiącu: <span class="${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</span>${coinSum(S.ym,null,a.id)?` · 🪙 drobne ${zl(coinSum(S.ym,null,a.id))}`:''}</div>${extra}
-        ${a.archived?'':`<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="openTx(null,{type:'tr',to:'${a.id}'})">↓ Wpłać</button><button class="chip" onclick="openTx(null,{type:'tr',from:'${a.id}'})">↑ Wypłać</button>${inv?`<button class="chip" style="background:#ede9fe;color:#5b21b6" onclick="updateValue('${a.id}')">✎ Wartość</button>`:''}</div>`}</div><div class="r"><b class="num">${zl(e)}</b></div></div>`};
+      return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${inv?'<span class="badge">inwest.</span>':''}${esc(a.name)}</b>${a.archived?'<span class="mini">usunięte</span>':`<button class="btn sm" style="padding:3px 9px" aria-label="Edytuj konto" onclick="editSavAcc('${a.id}')">⋯</button>`}</div><div class="mini">w tym miesiącu: <span class="${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${money(dlt,CUR(a))}</span>${coinSum(S.ym,null,a.id)?` · 🪙 drobne ${money(coinSum(S.ym,null,a.id),CUR(a))}`:''}</div>${extra}
+        ${a.archived?'':`<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="openTx(null,{type:'tr',to:'${a.id}'})">↓ Wpłać</button><button class="chip" onclick="openTx(null,{type:'tr',from:'${a.id}'})">↑ Wypłać</button>${inv?`<button class="chip" style="background:#ede9fe;color:#5b21b6" onclick="updateValue('${a.id}')">✎ Wartość</button>`:''}</div>`}</div><div class="r"><b class="num">${money(e,CUR(a))}</b></div></div>`};
     const goalsH=owner=>{const goals=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())})).filter(g=>goalOwner(g)==owner).sort((a,b)=>(a.ts||0)-(b.ts||0));
       const pool=poolNow(S.cfg,tx,owner),alloc=goals.reduce((a,g)=>a+g.pr.saved,0),free=pool-alloc;
       let x=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">${owner=='Wspólne'?'Wspólne cele':'Cele: '+owner}</span><button class="btn sm dark" onclick="editGoal(null,'${owner}')">+ Dodaj cel</button></div>`;
@@ -850,7 +887,7 @@ function render(){
       return x};
 
     if(S.sub=='all'){
-      h+=`<div class="worth"><div class="l">Oszczędności i inwestycje razem</div><div class="v num">${zl(savEnd)} ${trendH(savDelta)}</div><div class="s">${OWN.map(o=>`${o} ${zl0(ownAt(o,end))}`).join(' · ')}</div></div>`;
+      h+=`<div class="worth"><div class="l">Oszczędności i inwestycje razem</div><div class="v num">${zl(savEnd)} ${trendH(savDelta)}</div>${fxTxt(ownFx(null,end))?`<div class="s">${esc(fxPlus(ownFx(null,end)).trim())} (bez przeliczania)</div>`:''}<div class="s">${OWN.map(o=>`${o} ${zl0(ownAt(o,end))}`).join(' · ')}</div></div>`;
       const own=Object.fromEntries(OWN.map(o=>[o,Math.max(0,ownAt(o,end))])),ownTot=Object.values(own).reduce((a,v)=>a+v,0);
       if(ownTot>0)h+=`<section class="chart"><div class="ct"><b>Czyje oszczędności</b></div><div class="stack">${OWN.filter(n=>own[n]>0).map(n=>`<i style="width:${(own[n]/ownTot*100).toFixed(2)}%;background:${cols[n]}" data-tip="${n}: ${zl(own[n])}"></i>`).join('')}</div><div class="lg">${OWN.map(n=>`<span><i style="background:${cols[n]}"></i>${n}: <b class="num">${zl(own[n])}</b></span>`).join('')}</div><div class="tip mini">Dotknij paska albo przejdź do zakładki osoby.</div></section>`;
       const yDelta=savEnd-savAt(S.ym.slice(0,4)+'-00'),tg=S.savTarget,coins=coinSum(S.ym);
@@ -865,56 +902,56 @@ function render(){
       if(gl.length)h+=`<section class="chart"><div class="ct"><b>Wszystkie cele</b></div>${hbarsH(gl.map(g=>({l:g.name+' · '+goalOwner(g),v:g.pr.saved,c:cols[goalOwner(g)],dot:cols[goalOwner(g)],note:`${Math.floor(g.pr.pct)}% z ${zl0(g.target)}`})))}</section>`;
       if(invList.length){h+=`<div class="h2">Starsze wpisy inwestycji (poprzednia wersja)</div>`+invList.map(it=>`<div class="inv"><div class="inv-h"><div style="min-width:0"><b>${esc(it.name)}</b><div class="mini">wpłacono ${zl(it.pln)}</div></div><button class="btn sm" onclick="delInv('${it.id}')">Usuń</button></div></div>`).join('')}}
     else{const o=S.sub,accs=S.cfg.accs.filter(a=>shown(a)&&accOwner(a)==o),tE=ownAt(o,end),tD=tE-ownAt(o,start);
-      const invV=accs.filter(a=>a.grp=='inv').reduce((x,a)=>x+balance(S.cfg,tx,a.id,end),0);
+      const invV=accs.filter(a=>a.grp=='inv'&&isP(a)).reduce((x,a)=>x+balance(S.cfg,tx,a.id,end),0);
       h+=`<div class="ptab ${o=='Wercia'?'pink':''}">`;
       h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}">${o=='Wercia'?'<svg class="flowers" viewBox="0 0 170 120" aria-hidden="true"><g stroke-linecap="round"><path d="M40 120 C40 96 42 80 46 64" stroke="#86c29a" stroke-width="4" fill="none"/><path d="M42 98 C30 92 24 84 22 74 C34 78 40 86 42 98Z" fill="#a7d8b5"/><path d="M46 64 C34 60 30 44 34 30 C40 38 44 40 46 40 C48 40 52 38 58 30 C62 44 58 60 46 64Z" fill="#f472b6"/><path d="M46 40 C44 30 46 22 46 18 C50 24 52 32 50 42Z" fill="#ec4899"/><path d="M118 120 C118 100 116 86 112 74" stroke="#86c29a" stroke-width="4" fill="none"/><path d="M115 100 C126 94 132 86 134 78 C122 80 116 90 115 100Z" fill="#a7d8b5"/><circle cx="112" cy="62" r="17" fill="#fda4af"/><path d="M112 62 m-11 0 a11 11 0 1 1 11 11" fill="none" stroke="#e11d48" stroke-width="3"/><path d="M112 62 m-6 0 a6 6 0 1 1 6 6" fill="none" stroke="#e11d48" stroke-width="2.5"/><path d="M80 120 C80 108 80 100 82 92" stroke="#86c29a" stroke-width="3" fill="none"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(0 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(45 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(90 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(135 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(180 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(225 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(270 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(315 82 90)"/><circle cx="82" cy="90" r="5" fill="#fbbf24"/><g transform="translate(150 96) scale(.6)"><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(0)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(60)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(120)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(180)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(240)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(300)"/><circle r="5" fill="#fde68a"/></g><g transform="translate(14 104) scale(.5)"><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(0)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(60)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(120)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(180)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(240)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(300)"/><circle r="5" fill="#f9a8d4"/></g></g></svg>':''}<div class="l">${o=='Wercia'?'🌷 ':''}${o=='Wspólne'?'Wspólne oszczędności':'Oszczędności: '+o}</div><div class="v num">${zl(tE)} ${trendH(tD)}</div><div class="s">oszczędności ${zl0(tE-invV)} · inwestycje, IKE, IKZE ${zl0(invV)}</div></div>`;
       if(o=='Wspólne')h+=cushion(tE,'Wspólne oszczędności wystarczą na');
-      h+=`<div class="list"><div class="grp-h ${o=='Wspólne'?'':'sav'}"><span>KONTA</span><span class="num">${zl(tE)}</span></div>${accs.map(accRow).join('')||'<div class="acc mini">Brak kont – dodaj pierwsze poniżej.</div>'}<div class="acc" style="justify-content:center"><button class="btn sm dark" onclick="addSavAcc('${o}')">+ Dodaj konto</button></div></div>`;
+      h+=`<div class="list"><div class="grp-h ${o=='Wspólne'?'':'sav'}"><span>KONTA</span><span class="num">${zl(tE)}${fxPlus(ownFx(o,end))}</span></div>${accs.map(accRow).join('')||'<div class="acc mini">Brak kont – dodaj pierwsze poniżej.</div>'}<div class="acc" style="justify-content:center"><button class="btn sm dark" onclick="addSavAcc('${o}')">+ Dodaj konto</button></div></div>`;
       h+=`<div class="mini" style="padding:0 4px">Konta „inwest.” (inwestycje, IKE, IKZE) mają zmienną wartość – raz na jakiś czas wpisz aktualną kwotę z aplikacji przyciskiem „✎ Wartość”. Przycisk ⋯ zmienia nazwę lub usuwa konto (pieniądze przejdą na inne konto).</div>`;
       h+=goalsH(o)+'</div>'}}
 
   else if(S.tab=='acc'&&S.recon){
-    const tom=addDays(td(),1),accs=recAccs(),app=accs.reduce((x,a)=>x+balance(S.cfg,tx,a.id,tom),0),GH={cur:'KONTA BIEŻĄCE',sub:'SUBKONTA',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE, IKE, IKZE'};
+    const tom=addDays(td(),1),accs=recAccs(),app=accs.filter(isP).reduce((x,a)=>x+balance(S.cfg,tx,a.id,tom),0),GH={cur:'KONTA BIEŻĄCE',sub:'SUBKONTA',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE, IKE, IKZE'};
     h+=`<div class="seg seg2">${[['cur','Bieżące i subkonta'],['sav','Oszczędności i inwestycje']].map(([k,l])=>`<button aria-pressed="${(S.recScope||'cur')==k}" onclick="setRecScope('${k}')">${l}</button>`).join('')}</div>`;
     h+=`<div class="worth rectop"><div class="l">⚖️ ${(S.recScope||'cur')=='cur'?'Konta bieżące i subkonta':'Oszczędności i inwestycje'} · stan na dziś ${td().split('-').reverse().join('.')}</div>
       <div class="recgrid"><div><div class="mini">W aplikacji</div><b class="num" id="recApp">${zl(app)}</b></div><div><div class="mini">Wpisane</div><b class="num" id="recReal">${zl(app)}</b></div><div><div class="mini">Różnica</div><b class="num" id="recDiff">0,00 zł</b></div></div><div class="mini" id="recN">nic jeszcze nie wpisano</div></div>
       <div class="note">Wpisz, ile <b>faktycznie</b> jest na kontach (z aplikacji banku). Puste pole = bez zmian. Możesz uzupełnić jedną albo obie zakładki – „Dalej” zapisze wszystko, co wpisałeś. Różnice między kontami zapiszę jako przelewy, a resztę jako wyrównanie.</div>`;
     let g0='';h+=`<div class="list">`+accs.map(a=>{const b=balance(S.cfg,tx,a.id,tom),hd=a.grp!=g0?`<div class="grp-h ${a.grp=='sub'?'subk':a.grp}"><span>${GH[a.grp]}</span></div>`:'';g0=a.grp;
-      return hd+`<div class="recrow"><div style="min-width:0"><b>${esc(a.name)}</b><div class="mini">w aplikacji: <span class="num">${zl(b)}</span></div><div class="rdiff" id="rd_${a.id}"></div></div><input id="rv_${a.id}" class="planin" style="max-width:130px" inputmode="decimal" value="${esc((S.recVals||{})[a.id]||'')}" placeholder="${f2(b)}" oninput="recSum()" autocomplete="off"></div>`}).join('')+`</div>`;
+      return hd+`<div class="recrow"><div style="min-width:0"><b>${esc(a.name)}</b><div class="mini">w aplikacji: <span class="num">${money(b,CUR(a))}</span></div><div class="rdiff" id="rd_${a.id}"></div></div><input id="rv_${a.id}" class="planin" style="max-width:130px" inputmode="decimal" value="${esc((S.recVals||{})[a.id]||'')}" placeholder="${f2(b)}" oninput="recSum()" autocomplete="off"></div>`}).join('')+`</div>`;
     h+=`<div class="g2"><button class="btn" onclick="closeRecon()">Anuluj</button><button class="btn primary" onclick="applyRecon()">Dalej</button></div>`}
 
   else if(S.tab=='acc'){
     /* wealth by person: Wszyscy / Mati / Wercia / Wspólne, groups: current accounts, subaccounts, savings, investments */
     const o=OWN.includes(S.accSub)?S.accSub:'all',bal=a=>balance(S.cfg,tx,a.id,end);
     const vis=a=>(!a.archived||bal(a)||balance(S.cfg,tx,a.id,start))&&(o=='all'||accOwner(a)==o);
-    const sumO=(ow,g)=>S.cfg.accs.filter(a=>(!ow||accOwner(a)==ow)&&(!g||a.grp==g)).reduce((x,a)=>x+bal(a),0);
+    const accsO=(ow,g)=>S.cfg.accs.filter(a=>(!ow||accOwner(a)==ow)&&(!g||a.grp==g)),sumO=(ow,g)=>accsO(ow,g).filter(isP).reduce((x,a)=>x+bal(a),0),fxO=(ow,g)=>fxOf(accsO(ow,g),bal);
     const oldInv=ow=>invList.filter(i=>!ow||(i.owner||'Wspólne')==ow).reduce((x,i)=>x+i.pln,0);
     const GL={cur:'bieżące',sub:'subkonta',sav:'oszczędności',inv:'inwestycje'};
-    const parts=ow=>['cur','sub','sav','inv'].map(g=>[g,sumO(ow,g)+(g=='inv'?oldInv(ow):0)]).filter(([g,v])=>v||g=='cur').map(([g,v])=>`${GL[g]} ${zl0(v)}`).join(' · ');
+    const parts=ow=>['cur','sub','sav','inv'].map(g=>[g,sumO(ow,g)+(g=='inv'?oldInv(ow):0)]).filter(([g,v])=>v||g=='cur').map(([g,v])=>`${GL[g]} ${zl0(v)}${fxPlus(fxO(ow,g))}`).join(' · ');
     const total=ow=>sumO(ow)+oldInv(ow),otag=ow=>`<span class="otag o-${ow=='Mati'?'m':ow=='Wercia'?'w':'s'}">${ow}</span>`;
     h+=`<button class="btn dark" style="width:100%" onclick="openRecon()">⚖️ Wyrównaj wszystkie salda naraz</button>`;
     h+=`<div class="seg seg4">${[['all','Wszyscy'],...OWN.map(x=>[x,x])].map(([k,l])=>`<button aria-pressed="${o==k}"${k=='Wercia'?' class="wbtn"':''} onclick="setAccSub('${k}')">${l}${k=='Wercia'?' 🌸':''}</button>`).join('')}</div>`;
     h+=`<div class="ptab ${o=='Wercia'?'pink':''}">`;
     if(o=='all'){const own=OWN.map(x=>[x,total(x)]),pos=own.filter(([,v])=>v>0),pt=pos.reduce((a,[,v])=>a+v,0);
-      h+=`<div class="worth"><div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(total())}</div><div class="s">${parts()}</div></div>`;
+      h+=`<div class="worth"><div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(total())}${fxSmall(fxO())}</div><div class="s">${parts()}</div></div>`;
       h+=`<section class="chart"><div class="ct"><b>Czyj majątek</b><span class="mini">stuknij osobę, żeby zobaczyć tylko jej konta</span></div>${pt>0?`<div class="stack">${pos.map(([x,v])=>`<i style="width:${(v/pt*100).toFixed(2)}%;background:${OWN_COL[x]}" data-tip="${x}: ${zl(v)}"></i>`).join('')}</div>`:''}<div class="owners">${own.map(([x,v])=>`<button class="orow" onclick="setAccSub('${x}')"><i style="background:${OWN_COL[x]}"></i><span class="ot"><b>${x}</b><small>${parts(x)}</small></span><b class="num">${zl(v)}</b></button>`).join('')}</div></section>`}
-    else h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}"><div class="l">${o=='Wspólne'?'Wspólny majątek':'Majątek: '+o}</div><div class="v num">${zl(total(o))}</div><div class="s">${parts(o)}</div></div>`;
+    else h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}"><div class="l">${o=='Wspólne'?'Wspólny majątek':'Majątek: '+o}</div><div class="v num">${zl(total(o))}${fxSmall(fxO(o))}</div><div class="s">${parts(o)}</div></div>`;
     const GH={cur:'KONTA BIEŻĄCE',sub:'SUBKONTA',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE, IKE, IKZE'},groups=['cur','sub','sav','inv'].filter(g=>S.cfg.accs.some(a=>a.grp==g&&vis(a)));
     if(!groups.length)h+=`<div class="empty">Brak kont – dodasz je w ⚙️ Ustawieniach.</div>`;
     h+=groups.map(g=>{const accs=S.cfg.accs.filter(a=>a.grp==g&&vis(a));
-      return`<div class="list"><div class="grp-h ${g=='sub'?'subk':g}"><span>${GH[g]}</span><span class="num">${zl(accs.reduce((x,a)=>x+bal(a),0))}</span></div>${accs.map(a=>{const e=bal(a),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0;
-        return`<div class="acc"><div><b>${esc(a.name)}</b>${o=='all'?otag(accOwner(a)):''}<div class="mini">na początek: ${zl(s0)}</div>${a.grp=='inv'?`<button class="chip" onclick="updateValue('${a.id}')">✎ Aktualizuj wartość</button>`:`<button class="chip" onclick="recon('${a.id}')">⚖️ Wyrównaj</button>`}</div><div class="r"><b class="num">${zl(e)}</b><div class="mini ${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${zl(dlt)}</div></div></div>`}).join('')}</div>`}).join('');
+      return`<div class="list"><div class="grp-h ${g=='sub'?'subk':g}"><span>${GH[g]}</span><span class="num">${zl(accs.filter(isP).reduce((x,a)=>x+bal(a),0))}${fxPlus(fxOf(accs,bal))}</span></div>${accs.map(a=>{const e=bal(a),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0,M=v=>money(v,CUR(a));
+        return`<div class="acc"><div><b>${esc(a.name)}</b>${o=='all'?otag(accOwner(a)):''}<div class="mini">na początek: ${M(s0)}${isP(a)?'':` · <span class="curtag">${CUR(a)}</span>`}</div>${a.grp=='inv'?`<button class="chip" onclick="updateValue('${a.id}')">✎ Aktualizuj wartość</button>`:`<button class="chip" onclick="recon('${a.id}')">⚖️ Wyrównaj</button>`}</div><div class="r"><b class="num">${M(e)}</b><div class="mini ${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${M(dlt)}</div></div></div>`}).join('')}</div>`}).join('');
     const oldL=invList.filter(i=>o=='all'||(i.owner||'Wspólne')==o);
     if(oldL.length)h+=`<div class="list"><div class="grp-h inv"><span>STARSZE WPISY INWESTYCJI</span><span class="num">${zl(oldL.reduce((x,i)=>x+i.pln,0))}</span></div>${oldL.map(i=>`<div class="acc"><div><b>${esc(i.name)}</b><div class="mini">${esc(i.kind||'')} · ${esc(i.owner||'')}</div></div><div class="r"><b class="num">${zl(i.pln)}</b></div></div>`).join('')}</div>`;
     h+='</div>'}
 
   else{
     const rules=S.cfg.round||[];
-    h+=`<div class="card"><div class="rowx" style="border:0;padding:0"><h3>🪙 Drobne</h3><button class="btn sm dark" onclick="editRound()">+ reguła</button></div><div class="mini">Jak w Revolucie: wydatek z wybranego konta zaokrągla się w górę do 5 albo 10 zł, a różnica (razy mnożnik) trafia na wskazane konto. W okienku wydatku pojawi się złota moneta – odznacz ją, gdy bank nie liczy drobnych (np. przy BLIK-u).</div>${rules.map(r=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(accN(r.from))} → ${esc(accN(r.to))}</b><br><span class="mini">do ${r.step} zł · ×${r.mult}${r.full?' · pełne drobne przy równej kwocie':''} · w tym miesiącu ${zl(coinSum(S.ym,r))}</span></span><button class="btn sm" onclick="editRound('${r.id}')">Edytuj</button></div>`).join('')||'<div class="mini" style="padding-top:4px">Nie ma jeszcze żadnej reguły.</div>'}</div>`;
+    h+=`<div class="card"><div class="rowx" style="border:0;padding:0"><h3>🪙 Drobne</h3><button class="btn sm dark" onclick="editRound()">+ reguła</button></div><div class="mini">Jak w Revolucie: wydatek z wybranego konta zaokrągla się w górę do 5 albo 10 zł, a różnica (razy mnożnik) trafia na wskazane konto. W okienku wydatku pojawi się złota moneta – odznacz ją, gdy bank nie liczy drobnych (np. przy BLIK-u).</div>${rules.map(r=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(accN(r.from))} → ${esc(accN(r.to))}</b><br><span class="mini">do ${r.step} ${curSym(accCur(r.from))} · ×${r.mult}${r.full?' · pełne drobne przy równej kwocie':''} · w tym miesiącu ${am(coinSum(S.ym,r),r.from)}</span></span><button class="btn sm" onclick="editRound('${r.id}')">Edytuj</button></div>`).join('')||'<div class="mini" style="padding-top:4px">Nie ma jeszcze żadnej reguły.</div>'}</div>`;
     h+=`<div class="card"><h3>🐾 Bailey i Ivo</h3><div class="seg seg3">${[['lots','Dużo'],['few','Mało'],['off','Wyłączone']].map(([k,l])=>`<button aria-pressed="${kotki.mode==k}" onclick="setKotki('${k}')">${l}</button>`).join('')}</div><div class="mini">Dużo – rysunki, porady i żarty. Mało – rysunki i tylko ważne komunikaty. Wyłączone – bez kotków. Ustawienie dotyczy tego telefonu.</div><div class="btns"><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button><button class="btn sm" onclick="showNews(true)">Co nowego</button></div></div>`;
     h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div><div class="seg seg2 acctabs">${Object.entries(ACCTAB).map(([g,l])=>`<button aria-pressed="${S.accTab==g}" onclick="setAccTab('${g}')">${{cur:'💳',sub:'🗂️',sav:'🐷',inv:'📈'}[g]} ${l} (${S.cfg.accs.filter(a=>a.grp==g&&!a.archived).length})</button>`).join('')}</div>${(()=>{const list=S.cfg.accs.filter(a=>a.grp==S.accTab&&!a.archived);
-      return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)} · saldo początkowe ${zl(a.open)}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
+      return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)}${isP(a)?'':' · '+CUR(a)} · saldo początkowe ${money(a.open,CUR(a))}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button style="font-weight:800;text-align:left;flex:1;min-width:0" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))} ✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button><button class="btn" onclick="logout()">Wyloguj</button></div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
   $('app').innerHTML=h;if(S.tab=='acc'&&S.recon&&$('recApp'))recSum()}
@@ -934,7 +971,7 @@ document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.d
 $('gearBtn').onclick=()=>goTab(S.tab=='set'?'dash':'set');
 $('addBtn').onclick=()=>openTx();
 $('mt').querySelectorAll('button').forEach(b=>b.onclick=()=>setType(b.dataset.v));
-$('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}autoWho();updCoin()};
+$('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}autoWho();updCoin();updFx()};
 $('shCancel').onclick=closeSheet;$('shSave').onclick=saveTx;$('shDel').onclick=()=>S.edit&&delTx(S.edit);
 $('sheet').onclick=e=>{if(e.target===$('sheet'))closeSheet()};
 $('fileIn').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importFile(f)};

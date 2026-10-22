@@ -19,6 +19,13 @@ export const DEF=[ ["ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Pr
 export const seed=()=>({v:1,fixed:[],round:[],cats:DEF.map((c,i)=>({id:'c'+i,name:c[0],type:c[1],hue:HUES[i%HUES.length],subs:c[2].map((s,j)=>({id:'c'+i+'s'+j,name:s}))})),
 accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","sub","Wspólne"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"],["Inwestycje Mati","inv"],["Inwestycje Wercia","inv"],["IKE Mati","inv"],["IKZE Mati","inv"],["IKE Wercia","inv"],["IKZE Wercia","inv"],["PPK Mati","inv"],["PPK Wercia","inv"],["Oszczędności wspólne","sav"],["Poduszka bezpieczeństwa","sav"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],...(a[2]?{owner:a[2]}:{}),open:0}))});
 
+/* currencies of the NBP table A (no conversion – each account simply keeps its own currency) */
+export const CURS=[['EUR','euro'],['USD','dolar amerykański'],['GBP','funt szterling'],['CHF','frank szwajcarski'],['CZK','korona czeska'],
+  ['AUD','dolar australijski'],['BRL','real brazylijski'],['CAD','dolar kanadyjski'],['CLP','peso chilijskie'],['CNY','yuan renminbi'],['DKK','korona duńska'],
+  ['HKD','dolar hongkoński'],['HUF','forint węgierski'],['IDR','rupia indonezyjska'],['ILS','szekel izraelski'],['INR','rupia indyjska'],['ISK','korona islandzka'],
+  ['JPY','jen japoński'],['KRW','won południowokoreański'],['MXN','peso meksykańskie'],['MYR','ringgit malezyjski'],['NOK','korona norweska'],['NZD','dolar nowozelandzki'],
+  ['PHP','peso filipińskie'],['RON','lej rumuński'],['SEK','korona szwedzka'],['SGD','dolar singapurski'],['THB','bat tajlandzki'],['TRY','lira turecka'],
+  ['UAH','hrywna ukraińska'],['ZAR','rand południowoafrykański']];
 /* pastel colour per category: --c header, --c2 rows, --c3 dark text/bar of the same hue */
 export const HUES=[150,205,28,340,265,48,185,12,295,95,228,320,62,168,245,0];
 /* header colour of the shown month – soft pastels that follow the seasons */

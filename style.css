@@ -415,3 +415,10 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .coin[aria-pressed=false] .cn{filter:grayscale(1);opacity:.5}
 .coin[aria-pressed=false] .ck{background:#fff;border-color:#d6d3d1}
 .tx .coinl{font-size:12px;font-weight:700;color:#a16207;margin-top:2px}
+
+/* 🌍 currencies */
+.fxs{display:block;font-size:12px;font-weight:800;color:#0e7490;line-height:1.2}
+.kpi .v .fxs{font-size:12.5px}
+.fxbox{display:flex;flex-direction:column;gap:6px;background:#ecfeff;border:1.5px solid #a5f3fc;border-radius:14px;padding:9px 12px}
+.fxbox .mini{color:#0e7490;font-weight:700}
+.curtag{display:inline-block;font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;background:#cffafe;color:#0e7490}
