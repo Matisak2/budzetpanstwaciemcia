@@ -445,3 +445,10 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .ptbl{display:flex;flex-direction:column;gap:4px}
 .ptbl .r1{font-size:14.5px}
 .ptbl .tot{border-top:1.5px solid #e5e7eb;padding-top:6px;margin-top:2px;font-weight:900}
+
+/* 📈 instruments, limits */
+.inst{display:flex;flex-direction:column;gap:4px;background:var(--card,#fff);border-radius:18px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.inst .lots{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--mut,#6b7280)}
+.lim{display:flex;flex-direction:column;gap:4px;padding:6px 0;border-top:1px dashed #e5e7eb}
+.lim:first-of-type{border-top:0}
+.chart .ct .btn.sm{margin-left:auto}

@@ -44,3 +44,19 @@ export function whoH(who,total){const names=['Mati','Wercia','—'],cols={Mati:'
   const rows=names.filter(n=>who[n]).map(n=>({n,v:who[n]}));if(!rows.length)return'<div class="mini">Brak wydatków.</div>';
   return`<div class="stack">${rows.map(r=>`<i style="width:${(r.v/total*100).toFixed(2)}%;background:${cols[r.n]}" data-tip="${r.n=='—'?'Nieprzypisane':r.n}: ${zl(r.v)} (${pctS(r.v,total)})"></i>`).join('')}</div>
     <div class="lg" style="margin-top:8px">${rows.map(r=>`<span><i style="background:${cols[r.n]}"></i>${r.n=='—'?'Nieprzypisane':r.n}: <b class="num">${zl(r.v)}</b> (${pctS(r.v,total)})</span>`).join('')}</div>`}
+/* "paid in vs value": paid as steps, value as a line, the gap green (gain) or pink (loss); pts=[{d,paid,value}] sorted by date */
+export function gainSvg(pts,{h=190,money=zl}={}){if(!pts.length)return'';
+  const W=340,PL=46,PR=10,PT=12,PB=22,ch=h-PT-PB,t=d=>new Date(d+'T12:00:00').getTime();
+  const t0=t(pts[0].d),t1=Math.max(t0+864e5,t(pts.at(-1).d)),X=d=>PL+(t(d)-t0)/(t1-t0)*(W-PL-PR);
+  const vs=pts.flatMap(p=>[p.paid,p.value]);let lo=Math.min(0,...vs),hi=niceMax(Math.max(1,...vs));if(lo<0)lo=-niceMax(-lo);
+  const Y=v=>PT+ch-(v-lo)/(hi-lo)*ch;
+  let g='';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);g+=`<line x1="${PL}" x2="${W-PR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" class="gl${Math.abs(v)<1e-9?' base':''}"/>`+(i%2==0?`<text x="${PL-5}" y="${(y+3.5).toFixed(1)}" text-anchor="end" class="ax">${kfmt(v)}</text>`:'')}
+  let fill='',pl='',vl='',hit='';
+  pts.forEach((p,i)=>{const x=X(p.d),nx=i<pts.length-1?X(pts[i+1].d):x;
+    if(nx>x)fill+=`<path d="M${x.toFixed(1)},${Y(p.paid).toFixed(1)}H${nx.toFixed(1)}L${nx.toFixed(1)},${Y(p.value).toFixed(1)}H${x.toFixed(1)}Z" fill="${p.value>=p.paid?'#86efac':'#fda4af'}" opacity=".45"/>`;
+    pl+=(i?'H'+x.toFixed(1)+'V':'M'+x.toFixed(1)+',')+Y(p.paid).toFixed(1);vl+=(i?'H'+x.toFixed(1)+'V':'M'+x.toFixed(1)+',')+Y(p.value).toFixed(1);
+    const gn=p.value-p.paid,pc=p.paid>0?' ('+(gn>=0?'+':'')+(gn/p.paid*100).toFixed(1).replace('.',',')+'%)':'';
+    hit+=`<rect x="${(x-4).toFixed(1)}" y="${PT}" width="${Math.max(8,nx-x).toFixed(1)}" height="${ch}" fill="transparent" class="hit" data-tip="${esc(p.d.split('-').reverse().join('.')+': wpłacono '+money(p.paid)+' · wartość '+money(p.value)+' · '+(gn>=0?'+':'')+money(gn)+pc)}"/>`});
+  const last=pts.at(-1),xl=W-PR;pl+='H'+xl;vl+='H'+xl;
+  const lb=[pts[0].d,last.d].map((d,i)=>`<text x="${i?W-PR:PL}" y="${h-6}" text-anchor="${i?'end':'start'}" class="ax">${d.split('-').reverse().join('.')}</text>`).join('');
+  return`<svg viewBox="0 0 ${W} ${h}" class="bars" role="img" aria-label="Wpłacone a wartość">${g}${fill}<path d="${pl}" fill="none" stroke="#7fb0ec" stroke-width="2" stroke-dasharray="5 3"/><path d="${vl}" fill="none" stroke="#a78bfa" stroke-width="2.4"/>${lb}${hit}</svg>`}

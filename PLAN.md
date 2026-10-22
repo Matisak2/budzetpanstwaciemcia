@@ -69,15 +69,15 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Suma miesiąca i podsumowanie roku (do PIT-11)
 
 ## Etap 8. Oszczędności i inwestycje
-- [ ] Grupy kont z sumami, „🐷 Odłóż”, stały przelew na oszczędności w 📌 Stałe
-- [ ] Aktualizacja wartości wszystkich kont na jednym ekranie
-- [ ] Instrumenty na kontach: ETF, akcje, obligacje (zasady wg typu EDO/COI/TOS/ROS/ROD/OTS/DOR, edytowalne), złoto, krypto, lokaty; zysk z ceny, zysk z kursu, „na rękę” po Belce; wpisywane ręcznie
-- [ ] Automat na GitHubie (Actions, za darmo): codziennie kursy i inflacja do Firestore; raz w miesiącu szuka nowych limitów i pyta przed zmianą
-- [ ] Przypomnienia o wykupie obligacji
-- [ ] Limity IKE, IKZE i OKI (od 1.01.2027): wpłaty liczone same, styczeń – nowe limity, grudzień – IKZE, OKI – szacunek podatku od aktywów
-- [ ] Wykres „wpłacone a wartość” (pole zielone/różowe, 3 mies./rok/wszystko, całość/osoba/konto/instrument, osobno dla każdej waluty)
-- [ ] Wydatki roczne: jedno wspólne subkonto z kopertami, ile odkładać co miesiąc, przypomnienie miesiąc wcześniej, linijka na Budżecie
-- [ ] Poduszka bezpieczeństwa i FIRE
+- [x] Grupy kont z sumami, „🐷 Odłóż”, stały przelew na oszczędności w 📌 Stałe
+- [x] Aktualizacja wartości wszystkich kont na jednym ekranie
+- [x] Instrumenty na kontach: ETF, akcje, obligacje (zasady wg typu EDO/COI/TOS/ROS/ROD/OTS/DOR, edytowalne), złoto, krypto, lokaty; zysk z ceny, zysk z kursu, „na rękę” po Belce; wpisywane ręcznie
+- [ ] Automat na GitHubie (Actions, za darmo): codziennie kursy i inflacja do Firestore; raz w miesiącu szuka nowych limitów i pyta przed zmianą – **do zrobienia razem z Matim** (na razie ceny, inflację i stopę NBP wpisuje się ręcznie w „📈 Aktualizuj wartości”)
+- [x] Przypomnienia o wykupie obligacji
+- [x] Limity IKE, IKZE i OKI (od 1.01.2027): wpłaty liczone same, styczeń – nowe limity, grudzień – IKZE, OKI – szacunek podatku od aktywów
+- [x] Wykres „wpłacone a wartość” (pole zielone/różowe, 3 mies./rok/wszystko, całość/osoba/konto/instrument, osobno dla każdej waluty)
+- [x] Wydatki roczne: jedno wspólne subkonto z kopertami, ile odkładać co miesiąc, przypomnienie miesiąc wcześniej, linijka na Budżecie
+- [x] Poduszka bezpieczeństwa i FIRE
 
 ## Etap 9. Zobowiązania i należności
 - [ ] W 👛 Konta: „🔻 my winni” i „🔺 nam winni”
