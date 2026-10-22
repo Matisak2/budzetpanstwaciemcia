@@ -122,10 +122,10 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] Strażnik porządku co tydzień: zdublowane wpisy, wpisy bez pozycji, ujemne saldo konta bieżącego, niezgodne paski pensji – w „Na dziś” i w porannym powiadomieniu; sam niczego nie zmienia
 
 ## Etap B. Maile: kopia zapasowa i podsumowanie miesiąca
-- [ ] Wysyłka z Gmaila Matiego (weryfikacja dwuetapowa włączona → „hasło do aplikacji” w sekretach GitHuba; poprowadzić krok po kroku)
-- [ ] Adresy odbiorców = adresy logowania z Firebase (automat odczytuje je sam); aplikacja zapamiętuje, który adres to Mati, a który Wercia
-- [ ] Kopia zapasowa **raz w miesiącu** (pierwsza niedziela miesiąca ok. 21:00), spakowana, **tylko do Matiego**; wczytuje się przez ⚙️ „Wczytaj kopię”; nigdy do repozytorium
-- [ ] Podsumowanie miesiąca 1. dnia miesiąca **do obojga**: plan a wydatki, przekroczone, odłożone – pastelowo, z kotkami
+- [x] Wysyłka z Gmaila Matiego (weryfikacja dwuetapowa włączona → „hasło do aplikacji” w sekretach GitHuba; poprowadzić krok po kroku)
+- [x] Adresy odbiorców = adresy logowania z Firebase (automat odczytuje je sam); aplikacja zapamiętuje, który adres to Mati, a który Wercia
+- [x] Kopia zapasowa **raz w miesiącu** (pierwsza niedziela miesiąca ok. 21:00), spakowana, **tylko do Matiego**; wczytuje się przez ⚙️ „Wczytaj kopię”; nigdy do repozytorium
+- [x] Podsumowanie miesiąca 1. dnia miesiąca **do obojga**: plan a wydatki, przekroczone, odłożone – pastelowo, z kotkami
 
 ## Etap C. Inwestycje i opłaty – automatycznie
 - [ ] Obligacje dokładnie: historia inflacji miesiąc po miesiącu, rok odsetkowy = marża + inflacja z miesiąca 2 miesiące przed jego początkiem (EDO, COI, ROS, ROD); próba pobrania inflacji z GUS (zapasowo Eurostat); oprocentowanie każdego roku można poprawić ręcznie; podpowiedź oprocentowania nowej serii

@@ -18,7 +18,7 @@ const strip=({o,...x})=>x;
 export function cfgOf(d){return{accs:toArr(d.accsM).map(strip),cats:toArr(d.catsM).map(({o,subsM,...c})=>({...c,subs:toArr(subsM).map(strip)})),fixed:toArr(d.fixedM).map(strip),
   round:toArr(d.roundM).map(strip),incs:toArr(d.incM).map(strip),years:toArr(d.yearM).map(strip),projs:toArr(d.projM).map(strip),rems:toArr(d.remM).map(strip)}}
 export async function household(H){const col=async n=>Object.fromEntries((await H.collection(n).get()).docs.map(d=>[d.id,d.data()]));
-  const [main,months,slips,hold,debts,market,meta]=await Promise.all([H.get(),col('months'),col('slips'),col('hold'),col('debts'),col('market'),col('meta')]);
-  const hraw=main.data()||{},tx=[];for(const m of Object.values(months))for(const[id,t]of Object.entries(m.tx||{}))if(!t.deleted&&/^\d{4}-\d\d-\d\d$/.test(t.date||''))tx.push({id,...t});
+  const [main,months,slips,hold,debts,market,meta,plans,goals,inv,users]=await Promise.all([H.get(),col('months'),col('slips'),col('hold'),col('debts'),col('market'),col('meta'),col('plans'),col('goals'),col('inv'),col('users')]);
+  const hraw=main.data()||{},tx=[],txAll=[];for(const m of Object.values(months))for(const[id,t]of Object.entries(m.tx||{})){txAll.push({id,...t});if(!t.deleted&&/^\d{4}-\d\d-\d\d$/.test(t.date||''))tx.push({id,...t})}
   const sl={};for(const[k,v]of Object.entries(slips))sl[k]=v.s||{};
-  return{hraw,cfg:cfgOf(hraw),tx,slips:sl,hold,debts,market,backup:meta.backup||null}}
+  return{hraw,cfg:cfgOf(hraw),tx,txAll,slips:sl,hold,debts,market,backup:meta.backup||null,plans,goals,inv,users}}

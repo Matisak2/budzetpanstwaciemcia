@@ -400,7 +400,7 @@ function moveAcc(id,d){if(guard())return;const A=S.cfg.accs,i=A.findIndex(a=>a.i
   let j=i+d;while(j>=0&&j<A.length&&(A[j].grp!=A[i].grp||A[j].archived))j+=d;if(j<0||j>=A.length)return;
   [A[i],A[j]]=[A[j],A[i]];render();saveAcc(A[i]);saveAcc(A[j])}
 function moveCat(ci,d){if(guard())return;const j=ci+d;if(j<0||j>=S.cfg.cats.length)return;const a=S.cfg.cats;[a[ci],a[j]]=[a[j],a[ci]];render();saveCat(a[ci]);saveCat(a[j])}
-function setWho(v){S.who=v;ls.set('mw_who',v);const pid=ls.get('mw_push');if(pid&&S.pushOk)merge(doc(PUSH(),pid),{who:v});render()}
+function setWho(v){S.who=v;ls.set('mw_who',v);if(S.uid)merge(doc(collection(H,'users'),S.uid),{email:S.email||'',who:v});const pid=ls.get('mw_push');if(pid&&S.pushOk)merge(doc(PUSH(),pid),{who:v});render()}
 
 /* ---------- fixed costs ---------- */
 const fixedPaid=(fid,ym)=>liveOf(S.tx).find(t=>t.fixedId===fid&&t.date.startsWith(ym));
@@ -637,8 +637,12 @@ async function importTxList(o){const cfg=S.cfg,list=(o.tx||[]).filter(t=>isDate(
   const seen={},idOf=t=>{if(t.id)return t.id;const k=[t.date,t.type,t.amount,t.cat,t.sub,t.acc,t.to,t.note,t.who].join('|');seen[k]=(seen[k]||0)+1;return'b'+hashId(k+'#'+seen[k])};
   await writeTxs(mapped.map(({t,sub})=>[idOf(t),{type:t.type,amount:t.amount,date:t.date,sub,acc:acc(t.acc)?.id||'',to:t.type=='tr'?(acc(t.to)?.id||''):'',who:t.who||'',note:t.note||'',deleted:false,ts:Date.now()}]));
   render();toast(`Wczytano: ${n} ${trW} ✓`)}
+/* a backup file: plain .json, or .json.gz from the monthly backup e-mail */
+async function readBackup(file){const buf=new Uint8Array(await file.arrayBuffer());
+  if(buf[0]==0x1f&&buf[1]==0x8b){if(!('DecompressionStream' in window))throw new Error('gzip');return await new Response(new Blob([buf]).stream().pipeThrough(new window.DecompressionStream('gzip'))).text()}
+  return new window.TextDecoder().decode(buf)}
 async function importFile(file){if(guard())return;let o;
-  try{o=JSON.parse(await file.text())}catch(e){return ask({title:'To nie jest plik kopii',text:'Wybierz plik .json pobrany przyciskiem „Pobierz kopię”.',ok:'OK',cancel:'Zamknij'})}
+  try{o=JSON.parse(await readBackup(file))}catch(e){return ask({title:'To nie jest plik kopii',text:'Wybierz plik .json (albo .json.gz z maila z kopią) pobrany przyciskiem „Pobierz kopię”.',ok:'OK',cancel:'Zamknij'})}
   if(o&&o.format=='budzet-mw-tx'&&Array.isArray(o.tx))return importTxList(o);
   const isNew=o&&o.cfg&&Array.isArray(o.tx),isOld=o&&Array.isArray(o.categories)&&Array.isArray(o.transactions);
   if(!isNew&&!isOld)return ask({title:'Nie rozpoznaję tego pliku',text:'To nie jest kopia budżetu z tej ani ze starej wersji aplikacji.',ok:'OK',cancel:'Zamknij'});
@@ -1627,6 +1631,7 @@ function render(){
     const rules=S.cfg.round||[];
     h+=`<div class="card"><div class="rowx" style="border:0;padding:0"><h3>🪙 Drobne</h3><button class="btn sm dark" onclick="editRound()">+ reguła</button></div><div class="mini">Jak w Revolucie: wydatek z wybranego konta zaokrągla się w górę do 5 albo 10 zł, a różnica (razy mnożnik) trafia na wskazane konto. W okienku wydatku pojawi się złota moneta – odznacz ją, gdy bank nie liczy drobnych (np. przy BLIK-u).</div>${rules.map(r=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(accN(r.from))} → ${esc(accN(r.to))}</b><br><span class="mini">do ${r.step} ${curSym(accCur(r.from))} · ×${r.mult}${r.full?' · pełne drobne przy równej kwocie':''} · w tym miesiącu ${am(coinSum(S.ym,r),r.from)}</span></span><button class="btn sm" onclick="editRound('${r.id}')">Edytuj</button></div>`).join('')||'<div class="mini" style="padding-top:4px">Nie ma jeszcze żadnej reguły.</div>'}</div>`;
     h+=pushCardH();
+    {const L=S.market?.maillog||{},f=d=>d?d.split('-').reverse().join('.'):'—';h+=`<div class="card"><h3>📧 Maile</h3><div class="mini">💾 Kopia zapasowa – w pierwszą niedzielę miesiąca, tylko do Matiego. Ostatnio: ${f(L.backupAt)}.<br>📊 Podsumowanie miesiąca – 1. dnia miesiąca, do Was obojga. Ostatnio: ${f(L.sumAt)}.<br>Kopię z maila wczytasz przyciskiem „Wczytaj kopię” poniżej (plik .json.gz).${S.email?`<br>Ten telefon: ${esc(S.email)} → ${esc(S.who)}`:''}</div></div>`}
     {const r=S.market?.rates;h+=`<div class="card"><h3>🤖 Automat (GitHub)</h3><div class="mini">${r?.date?`Ostatnio: ${r.date.split('-').reverse().join('.')} · kursy walut ${Object.keys(r.fx||{}).length} · ceny ${Object.keys(r.prices||{}).length}${r.gold?' · złoto':''}${r.infl!=null?` · inflacja ${String(r.infl).replace('.',',')}% (${esc(r.inflPer||'')})`:''}${r.nbp!=null?` · stopa NBP ${String(r.nbp).replace('.',',')}%`:''}`:'Jeszcze nie działa – po włączeniu codziennie w dni robocze pobierze kursy NBP, stopę NBP, inflację i ceny instrumentów z symbolem.'}</div></div>`}
     h+=`<div class="card"><h3>🐾 Bailey i Ivo</h3><div class="seg seg3">${[['lots','Dużo'],['few','Mało'],['off','Wyłączone']].map(([k,l])=>`<button aria-pressed="${kotki.mode==k}" onclick="setKotki('${k}')">${l}</button>`).join('')}</div><div class="mini">Dużo – rysunki, porady i żarty. Mało – rysunki i tylko ważne komunikaty. Wyłączone – bez kotków. Ustawienie dotyczy tego telefonu.</div><div class="btns"><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button><button class="btn sm" onclick="showNews(true)">Co nowego</button></div></div>`;
     h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
@@ -1681,6 +1686,7 @@ async function logout(){
 onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   $('login').hidden=!!u;$('main').hidden=!u;
   if(!u){S.cfg=null;return}
+  S.uid=u.uid;S.email=u.email||'';merge(doc(collection(H,'users'),u.uid),{email:S.email,who:S.who,seen:td()});
   $('app').innerHTML=`<div class="load">${kotki.mode=='off'?'':scene('window')}Wczytywanie budżetu…</div>`;
   const onErr=e=>{err(e);if(e?.code=='permission-denied')$('app').innerHTML='<div class="load">Brak dostępu do danych.<br><br>Sprawdź reguły Firestore albo czy ten e-mail jest na liście.</div>'};
   unsub.push(onSnapshot(H,s=>{

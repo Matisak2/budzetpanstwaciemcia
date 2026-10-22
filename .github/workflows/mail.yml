@@ -1,0 +1,39 @@
+# 📧 Maile Budżetu M&W: kopia zapasowa w pierwszą niedzielę miesiąca (~21:00, tylko do Matiego)
+# i podsumowanie poprzedniego miesiąca 1. dnia miesiąca (~9:00, do obojga). Potrzebuje sekretów GMAIL_USER i GMAIL_APP_PASSWORD.
+name: Maile
+on:
+  schedule:
+    - cron: '5 19 * * 0'     # niedziela 21:05 latem (skrypt sam sprawdza, czy to pierwsza niedziela miesiąca)
+    - cron: '5 20 * * 0'     # niedziela 21:05 zimą
+    - cron: '5 7 1 * *'      # 1. dnia miesiąca 9:05 latem
+    - cron: '5 8 1 * *'      # 1. dnia miesiąca 9:05 zimą
+  workflow_dispatch:
+    inputs:
+      tryb:
+        description: 'test-kopia = kopia teraz do Matiego, test-podsumowanie = podsumowanie poprzedniego miesiąca teraz do obojga'
+        type: choice
+        options: [test-kopia, test-podsumowanie, auto]
+        default: test-kopia
+permissions:
+  contents: read
+concurrency:
+  group: mail
+  cancel-in-progress: false
+jobs:
+  mail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Instalacja
+        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0 nodemailer@6.9.16
+      - name: Wysyłka maili
+        run: node scripts/mail.mjs
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MODE: ${{ github.event.inputs.tryb || 'auto' }}
