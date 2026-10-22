@@ -60,3 +60,14 @@ export function gainSvg(pts,{h=190,money=zl}={}){if(!pts.length)return'';
   const last=pts.at(-1),xl=W-PR;pl+='H'+xl;vl+='H'+xl;
   const lb=[pts[0].d,last.d].map((d,i)=>`<text x="${i?W-PR:PL}" y="${h-6}" text-anchor="${i?'end':'start'}" class="ax">${d.split('-').reverse().join('.')}</text>`).join('');
   return`<svg viewBox="0 0 ${W} ${h}" class="bars" role="img" aria-label="Wpłacone a wartość">${g}${fill}<path d="${pl}" fill="none" stroke="#7fb0ec" stroke-width="2" stroke-dasharray="5 3"/><path d="${vl}" fill="none" stroke="#a78bfa" stroke-width="2.4"/>${lb}${hit}</svg>`}
+/* Sankey: money in (left) → where it went (right); each left node is split in proportion to the right nodes */
+export function sankeySvg(left,right,{h=260}={}){const W=340,NW=10,GAP=6,tot=Math.max(1,left.reduce((a,x)=>a+x.v,0)),totR=Math.max(1,right.reduce((a,x)=>a+x.v,0));
+  const lay=(L,T)=>{const usable=h-GAP*(L.length-1);let y=0;return L.map(n=>{const hh=Math.max(2,n.v/T*usable),o={...n,y,h:hh};y+=hh+GAP;return o})};
+  const Ls=lay(left,tot),Rs=lay(right,totR),x0=NW+96,x1=W-NW-96;let flows='',nodes='';
+  const lOff=Ls.map(n=>n.y),rOff=Rs.map(n=>n.y);
+  Ls.forEach((l,i)=>Rs.forEach((r,j)=>{const f=l.v*r.v/totR;if(f<=0)return;const hl=f/l.v*l.h,hr=f/r.v*r.h,ya=lOff[i],yb=rOff[j];lOff[i]+=hl;rOff[j]+=hr;
+    flows+=`<path d="M${x0},${ya.toFixed(1)}C${(x0+x1)/2},${ya.toFixed(1)} ${(x0+x1)/2},${yb.toFixed(1)} ${x1},${yb.toFixed(1)}L${x1},${(yb+hr).toFixed(1)}C${(x0+x1)/2},${(yb+hr).toFixed(1)} ${(x0+x1)/2},${(ya+hl).toFixed(1)} ${x0},${(ya+hl).toFixed(1)}Z" fill="${r.c}" opacity=".38" class="hit" data-tip="${esc(l.l+' → '+r.l+': '+zl(Math.round(f)))}"/>`}));
+  const lab=(n,x,anchor)=>`<text x="${x}" y="${(n.y+n.h/2+4).toFixed(1)}" text-anchor="${anchor}" class="ax" style="font-size:10.5px">${esc(n.l.length>16?n.l.slice(0,15)+'…':n.l)}</text>`;
+  Ls.forEach(n=>{nodes+=`<rect x="${x0-NW}" y="${n.y.toFixed(1)}" width="${NW}" height="${n.h.toFixed(1)}" rx="3" fill="${n.c}" data-tip="${esc(n.l+': '+zl(n.v))}" class="hit"/>`+lab(n,x0-NW-4,'end')});
+  Rs.forEach(n=>{nodes+=`<rect x="${x1}" y="${n.y.toFixed(1)}" width="${NW}" height="${n.h.toFixed(1)}" rx="3" fill="${n.c}" data-tip="${esc(n.l+': '+zl(n.v))}" class="hit"/>`+lab(n,x1+NW+4,'start')});
+  return`<svg viewBox="0 0 ${W} ${h}" class="bars" role="img" aria-label="Przepływ pieniędzy">${flows}${nodes}</svg>`}

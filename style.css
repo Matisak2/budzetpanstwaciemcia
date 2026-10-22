@@ -459,3 +459,19 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 
 /* 🔔 reminders, projects */
 .acc.late{box-shadow:inset 3px 0 0 #fda4af}
+
+/* 📊 analysis extras */
+.msk{display:flex;align-items:center;gap:10px}
+.msk .kot{width:84px;height:auto;flex:none}
+.vs{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.vsr{display:flex;align-items:center;gap:3px}
+.vsr i{display:block;height:10px;border-radius:6px;min-width:2px}
+.vsr i:nth-of-type(1){margin-left:auto;border-radius:6px 2px 2px 6px}
+.vsr i:nth-of-type(2){margin-right:auto;border-radius:2px 6px 6px 2px}
+.vsr .num{font-size:12px;min-width:56px}
+.vsr .num:last-child{text-align:right}
+.cgrid{display:grid;grid-template-columns:minmax(90px,38%) 1fr;gap:4px 8px;align-items:center}
+.cgl{font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cgr{display:grid;grid-template-columns:repeat(12,1fr);gap:2px}
+.cgr i{display:block;height:16px;border-radius:4px}
+.cgm span{font-size:10px;text-align:center;color:var(--mut,#6b7280)}

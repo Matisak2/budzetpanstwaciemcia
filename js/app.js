@@ -4,7 +4,7 @@ import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,do
 import {catIcon,catsEmpty} from './art.js';
 import {scene} from './cats.js';
 import {CELEBRATE,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} from './guide.js';
-import {PAL,P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,gainSvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
+import {PAL,P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,gainSvg,sankeySvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
 import {CURS,HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,addM,bondRates,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue,yearPlan} from './inv.js';
 import {KINDS,TAXF,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
@@ -1217,6 +1217,73 @@ function cascadeH(o){const cfgc=(S.hraw?.cascade||{})[o]||{},buf=cfgc.buf||0,tom
 async function setCascade(o){if(guard())return;const c=(S.hraw?.cascade||{})[o]||{},savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&!a.archived);
   const r=await ask({title:'Kaskada nadwyżek – '+o,fields:[{id:'b',label:'Zapas na każdym koncie bieżącym (zł)',type:'decimal',value:f2(c.buf||0)},{id:'t',label:'Przelewaj na',type:'select',value:c.to||'',options:[['','Pierwsze konto oszczędnościowe'],...savs.map(a=>[a.id,a.name])]}]});
   if(!r)return;const v={buf:gr(r.b),to:r.t};S.hraw={...S.hraw,cascade:{...(S.hraw?.cascade||{}),[o]:v}};merge(H,{cascade:{[o]:v}});render()}
+/* ---------- 📊 analysis extras: month summary, Mati ↔ Wercia, Sankey, wealth, 12 months, personal inflation, export, Wrapped ---------- */
+const anaFull=()=>ls.get('mw_anam')!='basic';
+function setAnaMode(k){ls.set('mw_anam',k);render()}
+function monthSumH(cfg,tx,ym){const act=actuals(cfg,tx,ym),pl=S.plans[ym]||{},L=cfg.cats.filter(c=>c.type=='exp').flatMap(c=>c.subs.map(s=>({s,p:pl[s.id]||0,a:act[s.id]||0}))).filter(x=>x.p||x.a);
+  if(!L.length)return'';const fit=L.filter(x=>x.p&&x.a<=x.p),over=L.filter(x=>x.p&&x.a>x.p).sort((a,b)=>(b.a-b.p)-(a.a-a.p)),less=fit.filter(x=>x.a<=x.p*0.8).sort((a,b)=>(b.p-b.a)-(a.p-a.a)),out=L.filter(x=>!x.p&&x.a>0).sort((a,b)=>b.a-a.a);
+  const saved=fit.reduce((a,x)=>a+x.p-x.a,0),lst=(X,f)=>X.slice(0,4).map(f).join(', ');
+  const good=!over.length&&!out.length,who=good?'Ivo':'Bailey';
+  return`<section class="chart msum"><div class="ct"><b>Podsumowanie miesiąca</b><span class="mini">${MN[+ym.slice(5)-1]} ${ym.slice(0,4)}</span></div>
+    ${kotki.mode=='off'?'':`<div class="msk">${scene(good?'ivoHappy':'lupa','kot sm')}<span class="mini"><b>${who}:</b> ${good?'Wszystko w planie! Należy się smaczek 😺':over.length?`${over.length} ${plu(over.length,'pozycja przekroczyła','pozycje przekroczyły','pozycji przekroczyło')} plan. Zerknijmy razem, co się stało.`:'Kilka wydatków było poza planem – warto je dopisać do planu.'}</span></div>`}
+    <div class="facts"><div>✅ Zmieściło się: <b>${fit.length}</b> ${plu(fit.length,'pozycja','pozycje','pozycji')}${saved?` · zostało ${zl0(saved)}`:''}</div>
+    ${over.length?`<div>▲ Przekroczone: <b>${over.length}</b> – ${esc(lst(over,x=>x.s.name+' +'+zl0(x.a-x.p)))}</div>`:''}
+    ${less.length?`<div>💚 Wyraźnie mniej niż plan: ${esc(lst(less,x=>x.s.name+' −'+zl0(x.p-x.a)))}</div>`:''}
+    ${out.length?`<div>⚠️ Poza planem: ${esc(lst(out,x=>x.s.name+' '+zl0(x.a)))}</div>`:''}</div></section>`}
+function personsH(cfg,tx,ym){const sm=subsMap(cfg),per={Mati:{},Wercia:{}},tot={Mati:0,Wercia:0};
+  tx.filter(t=>t.date.startsWith(ym)&&t.type=='exp'&&(t.who=='Mati'||t.who=='Wercia')&&sm[t.sub]&&accCur(t.acc)=='PLN').forEach(t=>{const c=sm[t.sub].cat;per[t.who][c.id]=(per[t.who][c.id]||0)+t.amount;tot[t.who]+=t.amount});
+  if(!tot.Mati&&!tot.Wercia)return'';
+  const sav=o=>S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)&&accOwner(a)==o).reduce((x,a)=>x+balance(cfg,tx,a.id,ym+'-32')-balance(cfg,tx,a.id,ym+'-00'),0);
+  const cats=cfg.cats.filter(c=>c.type=='exp'&&(per.Mati[c.id]||per.Wercia[c.id])).sort((a,b)=>((per.Mati[b.id]||0)+(per.Wercia[b.id]||0))-((per.Mati[a.id]||0)+(per.Wercia[a.id]||0))).slice(0,7);
+  const mx=Math.max(1,...cats.flatMap(c=>[per.Mati[c.id]||0,per.Wercia[c.id]||0]));
+  return`<section class="chart"><div class="ct"><b>Mati ↔ Wercia</b><span class="mini">wydatki według osoby w polu „Kto”</span></div>
+    <div class="kpis" style="gap:8px"><div class="kpi k-sk"><div class="l">Mati</div><div class="v num">${zl0(tot.Mati)}</div><div class="s">odłożył ${zl0(sav('Mati'))}</div></div><div class="kpi k-ro" style="background:#fdeef5"><div class="l">Wercia 🌸</div><div class="v num">${zl0(tot.Wercia)}</div><div class="s">odłożyła ${zl0(sav('Wercia'))}</div></div></div>
+    ${cats.map(c=>`<div class="vs"><div class="mini"><b style="color:var(--fg)">${esc(cleanCat(c.name))}</b></div><div class="vsr"><span class="num">${zl0(per.Mati[c.id]||0)}</span><i style="width:${((per.Mati[c.id]||0)/mx*45).toFixed(1)}%;background:${OWN_COL.Mati}"></i><i style="width:${((per.Wercia[c.id]||0)/mx*45).toFixed(1)}%;background:${OWN_COL.Wercia}"></i><span class="num">${zl0(per.Wercia[c.id]||0)}</span></div></div>`).join('')}</section>`}
+function sankeyH(cfg,tx,ym,A){const act=actuals(cfg,tx,ym),cats=Object.fromEntries(cfg.cats.map(c=>[c.id,c]));
+  const inc=cfg.cats.filter(c=>c.type=='inc').flatMap(c=>c.subs).map(s=>({l:s.name,v:act[s.id]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  if(!inc.length||!A.exp)return'';const L=inc.slice(0,4);const rest=inc.slice(4).reduce((a,x)=>a+x.v,0);if(rest>0)L.push({l:'Inne przychody',v:rest});L.forEach((x,i)=>x.c=['#6fd0a8','#86efac','#a7f3d0','#bbf7d0','#d1fae5'][i]);
+  const ex=Object.entries(A.cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]),R=ex.slice(0,6).map(([id,v])=>({l:cleanCat(cats[id]?.name),v,c:markOf(cats[id])}));
+  const er=ex.slice(6).reduce((a,[,v])=>a+v,0);if(er>0)R.push({l:'Pozostałe',v:er,c:P_OTHER});
+  const left=A.inc-A.exp;if(left>0)R.push({l:'Zostało',v:left,c:'#7fb0ec'});else if(left<0)L.push({l:'Z oszczędności',v:-left,c:'#fda4af'});
+  return chartBox('Przepływ pieniędzy','skąd przyszły i dokąd poszły',sankeySvg(L,R))}
+function wealthH(y){const cur=td().slice(0,7),ms=Array.from({length:12},(_,i)=>y+'-'+p2(i+1)),tx=liveOf(S.tx),A=S.cfg.accs.filter(isP);
+  const v=ms.map(m=>m>cur?null:A.reduce((x,a)=>x+balance(S.cfg,tx,a.id,m+'-32'),0));if(v.every(x=>x===null))return'';
+  return chartBox('Majątek na kontach','wszystkie konta w złotych, na koniec miesiąca (bez zobowiązań)',lineSvg(['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'],v,'#a78bfa'))}
+function catGridH(cfg,M){const cats=cfg.cats.filter(c=>c.type=='exp'&&M.some(a=>(a.cat[c.id]||0)>0));if(!cats.length)return'';
+  return`<section class="chart"><div class="ct"><b>Kategorie przez 12 miesięcy</b><span class="mini">im ciemniej, tym więcej w tym miesiącu</span></div><div class="cgrid">${cats.map(c=>{const vals=M.map(a=>Math.max(0,a.cat[c.id]||0)),mx=Math.max(1,...vals),col=markOf(c);
+    return`<div class="cgl">${esc(cleanCat(c.name))}</div><div class="cgr">${vals.map((v,i)=>`<i style="background:${col};opacity:${v?(0.15+0.85*v/mx).toFixed(2):0.05}" data-tip="${esc(MN[i]+': '+zl(v))}" class="hit"></i>`).join('')}</div>`}).join('')}<div class="cgl"></div><div class="cgr cgm">${'SLMKMCLSWPLG'.split('').map(x=>`<span>${x}</span>`).join('')}</div></div></section>`}
+function inflationH(cfg,tx,y){const cur=td().slice(0,7),last=y<cur.slice(0,4)?12:+cur.slice(5),py=String(+y-1);
+  const sum=(yy,id)=>{let s=0;for(let i=1;i<=last;i++){const a=agg(cfg,tx,yy+'-'+p2(i));s+=id?(a.cat[id]||0):a.exp}return s};
+  const prevTot=sum(py);if(!prevTot)return`<section class="chart"><div class="ct"><b>📈 Wasza inflacja</b></div><div class="mini">Porównanie rok do roku pojawi się, gdy w aplikacji będą wydatki z ${py} roku.</div></section>`;
+  const curTot=sum(y),your=(curTot/prevTot-1)*100,gus=S.hraw?.macro?.infl;
+  const rows=cfg.cats.filter(c=>c.type=='exp').map(c=>({c,a:sum(y,c.id),b:sum(py,c.id)})).filter(x=>x.b>0&&x.a>0).map(x=>({...x,d:(x.a/x.b-1)*100})).sort((a,b)=>b.d-a.d);
+  const f=x=>(x>=0?'+':'')+x.toFixed(1).replace('.',',')+'%';
+  return`<section class="chart"><div class="ct"><b>📈 Wasza inflacja</b><span class="mini">${last==12?'cały rok':`styczeń–${MN[last-1].toLowerCase()}`} ${y} wobec ${py}</span></div>
+    <div class="kpis" style="gap:8px"><div class="kpi k-ro"><div class="l">Wasze wydatki</div><div class="v num">${f(your)}</div><div class="s">${zl0(curTot)} wobec ${zl0(prevTot)}</div></div><div class="kpi k-sk"><div class="l">Inflacja GUS</div><div class="v num">${gus!=null?f(+gus):'—'}</div><div class="s">${gus!=null?'wpisana w 📈 Aktualizuj wartości':'wpisze ją automat'}</div></div></div>
+    ${rows.slice(0,8).map(x=>`<div class="r1"><span>${esc(cleanCat(x.c.name))}</span><b class="num ${x.d>0?'t-exp':'t-inc'}">${x.d>0?'▲':'▼'} ${f(x.d)}</b></div>`).join('')}</section>`}
+/* CSV for Excel: semicolons, decimal comma, UTF-8 with BOM */
+function exportCsv(y){const sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>!y||t.date.startsWith(y)).sort((a,b)=>a.date.localeCompare(b.date));if(!L.length)return toast('Brak wpisów do eksportu','bad');
+  const TY={exp:'wydatek',inc:'przychód',tr:'przelew',adj:'wyrównanie',inv:'zakup inwestycji',invs:'sprzedaż inwestycji',lend:'pożyczka'},q=v=>{const s=String(v??'');return/[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  const rows=[['Data','Rodzaj','Kwota','Waluta','Kategoria','Pozycja','Konto','Na konto','Kto','Notatka','Projekt'],...L.map(t=>{const s=sm[t.sub];
+    return[t.date,t.refundOf?'zwrot':TY[t.type]||t.type,((t.type=='exp'||t.type=='lend'||t.type=='inv'?-1:1)*t.amount/100).toFixed(2).replace('.',','),accCur(t.acc),s?cleanCat(s.cat.name):'',s?.name||'',accN(t.acc),t.to?accN(t.to):'',t.who||'',t.note||'',t.proj?projById(t.proj)?.name||'':'']})];
+  downloadBlob(new Blob(['﻿'+rows.map(r=>r.map(q).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'}),`budzet-${y||'wszystko'}.csv`);toast(`Pobrano ${L.length} ${plu(L.length,'wpis','wpisy','wpisów')} do Excela ✓`)}
+/* 🎁 Money Wrapped: the year told by Bailey and Ivo */
+function wrapped(y){const tx=liveOf(S.tx),cfg=S.cfg,Y=agg(cfg,tx,y),sm=subsMap(cfg);if(!Y.exp&&!Y.inc)return toast('Brak danych za rok '+y,'bad');
+  const cats=Object.entries(Y.cat).sort((a,b)=>b[1]-a[1]),top=cats[0]&&cfg.cats.find(c=>c.id==cats[0][0]),big=tx.filter(t=>t.date.startsWith(y)&&t.type=='exp').sort((a,b)=>b.amount-a.amount)[0];
+  const words={};tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&t.note).forEach(t=>{const w=t.note.trim().split(/\s+/)[0].toLowerCase();if(w.length>2)words[w]=(words[w]||0)+1});
+  const fav=Object.entries(words).sort((a,b)=>b[1]-a[1])[0],ms=Array.from({length:12},(_,i)=>({i,a:agg(cfg,tx,y+'-'+p2(i+1))})).filter(x=>x.a.inc||x.a.exp),best=ms.length?ms.reduce((p,c)=>c.a.inc-c.a.exp>p.a.inc-p.a.exp?c:p):null;
+  const treats=tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&isTreat(sm[t.sub]?.name)).reduce((a,t)=>a+t.amount,0),n=tx.filter(t=>t.date.startsWith(y)).length;
+  const sv=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)),sd=sv.reduce((x,a)=>x+balance(cfg,tx,a.id,y+'-12-32')-balance(cfg,tx,a.id,y+'-00'),0);
+  const sl=[{scene:'duo',title:`🎁 Wasz rok ${y}`,text:`Bailey i Ivo przejrzeli wszystkie ${n} wpisów. Gotowi?`},
+    {scene:'calc',title:'Pieniądze w liczbach',text:`Wpłynęło ${zl0(Y.inc)}, wydaliście ${zl0(Y.exp)}. ${Y.inc>Y.exp?`Zostało ${zl0(Y.inc-Y.exp)} – brawo!`:'Wydatki były większe niż przychody – w przyszłym roku damy radę.'}`},
+    ...(top?[{scene:'lupa',title:'Najwięcej poszło na…',text:`${cleanCat(top.name)}: ${zl0(cats[0][1])} (${pctS(cats[0][1],Y.exp)} wszystkich wydatków).`}]:[]),
+    ...(big?[{scene:'grumpy',title:'Największy pojedynczy wydatek',text:`${zl(big.amount)} – ${sm[big.sub]?.name||''}${big.note?` („${big.note}”)`:''}, ${big.date.split('-').reverse().join('.')}. Ivo do dziś nie może uwierzyć.`}]:[]),
+    ...(fav?[{scene:'wink',title:'Wasze ulubione miejsce',text:`„${fav[0]}” – w notatkach ${fav[1]} razy.`}]:[]),
+    ...(best?[{scene:'happy',title:'Najlepszy miesiąc',text:`${MN[best.i]}: zostało ${zl0(best.a.inc-best.a.exp)}.`}]:[]),
+    {scene:'coin',title:'Oszczędności',text:sd>0?`Na kontach oszczędnościowych i inwestycjach przybyło ${zl0(sd)}. Moneta do monety!`:'W tym roku oszczędności nie urosły – nowy rok, nowa skarbonka.'},
+    ...(treats?[{scene:'churu',title:'Smaczki 😺',text:`Na smaczki dla nas wydaliście ${zl0(treats)}. Uważamy, że to za mało, ale dziękujemy.`}]:[]),
+    {scene:'celebrate',title:'Do zobaczenia w '+(+y+1)+'!',text:'Bailey pilnuje planu, Ivo pilnuje świętowania. Dobrego roku!'}];
+  catSlides(sl,'Super!')}
 /* ---------- analysis ---------- */
 /* every category is drawn in its own colour (the same hue as on the Budget screen); "other" stays neutral grey */
 const markOf=c=>c?catMark(catHue(c,S.cfg.cats.indexOf(c))):P_OTHER;
@@ -1237,6 +1304,7 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
   const cur=td().slice(0,7);
   if(ym==cur&&pexp>0){const dl=daysIn(ym)-(+td().slice(8))+1,left=pexp-A.exp;
     h+=`<div class="note ${left<0?'bad':''}">${left>=0?`💡 Do końca miesiąca możecie wydać jeszcze <b>${zl(left)}</b>, czyli ok. <b>${zl(Math.floor(left/dl))}</b> dziennie (${dl} dni).`:`⚠️ Plan wydatków przekroczony o <b>${zl(-left)}</b>.`}</div>`}
+  h+=monthSumH(cfg,tx,ym);
   if(!A.exp&&!A.inc)return h+catsEmpty(`Brak przychodów i wydatków w miesiącu: ${mName}.`,0,'sleep');
   const an=anomalies(cfg,tx,ym);if(an.length)h+=`<section class="chart"><div class="ct"><b>🔎 Nietypowo dużo</b><span class="mini">w porównaniu ze średnią z 3 miesięcy</span></div>${an.slice(0,5).map(x=>`<div class="r1"><span>${esc(x.sub.name)}</span><b class="t-exp num">+${x.pct}% · ${zl0(x.v)} <span class="mini">(zwykle ${zl0(x.avg)})</span></b></div>`).join('')}</section>`;
   // structure donut
@@ -1245,6 +1313,8 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
   const segs=top.map(r=>({l:r.l,v:r.v,c:markOf(cats[r.id])}));if(rest>0)segs.push({l:'Pozostałe',v:rest,c:P_OTHER});
   if(segs.length){const tot=segs.reduce((a,x)=>a+x.v,0);
     h+=chartBox('Na co poszły pieniądze','wydatki według kategorii',`<div class="dwrap">${donutSvg(segs,zl0(tot),'wydatki')}${hbarsH(segs.map(x=>({l:x.l,v:x.v,c:x.c,dot:x.c})),tot)}</div>`)}
+  if(!ctx.full)return h;
+  h+=sankeyH(cfg,tx,ym,A)+personsH(cfg,tx,ym);
   // top subcategories
   const subRows=Object.entries(A.sub).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([id,v])=>{const p=pl[id]||0;return{l:sm[id]?.name||'?',v,c:sm[id]?markOf(sm[id].cat):P_OTHER,note:p?`plan ${zl0(p)} · ${Math.round(v/p*100)}%${v>p?' <b class="t-exp">▲ ponad plan</b>':''}`:''}});
   if(subRows.length)h+=chartBox('Największe pozycje','top 7 pozycji budżetu',hbarsH(subRows,A.exp));
@@ -1280,12 +1350,14 @@ function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Object.fro
     <div class="kpi k-ro"><div class="l">Wydatki ${y}</div><div class="v num">${zl(Y.exp)}</div><div class="s">śr. ${zl0(avgExp)}/mies. ${deltaH(Y.exp,PY.exp,false)}</div></div>
     <div class="kpi k-sk"><div class="l">Zostało w roku</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,PY.inc-PY.exp,true)||'&nbsp;'}</div></div>
     <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów w roku</div></div></div>
-    <div class="mini" style="text-align:center">Strzałki porównują z rokiem ${+y-1}.</div>`+fxN;
+    <div class="mini" style="text-align:center">Strzałki porównują z rokiem ${+y-1}.</div>`+fxN+`<div class="g2"><button class="btn" onclick="exportCsv('${y}')">📥 Eksport do Excela</button><button class="btn primary" onclick="wrapped('${y}')">🎁 Money Wrapped</button></div>`;
   if(!Y.inc&&!Y.exp)return h+`<div class="empty">Brak danych za rok ${y}.</div>`;
   const ml=['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
   h+=chartBox('Przychody i wydatki','miesiąc po miesiącu',barsSvg(ml,[{name:'Przychody',color:C_INC,values:M.map(a=>Math.max(0,a.inc))},{name:'Wydatki',color:C_EXP,values:M.map(a=>Math.max(0,a.exp))}],{tipLabel:i=>MN[i]}),legendH([{l:'Przychody',c:C_INC},{l:'Wydatki',c:C_EXP}]));
+  if(!ctx.full){const cr=Object.entries(Y.cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([id,v])=>({l:cleanCat(cats[id]?.name),v,c:markOf(cats[id]),dot:markOf(cats[id])}));return h+(cr.length?chartBox('Kategorie w całym roku','',hbarsH(cr,Y.exp)):'')}
   const sv=months.map((m,i)=>i<elapsed||y<cur.slice(0,4)?savAt(m+'-32'):null);
   if(sv.some(v=>v!==null))h+=chartBox('Oszczędności','konta oszczędnościowe + wpłacone w inwestycje, na koniec miesiąca',lineSvg(ml,sv,C_SAV));
+  h+=wealthH(y)+catGridH(cfg,M)+inflationH(cfg,tx,y);
   // months table
   h+=`<section class="chart"><div class="ct"><b>Miesiąc po miesiącu</b></div><div class="tw"><table class="tbl"><thead><tr><th>Miesiąc</th><th>Przychody</th><th>Wydatki</th><th>Bilans</th></tr></thead><tbody>${M.map((a,i)=>a.inc||a.exp?`<tr><td>${MN[i]}</td><td class="num">${zl0(a.inc)}</td><td class="num">${zl0(a.exp)}</td><td class="num ${a.inc-a.exp<0?'t-exp':'t-inc'}">${zl0(a.inc-a.exp)}</td></tr>`:'').join('')}<tr class="tot"><td>Razem</td><td class="num">${zl0(Y.inc)}</td><td class="num">${zl0(Y.exp)}</td><td class="num">${zl0(bal)}</td></tr></tbody></table></div></section>`;
   // best / worst
@@ -1373,8 +1445,8 @@ function render(){
       ${active?`<button class="btn sm" style="align-self:flex-start" onclick="clearF()">✕ Wyczyść filtry</button>`:''}</div><div id="txlist">${txListH()}</div>`}
 
   else if(S.tab=='ana'){
-    h+=`<div class="seg" style="align-self:center">${[['m','Miesiąc'],['y','Rok']].map(([k,l])=>`<button aria-pressed="${S.ana==k}" onclick="setAna('${k}')">${l}</button>`).join('')}</div>`;
-    h+=S.ana=='y'?anaYear({cfg:S.cfg,tx,ym:S.ym,savAt}):anaMonth({cfg:S.cfg,tx,ym:S.ym})}
+    h+=`<div class="r1" style="gap:8px;flex-wrap:wrap;justify-content:center"><div class="seg">${[['m','Miesiąc'],['y','Rok']].map(([k,l])=>`<button aria-pressed="${S.ana==k}" onclick="setAna('${k}')">${l}</button>`).join('')}</div><div class="seg">${[['basic','Podstawowa'],['full','Pełna']].map(([k,l])=>`<button aria-pressed="${(anaFull()?'full':'basic')==k}" onclick="setAnaMode('${k}')">${l}</button>`).join('')}</div></div>`;
+    h+=S.ana=='y'?anaYear({cfg:S.cfg,tx,ym:S.ym,savAt,full:anaFull()}):anaMonth({cfg:S.cfg,tx,ym:S.ym,full:anaFull()})}
 
   else if(S.tab=='fix'&&S.slip)h+=slipH();
   else if(S.tab=='fix'&&S.fixSub=='pay')h+=fixSegH()+payH();
@@ -1580,4 +1652,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

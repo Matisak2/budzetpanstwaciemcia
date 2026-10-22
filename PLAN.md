@@ -93,11 +93,11 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Kaskada nadwyżek: tylko propozycja, osobno Mati / Wercia / Wspólne; źródło: konta bieżące bez subkont, zapas 0 zł (do zmiany); cel: tylko oszczędności i inwestycje
 
 ## Etap 11. Analiza
-- [ ] Przełącznik „Podstawowa | Pełna” (tylko w Analizie, domyślnie Pełna)
-- [ ] Podsumowanie miesiąca (zmieściło się / przekroczone / mniej / poza planem)
-- [ ] Mati ↔ Wercia, wykres majątku, kategorie przez 12 mies., Sankey
-- [ ] Inflacja osobista: kategorie rok do roku + „Wasza inflacja” obok GUS
-- [ ] Eksport do Excela, Money Wrapped
+- [x] Przełącznik „Podstawowa | Pełna” (tylko w Analizie, domyślnie Pełna)
+- [x] Podsumowanie miesiąca (zmieściło się / przekroczone / mniej / poza planem)
+- [x] Mati ↔ Wercia, wykres majątku, kategorie przez 12 mies., Sankey
+- [x] Inflacja osobista: kategorie rok do roku + „Wasza inflacja” obok GUS
+- [x] Eksport do Excela, Money Wrapped
 
 ## Etap 12. Okno „Na dziś”
 - [ ] Opłaty, pensje, przypomnienie po 20:00 (gdy danego dnia nic nie wpisano), wydatki roczne, auto, należności, obligacje, limity, kopia – tylko w aplikacji, bez kalendarza
