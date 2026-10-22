@@ -36,7 +36,9 @@ export function parseGusCpi(csv,from=2010){const L=String(csv).split(/\r?\n/),H=
 // Eurostat JSON-stat with many months -> {'2025-12': 3.1}
 export function parseEurostatAll(j){const idx=j?.dimension?.time?.category?.index||{},out={};for(const[per,i]of Object.entries(idx)){const v=j.value?.[String(i)];if(v!=null)out[per]=+v}return out}
 // obligacjeskarbowe.pl: links to the pages of each kind of bond on the offer page
-export function bondLinks(html){return[...new Set([...String(html).matchAll(/href="((?:https:\/\/www\.obligacjeskarbowe\.pl)?\/oferta-obligacji\/obligacje-[a-z0-9-]+\/)"/gi)].map(m=>new URL(m[1],'https://www.obligacjeskarbowe.pl').href))]}
+const BOND_PAGES=['obligacje-3-miesieczne-ots','obligacje-roczne-ror','obligacje-2-letnie-dor','obligacje-3-letnie-tos','obligacje-4-letnie-coi','obligacje-6-letnie-ros','obligacje-10-letnie-edo','obligacje-12-letnie-rod'];
+export function bondLinks(html){const found=[...String(html).matchAll(/href="(?:https:\/\/www\.obligacjeskarbowe\.pl)?\/oferta-obligacji\/(obligacje-[a-z0-9-]+)\//gi)].map(m=>m[1].toLowerCase()).filter(x=>!/premiowe/.test(x));
+  return[...new Set([...found,...BOND_PAGES])].map(x=>`https://www.obligacjeskarbowe.pl/oferta-obligacji/${x}/`)}
 // a bond page: "Seria: EDO1036 … Oprocentowanie: 5,35% w pierwszym … marża 2,00%" -> {type,series,first,margin}
 export function parseBondPage(html){const t=String(html).replace(/<[^>]+>/g,' ').replace(/&nbsp;|&#160;/g,' ').replace(/\s+/g,' ');
   const s=t.match(/Seria:\s*([A-Z]{3})(\d{4})/),f=t.match(/Oprocentowanie:\s*([\d,]+)\s*%/);if(!s||!f)return null;
