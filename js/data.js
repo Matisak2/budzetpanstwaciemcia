@@ -16,7 +16,7 @@ export const DEF=[ ["ZAROBKI I WPŁYWY","inc",["Pensja Wercia","Pensja Mati","Pr
  ["DODATKOWE UBEZPIECZENIA","exp",["Ubezpieczenie na życie","Ubezpieczenie NNW / OC zawodowe","Ubezpieczenie podróżne","Ubezpieczenie kredytu"]],
  ["INNE WYDATKI","exp",["Opłaty bankowe","Poczta i przesyłki","Urząd i opłaty","Kary i mandaty","Udzielone pożyczki"]],
  ["DZIECI (PRZYSZŁOŚĆ)","exp",["Żłobek/przedszkole","Wyprawka","Ubranka i zabawki","Zajęcia dodatkowe"]]];
-export const seed=()=>({v:1,fixed:[],round:[],cats:DEF.map((c,i)=>({id:'c'+i,name:c[0],type:c[1],hue:HUES[i%HUES.length],subs:c[2].map((s,j)=>({id:'c'+i+'s'+j,name:s}))})),
+export const seed=()=>({v:1,fixed:[],round:[],incs:[],cats:DEF.map((c,i)=>({id:'c'+i,name:c[0],type:c[1],hue:HUES[i%HUES.length],subs:c[2].map((s,j)=>({id:'c'+i+'s'+j,name:s}))})),
 accs:[["Revolut Mati","cur"],["ING Wercia","cur"],["ING Mati","cur"],["PKO Mati","cur"],["Konto Wspólne","cur"],["Revolut Wercia","cur"],["Subkonto Zwierzaki","sub","Wspólne"],["Gotówka","cur"],["Oszczędności Mati","sav"],["Oszczędności Wercia","sav"],["Inwestycje Mati","inv"],["Inwestycje Wercia","inv"],["IKE Mati","inv"],["IKZE Mati","inv"],["IKE Wercia","inv"],["IKZE Wercia","inv"],["PPK Mati","inv"],["PPK Wercia","inv"],["Oszczędności wspólne","sav"],["Poduszka bezpieczeństwa","sav"]].map((a,i)=>({id:'a'+i,name:a[0],grp:a[1],...(a[2]?{owner:a[2]}:{}),open:0}))});
 
 /* currencies of the NBP table A (no conversion – each account simply keeps its own currency) */

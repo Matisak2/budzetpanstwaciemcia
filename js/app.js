@@ -6,6 +6,7 @@ import {scene} from './cats.js';
 import {CELEBRATE,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
 import {CURS,HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
+import {KINDS,TAXF,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
 import {actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,roundUp,status,subsMap} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,isDate,ls,p2,pg,pnum,rid,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt} from './util.js';
 const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
@@ -16,7 +17,7 @@ function applySeason(){const m=+S.ym.slice(5)-1,[c,l]=SEASON[m];const r=document
   const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.setAttribute('content',c)}
 
 /* ---------- state ---------- */
-const S={sub:'all',bf:'all',fold:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
+const S={sub:'all',bf:'all',fold:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
 let seeding=false;
 
 /* ---------- pure money logic ---------- */
@@ -37,7 +38,7 @@ function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=td(),ym=
   const late=unpaid.filter(f=>fixedDate(f,ym)<today).map(f=>f.name),soon=unpaid.filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)}).map(f=>f.name);
   const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({name:g.name,pct:goalAlloc(g)/g.target*100})).sort((a,b)=>b.pct-a.pct)[0]||null;
   const act=actuals(cfg,tx,ym),treats=cfg.cats.reduce((a,c)=>a+c.subs.filter(x=>isTreat(x.name)).reduce((b,x)=>b+Math.max(0,act[x.id]||0),0),0);
-  const g=greeting({coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats});
+  const g=greeting({jdg:(cfg.incs||[]).some(s=>s.kind=='b2b')&&+today.slice(8)>=14&&+today.slice(8)<=20,coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats});
   if(g.scene.startsWith('birthday')&&kotki.mode!='off'&&!ls.get('mw_bd_'+today)){ls.set('mw_bd_'+today,'1');setTimeout(confetti,400)}
   const pic=kotki.mode=='off'?'':`<div class="gcats${WIDE.has(g.scene)?' w':''}">${scene(g.scene,'kot',g.arg)}</div>`;
   return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${kotki.mode=='off'?'':`<em class="who">${g.who}:</em> `}${esc(g.text)}</span></div>${pic}</section>`}
@@ -119,7 +120,7 @@ const subOpts=type=>S.cfg.cats.filter(c=>!type||c.type==type).map(c=>({group:cat
 
 /* ---------- storage (Firebase Firestore) ---------- */
 const H=doc(fdb,'households','main');
-const MC=()=>collection(H,'months'),PLC=()=>collection(H,'plans'),INV=()=>collection(H,'inv'),GOALS=()=>collection(H,'goals');
+const SLIPS=()=>collection(H,'slips'),MC=()=>collection(H,'months'),PLC=()=>collection(H,'plans'),INV=()=>collection(H,'inv'),GOALS=()=>collection(H,'goals');
 function w(p){p.catch(e=>{err(e);
   if(e?.code=='permission-denied')toast('Brak uprawnień do zapisu – sprawdź logowanie i reguły Firestore.','bad');
   else if(e?.code=='resource-exhausted')toast('Przekroczono darmowy limit Firebase na dziś.','bad');
@@ -129,12 +130,12 @@ const merge=(ref,body)=>w(setDoc(ref,body,{merge:true}));
 const toArr=m=>Object.entries(m||{}).map(([id,v])=>({...v,id})).sort((a,b)=>(a.o??0)-(b.o??0)||String(a.id).localeCompare(String(b.id)));
 const strip=(x,i)=>{const{o,subs,subsM,...r}=x;return{...r,o:i}};
 function fromDoc(d){
-  if(d.accsM||d.catsM||d.fixedM)return{accs:toArr(d.accsM).map(({o,...a})=>a),cats:toArr(d.catsM).map(({o,subsM,...c})=>({...c,subs:toArr(subsM).map(({o,...x})=>x)})),fixed:toArr(d.fixedM).map(({o,...f})=>f),round:toArr(d.roundM).map(({o,...r})=>r)};
-  return{accs:d.accs||[],cats:d.cats||[],fixed:d.fixed||[],round:[],legacy:true}}
+  if(d.accsM||d.catsM||d.fixedM)return{accs:toArr(d.accsM).map(({o,...a})=>a),cats:toArr(d.catsM).map(({o,subsM,...c})=>({...c,subs:toArr(subsM).map(({o,...x})=>x)})),fixed:toArr(d.fixedM).map(({o,...f})=>f),round:toArr(d.roundM).map(({o,...r})=>r),incs:toArr(d.incM).map(({o,...x})=>x)};
+  return{accs:d.accs||[],cats:d.cats||[],fixed:d.fixed||[],round:[],incs:[],legacy:true}}
 function toDoc(cfg){const m=(arr,f)=>Object.fromEntries((arr||[]).map((x,i)=>[x.id,f?f(x,i):strip(x,i)]));
-  return{v:2,accsM:m(cfg.accs),catsM:m(cfg.cats,(c,i)=>({...strip(c,i),subsM:m(c.subs)})),fixedM:m(cfg.fixed),roundM:m(cfg.round)}}
+  return{v:2,accsM:m(cfg.accs),catsM:m(cfg.cats,(c,i)=>({...strip(c,i),subsM:m(c.subs)})),fixedM:m(cfg.fixed),roundM:m(cfg.round),incM:m(cfg.incs)}}
 /* rewrites accounts, categories and fixed items as a whole; other household fields (monthly saving goal, migration flags) are kept */
-const saveCfg=()=>{const keep=Object.fromEntries(Object.entries(S.hraw||{}).filter(([k])=>!['v','accsM','catsM','fixedM','roundM','accs','cats','fixed'].includes(k)));
+const saveCfg=()=>{const keep=Object.fromEntries(Object.entries(S.hraw||{}).filter(([k])=>!['v','accsM','catsM','fixedM','roundM','incM','accs','cats','fixed'].includes(k)));
   return w(setDoc(H,{...keep,...toDoc(S.cfg),savTarget:S.savTarget||0}))};
 const saveAcc=a=>merge(H,{accsM:{[a.id]:strip(a,S.cfg.accs.indexOf(a))}});
 const delAccDb=id=>w(updateDoc(H,{['accsM.'+id]:deleteField()}));
@@ -224,6 +225,8 @@ function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class="srow"
 
 function openTx(id,pre){if(guard())return;
   const t=id?liveById(id):null;
+  const sp=t&&(t.slip?t:t.slipOf?liveById(t.slipOf):null);
+  if(sp&&sp.slip&&incById(sp.slip)){ask({title:'Wpis z paska pensji',text:`${sp.note} – ${sp.date.split('-').reverse().join('.')}\nTen wpis powstał z paska. Zmień go w pasku, a wszystko przeliczy się samo.`,ok:'Otwórz pasek',cancel:'Zamknij',alt:'Usuń wpis'}).then(r=>{if(r=='alt')delTx(id);else if(r)openSlip(sp.slip,sp.date.slice(0,7))});return}
   if(t&&t.type=='adj'){ask({title:'Wyrównanie salda',text:`${accN(t.acc)}: ${t.amount>0?'+':''}${zl(t.amount)} (${t.date})\nUsunąć to wyrównanie?`,ok:'Usuń',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&t.ppk){ask({title:t.note,text:`${accN(t.acc)}: ${zl(t.amount)} (${t.date.split('-').reverse().join('.')})\nTa wpłata jest powiązana z pensją. Żeby ją zmienić, odznacz i odhacz pensję ponownie w 📌 Stałe.`,ok:'Usuń wpłatę',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTen starszy wpis usuniesz w zakładce Oszczędności.`,ok:'Przejdź',cancel:'Zamknij'}).then(r=>{if(r){S.tab='sav';render()}});return}
@@ -278,10 +281,10 @@ async function saveTx(){if(guard())return;
   if(ok&&old&&old.date.slice(0,7)!=ym)await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
   const sm2=subsMap(S.cfg);if(ok&&!old&&kotki.mode=='lots'&&[body.sub,...parts.map(x=>x.sub)].some(x=>isTreat(sm2[x]?.name)))setTimeout(()=>toast(treatJoke(Math.floor(Date.now()/1000))),1900);
   if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):''));if(ym!=S.ym){S.ym=ym;render()}}}
-async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id);
+async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
   linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));
-  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
+  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
 async function markRefund(id){const t=liveById(id);if(!t)return;const done=refundsOf(id).reduce((a,x)=>a+x.amount,0),left=t.amount-done;
   if(left<=0)return toast('Ten wydatek jest już w całości zwrócony');
   const r=await ask({title:'↩️ Zwrot: '+(subsMap(S.cfg)[t.sub]?.name||''),text:`Wydatek ${am(t.amount,t.acc)} z ${t.date.split('-').reverse().join('.')}${done?`, zwrócono już ${am(done,t.acc)}`:''}.\nZwrot zmniejszy wydatek w tej samej pozycji – nie liczy się jako przychód.`,
@@ -412,7 +415,8 @@ async function editFixed(fid,kind){if(guard())return;
   render();saveFixed(tgt)}
 const lastOf=(f,pred)=>liveOf(S.tx).filter(t=>pred(t)&&t.date<S.ym+'-01').sort((a,b)=>b.date.localeCompare(a.date))[0];
 async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==fid),paid=fixedPaid(fid,S.ym),inc=f.kind=='inc';
-  if(paid){const ym=paid.date.slice(0,7),linked=liveOf(S.tx).filter(t=>t.ppkOf===paid.id);
+  const src=inc&&!paid&&incs().find(x=>x.fixed==fid);if(src)return openSlip(src.id);
+  if(paid){const ym=paid.date.slice(0,7),linked=liveOf(S.tx).filter(t=>t.ppkOf===paid.id||t.slipOf===paid.id);
     if(await putTx(ym,paid.id,{deleted:true})){linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));
       toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:()=>{putTx(ym,paid.id,{deleted:false});linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}))}})}return}
   const due=fixedDate(f,S.ym),date=td().startsWith(S.ym)?td():due;
@@ -559,7 +563,7 @@ async function removeSavAcc(id){const a=S.cfg.accs.find(x=>x.id==id),tx=liveOf(S
 
 /* ---------- backup ---------- */
 async function exportJson(){if(!S.cfg)return;
-  const data=JSON.stringify({format:'budzet-mw-2',exported:new Date().toISOString(),cfg:S.cfg,savTarget:S.savTarget,tx:S.tx,plans:S.plans,inv:S.inv,goals:S.goals},null,1);
+  const data=JSON.stringify({format:'budzet-mw-2',exported:new Date().toISOString(),cfg:S.cfg,savTarget:S.savTarget,tx:S.tx,plans:S.plans,inv:S.inv,goals:S.goals,slips:S.slips},null,1);
   const name='budzet-kopia-'+td()+'.json',blob=new Blob([data],{type:'application/json'});
   const file=typeof File=='function'?new File([blob],name,{type:'application/json'}):null;
   const mobile=matchMedia('(pointer:coarse)').matches;
@@ -616,11 +620,12 @@ async function importFile(file){if(guard())return;let o;
   if(!await ask({title:'Wczytać kopię?',text:`Znaleziono ${n} transakcji.\n${isNew?'Konta, pozycje budżetu i opłaty stałe zostaną zastąpione tymi z kopii.':'Brakujące konta i pozycje zostaną dopisane.'} Transakcje o tym samym numerze zostaną nadpisane, reszta zostaje.`,ok:'Wczytaj'}))return;
   toast('Wczytywanie…');
   try{let ok;
-    if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();
+    if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];S.cfg.incs=S.cfg.incs||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();
       ok=await writeTxs(o.tx.filter(t=>isDate(t.date)).map(t=>{const{id,...b}=t;return[id||('t'+rid()),b]}));
       ok=(await writePlans(o.plans||{}))&&ok;
       for(const[id,it]of Object.entries(o.inv||{}))ok=(await putInv(id,it))&&ok;
-      for(const[id,g]of Object.entries(o.goals||{}))merge(doc(GOALS(),id),g)}
+      for(const[id,g]of Object.entries(o.goals||{}))merge(doc(GOALS(),id),g);
+      for(const[ym,sl]of Object.entries(o.slips||{}))merge(doc(SLIPS(),ym),{s:sl})}
     else{const sm={},am={};S.cfg.cats.forEach(c=>c.subs.forEach(s=>sm[s.name]=s.id));S.cfg.accs.forEach(a=>am[a.name]=a.id);
       o.categories.forEach(c=>{const bil=c.typ=='BILANS_KONTA'||c.typ=='BILANS_OSZCZ';(c.podkategorie||[]).forEach(nm=>{
         if(bil){if(!am[nm]){am[nm]='a'+rid();S.cfg.accs.push({id:am[nm],name:nm,grp:c.typ=='BILANS_KONTA'?'cur':'sav',open:0})}}
@@ -684,6 +689,163 @@ let qT=null;
 function setQ(v){S.f.q=v;clearTimeout(qT);qT=setTimeout(()=>{const el=$('txlist');if(el)el.innerHTML=txListH()},150)}
 function setF(k,v){S.f[k]=v;if(document.activeElement?.id=='fq')document.activeElement.blur();render()}
 function clearF(){S.f={q:'',type:'',who:'',acc:'',cat:'',scope:'m'};if(document.activeElement?.id=='fq')document.activeElement.blur();render()}
+
+/* ---------- 💼 salaries (📌 Stałe → Pensje): income sources per person, a payslip per source and month ---------- */
+const incs=()=>S.cfg.incs||[],incById=id=>incs().find(s=>s.id==id);
+const slipOf=(ym,id)=>(S.slips[ym]||{})[id];
+const putSlip=(ym,id,body)=>merge(doc(SLIPS(),ym),{s:{[id]:body}});
+const saveInc=x=>merge(H,{incM:{[x.id]:strip(x,incs().indexOf(x))}});
+const delIncDb=id=>w(updateDoc(H,{['incM.'+id]:deleteField()}));
+const gr=v=>{const x=pg(v||'0');return isFinite(x)?x:0};
+const fixSegH=()=>`<div class="seg seg2">${[['fix','📌 Opłaty i przychody'],['pay','💼 Pensje']].map(([k,l])=>`<button aria-pressed="${(S.fixSub||'fix')==k}" onclick="setFixSub('${k}')">${l}</button>`).join('')}</div>`;
+function setFixSub(k){S.fixSub=k;S.slip=null;window.scrollTo(0,0);render()}
+function setPayView(k){S.payView=k;render()}
+const payTabH=T=>`<div class="ptbl">${[['Brutto / faktury',T.brutto],['ZUS (społeczne)',-T.zus],['Zdrowotna',-T.health],['Zaliczka na podatek',-T.tax],['PPK – moje wpłaty',-T.ppkOwn],['PPK – pracodawca (na PPK)',T.ppkEmp],['Potrącenia',-T.ded],['Netto na konto',T.net]].filter(([,v],i)=>v||i==0||i==7).map(([l,v],i,a)=>`<div class="r1${i==a.length-1?' tot':''}"><span>${l}</span><b class="num">${v<0?'−'+zl(-v):zl(v)}</b></div>`).join('')}${T.hours?`<div class="mini">${String(T.hours).replace('.',',')} h wpisanych godzin</div>`:''}</div>`;
+function payH(){const y=S.ym.slice(0,4);
+  return`<div class="seg" style="align-self:center">${[['m','Miesiąc'],['y','Rok '+y]].map(([k,l])=>`<button aria-pressed="${(S.payView||'m')==k}" onclick="setPayView('${k}')">${l}</button>`).join('')}</div>`+(S.payView=='y'?payYearH():payMonthH())}
+function payMonthH(){const ym=S.ym,live=new Set(liveOf(S.tx).map(t=>t.id));let h='';
+  const b2b=incs().filter(s=>s.kind=='b2b');
+  if(b2b.length&&ym==td().slice(0,7)){const res=b2b.reduce((a,s)=>a+(slipOf(ym,s.id)?reserve(slipOf(ym,s.id)):0),0);
+    h+=`<div class="note">📅 JDG: do 20. dnia miesiąca zapłać ZUS, zdrowotną i zaliczkę na podatek${res?` – według pasków ok. <b>${zl(res)}</b>`:''}.</div>`}
+  for(const who of ['Mati','Wercia']){const list=incs().filter(s=>s.who==who);
+    h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">💼 ${who}</span><button class="btn sm dark" onclick="editInc(null,'${who}')">+ Źródło dochodu</button></div>`;
+    if(!list.length){h+=`<div class="mini" style="padding:0 6px">Dodaj pracodawcę albo zleceniodawcę. Co miesiąc wpiszesz pasek, a netto, potrącenia i PPK same trafią do budżetu.</div>`;continue}
+    h+=`<div class="list">${list.map(s=>{const sl=slipOf(ym,s.id),ok=sl&&sl.booked&&live.has(sl.booked),b=s.kind=='b2b';
+      return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(s.name)}</b><button class="btn sm" style="padding:3px 9px" aria-label="Edytuj źródło dochodu" onclick="editInc('${s.id}')">⋯</button></div><div class="mini">${KINDS[s.kind]} · ${esc(accN(s.acc))}${s.ppk?' · PPK':''}</div>
+        ${sl?`<div class="mini">${b?'faktury':'brutto'} <b style="color:var(--fg)">${zl(brutto(sl))}</b> · ${b?'na rękę':'netto'} <b style="color:var(--fg)">${zl(b?onHand(sl):sl.net)}</b> · ${ok?'<span class="t-inc">✓ w budżecie</span>':'<span class="t-exp">nie zaksięgowano</span>'}</div>`:`<div class="mini">Brak paska w tym miesiącu${s.day?` · wypłata zwykle do ${s.day}.`:''}</div>`}
+        <div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="openSlip('${s.id}')">${sl?'📝 Pasek':'+ Wpisz pasek'}</button></div></div></div>`}).join('')}</div>`}
+  const T=totals(Object.values(S.slips[ym]||{}));
+  if(T.n)h+=`<section class="chart"><div class="ct"><b>Razem w miesiącu</b><span class="mini">${T.n} ${plu(T.n,'pasek','paski','pasków')} · ZUS, zdrowotna i podatek nie są wydatkami w budżecie</span></div>${payTabH(T)}</section>`;
+  return h}
+function payYearH(){const y=S.ym.slice(0,4),ms=Array.from({length:12},(_,i)=>y+'-'+p2(i+1)),rows=[];
+  ms.forEach(m=>Object.entries(S.slips[m]||{}).forEach(([id,sl])=>rows.push({m,id,sl})));
+  if(!rows.length)return catsEmpty(`Brak pasków w roku ${y}.<br>Wpisz pierwszy w widoku „Miesiąc”.`,0,'papers');
+  const T=totals(rows.map(r=>r.sl)),nm=new Set(rows.map(r=>r.m)).size;
+  let h=`<div class="kpis"><div class="kpi k-em"><div class="l">Netto ${y}</div><div class="v num">${zl(T.net)}</div><div class="s">średnio ${zl0(T.net/nm)}/mies.</div></div><div class="kpi k-sk"><div class="l">Brutto ${y}</div><div class="v num">${zl(T.brutto)}</div><div class="s">${nm} mies. z paskami</div></div></div>`;
+  h+=chartBox('Netto miesiąc po miesiącu','wszystkie źródła razem',barsSvg(['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'],[{name:'Netto',color:C_INC,values:ms.map(m=>rows.filter(r=>r.m==m).reduce((a,r)=>a+(r.sl.net||0),0))}],{tipLabel:i=>MN[i]}));
+  h+=`<section class="chart"><div class="ct"><b>Cały rok ${y}</b></div>${payTabH(T)}</section><div class="h2">Do sprawdzenia PIT-11</div>`;
+  h+=[...new Set(rows.map(r=>r.id))].map(id=>{const list=rows.filter(r=>r.id==id).map(r=>r.sl),last=list[list.length-1],src=incById(id)||last,t=totals(list),b2b=src.kind=='b2b';
+    const L=b2b?[['Przychód (faktury)',t.brutto],['Składki ZUS',t.zus],['Zdrowotna',t.health],['Podatek',t.tax]]
+      :[['Przychód'+(t.ppkEmp?' (z PPK pracodawcy)':''),t.brutto+t.ppkEmp],['Koszty uzyskania',t.kup],['Składki ZUS',t.zus],['Zdrowotna',t.health],['Zaliczka na podatek',t.tax]];
+    return`<section class="chart"><div class="ct"><b>${esc(src.name||'?')}</b><span class="mini">${KINDS[src.kind]||''} · ${esc(src.who||'')} · ${t.n} ${plu(t.n,'pasek','paski','pasków')}</span></div><div class="ptbl">${L.map(([l,v])=>`<div class="r1"><span>${l}</span><b class="num">${zl(v)}</b></div>`).join('')}</div>${b2b?'<div class="mini">JDG rozliczasz we własnym zeznaniu (PIT-36, PIT-36L albo PIT-28), nie z PIT-11.</div>':''}</section>`}).join('');
+  return h+`<div class="mini" style="padding:0 4px">Liczone według miesiąca wypłaty. Porównaj z PIT-11 od pracodawcy – drobne różnice mogą wynikać z zaokrągleń.</div>`}
+/* income source: name, person, kind of contract, account, budget position, PPK; then details used by the estimate */
+async function editInc(id,who){if(guard())return;const s0=id?incById(id):null;who=s0?.who||who||S.who;
+  const fixedInc=(S.cfg.fixed||[]).filter(f=>f.kind=='inc'),invAccs=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
+  const defSub=S.cfg.cats.filter(c=>c.type=='inc').flatMap(c=>c.subs).find(x=>new RegExp('pensja\\s+'+who,'i').test(x.name))?.id||'';
+  const defPpk=S.cfg.accs.find(a=>a.grp=='inv'&&!a.archived&&/ppk/i.test(a.name)&&accOwner(a)==who)?.id||'';
+  const r=await ask({title:s0?'Źródło dochodu':'Nowe źródło dochodu – '+who,fields:[
+    {id:'n',label:'Pracodawca albo zleceniodawca',value:s0?.name||'',ph:'np. Szpital Wojewódzki'},
+    {id:'k',label:'Rodzaj umowy',type:'select',value:s0?.kind||'uop',options:Object.entries(KINDS)},
+    {id:'c',label:'Wpływa na konto',type:'select',value:s0?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&accOwner(a)==who)?.id||'',options:accOpts()},
+    {id:'s',label:'Pozycja budżetu (przychód)',type:'select',value:s0?.sub||defSub,options:[['','— wybierz —'],...subOpts('inc')]},
+    {id:'d',label:'Wypłata zwykle do dnia (1–31)',type:'int',value:s0?.day||10},
+    {id:'p',label:'PPK',type:'select',value:s0?s0.ppk||'':defPpk,options:[['','Bez PPK'],...invAccs.map(a=>[a.id,'Wpłaty na: '+a.name])]},
+    {id:'f',label:'Połącz z przychodem stałym (📌)',type:'select',value:s0?.fixed||'',options:[['','— bez połączenia —'],...fixedInc.map(f=>[f.id,f.name])]}],
+    ok:'Dalej',alt:s0?'Usuń źródło':null});
+  if(!r)return;
+  if(r=='alt'){if(!await ask({title:'Usunąć źródło dochodu?',text:s0.name+'\nZapisane paski i wpisy w rejestrze zostaną.',ok:'Usuń',danger:true}))return;
+    S.cfg.incs=incs().filter(x=>x!==s0);render();delIncDb(s0.id);return toast('Usunięto źródło dochodu')}
+  if(!r.n.trim())return toast('Podaj nazwę pracodawcy','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');if(!r.c)return toast('Wybierz konto','bad');
+  const day=Math.round(pnum(r.d))||10,k=r.k,P=v=>{const x=pnum(v);return isFinite(x)?x:0};
+  const f2p=x=>String(x).replace('.',',');
+  const det=k=='uop'?[{id:'kup',label:'Koszty uzyskania przychodu',type:'select',value:String(s0?.kup||250),options:[['250','Standardowe – 250 zł'],['300','Podwyższone (dojazd z innej miejscowości) – 300 zł']]},{id:'pit2',label:'PIT-2 złożony (ulga 300 zł miesięcznie)',type:'select',value:s0?.pit2===false?'0':'1',options:[['1','Tak'],['0','Nie']]}]
+    :k=='zlec'?[{id:'kup',label:'Koszty uzyskania',type:'select',value:String(s0?.kup||20),options:[['20','20%'],['50','50% (prawa autorskie)']]},{id:'zus',label:'Składki ZUS',type:'select',value:s0?.zusOn===false?'0':'1',options:[['1','Tak, płacone ze zlecenia'],['0','Nie (np. student, inny tytuł)']]},{id:'pit2',label:'PIT-2 złożony u zleceniodawcy',type:'select',value:s0?.pit2?'1':'0',options:[['0','Nie'],['1','Tak']]}]
+    :k=='dzielo'?[{id:'kup',label:'Koszty uzyskania',type:'select',value:String(s0?.kup||20),options:[['20','20%'],['50','50% (prawa autorskie)']]}]
+    :[{id:'tf',label:'Forma podatku',type:'select',value:s0?.taxf||'skala',options:Object.entries(TAXF)},{id:'za',label:'Twój ZUS społeczny miesięcznie (zł)',type:'decimal',value:s0?.zusAmt?f2(s0.zusAmt):'',ph:'z PUE ZUS, np. 1926,76'},{id:'rr',label:'Stawka ryczałtu (%, tylko ryczałt)',type:'decimal',value:s0?.ryczRate?f2p(s0.ryczRate):'',ph:'np. 14'},{id:'ha',label:'Zdrowotna miesięcznie (zł, tylko ryczałt)',type:'decimal',value:s0?.healthAmt?f2(s0.healthAmt):'',ph:'np. 830,58'}];
+  if(r.p&&k!='b2b'&&k!='dzielo')det.push({id:'po',label:'PPK – moja wpłata (% brutto)',type:'decimal',value:f2p(s0?.ppkOwnPct??2)},{id:'pe',label:'PPK – pracodawca (% brutto)',type:'decimal',value:f2p(s0?.ppkEmpPct??1.5)});
+  const r2=await ask({title:'Szczegóły: '+r.n.trim(),text:'Służą tylko do „Podpowiedz z brutto” (szacunek). Zawsze możesz wpisać kwoty z paska.',fields:det,ok:s0?'Zapisz':'Dodaj'});
+  if(!r2)return;
+  const body={id:s0?.id||'i'+rid(),name:r.n.trim(),who,kind:k,acc:r.c,sub:r.s,day:Math.min(31,Math.max(1,day)),ppk:k=='b2b'||k=='dzielo'?'':r.p,fixed:r.f,dedSub:s0?.dedSub||{}};
+  if(k=='uop'){body.kup=+r2.kup;body.pit2=r2.pit2=='1'}
+  if(k=='zlec'){body.kup=+r2.kup;body.zusOn=r2.zus=='1';body.pit2=r2.pit2=='1'}
+  if(k=='dzielo')body.kup=+r2.kup;
+  if(k=='b2b'){body.taxf=r2.tf;body.zusAmt=gr(r2.za);body.ryczRate=P(r2.rr);body.healthAmt=gr(r2.ha)}
+  if(body.ppk){body.ppkOwnPct=P(r2.po)||2;body.ppkEmpPct=P(r2.pe)||1.5}
+  S.cfg.incs=incs();let x=s0;if(x)Object.assign(x,body);else{x=body;S.cfg.incs.push(x)}
+  render();saveInc(x);toast(s0?'Zapisano źródło dochodu':'Dodano źródło dochodu 💼')}
+/* the payslip editor (a page in 📌 Stałe) */
+function openSlip(id,ym){if(guard())return;const src=incById(id);if(!src)return toast('Nie ma już tego źródła dochodu','bad');ym=ym||S.ym;
+  const old=slipOf(ym,id),day=ym+'-'+p2(Math.min(src.day||10,daysIn(ym)));
+  const d=old?clone(old):{comp:[{n:src.kind=='b2b'?'Faktura':'Wynagrodzenie zasadnicze',a:0,h:0}],zus:0,health:0,kup:0,tax:0,ppkOwn:0,ppkEmp:0,costs:0,ded:[],net:0,date:td().startsWith(ym)&&td()<day?td():day};
+  d.comp=d.comp||[];d.ded=d.ded||[];
+  S.slip={id,ym,d,isNew:!old};S.ym=ym;S.tab='fix';S.fixSub='pay';window.scrollTo(0,0);render()}
+function closeSlip(){S.slip=null;render()}
+function slipRead(){const d=S.slip.d,root=document.querySelector('.slip');if(!root)return d;
+  root.querySelectorAll('[data-k]').forEach(el=>d[el.dataset.k]=gr(el.value));
+  root.querySelectorAll('[data-c]').forEach(el=>{const c=d.comp[+el.dataset.c];if(!c)return;const f=el.dataset.f;c[f]=f=='a'?gr(el.value):f=='h'?(pnum(el.value)||0):el.value});
+  root.querySelectorAll('[data-d]').forEach(el=>{const x=d.ded[+el.dataset.d];if(!x)return;const f=el.dataset.f;x[f]=f=='a'?gr(el.value):el.value});
+  const dt=$('slDate');if(dt)d.date=dt.value;return d}
+function slipCalc(){if(!S.slip||!$('slB'))return;const d=slipRead(),src=incById(S.slip.id);if(!src)return;
+  const b=brutto(d),calc=calcNet(src,d);$('slB').textContent=zl(b);$('slNet').placeholder=f2(Math.max(0,calc));
+  /* remembered budget position of a deduction with this name */
+  document.querySelectorAll('.slip select[data-d]').forEach(el=>{const x=d.ded[+el.dataset.d],m=(src.dedSub||{})[(x?.n||'').trim().toLowerCase()];if(x&&!el.value&&m){el.value=m;x.sub=m}});
+  let chk;
+  if(src.kind=='b2b')chk=`Do odłożenia na ZUS, zdrowotną i podatek: <b>${zl(reserve(d))}</b><br>Na rękę po kosztach i daninach: <b>${zl(onHand(d))}</b>`;
+  else if(d.net){const df=d.net-calc;chk=df==0?'<span class="t-inc">✓ Rachunek się zgadza</span>':`<span class="t-exp">⚠️ Różnica ${df>0?'+':'−'}${zl(Math.abs(df))}</span> – brutto minus składki, podatek, PPK i potrącenia daje ${zl(calc)}. Sprawdź kwoty z paska.`}
+  else chk=`Wyliczone netto: <b>${zl(calc)}</b> – wpisz kwotę z banku, a sprawdzę rachunek.`;
+  $('slChk').innerHTML=chk;
+  const net=d.net||calc,ratio=b>0?net/b:0,hc=d.comp.filter(c=>+c.h>0&&c.a>0);
+  $('slHr').innerHTML=hc.map(c=>`⏱️ ${esc(c.n||'Składnik')} (${String(c.h).replace('.',',')} h): ${zl(Math.round(c.a/c.h))} brutto · ok. ${zl(Math.round(c.a*ratio/c.h))} netto za godzinę`).join('<br>')}
+function slipRow(kind,i){slipRead();const L=S.slip.d[kind];if(i==null)L.push(kind=='comp'?{n:'',a:0,h:0}:{n:'',a:0,sub:''});else L.splice(i,1);
+  if(document.activeElement)document.activeElement.blur();render()}
+function slipCopy(){const {id,ym}=S.slip,prev=Object.keys(S.slips).filter(m=>m<ym&&S.slips[m][id]).sort().pop();
+  if(!prev)return toast('Brak wcześniejszego paska tego źródła','bad');
+  const p=clone(S.slips[prev][id]),d=slipRead();
+  Object.assign(d,{comp:p.comp||[],zus:p.zus||0,health:p.health||0,kup:p.kup||0,tax:p.tax||0,ppkOwn:p.ppkOwn||0,ppkEmp:p.ppkEmp||0,costs:p.costs||0,ded:p.ded||[],net:0,est:false});
+  if(document.activeElement)document.activeElement.blur();render();toast('Skopiowano pasek z miesiąca: '+MN[+prev.slice(5)-1].toLowerCase()+'. Wpisz kwotę z banku.')}
+function slipSuggest(){const {id,ym}=S.slip,src=incById(id),d=slipRead();if(brutto(d)<=0)return toast(src.kind=='b2b'?'Najpierw wpisz kwotę faktury':'Najpierw wpisz składniki brutto','bad');
+  Object.assign(d,suggest(src,d,ytdOf(S.slips,id,ym)),{est:true});if(document.activeElement)document.activeElement.blur();render();toast('🧮 Wpisałem szacunek – sprawdź go z paskiem')}
+function slipH(){const {id,ym,d}=S.slip,src=incById(id);if(!src){S.slip=null;return''}
+  const b2b=src.kind=='b2b',V=v=>v?f2(v):'';
+  const inp=(k,label,hint)=>`<label class="srow2"><span>${label}${hint?`<small>${hint}</small>`:''}</span><input class="planin" data-k="${k}" value="${V(d[k])}" placeholder="0,00" inputmode="decimal" autocomplete="off"></label>`;
+  const sopt=sel=>subOpts('exp').map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(([v,l])=>`<option value="${v}"${v==sel?' selected':''}>${esc(l)}</option>`).join('')}</optgroup>`).join('');
+  let h=`<div class="slip" oninput="slipCalc()" onchange="slipCalc()"><div class="sl-h"><b>💼 ${esc(src.name)}</b><span class="mini">${KINDS[src.kind]} · ${src.who} · wypłata: ${MN[+ym.slice(5)-1].toLowerCase()} ${ym.slice(0,4)}</span></div>
+    <div class="btns" style="gap:6px"><button class="chip" onclick="slipCopy()">⧉ Skopiuj z poprzedniego miesiąca</button><button class="chip" onclick="slipSuggest()">🧮 Podpowiedz z brutto</button></div>
+    ${d.est?'<div class="note">🧮 To <b>szacunek</b> wyliczony z brutto. Sprawdź i popraw kwoty według paska z wypłaty.</div>':''}
+    <div class="sl-sec">${b2b?'FAKTURY':'SKŁADNIKI (BRUTTO)'}</div>
+    ${d.comp.map((c,i)=>`<div class="sl-row"><input data-c="${i}" data-f="n" value="${esc(c.n||'')}" placeholder="${b2b?'np. Faktura za październik':'np. Dyżury'}" aria-label="Nazwa składnika" autocomplete="off"><input class="planin" data-c="${i}" data-f="a" value="${V(c.a)}" placeholder="0,00" inputmode="decimal" aria-label="Kwota" autocomplete="off">${b2b?'':`<input class="planin hrs" data-c="${i}" data-f="h" value="${c.h?String(c.h).replace('.',','):''}" placeholder="godz." inputmode="decimal" aria-label="Godziny (opcjonalnie)" autocomplete="off">`}<button type="button" class="x" onclick="slipRow('comp',${i})" aria-label="Usuń składnik">×</button></div>`).join('')}
+    <button class="btn sm" style="align-self:flex-start" onclick="slipRow('comp')">+ ${b2b?'faktura':'składnik'}</button>
+    <div class="r1 sl-tot"><span>${b2b?'Razem faktury':'Brutto'}</span><b class="num" id="slB"></b></div>
+    <div class="sl-sec">${b2b?'ZAPŁACISZ SAM':'SKŁADKI I PODATEK'}</div>
+    ${b2b?inp('costs','Koszty firmy','np. leasing, sprzęt, księgowa')+inp('zus','Twój ZUS (społeczny)')+inp('health','Zdrowotna')+inp('tax','Podatek (zaliczka)')
+      :inp('zus','ZUS (emerytalna, rentowa, chorobowa)')+inp('health','Zdrowotna')+inp('tax','Zaliczka na podatek')+inp('kup','Koszty uzyskania','tylko do PIT – nie zmniejszają wypłaty')}
+    ${src.ppk&&!b2b?`<div class="sl-sec">PPK → ${esc(accN(src.ppk))}</div>${inp('ppkOwn','Moja wpłata','odejmuje się od wypłaty')}${inp('ppkEmp','Wpłata pracodawcy','dodatkowo, na konto PPK')}`:''}
+    ${b2b?'':`<div class="sl-sec">POTRĄCENIA</div><div class="mini">Np. Multisport, ubezpieczenie grupowe. Trafią do budżetu jako wydatki w wybranej pozycji.</div>
+    ${d.ded.map((x,i)=>`<div class="sl-ded"><div class="sl-row"><input data-d="${i}" data-f="n" value="${esc(x.n||'')}" placeholder="np. Multisport" aria-label="Nazwa potrącenia" autocomplete="off"><input class="planin" data-d="${i}" data-f="a" value="${V(x.a)}" placeholder="0,00" inputmode="decimal" aria-label="Kwota potrącenia" autocomplete="off"><button type="button" class="x" onclick="slipRow('ded',${i})" aria-label="Usuń potrącenie">×</button></div><select data-d="${i}" data-f="sub" aria-label="Pozycja budżetu"><option value="">— pozycja budżetu —</option>${sopt(x.sub)}</select></div>`).join('')}
+    <button class="btn sm" style="align-self:flex-start" onclick="slipRow('ded')">+ potrącenie</button>`}
+    <div class="sl-sec">WPŁYW</div>
+    <label class="srow2"><span>Data wpływu</span><input type="date" id="slDate" value="${esc(d.date||'')}"></label>
+    <label class="srow2"><span>Wpłynęło na konto<small>${esc(accN(src.acc))} – kwota z aplikacji banku</small></span><input class="planin" data-k="net" id="slNet" value="${V(d.net)}" inputmode="decimal" autocomplete="off"></label>
+    <div class="note" id="slChk"></div><div class="mini" id="slHr"></div>
+    <div class="g2"><button class="btn" onclick="closeSlip()">Anuluj</button><button class="btn primary" onclick="saveSlip()">Zapisz i zaksięguj</button></div>
+    ${S.slip.isNew?'':'<button class="btn sm" style="align-self:center;background:none;color:var(--exp)" onclick="delSlip()">Usuń pasek</button>'}</div>`;
+  return h}
+/* earlier booking of a payslip: the income and everything linked to it (deductions, PPK) */
+const slipTxs=iid=>iid?liveOf(S.tx).filter(t=>t.id===iid||t.slipOf===iid||t.ppkOf===iid):[];
+async function saveSlip(){if(guard())return;const {id,ym}=S.slip,src=incById(id),d=slipRead();
+  d.comp=d.comp.filter(c=>c.a||String(c.n||'').trim());d.ded=src.kind=='b2b'?[]:d.ded.filter(x=>x.a||String(x.n||'').trim());
+  if(!src.ppk||src.kind=='b2b'){d.ppkOwn=0;d.ppkEmp=0}
+  const b=brutto(d);if(b<=0)return toast(src.kind=='b2b'?'Wpisz kwotę faktury':'Wpisz składniki brutto','bad');
+  if(!isDate(d.date)||!d.date.startsWith(ym))return toast('Data wpływu musi być w miesiącu: '+MN[+ym.slice(5)-1].toLowerCase(),'bad');
+  if(d.ded.some(x=>x.a>0&&!x.sub))return toast('Wybierz pozycję budżetu dla każdego potrącenia','bad');
+  const calc=calcNet(src,d),net=d.net||calc;if(net<=0)return toast('Kwota na konto musi być większa od zera','bad');
+  const old=slipOf(ym,id);slipTxs(old?.booked).forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));
+  const iid='t'+rid(),ts=Date.now(),dd=d.ded.filter(x=>x.a>0),inc=net+dd.reduce((a,x)=>a+x.a,0);
+  if(!await putTx(ym,iid,{type:'inc',amount:inc,date:d.date,sub:src.sub,acc:src.acc,to:'',who:src.who,note:'💼 '+src.name,slip:id,...(src.fixed?{fixedId:src.fixed}:{}),deleted:false,ts}))return;
+  dd.forEach(x=>putTx(ym,'t'+rid(),{type:'exp',amount:x.a,date:d.date,sub:x.sub,acc:src.acc,to:'',who:src.who,note:`potrącenie z pensji – ${src.name}: ${x.n||'potrącenie'}`,slipOf:iid,deleted:false,ts}));
+  const pb={date:d.date,sub:'',acc:src.ppk,to:'',who:src.who,deleted:false,ts,ppkOf:iid,...(src.fixed?{fixedRef:src.fixed}:{})};
+  if(d.ppkOwn>0)putTx(ym,'t'+rid(),{...pb,type:'inc',amount:d.ppkOwn,note:'PPK – moja wpłata',ppk:'own'});
+  if(d.ppkEmp>0)putTx(ym,'t'+rid(),{...pb,type:'inc',amount:d.ppkEmp,note:'PPK – wpłata pracodawcy',ppk:'emp'});
+  const base=src.kind=='b2b'?Math.max(0,b-(d.costs||0)-(d.zus||0)):Math.max(0,Math.round((b-(d.zus||0)-(d.kup||0)+(d.ppkEmp||0))/100)*100);
+  putSlip(ym,id,{comp:d.comp.map(c=>({n:String(c.n||''),a:c.a||0,h:+c.h||0})),zus:d.zus||0,health:d.health||0,kup:d.kup||0,tax:d.tax||0,ppkOwn:d.ppkOwn||0,ppkEmp:d.ppkEmp||0,costs:d.costs||0,
+    ded:d.ded.map(x=>({n:String(x.n||''),a:x.a||0,sub:x.sub||''})),net,date:d.date,base,booked:iid,name:src.name,kind:src.kind,who:src.who,est:false,ts});
+  if(dd.length){src.dedSub={...(src.dedSub||{})};dd.forEach(x=>{if(x.n)src.dedSub[x.n.trim().toLowerCase()]=x.sub});saveInc(src)}
+  S.slip=null;render();toast(`Zaksięgowano: ${src.name} · ${zl(net)} na konto${dd.length?` · ${dd.length} ${plu(dd.length,'potrącenie','potrącenia','potrąceń')} w budżecie`:''}`)}
+async function delSlip(){const {id,ym}=S.slip,old=slipOf(ym,id);if(!old)return closeSlip();
+  if(!await ask({title:'Usunąć pasek?',text:`${old.name||''} – ${MN[+ym.slice(5)-1].toLowerCase()}\nUsunę też wpływ, potrącenia i wpłaty PPK z tego paska.`,ok:'Usuń',danger:true}))return;
+  slipTxs(old.booked).forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));w(updateDoc(doc(SLIPS(),ym),{['s.'+id]:deleteField()}));
+  S.slip=null;render();toast('Usunięto pasek')}
 
 /* ---------- analysis ---------- */
 /* every category is drawn in its own colour (the same hue as on the Budget screen); "other" stays neutral grey */
@@ -839,7 +1001,10 @@ function render(){
     h+=`<div class="seg" style="align-self:center">${[['m','Miesiąc'],['y','Rok']].map(([k,l])=>`<button aria-pressed="${S.ana==k}" onclick="setAna('${k}')">${l}</button>`).join('')}</div>`;
     h+=S.ana=='y'?anaYear({cfg:S.cfg,tx,ym:S.ym,savAt}):anaMonth({cfg:S.cfg,tx,ym:S.ym})}
 
+  else if(S.tab=='fix'&&S.slip)h+=slipH();
+  else if(S.tab=='fix'&&S.fixSub=='pay')h+=fixSegH()+payH();
   else if(S.tab=='fix'){
+    h+=fixSegH();
     if(S.ym==td().slice(0,7)||al.some(x=>x.due.startsWith(S.ym)))h+=alertH;
     const isCur=td().startsWith(S.ym),today=+td().slice(8),all=(S.cfg.fixed||[]).slice().sort((a,b)=>(+a.day)-(+b.day)||a.name.localeCompare(b.name,'pl'));
     const row=(f,paid)=>{const inc=f.kind=='inc',late=!paid&&isCur&&today>Math.min(+f.day,daysIn(S.ym));
@@ -954,7 +1119,7 @@ function render(){
       return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)}${isP(a)?'':' · '+CUR(a)} · saldo początkowe ${money(a.open,CUR(a))}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button style="font-weight:800;text-align:left;flex:1;min-width:0" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))} ✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button><button class="btn" onclick="logout()">Wyloguj</button></div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
-  $('app').innerHTML=h;if(S.tab=='acc'&&S.recon&&$('recApp'))recSum()}
+  $('app').innerHTML=h;if(S.tab=='acc'&&S.recon&&$('recApp'))recSum();if(S.tab=='fix'&&S.slip)slipCalc()}
 function setAna(k){S.ana=k;render()}
 function tog(id){if(S.bf!='all')S.fold[id]=!S.fold[id];else S.open[id]=!S.open[id];render()}
 function autoPlan(){const ym=S.ym,cur=td().slice(0,7);
@@ -1018,8 +1183,9 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
     S.tx=all;syncLabel(s.metadata);render()},onErr));
   unsub.push(onSnapshot(PLC(),{includeMetadataChanges:true},s=>{const p={};s.docs.forEach(d=>p[d.id]={...d.data()});S.plans=p;S.plansSrv=!s.metadata.fromCache;render()},onErr));
   unsub.push(onSnapshot(META(),s=>{S.backup=s.exists()?s.data():null;render()},onErr));
+  unsub.push(onSnapshot(SLIPS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data().s||{}));S.slips=p;render()},onErr));
   unsub.push(onSnapshot(GOALS(),s=>{const g={};s.docs.forEach(d=>g[d.id]=clone(d.data()));S.goals=g;render()},onErr));
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{editRound,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

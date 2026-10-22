@@ -62,11 +62,11 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Wymiana walut = przelew z dwiema kwotami, kurs sam w notatce; płatność kartą złotówkową za granicą: kwota w zł, kurs w notatce
 
 ## Etap 7. Pensje
-- [ ] Osobne listy źródeł dochodu Matiego i Werci, kilku pracodawców, każde źródło z kontem wpływu
-- [ ] Rodzaje: umowa o pracę, zlecenie, dzieło, kontrakt/JDG (faktura, ZUS własny, zdrowotna, forma podatku, rezerwa na podatek i ZUS, przypomnienie o płatnościach)
-- [ ] Pasek: składniki, ZUS, zdrowotna, zaliczka, PPK (moje/pracodawca), potrącenia, netto; „Skopiuj z poprzedniego miesiąca”, „Podpowiedz z brutto” (szacunek), sprawdzanie rachunku, opcjonalne godziny → stawka za godzinę
-- [ ] Potrącenia trafiają do budżetu w swoich podkategoriach z notatką; przychód w budżecie = netto + potrącenia; PPK na konto PPK; ZUS/zdrowotna/podatek tylko w pasku
-- [ ] Suma miesiąca i podsumowanie roku (do PIT-11)
+- [x] Osobne listy źródeł dochodu Matiego i Werci, kilku pracodawców, każde źródło z kontem wpływu
+- [x] Rodzaje: umowa o pracę, zlecenie, dzieło, kontrakt/JDG (faktura, ZUS własny, zdrowotna, forma podatku, rezerwa na podatek i ZUS, przypomnienie o płatnościach)
+- [x] Pasek: składniki, ZUS, zdrowotna, zaliczka, PPK (moje/pracodawca), potrącenia, netto; „Skopiuj z poprzedniego miesiąca”, „Podpowiedz z brutto” (szacunek), sprawdzanie rachunku, opcjonalne godziny → stawka za godzinę
+- [x] Potrącenia trafiają do budżetu w swoich podkategoriach z notatką; przychód w budżecie = netto + potrącenia; PPK na konto PPK; ZUS/zdrowotna/podatek tylko w pasku
+- [x] Suma miesiąca i podsumowanie roku (do PIT-11)
 
 ## Etap 8. Oszczędności i inwestycje
 - [ ] Grupy kont z sumami, „🐷 Odłóż”, stały przelew na oszczędności w 📌 Stałe

@@ -422,3 +422,26 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .fxbox{display:flex;flex-direction:column;gap:6px;background:#ecfeff;border:1.5px solid #a5f3fc;border-radius:14px;padding:9px 12px}
 .fxbox .mini{color:#0e7490;font-weight:700}
 .curtag{display:inline-block;font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;background:#cffafe;color:#0e7490}
+
+/* 💼 payslip */
+.slip{display:flex;flex-direction:column;gap:10px;background:var(--card,#fff);border-radius:20px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.sl-h{display:flex;flex-direction:column;gap:2px}
+.sl-h b{font-size:18px}
+.sl-sec{font-size:12px;font-weight:900;letter-spacing:.06em;color:#7c6f9b;margin-top:6px;padding-top:8px;border-top:1.5px dashed #e9e3f5}
+.sl-row{display:flex;gap:6px;align-items:center}
+.sl-row input{min-width:0}
+.sl-row input:first-child{flex:1.4;border:1.5px solid #e5e7eb;border-radius:12px;padding:9px 10px;font:inherit;font-size:15px;background:#fff}
+.sl-row .planin{flex:1;max-width:120px}
+.sl-row .planin.hrs{max-width:64px}
+.sl-row .x{flex:none;width:30px;height:30px;border-radius:10px;border:0;background:#fde8ec;color:#be123c;font-size:18px;font-weight:800}
+.sl-ded{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:14px;background:#faf7ff}
+.sl-ded select{border:1.5px solid #e5e7eb;border-radius:12px;padding:8px 10px;font:inherit;font-size:14px;background:#fff}
+.sl-tot{font-size:16px;font-weight:900;background:#eef6ff;border-radius:12px;padding:8px 12px}
+.srow2{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.srow2>span{display:flex;flex-direction:column;font-weight:700;font-size:14.5px;min-width:0}
+.srow2>span small{font-size:12px;font-weight:600;color:var(--mut,#6b7280)}
+.srow2 .planin{max-width:130px}
+.srow2 input[type=date]{border:1.5px solid #e5e7eb;border-radius:12px;padding:8px 10px;font:inherit;background:#fff}
+.ptbl{display:flex;flex-direction:column;gap:4px}
+.ptbl .r1{font-size:14.5px}
+.ptbl .tot{border-top:1.5px solid #e5e7eb;padding-top:6px;margin-top:2px;font-weight:900}

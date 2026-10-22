@@ -1,0 +1,41 @@
+/* 💼 salaries: payslip math, amounts in grosze. The estimate ("Podpowiedz z brutto") is only a hint – the payslip always wins. */
+export const KINDS={uop:'Umowa o pracę',zlec:'Umowa zlecenie',dzielo:'Umowa o dzieło',b2b:'Kontrakt / JDG'};
+export const TAXF={skala:'Skala podatkowa (12% / 32%)',liniowy:'Podatek liniowy (19%)',ryczalt:'Ryczałt'};
+/* 2026: limit of the pension + disability contributions (30 × forecast average salary) and the 32% tax threshold */
+export const ZUS_LIMIT=28260000,TAX_THR=12000000;
+const r0=x=>Math.round(x/100)*100; // tax advances are rounded to full złoty
+const pct=(x,p)=>Math.round(x*p/100);
+export const brutto=sl=>(sl.comp||[]).reduce((a,c)=>a+(c.a||0),0);
+export const dedSum=sl=>(sl.ded||[]).reduce((a,d)=>a+(d.a||0),0);
+export const hoursOf=sl=>(sl.comp||[]).reduce((a,c)=>a+(+c.h||0),0);
+/* what should come to the account: employee contracts – brutto minus contributions, tax, own PPK and deductions; JDG – the invoice */
+export const calcNet=(src,sl)=>src.kind=='b2b'?brutto(sl):brutto(sl)-(sl.zus||0)-(sl.health||0)-(sl.tax||0)-(sl.ppkOwn||0)-dedSum(sl);
+/* JDG: what to put aside for ZUS, health and tax, and what is really left */
+export const reserve=sl=>(sl.zus||0)+(sl.health||0)+(sl.tax||0);
+export const onHand=sl=>brutto(sl)-reserve(sl)-(sl.costs||0);
+/* sums of the earlier payslips of this source in the same year (for the ZUS limit and the 32% threshold) */
+export function ytdOf(slips,srcId,ym){const y=ym.slice(0,4),r={brutto:0,base:0};
+  for(const[m,d]of Object.entries(slips||{}))if(m.startsWith(y)&&m<ym&&d[srcId]){const s=d[srcId];r.brutto+=brutto(s);r.base+=s.base||0}
+  return r}
+function progressive(base,ytdBase,reduce){const low=Math.max(0,Math.min(base,TAX_THR-ytdBase));return Math.max(0,r0(pct(low,12)+pct(base-low,32)-reduce))}
+/* estimate of contributions and tax from brutto (Polish rules 2026, simplified) */
+export function suggest(src,sl,ytd={brutto:0,base:0}){const b=brutto(sl),o={};
+  if(src.kind=='uop'||src.kind=='zlec'){
+    const zusOn=src.kind=='uop'||src.zusOn!==false,cap=Math.min(b,Math.max(0,ZUS_LIMIT-ytd.brutto));
+    o.zus=zusOn?pct(cap,9.76)+pct(cap,1.5)+pct(b,2.45):0;
+    o.health=pct(b-o.zus,9);
+    o.ppkOwn=src.ppk?pct(b,src.ppkOwnPct??2):0;o.ppkEmp=src.ppk?pct(b,src.ppkEmpPct??1.5):0;
+    o.kup=src.kind=='uop'?(src.kup==300?30000:25000):pct(b-o.zus,src.kup==50?50:20);
+    o.base=Math.max(0,r0(b-o.zus-o.kup+o.ppkEmp));
+    const pit2=src.kind=='uop'?src.pit2!==false:!!src.pit2;o.tax=progressive(o.base,ytd.base,pit2?30000:0)}
+  else if(src.kind=='dzielo'){o.zus=0;o.health=0;o.ppkOwn=0;o.ppkEmp=0;o.kup=pct(b,src.kup==50?50:20);o.base=Math.max(0,r0(b-o.kup));o.tax=r0(pct(o.base,12))}
+  else{const costs=sl.costs||0,zus=src.zusAmt||0,inc=Math.max(0,b-costs-zus);o.zus=zus;o.kup=0;o.ppkOwn=0;o.ppkEmp=0;
+    if(src.taxf=='liniowy'){o.health=pct(inc,4.9);o.base=Math.max(0,r0(inc-o.health));o.tax=r0(pct(o.base,19))}
+    else if(src.taxf=='ryczalt'){o.health=src.healthAmt||0;o.base=Math.max(0,r0(b-zus-Math.round(o.health/2)));o.tax=r0(Math.round(o.base*(+src.ryczRate||12)/100))}
+    else{o.health=pct(inc,9);o.base=r0(inc);o.tax=progressive(o.base,ytd.base,30000)}}
+  return o}
+/* totals of many payslips (a month of all sources, or a year of one source) */
+export function totals(list){const t={brutto:0,net:0,zus:0,health:0,tax:0,kup:0,ppkOwn:0,ppkEmp:0,ded:0,hours:0,n:0};
+  for(const s of list){t.n++;t.brutto+=brutto(s);t.net+=s.net||0;t.zus+=s.zus||0;t.health+=s.health||0;t.tax+=s.tax||0;t.kup+=s.kup||0;
+    t.ppkOwn+=s.ppkOwn||0;t.ppkEmp+=s.ppkEmp||0;t.ded+=dedSum(s);t.hours+=hoursOf(s)}
+  return t}
