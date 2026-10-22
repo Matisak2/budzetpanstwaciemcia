@@ -53,6 +53,17 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
   for(const m of [pm,ym])for(const[id,sl]of Object.entries(slips?.[m]||{})){const src=(cfg.incs||[]).find(s=>s.id==id)||sl;if(src.kind=='b2b')continue;const diff=(sl.net||0)-calcNet(src,sl);
     if(Math.abs(diff)>=1)add('slip:'+m+':'+id+':'+sl.ts,'💼',`Pasek ${sl.name||src.name} (${MN[+m.slice(5)-1].toLowerCase()}) – rachunek nie zgadza się o ${zl(Math.abs(diff))}`,{a:'slip',id,ym:m})}
   return out.slice(0,10)}
+/* 📌 payments that look regular but are not in 📌 Stałe: the same note once a month, a similar amount (±15%), 3 months in a row */
+export const normNote=s=>String(s||'').toLowerCase().replace(/\d+/g,' ').replace(/[^\p{L} ]+/gu,' ').replace(/\s+/g,' ').trim();
+export function recurringP(cfg,tx,today,ign={}){const ym=today.slice(0,7),months=[-3,-2,-1,0].map(d=>addMonths(ym,d)),by={};
+  for(const t of tx){if(t.type!='exp'||t.fixedId||t.roundOf||t.ppk||t.split||t.slipOf||t.debt||t.date>today)continue;const i=months.indexOf(t.date.slice(0,7)),k=normNote(t.note);if(i<0||k.length<3)continue;
+    (by[k]=by[k]||[[],[],[],[]])[i].push(t)}
+  const fx=(cfg.fixed||[]).filter(f=>f.kind!='inc'&&f.kind!='tr'),out=[];
+  for(const[k,M]of Object.entries(by)){if(ign['rec:'+k])continue;const w=[[1,2,3],[0,1,2]].find(w=>w.every(i=>M[i].length==1));if(!w)continue;
+    const L=w.map(i=>M[i][0]),a=L.map(t=>t.amount),last=L.at(-1);if(Math.min(...a)<=0||Math.max(...a)/Math.min(...a)>1.15)continue;
+    if(fx.some(f=>normNote(f.name)==k||(f.sub==last.sub&&Math.abs(f.amount-last.amount)<=last.amount*0.15)))continue;
+    out.push({key:'rec:'+k,name:last.note.trim(),amount:last.amount,sub:last.sub,acc:last.acc,day:+last.date.slice(8)})}
+  return out}
 /* 🧾 tax reliefs a payment can be marked with – short explanations (a hint, not tax advice) */
 export const ULGI={
   internet:{n:'Ulga internetowa',lim:76000,d:'Opłaty za internet (abonament domowy lub mobilny). Do 760 zł rocznie na osobę, tylko w dwóch kolejnych latach. Potrzebna faktura na Twoje imię.'},
@@ -89,5 +100,6 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const t of tx){if(!t.war||t.type!='exp'||t.war<today)continue;const n=dd(today,t.war);
     if(n<=30)add('🛡️',`Gwarancja kończy się ${n?'za '+n+' '+plu(n,'dzień','dni','dni'):'dziś'}: ${t.note||subsMap(cfg)[t.sub]?.name||'zakup'} (${dmy(t.war)}). Coś nie działa? To ostatni moment na reklamację.`,{a:'tx',id:t.id},'Zobacz','',person(t.who))}
   if(mo==1)for(const w of ['Mati','Wercia']){const p=pitSummaryP(cfg,tx,String(+y-1),w,hraw);if(p.n||p.ikze.length)add('🧾',`${w}: zestawienie ulg do PIT za ${+y-1} jest gotowe.`,{a:'pit',y:String(+y-1)},'Pokaż','',w)}
-  if(checks)out.push(...checksP(D,today));
+  if(checks){for(const r of recurringP(cfg,tx,today,hraw?.checkIgnore))out.push({key:r.key,icon:'📌',text:`„${r.name}” – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`,go:{a:'recFix',key:r.key},label:'Dodaj',k:'rec',who:null});
+    out.push(...checksP(D,today))}
   return out}

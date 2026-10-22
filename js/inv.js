@@ -1,7 +1,7 @@
 /* 📈 savings & investments: instruments, treasury bonds, deposits, IKE/IKZE/OKI limits, yearly expenses, FIRE. Amounts in grosze. */
 import {addMonths} from './util.js';
-export const IKINDS={etf:'ETF / fundusz',akcje:'Akcje',obl:'Obligacje skarbowe',zloto:'Złoto',krypto:'Krypto',lokata:'Lokata'};
-export const IICON={etf:'📊',akcje:'📈',obl:'🏛️',zloto:'🥇',krypto:'🪙',lokata:'🏦'};
+export const IKINDS={etf:'ETF',tfi:'Fundusz TFI / PPK',akcje:'Akcje',obl:'Obligacje skarbowe',zloto:'Złoto',krypto:'Krypto',lokata:'Lokata'};
+export const IICON={etf:'📊',tfi:'🧺',akcje:'📈',obl:'🏛️',zloto:'🥇',krypto:'🪙',lokata:'🏦'};
 /* retail treasury bonds: months to maturity, how later periods are indexed, capitalisation; rates are typed from the purchase confirmation */
 export const BONDS={
   OTS:{n:'OTS – 3-miesięczne, stałe',m:3,idx:'fix',cap:true,margin:0},
@@ -27,13 +27,23 @@ export function position(it,before='9999-99-99'){let qty=0,cost=0,costPx=0,costF
     if(l.kind=='sell'){if(qty<=0)continue;const k=Math.min(q,qty)/qty;real+=Math.round(Math.min(q,qty)*px*fx*100)-(l.fee||0)-cost*k;cost-=cost*k;costPx-=costPx*k;costFx-=costFx*k;qty-=Math.min(q,qty);continue}
     qty+=q;cost+=Math.round(q*px*fx*100)+(l.fee||0);costPx+=q*px;costFx+=q*px*fx}
   return{qty,cost:Math.round(cost),avgPx:qty?costPx/qty:0,avgFx:costPx?costFx/costPx:1,real:Math.round(real)}}
-/* yearly rates of one bond lot: first year typed, later years inflation (or NBP rate) + margin */
-export function bondRates(b,macro={}){const T=BONDS[b.type]||BONDS.EDO,n=Math.max(1,Math.ceil((b.m||T.m)/12));
-  const later=T.idx=='infl'?Math.max(0,+(macro.infl??0))+(+(b.margin??T.margin)):T.idx=='nbp'?(+(macro.nbp??0))+(+(b.margin??T.margin)):+(b.first||0);
-  return Array.from({length:n},(_,i)=>i==0?+(b.first||0):(b.rates&&b.rates[i]!=null?+b.rates[i]:later))}
+/* inflation and the NBP rate for bonds: the automat's reading unless one typed later; inflH = GUS history {YYYY-MM: % y/y} */
+export const macroP=(hraw,rates)=>{const m=hraw?.macro||{},r=rates||{},pick=(k,at)=>r[k]!=null&&!(m[k]!=null&&(m[at]||'')>=(r.date||''))?r[k]:m[k];
+  return{infl:pick('infl','inflAt'),nbp:pick('nbp','nbpAt'),inflH:r.inflH||{},inflPer:r.inflPer||null}};
+/* every interest year of a bond lot: the 1st from the purchase confirmation, later ones margin + inflation y/y of the month 2 months before
+   the year starts (GUS history; until it is published – the latest reading as an estimate) or the NBP rate; a typed correction wins */
+export function bondYears(b,macro={},start){const T=BONDS[b.type]||BONDS.EDO,n=Math.max(1,Math.ceil((b.m||T.m)/12)),mg=+(b.margin??T.margin),H=macro.inflH||{};
+  return Array.from({length:n},(_,i)=>{const from=start?addM(start,12*i):null;
+    if(i==0)return{r:+(b.first||0),src:'first',from};
+    if(b.rates&&b.rates[i]!=null&&b.rates[i]!=='')return{r:+b.rates[i],src:'manual',from};
+    if(T.idx=='infl'){const ref=from?addMonths(from.slice(0,7),-2):null,known=ref&&H[ref]!=null,v=known?+H[ref]:+(macro.infl??0);
+      return{r:Math.round((Math.max(0,v)+mg)*100)/100,src:known?'gus':'est',from,ref,infl:v,mg}}
+    if(T.idx=='nbp')return{r:(+(macro.nbp??0))+mg,src:'nbp',from,mg};
+    return{r:+(b.first||0),src:'first',from}})}
+export const bondRates=(b,macro={},start)=>bondYears(b,macro,start).map(x=>x.r);
 export function bondLotValue(b,l,today,macro){const T=BONDS[b.type]||BONDS.EDO,months=b.m||T.m,N=Math.round((+l.qty||0)*(+l.price||100)*100),end=addM(l.date,months),at=today<end?today:end;
   if(months<12){const r=(+(b.first||0))/100,f=Math.max(0,dd(l.date,at))/dd(l.date,end);return{value:Math.round(N*(1+r*months/12*f)),paid:0,end,cost:N}}
-  const rates=bondRates(b,macro).map(r=>r/100),full=Math.min(rates.length,Math.floor(monthsBetween(l.date,at)/12));
+  const rates=bondRates(b,macro,l.date).map(r=>r/100),full=Math.min(rates.length,Math.floor(monthsBetween(l.date,at)/12));
   const ys=addM(l.date,full*12),ye=addM(l.date,(full+1)*12),frac=full>=rates.length?0:Math.max(0,dd(ys,at))/dd(ys,ye);
   let v=N,paid=0;for(let i=0;i<full;i++){if(T.cap)v=v*(1+rates[i]);else paid+=N*rates[i]}
   const cur=full<rates.length?rates[full]:0;
@@ -41,7 +51,8 @@ export function bondLotValue(b,l,today,macro){const T=BONDS[b.type]||BONDS.EDO,m
 /* the automat's quote for an instrument (only when newer than a price typed by hand); fx from NBP mid rates */
 export function marketQuote(it,acc,m){if(!m)return null;const ac=acc.cur||'PLN',ic=it.cur||ac,fx=c=>c=='PLN'?1:m.fx?.[c],newer=d=>d&&(!it.priceDate||d>=it.priceDate);
   let p=null,d=null;const q=it.ticker&&m.prices?.[String(it.ticker).trim().toUpperCase()];
-  if(q&&(!q.cur||q.cur==ic)){p=q.p;d=q.d}else if(it.kind=='zloto'&&!it.ticker&&m.gold&&ic=='PLN'){p=m.gold;d=m.goldDate||m.date}
+  const fq=it.kind=='tfi'&&it.fund?.id&&m.funds?.[it.fund.id];
+  if(fq&&(!fq.cur||fq.cur==ic)){p=fq.p;d=fq.d}else if(q&&(!q.cur||q.cur==ic)){p=q.p;d=q.d}else if(it.kind=='zloto'&&!it.ticker&&m.gold&&ic=='PLN'){p=m.gold;d=m.goldDate||m.date}
   const f=ic==ac?1:(fx(ic)&&fx(ac)?fx(ic)/fx(ac):null);
   return{p:newer(d)?p:null,fx:newer(m.fxDate||m.date)&&ic!=ac?f:null,d}}
 /* value of an instrument in the account currency, gains and the amount after the 19% tax */
@@ -58,6 +69,18 @@ export function instValue(it,acc,today,macro={},mkt=null){
   const gPx=Math.round(p.qty*(px-p.avgPx)*fx*100)/100,gFx=Math.round(p.qty*p.avgPx*(fx-p.avgFx)*100)/100;
   const v=Math.round(value*100),c=Math.round(p.cost),gain=v-c,tax=taxFree(acc)?0:Math.round(Math.max(0,gain)*BELKA/100);
   return{value:v,cost:c,gain,gPx:Math.round(gPx*100),gFx:Math.round(gFx*100),net:v-tax,tax,qty:p.qty,px,fx,costNoFee,real:p.real,auto:!!mq?.p}}
+/* value adjustment that makes an account balance show its instruments at today's value (instrument gains minus value changes already booked) */
+export function instDiffP(acc,items,tx,today,macro,mkt){if(!items.length)return null;let unreal=0,val=0;
+  items.forEach(it=>{const v=instValue(it,acc,today,macro,mkt);unreal+=v.value-v.cost+(v.real||0)});
+  for(const t of tx)if(t.acc===acc.id&&t.type=='adj'&&t.val)val+=t.amount;return unreal-val}
+/* an instrument as it was at the end of a day (later purchases and sales left out) */
+export const holdAt=(it,date)=>({...it,lots:Object.fromEntries(Object.entries(it.lots||{}).filter(([,l])=>l.date<=date))});
+/* a readable fund name from its address: "ppk-inpzu-2040" -> "PPK inPZU 2040"; the institution = the name without the year */
+export function fundName(slug){const KEEP={ppk:'PPK',inpzu:'inPZU',pzu:'PZU',pko:'PKO',nn:'NN',pfr:'PFR',bnp:'BNP',dfe:'DFE',sfio:'SFIO',fio:'FIO',tfi:'TFI',ufk:'UFK',ing:'ING',axa:'AXA'};
+  return String(slug||'').split('-').filter(Boolean).map(w=>KEEP[w]||(w[0].toUpperCase()+w.slice(1))).join(' ')}
+export const fundHouse=slug=>fundName(String(slug||'').replace(/-\d{4}(-.*)?$/,''));
+/* analizy.pl address of a fund -> {id, path} (the automat reads the unit value from that page) */
+export function fundFromUrl(s){const m=String(s||'').match(/(fundusze-[a-z-]+)\/([A-Z]{2,6}\d+)\/([a-z0-9-]+)/i);return m?{id:m[2].toUpperCase(),path:`${m[1].toLowerCase()}/${m[2].toUpperCase()}/${m[3].toLowerCase()}`}:null}
 /* payments into a tax wrapper in a year (transfers and incomes in, no value changes, no withdrawals subtracted) */
 export function paidInYear(tx,accId,year){let s=0;for(const t of tx){if(!t.date.startsWith(year))continue;
   if(t.type=='tr'&&t.to===accId)s+=t.amount2??t.amount;else if(t.acc===accId&&t.type=='inc'&&!t.ppk)s+=t.amount}return s}

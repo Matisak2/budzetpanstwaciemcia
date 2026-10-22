@@ -128,10 +128,10 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] Podsumowanie miesiąca 1. dnia miesiąca **do obojga**: plan a wydatki, przekroczone, odłożone – pastelowo, z kotkami
 
 ## Etap C. Inwestycje i opłaty – automatycznie
-- [ ] Obligacje dokładnie: historia inflacji miesiąc po miesiącu, rok odsetkowy = marża + inflacja z miesiąca 2 miesiące przed jego początkiem (EDO, COI, ROS, ROD); próba pobrania inflacji z GUS (zapasowo Eurostat); oprocentowanie każdego roku można poprawić ręcznie; podpowiedź oprocentowania nowej serii
-- [ ] PPK i fundusze TFI: przy koncie wybór instytucji i funduszu z listy (do wyboru, bo jeszcze nie wiadomo), wpisuje się liczbę jednostek, automat codziennie pobiera wycenę jednostki
-- [ ] Wycena kont z instrumentami sama na koniec miesiąca (wpis „(automat)”, przy weekendzie w pierwszy dzień roboczy z datą ostatniego dnia miesiąca; można usunąć w Rejestrze)
-- [ ] Wykrywanie stałych opłat spoza 📌 Stałe: podobna kwota i notatka 3 miesiące z rzędu → „Dodać do opłat stałych?”
+- [x] Obligacje dokładnie: historia inflacji miesiąc po miesiącu, rok odsetkowy = marża + inflacja z miesiąca 2 miesiące przed jego początkiem (EDO, COI, ROS, ROD); próba pobrania inflacji z GUS (zapasowo Eurostat); oprocentowanie każdego roku można poprawić ręcznie; podpowiedź oprocentowania nowej serii
+- [x] PPK i fundusze TFI: przy koncie wybór instytucji i funduszu z listy (do wyboru, bo jeszcze nie wiadomo), wpisuje się liczbę jednostek, automat codziennie pobiera wycenę jednostki
+- [x] Wycena kont z instrumentami sama na koniec miesiąca (wpis „(automat)”, przy weekendzie w pierwszy dzień roboczy z datą ostatniego dnia miesiąca; można usunąć w Rejestrze)
+- [x] Wykrywanie stałych opłat spoza 📌 Stałe: podobna kwota i notatka 3 miesiące z rzędu → „Dodać do opłat stałych?”
 
 ## Etap D. Wygoda na co dzień
 - [x] Siri / Skróty na iPhone'ach: „Hej Siri, wydatek” otwiera okienko nowego wydatku; skróty z gotową kwotą i notatką (adres z parametrami); instrukcja krok po kroku
