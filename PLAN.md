@@ -80,9 +80,9 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Poduszka bezpieczeństwa i FIRE
 
 ## Etap 9. Zobowiązania i należności
-- [ ] W 👛 Konta: „🔻 my winni” i „🔺 nam winni”
-- [ ] Kategoria, od kogo/komu, warunki, kto spłaca, pasek spłaty, szacowany koniec, termin zwrotu; kredyt bankowy – wpisywane „pozostało”, pożyczka prywatna liczy się sama
-- [ ] Raty łączą się z zobowiązaniem (kategoria w Budżecie zostaje prawdziwa); „Udzielone pożyczki” → należności
+- [x] W 👛 Konta: „🔻 my winni” i „🔺 nam winni”
+- [x] Kategoria, od kogo/komu, warunki, kto spłaca, pasek spłaty, szacowany koniec, termin zwrotu; kredyt bankowy – wpisywane „pozostało”, pożyczka prywatna liczy się sama
+- [x] Raty łączą się z zobowiązaniem (kategoria w Budżecie zostaje prawdziwa); „Udzielone pożyczki” → należności
 
 ## Etap 10. Planowanie
 - [ ] „Do zaplanowania” i podpowiedź planu (średnia z 3 mies.) z „Wypełnij średnimi”
