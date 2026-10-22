@@ -44,7 +44,9 @@
     const FIX=[['f1','Czynsz',185000,10,'Czynsz','aJ','exp'],['f2','Prąd',18000,15,'Prąd','aJ','exp'],['f3','Internet i telefon',8999,5,'Internet i telefon','aJ','exp'],['f4','Spotify',2999,12,'Spotify','aM','exp'],
       ['f5','Netflix',4300,20,'Netflix','aW','exp'],['f6',`Pensja ${A}`,720000,10,`Pensja ${A}`,'aM','inc'],['f7',`Pensja ${B}`,680000,10,`Pensja ${B}`,'aW','inc']];
     const fixedM={};FIX.forEach(([id,name,amount,day,s,acc,kind],o)=>{fixedM[id]={name,amount,day,sub:sid[s],acc,kind,o}});fixedM.f8={name:'Na oszczędności',amount:100000,day:11,sub:'',acc:'aJ',to:'aS',kind:'tr',o:8};
-    const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:{},yearM:{},projM:{},remM:{},invAcc:true,ikeAcc:true,wspAcc:true,ppkAcc:true,zwrotyRen:true,subAcc:true,savTarget:150000,demo:true}};
+    const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:{},yearM:{},projM:{},remM:{},invAcc:true,ikeAcc:true,wspAcc:true,ppkAcc:true,zwrotyRen:true,subAcc:true,savTarget:150000,demo:true,
+      /* random shop / restaurant notes must not look like a fixed payment by chance (only „Bilet miesięczny” and „Chmura 200 GB” are meant to) */
+      checkIgnore:Object.fromEntries(['Biedronka','Lidl','Żabka','Auchan','Warzywniak','Pizzeria','Sushi','Bistro','Pierogarnia','Kawiarnia','Pyszne','Glovo','Orlen','BP','Shell','Sklep zoologiczny','Drogeria','Kino','Sklep z modelami','Fryzjer','Apteka','Prezent urodzinowy','Sklep odzieżowy','Wizyta prywatna','Opłata za kartę'].map(n=>['rec:'+n.toLowerCase(),true]))}};
     const PLAN={'Zakupy spożywcze':140000,'Restauracje':40000,'Kawa i przekąski':15000,'Jedzenie z dowozem':12000,'Czynsz':185000,'Prąd':20000,'Internet i telefon':9000,'Środki czystości':8000,'Paliwo':50000,
       'Komunikacja miejska':11000,'Lekarz':10000,'Leki':6000,'Fryzjer i kosmetyki':10000,[`Ubrania ${A}`]:20000,[`Ubrania ${B}`]:25000,'Kino i koncerty':10000,'Hobby':10000,'Spotify':3000,'Netflix':4300,
       'Chmura i aplikacje':1200,'Karma':25000,'Prezenty':15000,[`Pensja ${A}`]:720000,[`Pensja ${B}`]:680000};

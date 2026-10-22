@@ -213,7 +213,7 @@ function noteSub(note,kind){const k=norm(note);if(k.length<2)return null;const w
   for(const m of[ex,fw]){const e=Object.entries(m).sort((a,b)=>b[1]-a[1]),tot=e.reduce((a,x)=>a+x[1],0);if(e.length&&e[0][1]/tot>=.6)return sm[e[0][0]]}
   return null}
 function paintPick(btn,sid){const s=sid&&subsMap(S.cfg)[sid];btn.className='pickbtn'+(s?' on':'');btn.style.cssText=s?catColor(s.cat):'';
-  btn.innerHTML=s?`<span class="cico">${catIcon(s.cat)}</span><span class="pt"><small>${esc(cleanCat(s.cat.name))}</small><b>${esc(s.name)}</b></span>`:'<span class="ph">— stuknij, żeby wybrać pozycję —</span>'}
+  btn.innerHTML=s?`<span class="cico">${catIcon(s.cat)}</span><span class="pt"><small>${esc(cleanCat(s.cat.name))}</small><b>${esc(s.name)}</b></span>`:`<span class="ph">${btn.dataset.i!=null?'wybierz pozycję':'— stuknij, żeby wybrać pozycję —'}</span>`}
 function setMs(sid,hint){$('ms').value=sid||'';paintPick($('msBtn'),sid);$('msHint').textContent=hint||'';updSplit();updProj()}
 function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.cats.filter(c=>c.type==kind),sm=subsMap(S.cfg);
   const chip=(s,cls='')=>`<button type="button" class="pchip ${cls}" style="${catColor(s.cat)}" data-sid="${s.id}"><span>${esc(s.name)}</span></button>`;
@@ -233,7 +233,7 @@ function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.cats.fi
 let SP=[];
 const splitLeft=()=>calcAmt($('ma').value)-SP.reduce((a,x)=>a+Math.max(0,calcAmt(x.amt)),0);
 function updSplit(){const on=SP.length>0;$('splitWrap').hidden=!on;$('splitBtn').hidden=on||!!S.edit||S.etype=='tr';
-  if(on){const left=splitLeft();$('msHint').textContent=`na tę pozycję zostaje ${zl(left)}`;$('msHint').style.color=left>0?'':'var(--exp)'}else $('msHint').style.color=''}
+  if(on){const left=splitLeft(),amt=calcAmt($('ma').value),parts=SP.some(x=>calcAmt(x.amt)>0);$('msHint').textContent=amt?`na tę pozycję zostaje ${zl(left)}`:'wpisz u góry kwotę całego paragonu';$('msHint').style.color=amt&&parts&&left<=0?'var(--exp)':''}else $('msHint').style.color=''}
 function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class="srow"><button type="button" class="pickbtn" data-i="${i}"></button><input inputmode="decimal" placeholder="0,00" value="${esc(x.amt)}" data-i="${i}" aria-label="Kwota tej pozycji" autocomplete="off"><button type="button" class="x" data-x="${i}" aria-label="Usuń tę pozycję">×</button></div>`).join('');
   $('splitRows').querySelectorAll('.pickbtn').forEach(b=>paintPick(b,SP[+b.dataset.i].sub));
   if(!SP.length&&!$('ms').value)$('msHint').textContent='';updSplit()}
@@ -756,7 +756,8 @@ const putSlip=(ym,id,body)=>merge(doc(SLIPS(),ym),{s:{[id]:body}});
 const saveInc=x=>merge(H,{incM:{[x.id]:strip(x,incs().indexOf(x))}});
 const delIncDb=id=>w(updateDoc(H,{['incM.'+id]:deleteField()}));
 const gr=v=>{const x=pg(v||'0');return isFinite(x)?x:0};
-const fixSegH=()=>`<div class="seg seg4">${[['fix','📌 Opłaty'],['pay','💼 Pensje'],['year','📅 Roczne'],['rem','🔔 Przyp.']].map(([k,l])=>`<button aria-pressed="${(S.fixSub||'fix')==k}" onclick="setFixSub('${k}')">${l}</button>`).join('')}</div>`;
+const segL=l=>l.replace(/^(\S+) /,'<i class="si">$1</i> ');
+const fixSegH=()=>`<div class="seg seg4">${[['fix','📌 Opłaty'],['pay','💼 Pensje'],['year','📅 Roczne'],['rem','🔔 Przyp.']].map(([k,l])=>`<button aria-pressed="${(S.fixSub||'fix')==k}" onclick="setFixSub('${k}')">${segL(l)}</button>`).join('')}</div>`;
 function setFixSub(k){S.fixSub=k;S.slip=null;window.scrollTo(0,0);render()}
 function setPayView(k){S.payView=k;render()}
 const payTabH=T=>`<div class="ptbl">${[['Brutto / faktury',T.brutto],['ZUS (społeczne)',-T.zus],['Zdrowotna',-T.health],['Zaliczka na podatek',-T.tax],['PPK – moje wpłaty',-T.ppkOwn],['PPK – pracodawca (na PPK)',T.ppkEmp],['Potrącenia',-T.ded],['Netto na konto',T.net]].filter(([,v],i)=>v||i==0||i==7).map(([l,v],i,a)=>`<div class="r1${i==a.length-1?' tot':''}"><span>${l}</span><b class="num">${v<0?'−'+zl(-v):zl(v)}</b></div>`).join('')}${T.hours?`<div class="mini">${String(T.hours).replace('.',',')} h wpisanych godzin</div>`:''}</div>`;
@@ -1151,7 +1152,7 @@ const debtList=dir=>Object.entries(S.debts).filter(([,d])=>!d.deleted&&(!dir||d.
 function debtState(d){return debtStateP(d,liveOf(S.tx),td())}
 const debtSum=(dir,owner)=>debtList(dir).filter(d=>!owner||(d.payer||'Wspólne')==owner).reduce((a,d)=>a+debtState(d).left,0);
 function setAccView(k){S.accView=k;S.recon=false;window.scrollTo(0,0);render()}
-const accSegH=()=>`<div class="seg seg3">${[['acc','👛 Konta'],['owe','🔻 My winni'],['lent','🔺 Nam winni']].map(([k,l])=>`<button aria-pressed="${(S.accView||'acc')==k}" onclick="setAccView('${k}')">${l}</button>`).join('')}</div>`;
+const accSegH=()=>`<div class="seg seg3">${[['acc','👛 Konta'],['owe','🔻 My winni'],['lent','🔺 Nam winni']].map(([k,l])=>`<button aria-pressed="${(S.accView||'acc')==k}" onclick="setAccView('${k}')">${segL(l)}</button>`).join('')}</div>`;
 function debtsH(dir){const L=debtList(dir).map(d=>({d,st:debtState(d)})),act=L.filter(x=>x.st.left>0),done=L.filter(x=>x.st.left<=0),owe=dir=='owe';let h='';
   const tot=act.reduce((a,x)=>a+x.st.left,0);
   h+=`<div class="worth ${owe?'':'wsp'}"><div class="l">${owe?'Razem do spłaty':'Razem do oddania Wam'}</div><div class="v num">${zl(tot)}</div><div class="s">${OWN.map(o=>`${o} ${zl0(act.filter(x=>(x.d.payer||'Wspólne')==o).reduce((a,x)=>a+x.st.left,0))}`).join(' · ')} · zmniejsza${owe?'':' się'} ${owe?'łączny majątek':'– powiększa łączny majątek'}</div></div>`;
@@ -1521,15 +1522,20 @@ function showWealth(){if(guard())return;const tx=liveOf(S.tx),end=S.ym+'-32',acc
   const lines=OWN.map(o=>{const c=sumO(o,'cur'),sb=sumO(o,'sub'),fs=fxOf(accs(o,'sub'),b);return`${o}: ${zl(c)}${fxPlus(fxOf(accs(o,'cur'),b))}${sb||fxTxt(fs)?` · subkonta ${zl(sb)}${fxPlus(fs)}`:''}`});
   ask({title:'Na kontach bieżących',text:lines.join('\n')+'\n\nWszystkie konta, także oszczędności i inwestycje, zobaczysz w 👛 Konta.',ok:'Pokaż konta',cancel:'Zamknij'}).then(r=>{if(r)goTab('acc')})}
 function setBF(k){S.bf=k;render()}
+/* long amounts get a smaller font instead of being cut („14 109,1…”); a long month name gets shortened on narrow phones */
+function fitNums(){document.querySelectorAll('#app .kpi .v,#app .worth .v').forEach(e=>{e.style.fontSize='';let fs=parseFloat(getComputedStyle(e).fontSize),n=0;
+    const over=()=>e.scrollWidth>e.clientWidth+1||[...e.children].some(c=>c.getBoundingClientRect().right>e.getBoundingClientRect().right+1);
+    while(over()&&fs>14&&n++<10){fs-=1.5;e.style.fontSize=fs+'px'}});
+  const L=$('mlabel');if(L&&L.scrollWidth>L.clientWidth+1&&L.dataset.short)L.textContent=L.dataset.short}
 /* 💰 Majątek = 🐷 Oszczędności + 👛 Konta */
-const majSegH=()=>`<div class="seg seg2 majseg">${[['sav','🐷 Oszczędności'],['acc','💳 Konta']].map(([k,l])=>`<button aria-pressed="${S.tab==k}" onclick="${k=='acc'?"S.accView='acc';":''}goTab('${k}')">${l}</button>`).join('')}</div>`;
+const majSegH=()=>`<div class="seg seg2 majseg">${[['sav','🐷 Oszczędności'],['acc','💳 Konta']].map(([k,l])=>`<button aria-pressed="${S.tab==k}" onclick="${k=='acc'?"S.accView='acc';":''}goTab('${k}')">${segL(l)}</button>`).join('')}</div>`;
 function setAccSub(k){S.accSub=k;window.scrollTo(0,0);render()}
 
 function render(){
   const tabOf=S.tab=='sav'||S.tab=='acc'?'maj':S.tab=='ana'?'dash':S.tab;document.querySelectorAll('.tabs [data-tab]').forEach(b=>{if(b.dataset.tab==tabOf)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   if(S.tab=='set')$('gearBtn').setAttribute('aria-current','page');else $('gearBtn').removeAttribute('aria-current');
   document.body.classList.toggle('w-theme',S.who=='Wercia');lookApply();
-  const[y,m]=S.ym.split('-').map(Number);applySeason();$('mlabel').textContent=S.tab=='ana'&&S.ana=='y'?'Rok '+y:SEASON[m-1][2]+' '+MN[m-1]+' '+y;
+  const[y,m]=S.ym.split('-').map(Number);applySeason();$('mlabel').textContent=S.tab=='ana'&&S.ana=='y'?'Rok '+y:SEASON[m-1][2]+' '+MN[m-1]+' '+y;$('mlabel').dataset.short=S.tab=='ana'&&S.ana=='y'?'':SEASON[m-1][2]+' '+MN[m-1].slice(0,3)+' '+y;
   if(!S.cfg)return;
   const ae=document.activeElement;if(ae&&ae.tagName=='INPUT'&&$('app').contains(ae)){S.pend=true;return}S.pend=false;
   const tx=liveOf(S.tx),sm=subsMap(S.cfg),end=S.ym+'-32',start=S.ym+'-00',pl=S.plans[S.ym]||{},act=actuals(S.cfg,tx,S.ym),FX=agg(S.cfg,tx,S.ym).fx;
@@ -1736,10 +1742,10 @@ function render(){
     h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div><div class="seg seg2 acctabs">${Object.entries(ACCTAB).map(([g,l])=>`<button aria-pressed="${S.accTab==g}" onclick="setAccTab('${g}')">${{cur:'💳',sub:'🗂️',sav:'🐷',inv:'📈'}[g]} ${l} (${S.cfg.accs.filter(a=>a.grp==g&&!a.archived).length})</button>`).join('')}</div>${(()=>{const list=S.cfg.accs.filter(a=>a.grp==S.accTab&&!a.archived);
       return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)}${isP(a)?'':' · '+CUR(a)} · saldo początkowe ${money(a.open,CUR(a))}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
-    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button style="font-weight:800;text-align:left;flex:1;min-width:0" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))} ✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
+    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button class="catname" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))}&nbsp;✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button>${DEMO?'':'<button class="btn" onclick="logout()">Wyloguj</button>'}</div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
   if(DEMO)h=`<div class="demob">🧪 Wersja demonstracyjna · przykładowe dane, tylko w tej przeglądarce <button onclick="MW_DEMO.reset()">Zacznij od nowa</button></div>`+h;
-  $('app').innerHTML=h;updToday();
+  $('app').innerHTML=h;updToday();fitNums();
   {const key=[S.tab,S.ym,S.sub,S.fixSub,S.accView,S.ana,!!S.instAcc].join('|'),a=$('app');if(key!=S.animKey){const first=!S.animKey;S.animKey=key;if(!first){a.classList.remove('anim','sl','sr');void a.offsetWidth;a.classList.add('anim',S.swipe>0?'sl':S.swipe<0?'sr':'up');clearTimeout(S.animT);S.animT=setTimeout(()=>a.classList.remove('anim','sl','sr','up'),650)}}S.swipe=0}if(S.tab=='acc'&&S.recon&&$('recApp'))recSum();if(S.tab=='fix'&&S.slip)slipCalc()}
 function setAna(k){S.ana=k;render()}
 function showEmpty(id){S.showEmpty[id]=!S.showEmpty[id];render()}
@@ -1768,6 +1774,7 @@ function txMenu(id){const t=liveById(id);if(!t)return;const d=$('dlg'),sm=subsMa
   app.addEventListener('pointermove',e=>{if(lp&&Math.hypot(e.clientX-lp.x,e.clientY-lp.y)>10)stop()});
   app.addEventListener('contextmenu',e=>{const b=e.target.closest('.tx[data-id]');if(!b)return;e.preventDefault();stop();if(Date.now()-(S.lpAt||0)>900){S.lpAt=Date.now();txMenu(b.dataset.id)}});
   document.addEventListener('click',e=>{if(S.lpAt&&Date.now()-S.lpAt<900&&e.target.closest('#app .tx[data-id]')){e.preventDefault();e.stopPropagation();S.lpAt=0}},true)}
+{let lastY=0;window.addEventListener('scroll',()=>{const y=window.scrollY,f=$('addBtn');if(!f)return;if(y>lastY+6&&y>120)f.classList.add('away');else if(y<lastY-6||y<120)f.classList.remove('away');lastY=y},{passive:true})}
 /* 👆 swipe left / right on the screen: the next / previous month */
 {let sw=null;const app=$('app'),scrollsX=el=>{for(let x=el;x&&x!==app;x=x.parentElement)if(x.scrollWidth>x.clientWidth+4&&/(auto|scroll)/.test(getComputedStyle(x).overflowX))return true;return false};
   app.addEventListener('touchstart',e=>{sw=null;if(e.touches.length!=1||!['dash','tx','fix','ana'].includes(S.tab)||S.slip||S.proj||!$('sheet').hidden||!$('dlg').hidden)return;
