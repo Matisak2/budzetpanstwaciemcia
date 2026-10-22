@@ -34,19 +34,18 @@
   <button class="hb" id="prevM" aria-label="Poprzedni miesiąc">‹</button>
   <div class="mlab"><b id="mlabel">Budżet M&amp;W</b><small id="sync">łączenie…</small></div>
   <button class="hb" id="nextM" aria-label="Następny miesiąc">›</button>
+  <button class="hb find" id="findBtn" aria-label="Szukaj">🔍</button>
   <button class="hb today" id="todayBtn" aria-label="Na dziś">🔔</button>
   <button class="hb gear" id="gearBtn" aria-label="Ustawienia">⚙️</button>
 </div></header>
 
-<main id="app" class="gut"><div class="load">Wczytywanie budżetu…</div></main>
+<main id="app" class="gut"><div class="skel" aria-label="Wczytywanie budżetu…"><i class="sk" style="height:84px"></i><div class="sk2"><i class="sk"></i><i class="sk"></i><i class="sk"></i><i class="sk"></i></div><i class="sk" style="height:40px"></i><i class="sk" style="height:120px"></i><i class="sk" style="height:120px"></i></div></main>
 
 <nav class="tabs" aria-label="Sekcje"><div class="in">
   <button data-tab="dash" aria-current="page"><span class="e">📊</span>Budżet</button>
   <button data-tab="tx"><span class="e">🧾</span>Rejestr</button>
   <button data-tab="fix"><span class="e">📌</span>Stałe</button>
-  <button data-tab="ana"><span class="e">📈</span>Analiza</button>
-  <button data-tab="sav"><span class="e">🐷</span>Oszczędn.</button>
-  <button data-tab="acc"><span class="e">👛</span>Konta</button>
+  <button data-tab="maj"><span class="e">💰</span>Majątek</button>
 </div></nav>
 <button class="fab" id="addBtn" aria-label="Dodaj transakcję">+</button>
 
@@ -80,7 +79,7 @@
   <div class="fld" id="mwarWrap" hidden><span>🛡️ Gwarancja <small class="mini">– przypomnę miesiąc przed końcem</small></span><div class="g2"><select id="mwar"><option value="">bez gwarancji</option><option value="12">1 rok</option><option value="24">2 lata (rękojmia)</option><option value="36">3 lata</option><option value="60">5 lat</option><option value="date">do dnia…</option></select><input type="date" id="mward" hidden></div></div>
   <div class="fld" id="mulgaWrap" hidden><span>🧾 Ulga w PIT</span><select id="mulga"></select><small class="mini" id="mulgaHint" hidden></small></div>
   <button type="button" class="btn sm" id="mulgaBtn" hidden style="align-self:flex-start">🧾 Do ulgi w PIT</button>
-  <div class="g2"><button class="btn" id="shCancel">Anuluj</button><button class="btn primary" id="shSave">Zapisz</button></div>
+  <div class="shfoot"><div class="g2"><button class="btn" id="shCancel">Anuluj</button><button class="btn primary" id="shSave">Zapisz</button></div><button class="btn sm" id="shNext">Zapisz i dodaj kolejny ›</button></div>
   <button class="btn sm" id="shRef" hidden style="align-self:center">↩️ Oznacz zwrot</button>
   <div class="mini" id="shWho" hidden style="text-align:center"></div>
   <button class="btn sm" id="shDel" hidden style="align-self:center;color:var(--exp);background:none">Usuń transakcję</button>

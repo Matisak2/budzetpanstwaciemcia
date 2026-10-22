@@ -19,7 +19,7 @@ function applySeason(){const m=+S.ym.slice(5)-1,[c,l]=SEASON[m];const r=document
   const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.setAttribute('content',c)}
 
 /* ---------- state ---------- */
-const S={sub:'all',bf:'all',fold:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},hold:{},debts:{},market:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
+const S={sub:'all',bf:'all',fold:{},showEmpty:{},showCat:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},hold:{},debts:{},market:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
 let seeding=false;
 
 /* ---------- pure money logic ---------- */
@@ -251,23 +251,24 @@ function openTx(id,pre){if(guard())return;
   $('md').value=t?t.date:(td().startsWith(S.ym)?td():S.ym+'-01');
   if(t){$('mc').value=t.acc;$('mto').value=t.to||''}else{const last=ls.get('mw_acc_'+S.who);if(last&&S.cfg.accs.some(a=>a.id==last))$('mc').value=last}
   if(pre?.from){$('mc').value=pre.from;const c=S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived);if(c)$('mto').value=c.id}
-  if(pre?.to)$('mto').value=pre.to;
+  if(pre?.to)$('mto').value=pre.to;if(pre?.acc&&S.cfg.accs.some(a=>a.id==pre.acc))$('mc').value=pre.acc;
   if(pre?.amount)$('ma').value=f2(pre.amount);
   if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o){if(pre?.to)$('mc').value=o.value;else $('mto').value=o.value}}
   if(!t)autoWho();
-  $('mn').value=t?stripFx(t.note):(pre?.note||'');if(!t&&pre?.note)setTimeout(()=>$('mn').dispatchEvent(new window.Event('input')),0);
+  $('mn').value=t?stripFx(t.note):(pre?.note||'');if(!t&&pre?.note&&!pre.sub)setTimeout(()=>$('mn').dispatchEvent(new window.Event('input')),0);
   $('mwar').value=t?.war?'date':'';$('mward').value=t?.war||'';$('mulga').value=t?.ulga||'';S.ulgaOpen=!!t?.ulga;updX();
   {const f=x=>new Date(x).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
    $('shWho').textContent=t&&(t.by||t.eby)?[t.by?`➕ ${t.by=='Wercia'?'dodała':'dodał'} ${t.by}${t.ts?' · '+f(t.ts):''}`:'',t.eby?`✏️ ${t.eby=='Wercia'?'zmieniła':'zmienił'} ${t.eby}${t.eAt?' · '+f(t.eAt):''}`:''].filter(Boolean).join('   '):'';$('shWho').hidden=!$('shWho').textContent}
-  setMs(t?t.sub:(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');fillProj(t?.proj||pre?.proj||'');$('mlit').value=t?.lit?String(t.lit).replace('.',','):'';$('modo').value=t?.odo||'';S.coinOn=true;updCoin();
+  setMs(t?t.sub:pre?.sub||(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');fillProj(t?.proj||pre?.proj||'');$('mlit').value=t?.lit?String(t.lit).replace('.',','):'';$('modo').value=t?.odo||'';S.coinOn=true;updCoin();
   if(!$('fxc').options.length)$('fxc').innerHTML=CURS.map(([c,n])=>`<option value="${c}">${c} – ${esc(n)}</option>`).join('');
   $('ma2').value=t?.amount2?f2(t.amount2):'';S.fxOpen=!!t?.fxCur;$('fxc').value=t?.fxCur||'EUR';$('fxa').value=t?.fxAmt?f2(t.fxAmt):'';updFx();
   const left=t&&t.type=='exp'?t.amount-refundsOf(t.id).reduce((a,x)=>a+x.amount,0):0;
   $('shRef').hidden=!(left>0);
-  $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;
+  $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;$('shNext').hidden=!!t;
   $('sheet').hidden=false;if(!t)setTimeout(()=>$('ma').focus(),80)}
 const closeSheet=()=>{$('sheet').hidden=true;S.edit=null;S.refEdit=false;SP=[];closePick()};
-async function saveTx(){if(guard())return;
+async function saveTx(next){if(guard())return;
+  const keep={acc:$('mc').value,date:$('md').value,who:$('mw').value,type:S.etype};
   const type=S.etype,amount=calcAmt($('ma').value),date=$('md').value;
   if(amount<=0)return toast('Podaj kwotę większą od zera','bad');
   if(!isDate(date))return toast('Wybierz datę','bad');
@@ -304,6 +305,7 @@ async function saveTx(){if(guard())return;
   if(ok&&old&&old.date.slice(0,7)!=ym)await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
   const sm2=subsMap(S.cfg);if(ok&&!old&&kotki.mode=='lots'&&[body.sub,...parts.map(x=>x.sub)].some(x=>isTreat(sm2[x]?.name)))setTimeout(()=>toast(treatJoke(Math.floor(Date.now()/1000))),1900);
   if(ok&&debt&&S.debts[debt]?.mode=='bank'&&!old)setTimeout(()=>toast('Rata zapisana. Wpisz, ile zostało wg banku.','',{label:'✎ Pozostało',fn:()=>setDebtLeft(debt)}),1500);
+  if(ok&&next===true){openTx(null,{type:keep.type});$('mc').value=keep.acc;$('md').value=keep.date;$('mw').value=keep.who;updX()}
   if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):''));if(ym!=S.ym){S.ym=ym;render()}}}
 async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
@@ -415,6 +417,13 @@ function moveAcc(id,d){if(guard())return;const A=S.cfg.accs,i=A.findIndex(a=>a.i
   let j=i+d;while(j>=0&&j<A.length&&(A[j].grp!=A[i].grp||A[j].archived))j+=d;if(j<0||j>=A.length)return;
   [A[i],A[j]]=[A[j],A[i]];render();saveAcc(A[i]);saveAcc(A[j])}
 function moveCat(ci,d){if(guard())return;const j=ci+d;if(j<0||j>=S.cfg.cats.length)return;const a=S.cfg.cats;[a[ci],a[j]]=[a[j],a[ci]];render();saveCat(a[ci]);saveCat(a[j])}
+/* 🎨 the look of this phone: accent colour (default: Wercia pink, Mati mint) and text size */
+const ACCENTS=[['mint','Miętowy','#a7f3d0'],['pink','Różowy','#fbcfe8'],['lav','Lawendowy','#ddd6fe'],['sky','Błękitny','#bae6fd'],['peach','Brzoskwiniowy','#fed7aa'],['lemon','Cytrynowy','#fef08a']];
+const accOf=()=>ls.get('mw_acc')||(S.who=='Wercia'?'pink':'mint');
+function lookApply(){document.body.dataset.acc=accOf();document.body.dataset.size=ls.get('mw_size')||'0'}
+function setLook(k,v){ls.set(k,v);lookApply();render()}
+const lookH=()=>`<div class="card"><h3>🎨 Wygląd</h3><div class="accs" role="group" aria-label="Kolor">${ACCENTS.map(([k,n,c])=>`<button class="accdot" style="background:${c}" aria-pressed="${accOf()==k}" aria-label="${n}" title="${n}" onclick="setLook('mw_acc','${k}')"></button>`).join('')}</div>
+  <div class="seg seg3" role="group" aria-label="Wielkość tekstu">${[['0','A'],['1','A+'],['2','A++']].map(([k,l])=>`<button aria-pressed="${(ls.get('mw_size')||'0')==k}" onclick="setLook('mw_size','${k}')" style="font-size:${14+(+k)*2}px">${l}</button>`).join('')}</div><div class="mini">Kolor i wielkość tekstu dotyczą tylko tego telefonu.</div></div>`;
 function setWho(v){S.who=v;ls.set('mw_who',v);if(S.uid)merge(doc(collection(H,'users'),S.uid),{email:S.email||'',who:v});const pid=ls.get('mw_push');if(pid&&S.pushOk)merge(doc(PUSH(),pid),{who:v});render()}
 
 /* ---------- fixed costs ---------- */
@@ -713,7 +722,7 @@ function txRowH(t,sm,rf={},cn={}){const M=v=>am(v,t.acc),k=t.type,sg=k=='inc'||k
   const cls=k=='invs'?'inv':k=='lend'?'tr':t.lendOf||t.debtIn?'tr':k,s=sm[t.sub],c=s&&(k=='exp'||k=='inc')?s.cat:null;
   const title=t.ppk||k=='lend'||t.lendOf||t.debtIn?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
   const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.roundOf?'🪙':k=='lend'||t.lendOf?'🔺':t.debtIn?'🔻':k=='tr'?'⇄':k=='adj'?(t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
-  return`<button class="tx" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">🔻 spłata: ${esc(S.debts[t.debt].name)}</div>`:''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
+  return`<button class="tx" data-id="${t.id}" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">🔻 spłata: ${esc(S.debts[t.debt].name)}</div>`:''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
 function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q.trim());
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m',rf={};
@@ -943,7 +952,7 @@ function instPageH(){const a=accById(S.instAcc);if(!a){S.instAcc=null;return''}c
       <div class="btns" style="gap:6px"><button class="chip" onclick="addLot('${it.id}')">+ ${it.kind=='lokata'?'Lokata':'Zakup'}</button>${mk?`<button class="chip" onclick="addLot('${it.id}',1)">Sprzedaż</button><button class="chip" onclick="setPrice('${it.id}')">✎ Cena</button>`:''}${it.kind=='tfi'?`<button class="chip" onclick="setUnits('${it.id}')">✎ Liczba jednostek</button>`:''}${it.kind=='obl'?`<button class="chip" onclick="bondRatesDlg('${it.id}')">📅 Oprocentowanie</button>`:''}<button class="chip" onclick="editInst('${it.id}')">⋯</button></div></div>`}).join('');
   if(!L.length)h+=catsEmpty('Dodaj ETF-y, akcje, obligacje, złoto, krypto albo lokaty. Aplikacja policzy zysk i kwotę „na rękę”.',1,'lupa');
   h+=`<button class="btn dark" onclick="editInst(null,'${a.id}')">+ Dodaj instrument</button>
-    <div class="mini" style="padding:0 4px">Ceny wpisujesz ręcznie (✎ Cena albo „📈 Aktualizuj wartości”). Obligacje i lokaty liczą się same według zasad. „Zapisz wycenę” przenosi wynik do salda konta – nie wpływa na wydatki.</div>`;
+    <details class="more mini" style="padding:0 4px"><summary>Jak to liczę? więcej ›</summary>Ceny z symbolem i fundusze pobiera automat w dni robocze; inne wpisujesz ręcznie (✎ Cena albo „📈 Aktualizuj wartości”). Obligacje i lokaty liczą się same według zasad. „Zapisz wycenę” przenosi wynik do salda konta – nie wpływa na wydatki. Na koniec miesiąca automat zapisuje wycenę sam.</details>`;
   return h}
 async function editInst(id,accId){if(guard())return;const it0=id?S.hold[id]:null,a=accById(it0?.acc||accId);if(!a)return;
   const r=await ask({title:it0?'Instrument':'Nowy instrument – '+a.name,fields:[{id:'k',label:'Rodzaj',type:'select',value:it0?.kind||'etf',options:Object.entries(IKINDS)},
@@ -1508,12 +1517,14 @@ function showWealth(){if(guard())return;const tx=liveOf(S.tx),end=S.ym+'-32',acc
   const lines=OWN.map(o=>{const c=sumO(o,'cur'),sb=sumO(o,'sub'),fs=fxOf(accs(o,'sub'),b);return`${o}: ${zl(c)}${fxPlus(fxOf(accs(o,'cur'),b))}${sb||fxTxt(fs)?` · subkonta ${zl(sb)}${fxPlus(fs)}`:''}`});
   ask({title:'Na kontach bieżących',text:lines.join('\n')+'\n\nWszystkie konta, także oszczędności i inwestycje, zobaczysz w 👛 Konta.',ok:'Pokaż konta',cancel:'Zamknij'}).then(r=>{if(r)goTab('acc')})}
 function setBF(k){S.bf=k;render()}
+/* 💰 Majątek = 🐷 Oszczędności + 👛 Konta */
+const majSegH=()=>`<div class="seg seg2 majseg">${[['sav','🐷 Oszczędności'],['acc','💳 Konta']].map(([k,l])=>`<button aria-pressed="${S.tab==k}" onclick="${k=='acc'?"S.accView='acc';":''}goTab('${k}')">${l}</button>`).join('')}</div>`;
 function setAccSub(k){S.accSub=k;window.scrollTo(0,0);render()}
 
 function render(){
-  document.querySelectorAll('.tabs [data-tab]').forEach(b=>{if(b.dataset.tab==S.tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+  const tabOf=S.tab=='sav'||S.tab=='acc'?'maj':S.tab=='ana'?'dash':S.tab;document.querySelectorAll('.tabs [data-tab]').forEach(b=>{if(b.dataset.tab==tabOf)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   if(S.tab=='set')$('gearBtn').setAttribute('aria-current','page');else $('gearBtn').removeAttribute('aria-current');
-  document.body.classList.toggle('w-theme',S.who=='Wercia');
+  document.body.classList.toggle('w-theme',S.who=='Wercia');lookApply();
   const[y,m]=S.ym.split('-').map(Number);applySeason();$('mlabel').textContent=S.tab=='ana'&&S.ana=='y'?'Rok '+y:SEASON[m-1][2]+' '+MN[m-1]+' '+y;
   if(!S.cfg)return;
   const ae=document.activeElement;if(ae&&ae.tagName=='INPUT'&&$('app').contains(ae)){S.pend=true;return}S.pend=false;
@@ -1545,19 +1556,24 @@ function render(){
       <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(exp)}${fxSmall(FX.exp)}</div><div class="s">plan ${zl0(pexp)}${pct(exp,pexp)}</div></div>
       <div class="kpi k-sk"><div class="l">Bilans miesiąca</div><div class="v num">${zl(inc-exp)}</div><div class="s">plan ${zl0(pinc-pexp)}</div></div>
       <button class="kpi k-in kbtn" onclick="showWealth()" aria-label="Na kontach – pokaż podział na osoby"><div class="l">Na kontach ›</div><div class="v num">${zl(tot('cur'))}${fxSmall(totFx('cur'))}</div><div class="s">${S.cfg.accs.some(a=>a.grp=='sub')?`subkonta ${zl0(tot('sub'))}${fxPlus(totFx('sub'))} · `:''}oszczędności ${zl0(savEnd)}</div>${savDelta?`<div class="tr">${trendH(savDelta)}</div>`:''}</button></div>`;
+    h+=`<button class="anabtn" onclick="goTab('ana')"><span>📈</span><b>Analiza</b><small>wykresy, podsumowanie, Mati ↔ Wercia</small><i>›</i></button>`;
     /* filter: everything / positions over plan (incl. spending without a plan) / positions with no plan */
     const BF=S.bf,stOf=(c,s)=>status(c.type,pl[s.id]||0,act[s.id]||0);
     const keep=(c,s)=>BF=='all'||(BF=='over'?c.type=='exp'&&stOf(c,s).k=='over':!(pl[s.id]||0));
     const nOver=S.cfg.cats.reduce((a,c)=>a+c.subs.filter(s=>c.type=='exp'&&stOf(c,s).k=='over').length,0),nNo=S.cfg.cats.reduce((a,c)=>a+c.subs.filter(s=>!(pl[s.id]||0)).length,0);
     h+=toPlanH();
     h+=`<div class="seg seg3 bfilt">${[['all','Wszystko'],['over','▲ Przekroczone'+(nOver?` (${nOver})`:'')],['none','Bez planu'+(nNo?` (${nNo})`:'')]].map(([k,l])=>`<button aria-pressed="${BF==k}" onclick="setBF('${k}')">${l}</button>`).join('')}</div>`;
-    const shownCats=S.cfg.cats.map((c,i)=>({c,i,subs:c.subs.filter(s=>keep(c,s))})).filter(x=>BF=='all'||x.subs.length);
+    const isE=s=>!(pl[s.id]||0)&&!(act[s.id]||0)&&!fxTxt(FX.sub[s.id]);
+    let shownCats=S.cfg.cats.map((c,i)=>({c,i,subs:c.subs.filter(s=>keep(c,s))})).filter(x=>BF=='all'||x.subs.length);
+    const anyData=shownCats.some(x=>!x.c.subs.every(isE)),emptyCats=BF=='all'&&anyData?shownCats.filter(x=>x.c.subs.every(isE)&&!S.showCat[x.c.id]):[];
+    if(BF=='all'){shownCats=shownCats.filter(x=>!emptyCats.includes(x));if(anyData)shownCats.forEach(x=>{x.hid=S.showEmpty[x.c.id]||x.c.subs.every(isE)?0:x.subs.filter(isE).length;if(x.hid)x.subs=x.subs.filter(s=>!isE(s))})}
     if(!shownCats.length)h+=BF=='over'?catsEmpty('🎉 W tym miesiącu nic nie przekroczyło planu.',1,'happy'):catsEmpty('💚 Każda pozycja ma już swój plan.',1,'ivoHappy');
-    h+=shownCats.map(({c,i,subs})=>{const pa=c.subs.reduce((a,s)=>a+(pl[s.id]||0),0),ac=c.subs.reduce((a,s)=>a+(act[s.id]||0),0),o=BF=='all'?S.open[c.id]:!S.fold[c.id];
+    h+=shownCats.map(({c,i,subs,hid})=>{const pa=c.subs.reduce((a,s)=>a+(pl[s.id]||0),0),ac=c.subs.reduce((a,s)=>a+(act[s.id]||0),0),o=BF=='all'?S.open[c.id]:!S.fold[c.id];
       const cfx=fxTxt(FX.cat[c.id]);
       return`<section class="cat${status(c.type,pa,ac).k=='zero'&&!cfx?' dim':''}" style="${pastel(catHue(c,i))}"><button class="ch" onclick="tog('${c.id}')" aria-expanded="${!!o}">${trioH(c.type,`<span class="nm"><span class="chev">${o?'▾':'▸'}</span><span class="cico">${catIcon(c)}</span>${esc(catL(c))}</span>`,pa,ac,'',cfx)}</button>`+
         (o?subs.map(s=>{const a=act[s.id]||0,p=pl[s.id]||0,sfx=fxTxt(FX.sub[s.id]);
-          return`<div class="sub${status(c.type,p,a).k=='zero'&&!sfx?' dim':''}">${trioH(c.type,`<span class="n">${esc(s.name)}</span>`,p,a,`<input class="planin" value="${fmtIn(p)}" placeholder="${AVG[s.id]&&!p?fmtIn(Math.ceil(AVG[s.id]/1000)*1000):'0'}" inputmode="decimal" aria-label="Plan: ${esc(s.name)}" onchange="setPlan('${s.id}',this.value)">`,sfx)}</div>`}).join(''):'')+`</section>`}).join('');
+          return`<div class="sub${status(c.type,p,a).k=='zero'&&!sfx?' dim':''}">${trioH(c.type,`<span class="n">${esc(s.name)}</span>`,p,a,`<input class="planin" value="${fmtIn(p)}" placeholder="${AVG[s.id]&&!p?fmtIn(Math.ceil(AVG[s.id]/1000)*1000):'0'}" inputmode="decimal" aria-label="Plan: ${esc(s.name)}" onchange="setPlan('${s.id}',this.value)">`,sfx)}</div>`}).join('')+(hid?`<button class="submore" onclick="showEmpty('${c.id}')">＋ ${hid} ${plu(hid,'pusta pozycja','puste pozycje','pustych pozycji')} ›</button>`:BF=='all'&&S.showEmpty[c.id]&&c.subs.some(isE)?`<button class="submore" onclick="showEmpty('${c.id}')">− schowaj puste</button>`:''):'')+`</section>`}).join('');
+    if(emptyCats.length)h+=`<div class="emptycats"><span class="mini">Puste w tym miesiącu:</span>${emptyCats.map(({c})=>`<button class="chip" onclick="showCat('${c.id}')">${catIcon(c)} ${esc(cleanCat(c.name).charAt(0)+cleanCat(c.name).slice(1).toLowerCase())}</button>`).join('')}</div>`;
     h+=`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="copyPlan()">Skopiuj plan z poprzedniego miesiąca</button></div>`;
     h+=projectsH()}
 
@@ -1569,6 +1585,7 @@ function render(){
       ${active?`<button class="btn sm" style="align-self:flex-start" onclick="clearF()">✕ Wyczyść filtry</button>`:''}</div><div id="txlist">${txListH()}</div>`}
 
   else if(S.tab=='ana'){
+    h+=`<button class="btn sm" style="align-self:flex-start" onclick="goTab('dash')">‹ Budżet</button>`;
     h+=`<div class="r1" style="gap:8px;flex-wrap:wrap;justify-content:center"><div class="seg">${[['m','Miesiąc'],['y','Rok']].map(([k,l])=>`<button aria-pressed="${S.ana==k}" onclick="setAna('${k}')">${l}</button>`).join('')}</div><div class="seg">${[['basic','Podstawowa'],['full','Pełna']].map(([k,l])=>`<button aria-pressed="${(anaFull()?'full':'basic')==k}" onclick="setAnaMode('${k}')">${l}</button>`).join('')}</div></div>`;
     h+=S.ana=='y'?anaYear({cfg:S.cfg,tx,ym:S.ym,savAt,full:anaFull()}):anaMonth({cfg:S.cfg,tx,ym:S.ym,full:anaFull()})}
 
@@ -1600,7 +1617,7 @@ function render(){
     const OWN=['Mati','Wercia','Wspólne'],cols={Mati:'#7fb0ec',Wercia:'#f0a3c3','Wspólne':'#6fd0a8'};
     if(!['all',...OWN].includes(S.sub))S.sub='all';
     if(S.instAcc||S.values)h+=S.values?valuesH():instPageH();else{
-    h+=`<div class="seg seg4">${[['all','Razem'],['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']].map(([k,l])=>`<button aria-pressed="${S.sub==k}"${k=='Wercia'?' class="wbtn"':''} onclick="setSub('${k}')">${l}${k=='Wercia'?' 🌸':''}</button>`).join('')}</div>`;
+    h+=majSegH()+`<div class="seg seg4">${[['all','Razem'],['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']].map(([k,l])=>`<button aria-pressed="${S.sub==k}"${k=='Wercia'?' class="wbtn"':''} onclick="setSub('${k}')">${l}${k=='Wercia'?' 🌸':''}</button>`).join('')}</div>`;
     const actH=o=>`<div class="g2"><button class="btn primary" onclick="odloz('${o}')">🐷 Odłóż</button><button class="btn" onclick="openValues()">📈 Aktualizuj wartości</button></div>`;
     const monthlySave=()=>{const cur=td().slice(0,7),first=(S.tx.map(t=>t.date).filter(isDate).sort()[0]||td()).slice(0,7),d=[];for(let k=1;k<=6;k++){const m=addMonths(cur,-k);if(m<first)break;d.push(savAt(addMonths(m,1)+'-01')-savAt(m+'-01'))}return d.length?Math.round(d.reduce((a,v)=>a+v,0)/d.length):Math.max(0,savDelta)};
     const ownFx=(o,before)=>fxOf(S.cfg.accs.filter(a=>SV(a)&&(!o||accOwner(a)==o)),a=>balance(S.cfg,tx,a.id,before));
@@ -1660,7 +1677,7 @@ function render(){
       h+=`<div class="mini" style="padding:0 4px">Konta „inwest.” (inwestycje, IKE, IKZE) mają zmienną wartość – raz na jakiś czas wpisz aktualną kwotę z aplikacji przyciskiem „✎ Wartość”. Przycisk ⋯ zmienia nazwę lub usuwa konto (pieniądze przejdą na inne konto).</div>`;
       h+=goalsH(o)+'</div>'}}}
 
-  else if(S.tab=='acc'&&(S.accView=='owe'||S.accView=='lent'))h+=accSegH()+debtsH(S.accView);
+  else if(S.tab=='acc'&&(S.accView=='owe'||S.accView=='lent'))h+=majSegH()+accSegH()+debtsH(S.accView);
   else if(S.tab=='acc'&&S.recon){
     const tom=addDays(td(),1),accs=recAccs(),app=accs.filter(isP).reduce((x,a)=>x+balance(S.cfg,tx,a.id,tom),0),GH={cur:'KONTA BIEŻĄCE',sub:'SUBKONTA',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE, IKE, IKZE'};
     h+=`<div class="seg seg2">${[['cur','Bieżące i subkonta'],['sav','Oszczędności i inwestycje']].map(([k,l])=>`<button aria-pressed="${(S.recScope||'cur')==k}" onclick="setRecScope('${k}')">${l}</button>`).join('')}</div>`;
@@ -1680,7 +1697,7 @@ function render(){
     const GL={cur:'bieżące',sub:'subkonta',sav:'oszczędności',inv:'inwestycje'};
     const parts=ow=>['cur','sub','sav','inv'].map(g=>[g,sumO(ow,g)+(g=='inv'?oldInv(ow):0)]).filter(([g,v])=>v||g=='cur').map(([g,v])=>`${GL[g]} ${zl0(v)}${fxPlus(fxO(ow,g))}`).join(' · ')+(debtSum('owe',ow)?` · zobowiązania −${zl0(debtSum('owe',ow))}`:'')+(debtSum('lent',ow)?` · należności +${zl0(debtSum('lent',ow))}`:'');
     const total=ow=>sumO(ow)+oldInv(ow)-debtSum('owe',ow)+debtSum('lent',ow),otag=ow=>`<span class="otag o-${ow=='Mati'?'m':ow=='Wercia'?'w':'s'}">${ow}</span>`;
-    h+=accSegH()+`<button class="btn dark" style="width:100%" onclick="openRecon()">⚖️ Wyrównaj wszystkie salda naraz</button>`;
+    h+=majSegH()+accSegH()+`<button class="btn dark" style="width:100%" onclick="openRecon()">⚖️ Wyrównaj wszystkie salda naraz</button>`;
     h+=`<div class="seg seg4">${[['all','Wszyscy'],...OWN.map(x=>[x,x])].map(([k,l])=>`<button aria-pressed="${o==k}"${k=='Wercia'?' class="wbtn"':''} onclick="setAccSub('${k}')">${l}${k=='Wercia'?' 🌸':''}</button>`).join('')}</div>`;
     h+=`<div class="ptab ${o=='Wercia'?'pink':''}">`;
     if(o=='all'){const own=OWN.map(x=>[x,total(x)]),pos=own.filter(([,v])=>v>0),pt=pos.reduce((a,[,v])=>a+v,0);
@@ -1704,14 +1721,18 @@ function render(){
     h+=`<div class="card"><h3>🗣️ Siri i skróty</h3><div class="mini">„Hej Siri, wydatek” – Siri zapyta o kwotę i notatkę, a aplikacja otworzy się z gotowym okienkiem. Skrót otwiera się w Safari, więc raz zaloguj się tam do aplikacji.</div><button class="btn sm" onclick="siriHelp()">Jak to ustawić</button></div>`;
     {const L=S.market?.maillog||{},f=d=>d?d.split('-').reverse().join('.'):'—';h+=`<div class="card"><h3>📧 Maile</h3><div class="mini">💾 Kopia zapasowa – w pierwszą niedzielę miesiąca, tylko do Matiego. Ostatnio: ${f(L.backupAt)}.<br>📊 Podsumowanie miesiąca – 1. dnia miesiąca, do Was obojga. Ostatnio: ${f(L.sumAt)}.<br>Kopię z maila wczytasz przyciskiem „Wczytaj kopię” poniżej (plik .json.gz).${S.email?`<br>Ten telefon: ${esc(S.email)} → ${esc(S.who)}`:''}</div></div>`}
     {const r=S.market?.rates;h+=`<div class="card"><h3>🤖 Automat (GitHub)</h3><div class="mini">${r?.date?`Ostatnio: ${r.date.split('-').reverse().join('.')} · kursy walut ${Object.keys(r.fx||{}).length} · ceny ${Object.keys(r.prices||{}).length}${r.gold?' · złoto':''}${r.infl!=null?` · inflacja ${String(r.infl).replace('.',',')}% (${esc(r.inflPer||'')})`:''}${r.nbp!=null?` · stopa NBP ${String(r.nbp).replace('.',',')}%`:''}${Object.keys(r.funds||{}).length?` · fundusze ${Object.keys(r.funds).length}`:''}${S.market?.funds?.list?` · lista PPK ${Object.keys(S.market.funds.list).length}`:''}${S.market?.autoval?.last?` · wycena za ${MN[+S.market.autoval.last.slice(5)-1].toLowerCase()}`:''}`:'Jeszcze nie działa – po włączeniu codziennie w dni robocze pobierze kursy NBP, stopę NBP, inflację i ceny instrumentów z symbolem.'}</div></div>`}
+    h+=lookH();
     h+=`<div class="card"><h3>🐾 Bailey i Ivo</h3><div class="seg seg3">${[['lots','Dużo'],['few','Mało'],['off','Wyłączone']].map(([k,l])=>`<button aria-pressed="${kotki.mode==k}" onclick="setKotki('${k}')">${l}</button>`).join('')}</div><div class="mini">Dużo – rysunki, porady i żarty. Mało – rysunki i tylko ważne komunikaty. Wyłączone – bez kotków. Ustawienie dotyczy tego telefonu.</div><div class="btns"><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button><button class="btn sm" onclick="showNews(true)">Co nowego</button></div></div>`;
     h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div><div class="seg seg2 acctabs">${Object.entries(ACCTAB).map(([g,l])=>`<button aria-pressed="${S.accTab==g}" onclick="setAccTab('${g}')">${{cur:'💳',sub:'🗂️',sav:'🐷',inv:'📈'}[g]} ${l} (${S.cfg.accs.filter(a=>a.grp==g&&!a.archived).length})</button>`).join('')}</div>${(()=>{const list=S.cfg.accs.filter(a=>a.grp==S.accTab&&!a.archived);
       return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)}${isP(a)?'':' · '+CUR(a)} · saldo początkowe ${money(a.open,CUR(a))}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button style="font-weight:800;text-align:left;flex:1;min-width:0" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))} ✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button><button class="btn" onclick="logout()">Wyloguj</button></div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
-  $('app').innerHTML=h;updToday();if(S.tab=='acc'&&S.recon&&$('recApp'))recSum();if(S.tab=='fix'&&S.slip)slipCalc()}
+  $('app').innerHTML=h;updToday();
+  {const key=[S.tab,S.ym,S.sub,S.fixSub,S.accView,S.ana,!!S.instAcc].join('|'),a=$('app');if(key!=S.animKey){const first=!S.animKey;S.animKey=key;if(!first){a.classList.remove('anim','sl','sr');void a.offsetWidth;a.classList.add('anim',S.swipe>0?'sl':S.swipe<0?'sr':'up');clearTimeout(S.animT);S.animT=setTimeout(()=>a.classList.remove('anim','sl','sr','up'),650)}}S.swipe=0}if(S.tab=='acc'&&S.recon&&$('recApp'))recSum();if(S.tab=='fix'&&S.slip)slipCalc()}
 function setAna(k){S.ana=k;render()}
+function showEmpty(id){S.showEmpty[id]=!S.showEmpty[id];render()}
+function showCat(id){S.showCat[id]=true;S.open[id]=true;render()}
 function tog(id){if(S.bf!='all')S.fold[id]=!S.fold[id];else S.open[id]=!S.open[id];render()}
 function autoPlan(){const ym=S.ym,cur=td().slice(0,7);
   if(!S.plansSrv||S.plans[ym]||S.autoPlanned[ym]||ym<cur||ym>addMonths(cur,1))return;
@@ -1720,16 +1741,55 @@ function autoPlan(){const ym=S.ym,cur=td().slice(0,7);
   toast(`Plan na ${MN[+ym.slice(5)-1].toLowerCase()} skopiowany z: ${MN[+prev.slice(5)-1].toLowerCase()}`)}
 
 /* ---------- wiring ---------- */
-$('prevM').onclick=()=>mv(-1);$('nextM').onclick=()=>mv(1);
-function mv(d){if(S.tab=='ana'&&S.ana=='y')d*=12;S.ym=addMonths(S.ym,d);render()}
-const goTab=t=>{S.tab=t;S.recon=false;S.slip=null;S.proj=null;S.instAcc=null;S.values=false;window.scrollTo(0,0);render()};
+$('findBtn').onclick=openFind;$('prevM').onclick=()=>mv(-1);$('nextM').onclick=()=>mv(1);
+function mv(d){if(S.tab=='ana'&&S.ana=='y')d*=12;S.swipe=Math.sign(d);S.ym=addMonths(S.ym,d);render()}
+/* ✋ hold an entry in the Register: duplicate, refund, delete */
+function txMenu(id){const t=liveById(id);if(!t)return;const d=$('dlg'),sm=subsMap(S.cfg);
+  const special=t.slip||t.slipOf||t.ppk||t.refundOf||t.roundOf||t.lendOf||t.debtIn||['adj','lend','inv','invs'].includes(t.type);
+  const left=t.type=='exp'?t.amount-refundsOf(t.id).reduce((a,x)=>a+x.amount,0):0;
+  $('dlgBody').innerHTML=`<h2>${esc(stripFx(t.note)||sm[t.sub]?.name||'Wpis')}</h2><p class="dtext">${am(t.amount,t.acc)} · ${t.date.split('-').reverse().join('.')}${sm[t.sub]?' · '+esc(sm[t.sub].name):''}</p>
+    <div class="menu">${special?'':'<button class="btn" data-m="dup">📋 Duplikuj</button>'}${left>0?'<button class="btn" data-m="ref">↩️ Zwrot</button>':''}<button class="btn" data-m="open">✏️ Otwórz</button><button class="btn" data-m="del" style="color:var(--exp)">🗑️ Usuń</button><button class="btn" data-m="">Anuluj</button></div>`;
+  d.hidden=false;d.onclick=e=>{if(e.target===d){d.hidden=true;return}const b=e.target.closest('[data-m]');if(!b)return;d.hidden=true;const m=b.dataset.m;
+    if(m=='dup')openTx(null,{type:t.type,amount:t.amount,note:stripFx(t.note),sub:t.sub,acc:t.acc,...(t.type=='tr'?{to:t.to}:{})});else if(m=='ref')markRefund(id);else if(m=='open')openTx(id);else if(m=='del')delTx(id)}}
+{let lp=null;const app=$('app'),stop=()=>{if(lp){clearTimeout(lp.t);lp=null}};
+  app.addEventListener('pointerdown',e=>{const b=e.target.closest('.tx[data-id]');if(!b)return;stop();lp={x:e.clientX,y:e.clientY,t:setTimeout(()=>{lp=null;S.lpAt=Date.now();try{navigator.vibrate?.(12)}catch(x){}txMenu(b.dataset.id)},550)}});
+  ['pointerup','pointercancel','pointerleave'].forEach(k=>app.addEventListener(k,stop));
+  app.addEventListener('pointermove',e=>{if(lp&&Math.hypot(e.clientX-lp.x,e.clientY-lp.y)>10)stop()});
+  app.addEventListener('contextmenu',e=>{const b=e.target.closest('.tx[data-id]');if(!b)return;e.preventDefault();stop();if(Date.now()-(S.lpAt||0)>900){S.lpAt=Date.now();txMenu(b.dataset.id)}});
+  document.addEventListener('click',e=>{if(S.lpAt&&Date.now()-S.lpAt<900&&e.target.closest('#app .tx[data-id]')){e.preventDefault();e.stopPropagation();S.lpAt=0}},true)}
+/* 👆 swipe left / right on the screen: the next / previous month */
+{let sw=null;const app=$('app'),scrollsX=el=>{for(let x=el;x&&x!==app;x=x.parentElement)if(x.scrollWidth>x.clientWidth+4&&/(auto|scroll)/.test(getComputedStyle(x).overflowX))return true;return false};
+  app.addEventListener('touchstart',e=>{sw=null;if(e.touches.length!=1||!['dash','tx','fix','ana'].includes(S.tab)||S.slip||S.proj||!$('sheet').hidden||!$('dlg').hidden)return;
+    const el=e.target;if(el.closest('input,select,textarea,.noswipe')||scrollsX(el))return;sw={x:e.touches[0].clientX,y:e.touches[0].clientY,at:Date.now()}},{passive:true});
+  app.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y,dt=Date.now()-sw.at;sw=null;
+    if(Math.abs(dx)>80&&Math.abs(dy)<Math.abs(dx)*0.5&&dt<800)mv(dx<0?1:-1)},{passive:true})}
+/* 🔍 one search: entries, positions, accounts, instruments, fixed payments */
+function openFind(){if(!S.cfg)return;const d=$('dlg');
+  $('dlgBody').innerHTML=`<div class="r1"><h2>🔍 Szukaj</h2><button class="btn sm" data-x="1">Zamknij</button></div><input id="fdQ" class="pq" type="search" enterkeyhint="search" placeholder="np. Biedronka, prąd, 120, >200" autocomplete="off"><div id="fdRes" class="fdres"></div>`;
+  d.hidden=false;const q=$('fdQ');q.oninput=()=>findRun(q.value);findRun('');setTimeout(()=>q.focus(),60);
+  d.onclick=e=>{if(e.target===d||e.target.closest('[data-x]')){d.hidden=true;return}const b=e.target.closest('[data-go],.tx');if(!b)return;d.hidden=true;if(b.dataset.go)findGo(b.dataset.go)}}
+function findRun(raw){const v=raw.trim(),el=$('fdRes');if(!v){el.innerHTML='<div class="mini">Szukam we wpisach (notatka, pozycja, konto, kwota), w pozycjach budżetu, kontach, instrumentach i opłatach stałych.</div>';return}
+  const low=s=>String(s||'').toLowerCase(),q=low(v),sm=subsMap(S.cfg),grp=(t,L)=>L.length?`<div class="h2">${t}</div>${L.join('')}`:'',row=(go,ic,t,s)=>`<button class="frow" data-go="${go}"><span>${ic}</span><b>${esc(t)}</b><small>${esc(s)}</small></button>`;
+  const subs=S.cfg.cats.flatMap(c=>c.subs.map(s=>({s,c}))).filter(x=>low(x.s.name).includes(q)).slice(0,5).map(x=>row('sub:'+x.s.id,catIcon(x.c),x.s.name,cleanCat(x.c.name)));
+  const accs=S.cfg.accs.filter(a=>!a.archived&&low(a.name).includes(q)).slice(0,4).map(a=>row('acc:'+a.id,'👛',a.name,ACCTAB[a.grp]||''));
+  const ins=Object.entries(S.hold).filter(([,x])=>!x.deleted&&(low(x.name).includes(q)||low(x.ticker).includes(q))).slice(0,4).map(([,x])=>row('inst:'+x.acc,IICON[x.kind]||'📈',x.name,accN(x.acc)));
+  const fx=(S.cfg.fixed||[]).filter(f=>low(f.name).includes(q)).slice(0,4).map(f=>row('fix:'+f.id,'📌',f.name,'opłata stała'));
+  const AQ=amtQuery(v),F={scope:'a',q:v,type:'',who:'',acc:'',cat:''},L=liveOf(S.tx).filter(t=>txMatches(t,sm,{...F,q:AQ.q},S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
+  const txs=L.slice(0,30).map(t=>txRowH(t,sm));
+  el.innerHTML=grp('Pozycje budżetu',subs)+grp('Opłaty stałe',fx)+grp('Konta',accs)+grp('Instrumenty',ins)+grp(`Wpisy${L.length>30?` (30 z ${L.length})`:L.length?` (${L.length})`:''}`,txs)||'<div class="mini">Nic nie znalazłem 🐾</div>'}
+function findGo(g){const[k,id]=g.split(':');
+  if(k=='sub'){const s=subsMap(S.cfg)[id];S.f={...S.f,q:s?.name||'',scope:'y'};return goTab('tx')}
+  if(k=='fix'){S.fixSub='fix';goTab('fix');return editFixed(id)}
+  if(k=='acc'){const a=accById(id);return goTab(a&&(a.grp=='sav'||a.grp=='inv')?'sav':'acc')}
+  if(k=='inst'){goTab('sav');return openInst(id)}}
+const goTab=t=>{if(t=='maj')t=ls.get('mw_maj')=='acc'?'acc':'sav';if(t=='sav'||t=='acc')ls.set('mw_maj',t);S.tab=t;S.recon=false;S.slip=null;S.proj=null;S.instAcc=null;S.values=false;window.scrollTo(0,0);render()};
 document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
 $('gearBtn').onclick=()=>goTab(S.tab=='set'?'dash':'set');
 $('addBtn').onclick=()=>openTx();
 $('mt').querySelectorAll('button').forEach(b=>b.onclick=()=>setType(b.dataset.v));
 $('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}autoWho();updCoin();updFx()};
 $('todayBtn').onclick=()=>{if(S.cfg)showToday()};
-$('shCancel').onclick=closeSheet;$('shSave').onclick=saveTx;$('shDel').onclick=()=>S.edit&&delTx(S.edit);
+$('shCancel').onclick=closeSheet;$('shSave').onclick=()=>saveTx();$('shNext').onclick=()=>saveTx(true);$('shDel').onclick=()=>S.edit&&delTx(S.edit);
 $('sheet').onclick=e=>{if(e.target===$('sheet'))closeSheet()};
 $('fileIn').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importFile(f)};
 function showTip(e){const m=e.target.closest('[data-tip]');if(!m)return;const box=m.closest('.chart');if(!box)return;const t=box.querySelector('.tip');if(t){t.textContent=m.dataset.tip;t.classList.add('on')}
@@ -1786,4 +1846,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});navigator.serviceWorker.addEventListener('message',e=>{const u=e.data?.go;if(u){const g=goFromHash(new URL(u,location.href).hash);if(g)runGo(g)}})}
 window.addEventListener('hashchange',()=>{const g=goFromHash(location.hash);if(g&&S.cfg){window.history.replaceState(null,'',location.pathname+location.search);runGo(g)}});
 S.goPending=goFromHash(location.hash);if(S.goPending)window.history.replaceState(null,'',location.pathname+location.search);
-Object.assign(window,{addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

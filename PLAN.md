@@ -141,16 +141,16 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] Pomocnik PIT osobno dla Matiego i Werci: oznaczanie wydatków „do ulgi” z prostymi objaśnieniami każdej ulgi (co to, kto może, ile – jako podpowiedź, nie porada podatkowa); w styczniu zestawienie z sumami do zeznania
 
 ## Etap E. Wygląd i ergonomia
-- [ ] „Zapisz” przyklejony na dole okienka transakcji + „Zapisz i dodaj kolejny”
-- [ ] Przytrzymanie wpisu w Rejestrze: 📋 Duplikuj, ↩️ Zwrot, 🗑️ Usuń
-- [ ] Przesunięcie palcem w lewo / prawo zmienia miesiąc
-- [ ] Budżet krótszy: w kategorii tylko pozycje z planem lub wydatkami, pod nimi „＋ N pustych pozycji ›”; puste kategorie zebrane na dole w jednej linijce; filtr „Bez planu” pokazuje wszystko
-- [ ] Mniej zakładek: Budżet · Rejestr · Stałe · Majątek (Oszczędności + Konta z przełącznikiem) · Analiza dostępna z Budżetu (📊); przycisk ➕ zostaje tam, gdzie jest teraz (zaokrąglony kwadrat)
-- [ ] Lupa 🔍 w nagłówku: jedno wyszukiwanie po wpisach, pozycjach, kontach i instrumentach
-- [ ] Większe liczby, krótsze opisy, szczegóły pod „więcej ›”
-- [ ] ⚙️ „🎨 Wygląd” na każdym telefonie: kolor akcentu (pastelowe kółka; na start Wercia różowy, Mati miętowy) i rozmiar tekstu A / A+ / A++
-- [ ] Płynniejsze przejścia (paski „rosną”, szkic ekranu zamiast „Wczytywanie…”)
-- [ ] Większe pola do stukania (małe przyciski „Edytuj”, „⋯”)
+- [x] „Zapisz” przyklejony na dole okienka transakcji + „Zapisz i dodaj kolejny”
+- [x] Przytrzymanie wpisu w Rejestrze: 📋 Duplikuj, ↩️ Zwrot, 🗑️ Usuń
+- [x] Przesunięcie palcem w lewo / prawo zmienia miesiąc
+- [x] Budżet krótszy: w kategorii tylko pozycje z planem lub wydatkami, pod nimi „＋ N pustych pozycji ›”; puste kategorie zebrane na dole w jednej linijce; filtr „Bez planu” pokazuje wszystko
+- [x] Mniej zakładek: Budżet · Rejestr · Stałe · Majątek (Oszczędności + Konta z przełącznikiem) · Analiza dostępna z Budżetu (📊); przycisk ➕ zostaje tam, gdzie jest teraz (zaokrąglony kwadrat)
+- [x] Lupa 🔍 w nagłówku: jedno wyszukiwanie po wpisach, pozycjach, kontach i instrumentach
+- [x] Większe liczby, krótsze opisy, szczegóły pod „więcej ›”
+- [x] ⚙️ „🎨 Wygląd” na każdym telefonie: kolor akcentu (pastelowe kółka; na start Wercia różowy, Mati miętowy) i rozmiar tekstu A / A+ / A++
+- [x] Płynniejsze przejścia (paski „rosną”, szkic ekranu zamiast „Wczytywanie…”)
+- [x] Większe pola do stukania (małe przyciski „Edytuj”, „⋯”)
 
 ## Etap F. Wersja demonstracyjna
 - [ ] Osobny link `…/budzetpanstwaciemcia/demo/` do wysłania znajomym; bez połączenia z Firebase i bez dostępu do Waszych danych
