@@ -48,6 +48,12 @@ Budżet (plan / wydano / % z pastelowymi kategoriami, pozycje bez planu i wydatk
 Kolor nagłówka i tło zmieniają się co miesiąc (pastele pór roku, tablica `SEASON`). Każda kategoria ma jeden kolor (`hue`) używany wszędzie: tło w Budżecie (`pastel`), ikonki w Rejestrze i oknie wyboru, wykresy w Analizie (`catMark`). Kolory osób: `OWN_COL` w `data.js`.
 Waluty: transakcja ma walutę swojego konta. Budżet, plan, Analiza i sumy wielu kont liczą tylko złote (`agg`/`actuals` pomijają inne waluty, `agg().fx` zbiera je osobno); inne waluty dopisuje się obok („820 zł + 45 €”, `fxPlus`/`fxTxt`/`money` w `util.js`). Wyrównanie wszystkich sald robi przelewy tylko w tej samej walucie, drobne tylko między kontami tej samej waluty.
 
+## Wersja demonstracyjna (`demo/`)
+- Adres: https://matisak2.github.io/budzetpanstwaciemcia/demo/ (link w ⚙️ → „🧪 Pokaż komuś aplikację”). Ten sam `js/app.js`, ale `demo/index.html` przez *import map* podmienia Firebase na `demo/fb-app.js`, `fb-auth.js`, `fb-firestore.js` (dokumenty w `MW_DEMO.store`, zapis w `localStorage` `demo_db`).
+- `demo/demo.js` (zwykły skrypt, przed aplikacją): powitanie „Jak masz na imię?” + „dodał/dodała” (wybiera rolę `Mati` albo `Wercia`), losowe imię drugiej osoby (zmiana w ⚙️), przykładowe dane z 4 miesięcy (`build`), przykładowe kursy (`marketFor`, data zawsze dzisiejsza), podmiana imion „Mati/Matiego/Wercia/Werci” tylko na ekranie (MutationObserver) – w danych zostają klucze `Mati`/`Wercia`. `MW_DEMO.reset()` = „Zacznij od nowa”.
+- W aplikacji `DEMO` (`window.MW_DEMO`): baner, bez service workera, powiadomień, maili, Siri, karty automatu i wylogowania; `ls` w `util.js` dodaje przedrostek `demo_` (ustawienia prawdziwej aplikacji nietknięte). `sw.js` nie obsługuje adresów z `/demo/`.
+- Imiona w kodzie aplikacji to klucze danych – przy nowych tekstach z imionami demo podmieni je samo (forma mianownika i dopełniacza).
+
 ## Import danych
 ⚙️ → „Wczytaj kopię (.json)” obsługuje: pełną kopię (`format:'budzet-mw-2'`), starą wersję aplikacji oraz listę transakcji `format:'budzet-mw-tx'` (`{tx:[{id,date,type,amount(grosze),cat,sub,acc,to,note,who}]}`) z dopasowaniem nazw pozycji i kont. Stałe `id` zapobiegają duplikatom.
 

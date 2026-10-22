@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pl"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e8edff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Budżet M&amp;W">
+<title>Budżet M&amp;W – demo</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+<link rel="icon" href="../icon-192.png?v=5">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png?v=5">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <div class="lcard">
+  <img src="../icon-192.png?v=5" alt="" class="licon" width="84" height="84">
+  <h1>Budżet M&amp;W</h1>
+  <div class="mini">Wasz wspólny domowy budżet 💛</div>
+  <label class="fld"><span>E-mail</span><input id="em" type="email" autocomplete="username"></label>
+  <label class="fld"><span>Hasło</span><input id="pw" type="password" autocomplete="current-password"></label>
+  <button class="btn primary" id="loginBtn">Zaloguj</button>
+  <div class="err" id="lerr"></div>
+  <div class="lcats" id="lcats"></div>
+  </div>
+</div>
+<div id="main" hidden>
+<header class="top"><div class="in gut">
+  <button class="hb" id="prevM" aria-label="Poprzedni miesiąc">‹</button>
+  <div class="mlab"><b id="mlabel">Budżet M&amp;W</b><small id="sync">łączenie…</small></div>
+  <button class="hb" id="nextM" aria-label="Następny miesiąc">›</button>
+  <button class="hb find" id="findBtn" aria-label="Szukaj">🔍</button>
+  <button class="hb today" id="todayBtn" aria-label="Na dziś">🔔</button>
+  <button class="hb gear" id="gearBtn" aria-label="Ustawienia">⚙️</button>
+</div></header>
+
+<main id="app" class="gut"><div class="skel" aria-label="Wczytywanie budżetu…"><i class="sk" style="height:84px"></i><div class="sk2"><i class="sk"></i><i class="sk"></i><i class="sk"></i><i class="sk"></i></div><i class="sk" style="height:40px"></i><i class="sk" style="height:120px"></i><i class="sk" style="height:120px"></i></div></main>
+
+<nav class="tabs" aria-label="Sekcje"><div class="in">
+  <button data-tab="dash" aria-current="page"><span class="e">📊</span>Budżet</button>
+  <button data-tab="tx"><span class="e">🧾</span>Rejestr</button>
+  <button data-tab="fix"><span class="e">📌</span>Stałe</button>
+  <button data-tab="maj"><span class="e">💰</span>Majątek</button>
+</div></nav>
+<button class="fab" id="addBtn" aria-label="Dodaj transakcję">+</button>
+
+</div>
+
+<div id="sheet" class="ov" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <h2 id="shTitle">Nowa transakcja</h2>
+  <div class="typeseg" id="mt" role="group" aria-label="Rodzaj">
+    <button data-v="exp" aria-pressed="true">Wydatek</button><button data-v="inc" aria-pressed="false">Przychód</button><button data-v="tr" aria-pressed="false">Przelew</button>
+  </div>
+  <div class="g2">
+    <label class="fld"><span id="maLab">Kwota (zł)</span><span class="calc"><input id="ma" inputmode="decimal" placeholder="0,00" autocomplete="off"><button type="button" class="cop" data-op="+" aria-label="Dodaj kolejną kwotę">+</button><button type="button" class="cop" data-op="-" aria-label="Odejmij kwotę">−</button></span><small class="mini" id="maSum"></small></label>
+    <label class="fld"><span>Data</span><input id="md" type="date"></label>
+  </div>
+  <label class="fld"><span>Notatka</span><input id="mn" placeholder="np. Biedronka (opcjonalnie)" autocomplete="off"></label>
+  <div class="fld" id="msWrap"><span>Pozycja budżetu</span><button type="button" class="pickbtn" id="msBtn"></button><input type="hidden" id="ms"><small class="mini" id="msHint"></small>
+    <div id="splitWrap" class="split" hidden><div id="splitRows"></div><button type="button" class="btn sm" id="splitAdd">+ Kolejna pozycja</button></div>
+    <button type="button" class="btn sm" id="splitBtn">✂️ Podziel paragon na kilka pozycji</button></div>
+  <label class="fld" id="mdebtWrap" hidden><span>🔻 Spłata zobowiązania</span><select id="mdebt"></select></label>
+  <label class="fld" id="mprojWrap" hidden><span>🏷️ Projekt</span><select id="mproj"></select></label>
+  <div class="g2" id="mcarWrap" hidden><label class="fld"><span>⛽ Litry</span><input id="mlit" inputmode="decimal" placeholder="opcjonalnie" autocomplete="off"></label><label class="fld"><span>Licznik (km)</span><input id="modo" inputmode="numeric" placeholder="opcjonalnie" autocomplete="off"></label></div>
+  <div class="g2">
+    <label class="fld"><span id="mcLab">Konto</span><select id="mc"></select></label>
+    <label class="fld" id="mtoWrap" hidden><span>Na konto</span><select id="mto"></select></label>
+    <label class="fld" id="mwWrap"><span>Kto</span><select id="mw"><option value="Mati">Mati</option><option value="Wercia">Wercia</option></select></label>
+  </div>
+  <div id="fxTr" class="fxbox" hidden><label class="fld"><span id="ma2Lab">Wpłynie na konto</span><input id="ma2" inputmode="decimal" placeholder="0,00" autocomplete="off"></label><small class="mini" id="fxRate"></small></div>
+  <button type="button" class="btn sm" id="fxBtn" hidden style="align-self:flex-start">🌍 Płatność w obcej walucie</button>
+  <div id="fxCard" class="fxbox" hidden><div class="g2"><label class="fld"><span>Waluta</span><select id="fxc"></select></label><label class="fld"><span>Kwota w walucie</span><input id="fxa" inputmode="decimal" placeholder="0,00" autocomplete="off"></label></div><small class="mini" id="fxCardRate"></small></div>
+  <button type="button" class="coin" id="rnd" aria-pressed="true" hidden></button>
+  <div class="fld" id="mwarWrap" hidden><span>🛡️ Gwarancja <small class="mini">– przypomnę miesiąc przed końcem</small></span><div class="g2"><select id="mwar"><option value="">bez gwarancji</option><option value="12">1 rok</option><option value="24">2 lata (rękojmia)</option><option value="36">3 lata</option><option value="60">5 lat</option><option value="date">do dnia…</option></select><input type="date" id="mward" hidden></div></div>
+  <div class="fld" id="mulgaWrap" hidden><span>🧾 Ulga w PIT</span><select id="mulga"></select><small class="mini" id="mulgaHint" hidden></small></div>
+  <button type="button" class="btn sm" id="mulgaBtn" hidden style="align-self:flex-start">🧾 Do ulgi w PIT</button>
+  <div class="shfoot"><div class="g2"><button class="btn" id="shCancel">Anuluj</button><button class="btn primary" id="shSave">Zapisz</button></div><button class="btn sm" id="shNext">Zapisz i dodaj kolejny ›</button></div>
+  <button class="btn sm" id="shRef" hidden style="align-self:center">↩️ Oznacz zwrot</button>
+  <div class="mini" id="shWho" hidden style="text-align:center"></div>
+  <button class="btn sm" id="shDel" hidden style="align-self:center;color:var(--exp);background:none">Usuń transakcję</button>
+</div></div>
+
+<div id="pick" class="ov" hidden><div class="sheet pick" role="dialog" aria-modal="true" aria-labelledby="pkTitle">
+  <div class="r1"><h2 id="pkTitle">Wybierz pozycję</h2><button type="button" class="btn sm" id="pkClose">Zamknij</button></div>
+  <input id="pq" class="pq" type="search" enterkeyhint="search" placeholder="🔍 Wpisz kilka liter, np. kaw" autocomplete="off">
+  <div id="pkBody" class="pkbody"></div>
+</div></div>
+
+<div id="dlg" class="ov" hidden><div class="dlg" role="dialog" aria-modal="true" id="dlgBody"></div></div>
+<div id="toast" class="toast" hidden role="status"></div>
+<input type="file" id="fileIn" accept=".json,.gz,application/json,application/gzip" hidden>
+
+<!-- demo: sample data kept in this browser; Firebase replaced by a small local stand-in -->
+<script src="./demo.js"></script>
+<script type="importmap">{"imports":{
+  "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js":"./fb-app.js",
+  "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js":"./fb-auth.js",
+  "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js":"./fb-firestore.js"}}</script>
+<script type="module" src="../js/app.js"></script>
+</body>
+</html>
+

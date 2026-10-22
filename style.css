@@ -314,6 +314,8 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .toast{display:flex;align-items:center;gap:14px;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:60;background:#334155;color:#fff;padding:10px 14px;border-radius:12px;font-size:13.5px;font-weight:600;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgb(0 0 0 / .25)}
 .toast[data-kind=bad]{background:#9f1239}
 .toast .tbtn{color:var(--a-line);font-weight:800;text-decoration:underline;text-underline-offset:3px;padding:4px 2px;white-space:nowrap}
+.demob{background:#fef9c3;border:1px solid #fde68a;border-radius:12px;padding:7px 10px;font-size:12.5px;color:#854d0e;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.demob button{font-weight:800;text-decoration:underline;text-underline-offset:3px;color:#854d0e}
 .load{text-align:center;color:var(--muted);padding:60px 16px}
 /* loading: a sketch of the screen */
 .skel{display:flex;flex-direction:column;gap:12px}.skel .sk2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.skel .sk2 .sk{height:74px}
@@ -541,3 +543,6 @@ details.more[open] summary{margin-bottom:4px}
 .chg2 .r1:first-child{border-top:0}
 .chg2 .r1 .mini{flex:none}
 .ib{background:none;border:0;color:#7c3aed;font-weight:800;padding:0 4px;font-size:14px}
+/* 🧪 demo: the welcome card */
+.demo-ov{z-index:100;align-items:center;padding:16px}
+.demo-hi{max-width:420px}

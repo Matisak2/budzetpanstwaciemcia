@@ -153,10 +153,10 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] Większe pola do stukania (małe przyciski „Edytuj”, „⋯”)
 
 ## Etap F. Wersja demonstracyjna
-- [ ] Osobny link `…/budzetpanstwaciemcia/demo/` do wysłania znajomym; bez połączenia z Firebase i bez dostępu do Waszych danych
-- [ ] Na starcie „Jak masz na imię?” – imię oglądającego; druga osoba wymyślona (losowe imię, można zmienić)
-- [ ] Wymyślone dane z całego roku (pensje, zakupy, opłaty, konta, ETF, obligacje, kredyt, cele, auto); zmiany tylko w przeglądarce oglądającego, przycisk „Zacznij od nowa”; pasek „Wersja demonstracyjna – dane są wymyślone”
-- [ ] Imiona Mati / Wercia wyciągnięte z kodu do ustawień (w Waszej aplikacji bez zmian)
+- [x] Osobny link `…/budzetpanstwaciemcia/demo/` do wysłania znajomym; bez połączenia z Firebase i bez dostępu do Waszych danych
+- [x] Na starcie „Jak masz na imię?” – imię oglądającego; druga osoba wymyślona (losowe imię, można zmienić)
+- [x] Wymyślone dane z całego roku (pensje, zakupy, opłaty, konta, ETF, obligacje, kredyt, cele, auto); zmiany tylko w przeglądarce oglądającego, przycisk „Zacznij od nowa”; pasek „Wersja demonstracyjna – dane są wymyślone”
+- [x] Imiona Mati / Wercia wyciągnięte z kodu do ustawień (w Waszej aplikacji bez zmian)
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
