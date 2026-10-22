@@ -26,5 +26,40 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nowy wydatek",
+      "short_name": "➕ Wydatek",
+      "url": "./#go=add",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Na dziś",
+      "short_name": "🔔 Na dziś",
+      "url": "./#go=today",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Budżet",
+      "short_name": "📊 Budżet",
+      "url": "./",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

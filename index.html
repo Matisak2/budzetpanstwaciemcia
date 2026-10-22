@@ -77,8 +77,12 @@
   <button type="button" class="btn sm" id="fxBtn" hidden style="align-self:flex-start">🌍 Płatność w obcej walucie</button>
   <div id="fxCard" class="fxbox" hidden><div class="g2"><label class="fld"><span>Waluta</span><select id="fxc"></select></label><label class="fld"><span>Kwota w walucie</span><input id="fxa" inputmode="decimal" placeholder="0,00" autocomplete="off"></label></div><small class="mini" id="fxCardRate"></small></div>
   <button type="button" class="coin" id="rnd" aria-pressed="true" hidden></button>
+  <div class="fld" id="mwarWrap" hidden><span>🛡️ Gwarancja <small class="mini">– przypomnę miesiąc przed końcem</small></span><div class="g2"><select id="mwar"><option value="">bez gwarancji</option><option value="12">1 rok</option><option value="24">2 lata (rękojmia)</option><option value="36">3 lata</option><option value="60">5 lat</option><option value="date">do dnia…</option></select><input type="date" id="mward" hidden></div></div>
+  <div class="fld" id="mulgaWrap" hidden><span>🧾 Ulga w PIT</span><select id="mulga"></select><small class="mini" id="mulgaHint" hidden></small></div>
+  <button type="button" class="btn sm" id="mulgaBtn" hidden style="align-self:flex-start">🧾 Do ulgi w PIT</button>
   <div class="g2"><button class="btn" id="shCancel">Anuluj</button><button class="btn primary" id="shSave">Zapisz</button></div>
   <button class="btn sm" id="shRef" hidden style="align-self:center">↩️ Oznacz zwrot</button>
+  <div class="mini" id="shWho" hidden style="text-align:center"></div>
   <button class="btn sm" id="shDel" hidden style="align-self:center;color:var(--exp);background:none">Usuń transakcję</button>
 </div></div>
 

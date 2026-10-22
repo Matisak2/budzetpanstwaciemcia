@@ -53,6 +53,18 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
   for(const m of [pm,ym])for(const[id,sl]of Object.entries(slips?.[m]||{})){const src=(cfg.incs||[]).find(s=>s.id==id)||sl;if(src.kind=='b2b')continue;const diff=(sl.net||0)-calcNet(src,sl);
     if(Math.abs(diff)>=1)add('slip:'+m+':'+id+':'+sl.ts,'💼',`Pasek ${sl.name||src.name} (${MN[+m.slice(5)-1].toLowerCase()}) – rachunek nie zgadza się o ${zl(Math.abs(diff))}`,{a:'slip',id,ym:m})}
   return out.slice(0,10)}
+/* 🧾 tax reliefs a payment can be marked with – short explanations (a hint, not tax advice) */
+export const ULGI={
+  internet:{n:'Ulga internetowa',lim:76000,d:'Opłaty za internet (abonament domowy lub mobilny). Do 760 zł rocznie na osobę, tylko w dwóch kolejnych latach. Potrzebna faktura na Twoje imię.'},
+  darowizny:{n:'Darowizny',d:'Darowizny na cele pożytku publicznego (np. fundacje, OPP), kult religijny, krwiodawstwo. Łącznie do 6% dochodu. Potrzebne potwierdzenie przelewu z nazwą odbiorcy.'},
+  rehab:{n:'Ulga rehabilitacyjna',d:'Dla osoby z orzeczeniem o niepełnosprawności albo utrzymującej taką osobę: np. leki (nadwyżka ponad 100 zł miesięcznie), sprzęt, turnusy, dojazdy na zabiegi. Potrzebne faktury lub dowody zapłaty.'},
+  termo:{n:'Ulga termomodernizacyjna',lim:5300000,d:'Właściciel domu jednorodzinnego: ocieplenie, wymiana pieca, pompa ciepła, fotowoltaika, okna. Do 53 000 zł na osobę łącznie przez wszystkie lata. Potrzebne faktury VAT.'},
+  inne:{n:'Inna ulga',d:'Wydatek, który może się przydać przy zeznaniu – zapytacie księgową albo sprawdzicie w objaśnieniach do PIT.'}};
+/* the relief summary of one person for a year (marked payments + IKZE payments) */
+export function pitSummaryP(cfg,tx,year,who,hraw){const L=tx.filter(t=>t.date.startsWith(year)&&t.ulga&&(t.ulgaWho||t.who)==who&&(t.type=='exp'));
+  const by={};L.forEach(t=>{(by[t.ulga]=by[t.ulga]||{sum:0,n:0}).sum+=t.amount;by[t.ulga].n++});
+  const ikze=cfg.accs.filter(a=>a.grp=='inv'&&wrapOf(a)=='ikze'&&ownerOf(a)==who).map(a=>({a,paid:paidInYear(tx,a.id,year),lim:limitOf(a,year,hraw?.limits)})).filter(x=>x.paid>0);
+  return{by,ikze,n:L.length}}
 /* everything that needs attention today */
 export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,hold,debts,market,backup,hraw}=D;if(!cfg)return[];
   const ym=today.slice(0,7),day=+today.slice(8),out=[],cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const accOf=id=>cfg.accs.find(a=>a.id==id);
@@ -74,5 +86,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   const lp=limitPropP(market,hraw);if(lp)add('🛡️',`Automat znalazł limity IKE i IKZE na ${lp.year} – potwierdź w Oszczędnościach.`,{a:'sav'},'Zobacz');
   if(mo==1&&wr.some(a=>['ike','ikze'].includes(wrapOf(a))))add('🛡️',`Nowy rok – sprawdź limity IKE i IKZE na ${y}.`,{a:'limits'},'Limity');
   if(tx.length){const days=backup?Math.floor((new Date(today+'T12:00:00')-backup.at)/864e5):null;if(!backup||days>=30)add('💾',backup?`Ostatnia kopia danych: ${days} dni temu.`:'Nie zrobiliście jeszcze kopii danych.',{a:'backup'},'Kopia')}
+  for(const t of tx){if(!t.war||t.type!='exp'||t.war<today)continue;const n=dd(today,t.war);
+    if(n<=30)add('🛡️',`Gwarancja kończy się ${n?'za '+n+' '+plu(n,'dzień','dni','dni'):'dziś'}: ${t.note||subsMap(cfg)[t.sub]?.name||'zakup'} (${dmy(t.war)}). Coś nie działa? To ostatni moment na reklamację.`,{a:'tx',id:t.id},'Zobacz','',person(t.who))}
+  if(mo==1)for(const w of ['Mati','Wercia']){const p=pitSummaryP(cfg,tx,String(+y-1),w,hraw);if(p.n||p.ikze.length)add('🧾',`${w}: zestawienie ulg do PIT za ${+y-1} jest gotowe.`,{a:'pit',y:String(+y-1)},'Pokaż','',w)}
   if(checks)out.push(...checksP(D,today));
   return out}

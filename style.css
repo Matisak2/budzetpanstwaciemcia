@@ -492,3 +492,10 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .titem .tb{display:flex;flex-direction:column;gap:4px;flex:none}
 .titem.check{background:#f5f3ff}
 .chip.ghost{background:transparent;border:1px dashed #c4b5fd;color:#6d28d9}
+
+/* 🕑 changes, ⓘ */
+.chg2{display:flex;flex-direction:column}
+.chg2 .r1{width:100%;text-align:left;padding:7px 0;border-top:1px dashed #e5e7eb;font-size:13.5px;gap:8px;background:none}
+.chg2 .r1:first-child{border-top:0}
+.chg2 .r1 .mini{flex:none}
+.ib{background:none;border:0;color:#7c3aed;font-weight:800;padding:0 4px;font-size:14px}

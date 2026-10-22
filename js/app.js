@@ -7,7 +7,7 @@ import {CELEBRATE,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} from '
 import {PAL,P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,gainSvg,sankeySvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
 import {CURS,HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,addM,bondRates,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue} from './inv.js';
-import {automatStale,debtStateP,limitPropP,maturitiesP,remStateP,todayItems as todayItemsP,yearStateP} from './today.js';
+import {ULGI,pitSummaryP,automatStale,debtStateP,limitPropP,maturitiesP,remStateP,todayItems as todayItemsP,yearStateP} from './today.js';
 import {KINDS,TAXF,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
 import {anomalies,avgActuals,carStats,seasonal,actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,roundUp,status,subsMap} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,isDate,ls,p2,pg,pnum,rid,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt} from './util.js';
@@ -153,7 +153,8 @@ const saveFixed=f=>merge(H,{fixedM:{[f.id]:strip(f,S.cfg.fixed.indexOf(f))}});
 const saveRound=r=>merge(H,{roundM:{[r.id]:strip(r,S.cfg.round.indexOf(r))}});
 const delRoundDb=id=>w(updateDoc(H,{['roundM.'+id]:deleteField()}));
 const delFixedDb=id=>w(updateDoc(H,{['fixedM.'+id]:deleteField()}));
-const putTx=(ym,id,body)=>merge(doc(MC(),ym),{tx:{[id]:body}});
+/* every write remembers whose phone it came from (shown in the entry and in ⚙️ „Ostatnie zmiany”) */
+const putTx=(ym,id,body)=>{if(body.deleted===true&&!body.moved)body={...body,dby:S.who,dAt:Date.now()};else if(body.type&&!('by' in body))body={...body,by:S.who};return merge(doc(MC(),ym),{tx:{[id]:body}})};
 const putInv=(id,body)=>merge(doc(INV(),id),body);
 const liveById=id=>S.tx.find(t=>t.id===id&&!t.deleted);
 const guard=()=>{if(!S.cfg){toast('Budżet jeszcze się wczytuje');return true}return false};
@@ -170,12 +171,17 @@ const refundsOf=id=>liveOf(S.tx).filter(x=>x.refundOf===id);
 const pickKind=()=>S.etype=='inc'&&!S.refEdit?'inc':'exp';
 
 function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==t));
-  if(S.cfg){updCoin();updFx();updDebt();updProj()}
+  if(S.cfg){updCoin();updFx();updDebt();updProj();updX()}
   $('msWrap').hidden=t=='tr';$('mtoWrap').hidden=t!='tr';$('mwWrap').hidden=t=='tr';$('mcLab').textContent=t=='tr'?'Z konta':'Konto';
   const s=S.cfg&&subsMap(S.cfg)[$('ms').value];if(s&&s.cat.type!=pickKind())setMs('');
   if(t=='tr'&&SP.length){SP=[];renderSplit()}updSplit()}
 /* 🪙 drobne: the rule of the chosen account, the rounding of this amount, on/off for this one expense (on by default) */
 const ruleOf=acc=>(S.cfg.round||[]).find(r=>r.from==acc&&S.cfg.accs.some(a=>a.id==r.to)&&accCur(r.from)==accCur(r.to));
+/* 🛡️ warranty (asked from 300 zł) and 🧾 tax relief in the sheet */
+function updX(){if(!S.cfg)return;const exp=S.etype=='exp'&&!S.refEdit,amt=calcAmt($('ma').value);
+  $('mwarWrap').hidden=!(exp&&(amt>=30000||$('mwar').value));$('mward').hidden=$('mwar').value!='date';
+  $('mulgaWrap').hidden=!(exp&&(S.ulgaOpen||$('mulga').value));$('mulgaBtn').hidden=!exp||!$('mulgaWrap').hidden;
+  const u=ULGI[$('mulga').value];$('mulgaHint').textContent=u?u.d:'';$('mulgaHint').hidden=!u}
 function updCoin(){const b=$('rnd'),r=S.etype=='exp'&&!S.edit&&ruleOf($('mc').value),d=$('md').value,amt=calcAmt($('ma').value);
   const v=r&&amt>0&&(!r.since||d>=r.since)?roundUp(amt,r):0;S.coin=v?{r,v}:null;b.hidden=!v;if(!v)return;
   b.setAttribute('aria-pressed',S.coinOn);b.innerHTML=`<span class="cn">🪙</span><span class="ct"><b>Drobne +${am(v,r.from)}</b><small>→ ${esc(accN(r.to))}${S.coinOn?'':' · nie odłożę'}</small></span><span class="ck">${S.coinOn?'✓':''}</span>`}
@@ -249,7 +255,10 @@ function openTx(id,pre){if(guard())return;
   if(pre?.amount)$('ma').value=f2(pre.amount);
   if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o){if(pre?.to)$('mc').value=o.value;else $('mto').value=o.value}}
   if(!t)autoWho();
-  $('mn').value=t?stripFx(t.note):'';
+  $('mn').value=t?stripFx(t.note):(pre?.note||'');if(!t&&pre?.note)setTimeout(()=>$('mn').dispatchEvent(new window.Event('input')),0);
+  $('mwar').value=t?.war?'date':'';$('mward').value=t?.war||'';$('mulga').value=t?.ulga||'';S.ulgaOpen=!!t?.ulga;updX();
+  {const f=x=>new Date(x).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+   $('shWho').textContent=t&&(t.by||t.eby)?[t.by?`➕ ${t.by=='Wercia'?'dodała':'dodał'} ${t.by}${t.ts?' · '+f(t.ts):''}`:'',t.eby?`✏️ ${t.eby=='Wercia'?'zmieniła':'zmienił'} ${t.eby}${t.eAt?' · '+f(t.eAt):''}`:''].filter(Boolean).join('   '):'';$('shWho').hidden=!$('shWho').textContent}
   setMs(t?t.sub:(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');fillProj(t?.proj||pre?.proj||'');$('mlit').value=t?.lit?String(t.lit).replace('.',','):'';$('modo').value=t?.odo||'';S.coinOn=true;updCoin();
   if(!$('fxc').options.length)$('fxc').innerHTML=CURS.map(([c,n])=>`<option value="${c}">${c} – ${esc(n)}</option>`).join('');
   $('ma2').value=t?.amount2?f2(t.amount2):'';S.fxOpen=!!t?.fxCur;$('fxc').value=t?.fxCur||'EUR';$('fxa').value=t?.fxAmt?f2(t.fxAmt):'';updFx();
@@ -281,9 +290,11 @@ async function saveTx(){if(guard())return;
   if(fxCur){body.fxCur=fxCur;body.fxAmt=fxAmt}else if(old?.fxCur){body.fxCur='';body.fxAmt=0}
   const proj=type!='tr'&&!$('mprojWrap').hidden?$('mproj').value:'';if(proj){body.proj=proj;base.proj=proj}else if(old?.proj)body.proj='';
   const lit=!$('mcarWrap').hidden?pnum($('mlit').value)||0:0,odo=!$('mcarWrap').hidden?Math.round(pnum($('modo').value))||0:0;if(lit)body.lit=lit;else if(old?.lit)body.lit=0;if(odo)body.odo=odo;else if(old?.odo)body.odo=0;
+  {const wv=type=='exp'&&!$('mwarWrap').hidden?$('mwar').value:'',war=wv=='date'?(isDate($('mward').value)?$('mward').value:''):wv?addM(date,+wv):'';if(war)body.war=war;else if(old?.war)body.war='';
+   const ul=type=='exp'&&!$('mulgaWrap').hidden?$('mulga').value:'';if(ul){body.ulga=ul;body.ulgaWho=base.who}else if(old?.ulga){body.ulga='';body.ulgaWho=''}}
   const debt=type=='exp'&&!$('mdebtWrap').hidden?$('mdebt').value:'';if(debt)body.debt=debt;else if(old?.debt)body.debt='';
   if(debt&&S.debts[debt]&&!S.debts[debt].sub&&body.sub)merge(doc(DEBTS(),debt),{sub:body.sub});
-  if(old)for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];
+  if(old){for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];body.by=old.by||'';body.ts=old.ts||body.ts;body.eby=S.who;body.eAt=Date.now()}
   const g=parts.length?'g'+rid():'';if(g)body.split=g;
   const coin=!old&&type=='exp'&&S.coinOn&&S.coin;
   closeSheet();
@@ -319,8 +330,12 @@ $('pq').oninput=()=>{P.cat=null;renderPick()};
 $('pkClose').onclick=closePick;$('pick').onclick=e=>{if(e.target===$('pick'))closePick()};
 $('mn').oninput=()=>{if(S.edit||S.etype=='tr'||($('ms').value&&!S.autoSub))return;const s=noteSub($('mn').value,pickKind());
   if(s){S.autoSub=true;setMs(s.id,'💡 podpowiedziane po notatce – stuknij, żeby zmienić')}else if(S.autoSub){S.autoSub=false;setMs('')}};
+$('ma').addEventListener('input',()=>updX());
 $('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]\s*\d/.test(v)?'= '+am(calcAmt(v),$('mc').value):'';updSplit();updCoin();updFx()};
 $('mproj').onchange=()=>updProj();
+$('mwar').onchange=()=>{if($('mwar').value=='date'&&!$('mward').value)$('mward').value=addM($('md').value||td(),24);updX()};
+$('mulga').onchange=()=>updX();$('mulgaBtn').onclick=()=>{S.ulgaOpen=true;updX()};
+$('mulga').innerHTML='<option value="">— bez ulgi —</option>'+Object.entries(ULGI).map(([k,u])=>`<option value="${k}">${u.n}</option>`).join('');
 $('ma2').oninput=$('fxa').oninput=$('fxc').onchange=$('mto').onchange=()=>updFx();
 $('fxBtn').onclick=()=>{S.fxOpen=true;updFx();$('fxa').focus()};
 $('md').onchange=()=>updCoin();
@@ -698,7 +713,7 @@ function txRowH(t,sm,rf={},cn={}){const M=v=>am(v,t.acc),k=t.type,sg=k=='inc'||k
   const cls=k=='invs'?'inv':k=='lend'?'tr':t.lendOf||t.debtIn?'tr':k,s=sm[t.sub],c=s&&(k=='exp'||k=='inc')?s.cat:null;
   const title=t.ppk||k=='lend'||t.lendOf||t.debtIn?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
   const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.roundOf?'🪙':k=='lend'||t.lendOf?'🔺':t.debtIn?'🔻':k=='tr'?'⇄':k=='adj'?(t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
-  return`<button class="tx" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">🔻 spłata: ${esc(S.debts[t.debt].name)}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
+  return`<button class="tx" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">🔻 spłata: ${esc(S.debts[t.debt].name)}</div>`:''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
 function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q.trim());
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m',rf={};
@@ -751,7 +766,7 @@ function payMonthH(){const ym=S.ym,live=new Set(liveOf(S.tx).map(t=>t.id));let h
   return h}
 function payYearH(){const y=S.ym.slice(0,4),ms=Array.from({length:12},(_,i)=>y+'-'+p2(i+1)),rows=[];
   ms.forEach(m=>Object.entries(S.slips[m]||{}).forEach(([id,sl])=>rows.push({m,id,sl})));
-  if(!rows.length)return catsEmpty(`Brak pasków w roku ${y}.<br>Wpisz pierwszy w widoku „Miesiąc”.`,0,'papers');
+  if(!rows.length)return catsEmpty(`Brak pasków w roku ${y}.<br>Wpisz pierwszy w widoku „Miesiąc”.`,0,'papers')+pitH(y);
   const T=totals(rows.map(r=>r.sl)),nm=new Set(rows.map(r=>r.m)).size;
   let h=`<div class="kpis"><div class="kpi k-em"><div class="l">Netto ${y}</div><div class="v num">${zl(T.net)}</div><div class="s">średnio ${zl0(T.net/nm)}/mies.</div></div><div class="kpi k-sk"><div class="l">Brutto ${y}</div><div class="v num">${zl(T.brutto)}</div><div class="s">${nm} mies. z paskami</div></div></div>`;
   h+=chartBox('Netto miesiąc po miesiącu','wszystkie źródła razem',barsSvg(['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'],[{name:'Netto',color:C_INC,values:ms.map(m=>rows.filter(r=>r.m==m).reduce((a,r)=>a+(r.sl.net||0),0))}],{tipLabel:i=>MN[i]}));
@@ -760,7 +775,22 @@ function payYearH(){const y=S.ym.slice(0,4),ms=Array.from({length:12},(_,i)=>y+'
     const L=b2b?[['Przychód (faktury)',t.brutto],['Składki ZUS',t.zus],['Zdrowotna',t.health],['Podatek',t.tax]]
       :[['Przychód'+(t.ppkEmp?' (z PPK pracodawcy)':''),t.brutto+t.ppkEmp],['Koszty uzyskania',t.kup],['Składki ZUS',t.zus],['Zdrowotna',t.health],['Zaliczka na podatek',t.tax]];
     return`<section class="chart"><div class="ct"><b>${esc(src.name||'?')}</b><span class="mini">${KINDS[src.kind]||''} · ${esc(src.who||'')} · ${t.n} ${plu(t.n,'pasek','paski','pasków')}</span></div><div class="ptbl">${L.map(([l,v])=>`<div class="r1"><span>${l}</span><b class="num">${zl(v)}</b></div>`).join('')}</div>${b2b?'<div class="mini">JDG rozliczasz we własnym zeznaniu (PIT-36, PIT-36L albo PIT-28), nie z PIT-11.</div>':''}</section>`}).join('');
-  return h+`<div class="mini" style="padding:0 4px">Liczone według miesiąca wypłaty. Porównaj z PIT-11 od pracodawcy – drobne różnice mogą wynikać z zaokrągleń.</div>`}
+  return h+`<div class="mini" style="padding:0 4px">Liczone według miesiąca wypłaty. Porównaj z PIT-11 od pracodawcy – drobne różnice mogą wynikać z zaokrągleń.</div>`+pitH(y)}
+/* 🧾 tax reliefs of each person for the year (marked payments, IKZE payments) – a hint, not tax advice */
+function pitH(y){const tx=liveOf(S.tx);
+  return`<div class="h2">🧾 Pomocnik PIT ${y}</div>`+['Mati','Wercia'].map(w=>{const p=pitSummaryP(S.cfg,tx,y,w,S.hraw),rows=Object.entries(p.by);
+    return`<section class="chart"><div class="ct"><b>${w}</b><span class="mini">rozliczenie osobne</span></div>
+      ${rows.length?rows.map(([k,v])=>{const u=ULGI[k]||ULGI.inne,cap=u.lim&&v.sum>u.lim;return`<div class="r1"><span>${esc(u.n)} <button class="ib" onclick="ulgaInfo('${k}')" aria-label="Co to jest">ⓘ</button><span class="mini"> ${v.n} ${plu(v.n,'wpis','wpisy','wpisów')}</span></span><b class="num">${zl(cap?u.lim:v.sum)}</b></div>${cap?`<div class="mini">wydano ${zl(v.sum)}, odliczyć można najwyżej ${zl0(u.lim)}</div>`:''}`}).join(''):'<div class="mini">Brak wydatków oznaczonych „🧾 do ulgi” – oznaczysz je w okienku wydatku.</div>'}
+      ${p.ikze.map(x=>`<div class="r1"><span>IKZE – wpłaty (${esc(x.a.name)})</span><b class="num">${zl(Math.min(x.paid,x.lim))}</b></div>`).join('')}
+      <div class="mini">Do zeznania potrzebne będą faktury i potwierdzenia. Ulgi niezależne od wydatków (np. na dzieci, 1,5% dla OPP) sprawdzicie w objaśnieniach do PIT.</div></section>`}).join('')}
+/* 🕑 recent changes: who added, changed or deleted what (from either phone) */
+function changesH(){const sm=subsMap(S.cfg),ev=[];
+  for(const t of S.tx){const nm=(t.note||sm[t.sub]?.name||(t.type=='tr'?'Przelew':'Wpis'))+' · '+am(Math.abs(t.amount||0),t.acc);
+    const V=(m,f,w)=>w=='Wercia'?f:m;if(t.by&&t.ts)ev.push({at:t.ts,ic:'➕',v:V('dodał','dodała',t.by),w:t.by,nm,id:t.id,live:!t.deleted});if(t.eby&&t.eAt)ev.push({at:t.eAt,ic:'✏️',v:V('zmienił','zmieniła',t.eby),w:t.eby,nm,id:t.id,live:!t.deleted});if(t.dby&&t.dAt)ev.push({at:t.dAt,ic:'🗑️',v:V('usunął','usunęła',t.dby),w:t.dby,nm,id:t.id,live:false})}
+  ev.sort((a,b)=>b.at-a.at);if(!ev.length)return'';const n=S.chgAll?40:6,f=x=>new Date(x).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  return`<div class="card"><h3>🕑 Ostatnie zmiany</h3><div class="chg2">${ev.slice(0,n).map(e=>`<button class="r1" ${e.live?`onclick="openTx('${e.id}')"`:'disabled'}><span>${e.ic} <b>${esc(e.w)}</b> ${e.v}: ${esc(e.nm)}</span><span class="mini">${f(e.at)}</span></button>`).join('')}</div>${ev.length>6?`<button class="btn sm" onclick="S.chgAll=!S.chgAll;render()">${S.chgAll?'Pokaż mniej':'Pokaż więcej'}</button>`:''}</div>`}
+function siriHelp(){ask({title:'🗣️ „Hej Siri, wydatek”',text:'Na każdym iPhonie (raz, ok. 2 minuty):\n1. Otwórz aplikację Skróty → „+” (nowy skrót).\n2. Dodaj czynność „Zapytaj o dane wejściowe”: pytanie „Ile?”, typ „Liczba”.\n3. Dodaj drugą „Zapytaj o dane wejściowe”: pytanie „Co to było?”, typ „Tekst”, a pod nią czynność „Zakoduj URL” (żeby spacje i polskie litery przeszły).\n4. Dodaj czynność „Adres URL” i wpisz: '+location.origin+location.pathname+'#go=add&amount=  – wstaw tu zmienną z kroku 2, potem dopisz  &note=  i wstaw „Zakodowany URL” z kroku 3.\n5. Dodaj czynność „Otwórz adresy URL”.\n6. Nazwij skrót „Wydatek” i stuknij Gotowe.\n\nOd teraz: „Hej Siri, wydatek” → podajesz kwotę i notatkę → otwiera się okienko z gotowym wydatkiem, wystarczy wybrać pozycję i Zapisz. Skrót otwiera się w Safari – za pierwszym razem zaloguj się tam do aplikacji.',ok:'Rozumiem',cancel:'Zamknij'})}
+function ulgaInfo(k){const u=ULGI[k]||ULGI.inne;ask({title:'🧾 '+u.n,text:u.d+'\n\nTo podpowiedź, a nie porada podatkowa.',ok:'OK',cancel:'Zamknij'})}
 /* income source: name, person, kind of contract, account, budget position, PPK; then details used by the estimate */
 async function editInc(id,who){if(guard())return;const s0=id?incById(id):null;who=s0?.who||who||S.who;
   const fixedInc=(S.cfg.fixed||[]).filter(f=>f.kind=='inc'),invAccs=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
@@ -1190,12 +1220,15 @@ const saveRem=x=>merge(H,{remM:{[x.id]:strip(x,rems().indexOf(x))}});
 const delRemDb=id=>w(updateDoc(H,{['remM.'+id]:deleteField()}));
 const REM_PRE=[['','— własne —'],['🛡️ OC samochodu','12'],['🔧 Przegląd techniczny','12'],['🛞 Wymiana opon','6'],['🧰 Serwis / olej','12'],['💉 Szczepienie kotów','12'],['🐾 Odrobaczenie kotów','3'],['🏠 Ubezpieczenie mieszkania','12']];
 function remState(r){return remStateP(r,S.cfg,liveOf(S.tx),td())}
+function warrantiesH(){const today=td(),sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>t.war&&t.type=='exp').sort((a,b)=>a.war.localeCompare(b.war)),act=L.filter(t=>t.war>=today),old=L.length-act.length;
+  if(!L.length)return'';return`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">🛡️ Gwarancje</span><span class="mini">${act.length} ${plu(act.length,'aktywna','aktywne','aktywnych')}${old?` · ${old} ${plu(old,'wygasła','wygasłe','wygasłych')}`:''}</span></div>
+  <div class="list">${act.map(t=>{const n=Math.round((new Date(t.war)-new Date(today))/864e5);return`<button class="acc" style="width:100%;text-align:left" onclick="openTx('${t.id}')"><div style="flex:1;min-width:0"><div class="r1"><b>${esc(t.note||sm[t.sub]?.name||'Zakup')}</b><b class="num">${zl(t.amount)}</b></div><div class="mini">kupione ${t.date.split('-').reverse().join('.')} · gwarancja do ${t.war.split('-').reverse().join('.')}${n<=30?` · <b class="t-exp">za ${n} ${plu(n,'dzień','dni','dni')}</b>`:''}</div></div></button>`}).join('')||'<div class="acc mini">Brak aktywnych gwarancji.</div>'}</div>`}
 function remsH(){const L=rems().map(r=>({r,st:remState(r)})).sort((a,b)=>(a.r.next||'9999').localeCompare(b.r.next||'9999'));
   let h=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">🔔 Przypomnienia</span><button class="btn sm dark" onclick="editRem()">+ Przypomnienie</button></div>`;
-  if(!L.length)return h+catsEmpty('OC, przegląd, opony, serwis co X km, szczepienia Bailey i Ivo. Przypomnę w aplikacji, gdy termin się zbliży.',0,'bell');
+  if(!L.length)return h+catsEmpty('OC, przegląd, opony, serwis co X km, szczepienia Bailey i Ivo. Przypomnę w aplikacji, gdy termin się zbliży.',0,'bell')+warrantiesH();
   return h+`<div class="list">${L.map(({r,st})=>`<div class="acc${st.late?' late':''}"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(r.name)}</b>${st.late?'<span class="pill over">po terminie</span>':st.due?'<span class="pill near">wkrótce</span>':''}</div>
     <div class="mini">${r.next?`termin ${r.next.split('-').reverse().join('.')}${st.days!=null?` · ${st.days<0?Math.abs(st.days)+' dni temu':st.days==0?'dziś':'za '+st.days+' '+plu(st.days,'dzień','dni','dni')}`:''}`:''}${r.km?`${r.next?' · ':''}co ${r.km.toLocaleString('pl-PL')} km${st.kmLeft!=null?` · zostało ${st.kmLeft.toLocaleString('pl-PL')} km`:''}`:''}${+r.every?` · co ${r.every} mies.`:' · jednorazowe'}${r.proj&&projById(r.proj)?' · '+esc(projById(r.proj).name):''}</div>
-    ${r.note?`<div class="mini">📝 ${esc(r.note)}</div>`:''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="doneRem('${r.id}')">✓ Zrobione</button><button class="chip" onclick="editRem('${r.id}')">Edytuj</button></div></div></div>`).join('')}</div>`}
+    ${r.note?`<div class="mini">📝 ${esc(r.note)}</div>`:''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="doneRem('${r.id}')">✓ Zrobione</button><button class="chip" onclick="editRem('${r.id}')">Edytuj</button></div></div></div>`).join('')}</div>`+warrantiesH()}
 async function editRem(id){if(guard())return;const r0=id?rems().find(x=>x.id==id):null,cars=projs().filter(p=>p.kind=='car');
   const r=await ask({title:r0?'Przypomnienie':'Nowe przypomnienie',fields:[...(r0?[]:[{id:'p',label:'Gotowe',type:'select',value:'',options:REM_PRE.map(([n,e])=>[n?n+'|'+e:'',n||'— własne —'])}]),
     {id:'n',label:'Nazwa (gdy własne)',value:r0?.name||'',ph:'np. Wymiana klocków'},{id:'d',label:'Termin',type:'date',value:r0?.next||''},
@@ -1318,7 +1351,8 @@ const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.d
 function todayItems(){if(!S.cfg)return[];return todayItemsP(todayD(),{today:td(),hour:new Date().getHours()})}
 /* where a tap on an item (or on a notification) leads */
 function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
-  if(a=='today')return showToday();if(a=='add')return openTx();if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);
+  if(a=='today')return showToday();if(a=='add')return openTx(null,{type:['exp','inc','tr'].includes(g.type)?g.type:'exp',...(g.amount?{amount:pg(g.amount)}:{}),...(g.note?{note:g.note}:{})});
+  if(a=='pit'){S.fixSub='pay';S.payView='y';S.ym=(g.y||String(+td().slice(0,4)-1))+'-12';return goTab('fix')}if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);
   if(a=='pay'){S.fixSub='pay';return goTab('fix')}if(a=='year')return goYear();if(a=='rem'){S.fixSub='rem';return goTab('fix')}
   if(a=='lent'){S.accView='lent';return goTab('acc')}if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
   if(a=='tr')return openTx(null,{type:'tr',to:g.to});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
@@ -1631,6 +1665,8 @@ function render(){
     const rules=S.cfg.round||[];
     h+=`<div class="card"><div class="rowx" style="border:0;padding:0"><h3>🪙 Drobne</h3><button class="btn sm dark" onclick="editRound()">+ reguła</button></div><div class="mini">Jak w Revolucie: wydatek z wybranego konta zaokrągla się w górę do 5 albo 10 zł, a różnica (razy mnożnik) trafia na wskazane konto. W okienku wydatku pojawi się złota moneta – odznacz ją, gdy bank nie liczy drobnych (np. przy BLIK-u).</div>${rules.map(r=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(accN(r.from))} → ${esc(accN(r.to))}</b><br><span class="mini">do ${r.step} ${curSym(accCur(r.from))} · ×${r.mult}${r.full?' · pełne drobne przy równej kwocie':''} · w tym miesiącu ${am(coinSum(S.ym,r),r.from)}</span></span><button class="btn sm" onclick="editRound('${r.id}')">Edytuj</button></div>`).join('')||'<div class="mini" style="padding-top:4px">Nie ma jeszcze żadnej reguły.</div>'}</div>`;
     h+=pushCardH();
+    h+=changesH();
+    h+=`<div class="card"><h3>🗣️ Siri i skróty</h3><div class="mini">„Hej Siri, wydatek” – Siri zapyta o kwotę i notatkę, a aplikacja otworzy się z gotowym okienkiem. Skrót otwiera się w Safari, więc raz zaloguj się tam do aplikacji.</div><button class="btn sm" onclick="siriHelp()">Jak to ustawić</button></div>`;
     {const L=S.market?.maillog||{},f=d=>d?d.split('-').reverse().join('.'):'—';h+=`<div class="card"><h3>📧 Maile</h3><div class="mini">💾 Kopia zapasowa – w pierwszą niedzielę miesiąca, tylko do Matiego. Ostatnio: ${f(L.backupAt)}.<br>📊 Podsumowanie miesiąca – 1. dnia miesiąca, do Was obojga. Ostatnio: ${f(L.sumAt)}.<br>Kopię z maila wczytasz przyciskiem „Wczytaj kopię” poniżej (plik .json.gz).${S.email?`<br>Ten telefon: ${esc(S.email)} → ${esc(S.who)}`:''}</div></div>`}
     {const r=S.market?.rates;h+=`<div class="card"><h3>🤖 Automat (GitHub)</h3><div class="mini">${r?.date?`Ostatnio: ${r.date.split('-').reverse().join('.')} · kursy walut ${Object.keys(r.fx||{}).length} · ceny ${Object.keys(r.prices||{}).length}${r.gold?' · złoto':''}${r.infl!=null?` · inflacja ${String(r.infl).replace('.',',')}% (${esc(r.inflPer||'')})`:''}${r.nbp!=null?` · stopa NBP ${String(r.nbp).replace('.',',')}%`:''}`:'Jeszcze nie działa – po włączeniu codziennie w dni robocze pobierze kursy NBP, stopę NBP, inflację i ceny instrumentów z symbolem.'}</div></div>`}
     h+=`<div class="card"><h3>🐾 Bailey i Ivo</h3><div class="seg seg3">${[['lots','Dużo'],['few','Mało'],['off','Wyłączone']].map(([k,l])=>`<button aria-pressed="${kotki.mode==k}" onclick="setKotki('${k}')">${l}</button>`).join('')}</div><div class="mini">Dużo – rysunki, porady i żarty. Mało – rysunki i tylko ważne komunikaty. Wyłączone – bez kotków. Ustawienie dotyczy tego telefonu.</div><div class="btns"><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button><button class="btn sm" onclick="showNews(true)">Co nowego</button></div></div>`;
@@ -1713,5 +1749,6 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});navigator.serviceWorker.addEventListener('message',e=>{const u=e.data?.go;if(u){const g=goFromHash(new URL(u,location.href).hash);if(g)runGo(g)}})}
+window.addEventListener('hashchange',()=>{const g=goFromHash(location.hash);if(g&&S.cfg){window.history.replaceState(null,'',location.pathname+location.search);runGo(g)}});
 S.goPending=goFromHash(location.hash);if(S.goPending)window.history.replaceState(null,'',location.pathname+location.search);
-Object.assign(window,{maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});

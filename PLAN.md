@@ -134,11 +134,11 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [ ] Wykrywanie stałych opłat spoza 📌 Stałe: podobna kwota i notatka 3 miesiące z rzędu → „Dodać do opłat stałych?”
 
 ## Etap D. Wygoda na co dzień
-- [ ] Siri / Skróty na iPhone'ach: „Hej Siri, wydatek” otwiera okienko nowego wydatku; skróty z gotową kwotą i notatką (adres z parametrami); instrukcja krok po kroku
-- [ ] Skróty na ikonie aplikacji (przytrzymanie ikony: ➕ Wydatek, 🔔 Na dziś, 📊 Budżet – na iPhonie mogą się nie pokazać, wtedy zostaje Siri)
-- [ ] „Kto co zmienił”: przy każdym wpisie zapisuje się, z czyjego telefonu dodano / zmieniono; widać po otwarciu wpisu i na liście ostatnich zmian w ⚙️ (nie w wierszach Rejestru)
-- [ ] Gwarancje: przy zakupie od 300 zł pytanie o gwarancję (domyślnie 2 lata – rękojmia); przypomnienie miesiąc przed końcem; lista „co ma jeszcze gwarancję”
-- [ ] Pomocnik PIT osobno dla Matiego i Werci: oznaczanie wydatków „do ulgi” z prostymi objaśnieniami każdej ulgi (co to, kto może, ile – jako podpowiedź, nie porada podatkowa); w styczniu zestawienie z sumami do zeznania
+- [x] Siri / Skróty na iPhone'ach: „Hej Siri, wydatek” otwiera okienko nowego wydatku; skróty z gotową kwotą i notatką (adres z parametrami); instrukcja krok po kroku
+- [x] Skróty na ikonie aplikacji (przytrzymanie ikony: ➕ Wydatek, 🔔 Na dziś, 📊 Budżet – na iPhonie mogą się nie pokazać, wtedy zostaje Siri)
+- [x] „Kto co zmienił”: przy każdym wpisie zapisuje się, z czyjego telefonu dodano / zmieniono; widać po otwarciu wpisu i na liście ostatnich zmian w ⚙️ (nie w wierszach Rejestru)
+- [x] Gwarancje: przy zakupie od 300 zł pytanie o gwarancję (domyślnie 2 lata – rękojmia); przypomnienie miesiąc przed końcem; lista „co ma jeszcze gwarancję”
+- [x] Pomocnik PIT osobno dla Matiego i Werci: oznaczanie wydatków „do ulgi” z prostymi objaśnieniami każdej ulgi (co to, kto może, ile – jako podpowiedź, nie porada podatkowa); w styczniu zestawienie z sumami do zeznania
 
 ## Etap E. Wygląd i ergonomia
 - [ ] „Zapisz” przyklejony na dole okienka transakcji + „Zapisz i dodaj kolejny”
