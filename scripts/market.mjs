@@ -2,6 +2,7 @@
 // Needs the secret FIREBASE_SA (service account JSON). Logs only counts – never amounts, names or symbols (the repository is public).
 import {initializeApp,cert} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
+import {ensureVapid} from './common.mjs';
 import {CRYPTO_IDS,OZ,parseEurostat,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym} from './market-lib.mjs';
 
 const sa=(()=>{try{return JSON.parse(process.env.FIREBASE_SA||'')}catch{return null}})();
@@ -53,4 +54,5 @@ if(+today.slice(8)<=7&&lim.checked!=ym){const year=mon>=11?+today.slice(0,4)+1:+
     const r=await tryIt('limity',async()=>{const h=await get(u,'text');return h.includes(String(year))?parseLimits(h):null});if(r){found={...r,src:new URL(u).hostname};break}}
   await M.doc('limits').set({checked:ym,...(found?{year,...found,found:today}:{})},{merge:true});
   console.log(found?`✓ limity ${year}: znalezione (aplikacja zapyta przed zmianą)`:`– limity ${year}: jeszcze nie znalezione`)}
+await ensureVapid(H);
 console.log('Gotowe.');process.exit(0);

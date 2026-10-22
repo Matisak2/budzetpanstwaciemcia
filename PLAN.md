@@ -112,14 +112,14 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komendę Matiego, dane nigdy nie znikają. Wszystko w darmowych limitach (GitHub Actions w publicznym repo bez limitu minut, Firestore Spark, Gmail).
 
 ## Etap A. Automat bez przerw, prawdziwe powiadomienia, strażnik porządku
-- [ ] Ochrona przed wyłączeniem automatu po 60 dniach: raz w miesiącu automat dopisuje mały plik z datą (zeruje licznik GitHuba)
-- [ ] Gdy automat kilka dni roboczych nic nie pobierze → powiadomienie „🤖 Automat nie działa” z przyciskiem do GitHuba
-- [ ] Prawdziwe powiadomienia (Web Push) na iPhone'ach obojga (aplikacja na ekranie głównym, iOS 16.4+): ⚙️ „Włącz powiadomienia” na każdym telefonie; klucze generuje automat sam (bez nowych sekretów)
-- [ ] Rano ok. 7:30 „🔔 Na dziś” (tylko gdy coś czeka), wieczorem ok. 20:00 tylko gdy danego dnia nic nie wpisano; najwyżej 2 dziennie; stuknięcie otwiera właściwe miejsce (godziny mogą się spóźnić do ok. 40 min – ograniczenie GitHuba)
-- [ ] Wspólne sprawy (opłaty, wydatki roczne, auto, kopia, strażnik) do obojga; osobiste (pasek pensji, IKZE, JDG) tylko do właściciela
-- [ ] Telefon z włączonymi powiadomieniami nie pokazuje już okienek „Na dziś” w aplikacji (dzwonek 🔔 zostaje); telefon bez powiadomień – jak dziś
-- [ ] Logika „Na dziś” w osobnym pliku, wspólnym dla aplikacji i automatu
-- [ ] Strażnik porządku co tydzień: zdublowane wpisy, wpisy bez pozycji, ujemne saldo konta bieżącego, niezgodne paski pensji – w „Na dziś” i w porannym powiadomieniu; sam niczego nie zmienia
+- [x] Ochrona przed wyłączeniem automatu po 60 dniach: raz w miesiącu automat dopisuje mały plik z datą (zeruje licznik GitHuba)
+- [x] Gdy automat kilka dni roboczych nic nie pobierze → powiadomienie „🤖 Automat nie działa” z przyciskiem do GitHuba
+- [x] Prawdziwe powiadomienia (Web Push) na iPhone'ach obojga (aplikacja na ekranie głównym, iOS 16.4+): ⚙️ „Włącz powiadomienia” na każdym telefonie; klucze generuje automat sam (bez nowych sekretów)
+- [x] Rano ok. 7:30 „🔔 Na dziś” (tylko gdy coś czeka), wieczorem ok. 20:00 tylko gdy danego dnia nic nie wpisano; najwyżej 2 dziennie; stuknięcie otwiera właściwe miejsce (godziny mogą się spóźnić do ok. 40 min – ograniczenie GitHuba)
+- [x] Wspólne sprawy (opłaty, wydatki roczne, auto, kopia, strażnik) do obojga; osobiste (pasek pensji, IKZE, JDG) tylko do właściciela
+- [x] Telefon z włączonymi powiadomieniami nie pokazuje już okienek „Na dziś” ani dymka o 20:00 (dzwonek 🔔 zostaje); pilne sprawy w małym pasku na górze Budżetu; gdy powiadomienia przestaną działać (albo stanie automat) – okienka wracają same, a ⚙️ podpowiada „Włącz ponownie”
+- [x] Logika „Na dziś” w osobnym pliku, wspólnym dla aplikacji i automatu
+- [x] Strażnik porządku co tydzień: zdublowane wpisy, wpisy bez pozycji, ujemne saldo konta bieżącego, niezgodne paski pensji – w „Na dziś” i w porannym powiadomieniu; sam niczego nie zmienia
 
 ## Etap B. Maile: kopia zapasowa i podsumowanie miesiąca
 - [ ] Wysyłka z Gmaila Matiego (weryfikacja dwuetapowa włączona → „hasło do aplikacji” w sekretach GitHuba; poprowadzić krok po kroku)

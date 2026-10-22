@@ -6,7 +6,7 @@ on:
     - cron: '23 16 * * 1-5'   # w dni robocze ok. 18:23 czasu polskiego (po zamknięciu giełd w Europie i tabeli NBP)
   workflow_dispatch: {}        # przycisk „Run workflow” – ręczne uruchomienie
 permissions:
-  contents: read
+  contents: write   # tylko do miesięcznego „znaku życia” (plik automat-ostatnio.txt)
 concurrency:
   group: market
   cancel-in-progress: false
@@ -25,3 +25,15 @@ jobs:
         run: node scripts/market.mjs
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+      # GitHub wyłącza zaplanowane automaty po 60 dniach bez zmian w repozytorium – raz w miesiącu dopisujemy datę, żeby tak się nie stało
+      - name: Miesięczny znak życia
+        run: |
+          m=$(TZ=Europe/Warsaw date +%Y-%m)
+          if [ "$(cut -c1-7 automat-ostatnio.txt 2>/dev/null)" != "$m" ]; then
+            echo "$(TZ=Europe/Warsaw date +%F) – automat działa (ten plik zmienia się raz w miesiącu, żeby GitHub nie wyłączył automatu)" > automat-ostatnio.txt
+            git config user.name "budzet-automat"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add automat-ostatnio.txt
+            git commit -m "Automat: miesięczny znak życia"
+            git push
+          fi

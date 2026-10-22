@@ -1,0 +1,37 @@
+# 🔔 Powiadomienia Budżetu M&W: rano ok. 7:30 „Na dziś”, wieczorem ok. 20:00 (gdy dziś nic nie wpisano).
+# GitHub liczy czas w UTC, a zadania potrafią się spóźnić – dlatego po dwa terminy rano i wieczorem; skrypt wysyła najwyżej raz.
+name: Powiadomienia
+on:
+  schedule:
+    - cron: '31 5 * * *'   # 7:31 latem (CEST)
+    - cron: '31 6 * * *'   # 7:31 zimą (CET)
+    - cron: '2 18 * * *'   # 20:02 latem
+    - cron: '2 19 * * *'   # 20:02 zimą
+  workflow_dispatch:
+    inputs:
+      tryb:
+        description: 'auto = jak zwykle, test = powiadomienie próbne na wszystkie telefony'
+        type: choice
+        options: [test, auto]
+        default: test
+permissions:
+  contents: read
+concurrency:
+  group: notify
+  cancel-in-progress: false
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Instalacja
+        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0 web-push@3.6.7
+      - name: Wysyłka powiadomień
+        run: node scripts/notify.mjs
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          MODE: ${{ github.event.inputs.tryb || 'auto' }}

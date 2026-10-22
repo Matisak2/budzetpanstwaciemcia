@@ -1,10 +1,10 @@
 /* Budżet M&W – service worker: the app opens without internet.
    App files (index.html, style.css, js/*): network first (so updates arrive together), cached copy when offline.
    Firebase SDK (versioned URLs) and fonts: cache first. Firestore/Auth traffic is never touched. */
-const CACHE = 'budzet-mw-v25';
+const CACHE = 'budzet-mw-v26';
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const SHELL = ['./', './index.html', './style.css', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png',
-  './js/app.js', './js/util.js', './js/data.js', './js/art.js', './js/logic.js', './js/charts.js', './js/cats.js', './js/guide.js', './js/pay.js', './js/inv.js'];
+  './js/app.js', './js/util.js', './js/data.js', './js/art.js', './js/logic.js', './js/charts.js', './js/cats.js', './js/guide.js', './js/pay.js', './js/inv.js', './js/today.js'];
 const SDK_FILES = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => SDK + f);
 
 self.addEventListener('install', e => {
@@ -58,4 +58,22 @@ self.addEventListener('fetch', e => {
   } else if (url.href.startsWith(SDK) || url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(cacheFirst(req));
   }
+});
+
+/* 🔔 notifications sent by the automat (Web Push): show them, and a tap opens the app at the right place */
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Budżet M&W', {
+    body: d.body || '', icon: './icon-192.png', badge: './icon-192.png', tag: d.tag || 'mw', renotify: true, data: { url: d.url || './' }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) if (c.url.startsWith(self.registration.scope)) { c.postMessage({ go: url }); return c.focus(); }
+    return self.clients.openWindow(url);
+  })());
 });
