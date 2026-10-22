@@ -90,7 +90,7 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   const ym=today.slice(0,7),day=+today.slice(8),out=[],cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const accOf=id=>cfg.accs.find(a=>a.id==id);
   const add=(icon,text,go,label,k='',who=null)=>out.push({icon,text,go,label,k,who});const incs=cfg.incs||[];
   const st=automatStale(market,today);if(st)add('🤖',`Automat nie pobiera danych od ${st} dni. Sprawdź go na GitHubie.`,{a:'automat'},'Otwórz','bad');
-  for(const x of dueAlerts(cfg.fixed||[],tx,today))add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – jeszcze nie odhaczony`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(ownerOf(accOf(x.f.acc))));
+  for(const x of dueAlerts(cfg.fixed||[],tx,today))add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – czeka na odhaczenie`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(ownerOf(accOf(x.f.acc))));
   const live=new Set(tx.map(t=>t.id));
   for(const s of incs)if(day>=(s.day||10)){const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata zwykle do ${s.day||10}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}
   if(day>=14&&day<=20)for(const s of incs.filter(s=>s.kind=='b2b'))add('🧾',`JDG (${s.name}): do 20. zapłać ZUS, zdrowotną i podatek.`,{a:'pay'},'Pensje','',person(s.who));
