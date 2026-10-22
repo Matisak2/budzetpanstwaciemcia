@@ -1,0 +1,20 @@
+// Temporary: checks the shape of public data pages (no Firebase, no household data).
+const get=async u=>{const r=await fetch(u,{headers:{'User-Agent':'Mozilla/5.0 (budzet-mw automat)'},redirect:'follow'});const b=Buffer.from(await r.arrayBuffer());return{s:r.status,u:r.url,b}};
+const txt=b=>{const s=b.toString('utf8');return s.includes('�')?new TextDecoder('windows-1250').decode(b):s};
+const strip=h=>h.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ');
+const around=(t,re,n=300)=>{const m=t.search(re);return m<0?'(brak)':t.slice(Math.max(0,m-80),m+n)};
+const run=async(name,fn)=>{try{console.log('== '+name);await fn()}catch(e){console.log('ERR',e.message)}};
+await run('GUS strona',async()=>{const r=await get('https://stat.gov.pl/obszary-tematyczne/ceny-handel/wskazniki-cen/wskazniki-cen-towarow-i-uslug-konsumpcyjnych-pot-inflacja-/miesieczne-wskazniki-cen-towarow-i-uslug-konsumpcyjnych-od-1982-roku/');
+  const h=txt(r.b);console.log(r.s,h.length);console.log([...h.matchAll(/href="([^"]+\.(?:csv|xlsx?))"/gi)].map(m=>m[1]).join('\n'))});
+await run('GUS csv',async()=>{const r=await get('https://stat.gov.pl/download/gfx/portalinformacyjny/pl/defaultstronaopisowa/4741/1/1/miesieczne_wskazniki_cen_towarow_i_uslug_konsumpcyjnych_od_1982_roku.csv');
+  const t=txt(r.b),L=t.split(/\r?\n/);console.log(r.s,L.length);console.log(L.slice(0,3).join('\n'));const A=L.filter(l=>/analogiczny/i.test(l));console.log('analog',A.length);console.log(A.slice(-3).join('\n'))});
+await run('analizy lista',async()=>{const r=await get('https://www.analizy.pl/fundusze-ppk/notowania');const h=txt(r.b);console.log(r.s,h.length);
+  const M=[...h.matchAll(/href="\/fundusze-ppk\/([A-Z]{2,5}\d+)\/([^"]+)"[^>]*>([\s\S]{0,200}?)<\/a>/g)];console.log('links',M.length,new Set(M.map(m=>m[1])).size);console.log(M.slice(0,6).map(m=>m[1]+' | '+m[2]+' | '+strip(m[3])).join('\n'));
+  console.log('page?',[...h.matchAll(/href="([^"]*(?:page|strona)=\d+[^"]*)"/gi)].slice(0,5).map(m=>m[1]).join(' '));console.log(around(strip(h),/inPZU 2040/));});
+await run('analizy fundusz',async()=>{const r=await get('https://www.analizy.pl/fundusze-ppk/PZU56/ppk-inpzu-2040');const h=txt(r.b),t=strip(h);console.log(r.s,h.length);console.log(around(t,/jednostk/i,400));
+  console.log('ld',(h.match(/application\/ld\+json[^>]*>([\s\S]{0,400})/)||[])[1]||'-');console.log('meta',(h.match(/<meta[^>]+(?:description)[^>]+>/i)||[])[0]||'-')});
+await run('analizy bez sluga',async()=>{const r=await get('https://www.analizy.pl/fundusze-ppk/PZU56');console.log(r.s,r.u)});
+await run('analizy FIO',async()=>{const r=await get('https://www.analizy.pl/fundusze-inwestycyjne-otwarte/PCS83');console.log(r.s,r.u);console.log(around(strip(txt(r.b)),/jednostk/i,250))});
+await run('bankier',async()=>{const r=await get('https://www.bankier.pl/fundusze/notowania/BGK18');const t=strip(txt(r.b));console.log(r.s,t.length);console.log(around(t,/Kurs/,300))});
+await run('obligacje',async()=>{const r=await get('https://www.obligacjeskarbowe.pl/oferta-obligacji/');const t=strip(txt(r.b));console.log(r.s,r.u,t.length);console.log(around(t,/EDO/,700));console.log(around(t,/COI/,400))});
+await run('eurostat',async()=>{const r=await get('https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&geo=PL&coicop=CP00&sinceTimePeriod=2015-01');const j=JSON.parse(r.b.toString());console.log(r.s,Object.keys(j.value||{}).length,Object.keys(j.dimension.time.category.index).slice(-2))});

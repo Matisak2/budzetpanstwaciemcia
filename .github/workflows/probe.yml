@@ -1,0 +1,16 @@
+# Tymczasowy: sprawdza wygląd publicznych stron z danymi (bez Firebase). Zostanie usunięty.
+name: Próba źródeł danych
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node scripts/probe.mjs
