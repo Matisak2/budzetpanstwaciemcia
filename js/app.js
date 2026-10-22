@@ -264,7 +264,7 @@ function openTx(id,pre){if(guard())return;
   if(t&&t.type=='adj'){ask({title:'Wyrównanie salda',text:`${accN(t.acc)}: ${t.amount>0?'+':''}${zl(t.amount)} (${t.date})\nUsunąć to wyrównanie?`,ok:'Usuń',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&t.ppk){ask({title:t.note,text:`${accN(t.acc)}: ${zl(t.amount)} (${t.date.split('-').reverse().join('.')})\nTa wpłata jest powiązana z pensją. Żeby ją zmienić, odznacz i odhacz pensję ponownie w 📌 Stałe.`,ok:'Usuń wpłatę',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTen starszy wpis usuniesz w zakładce Oszczędności.`,ok:'Przejdź',cancel:'Zamknij'}).then(r=>{if(r){S.tab='sav';render()}});return}
-  S.edit=t?id:null;S.refEdit=!!t?.refundOf;S.autoSub=false;SP=[];
+  S.edit=t?id:null;S.refEdit=!!t?.refundOf;S.debtOpen=S.projOpen=false;S.autoSub=false;SP=[];
   const ao=accOpts().map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(a=>`<option value="${a[0]}">${esc(a[1])}</option>`).join('')}</optgroup>`).join('');$('mc').innerHTML=ao;$('mto').innerHTML=ao;
   $('ms').value='';setType(t?t.type:(pre?.type||'exp'));
   $('mw').value=(t&&t.who)||S.who;
@@ -364,6 +364,8 @@ $('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]
 $('mproj').onchange=()=>updProj();
 $('mwar').onchange=()=>{if($('mwar').value=='date'&&!$('mward').value)$('mward').value=addM($('md').value||td(),24);updX()};
 $('mulga').onchange=()=>updX();$('mulgaBtn').onclick=()=>{S.ulgaOpen=true;updX()};
+/* rarely needed: a liability and a project stay folded into small buttons at the bottom, unless the entry already has one */
+$('mdebtBtn').onclick=()=>{S.debtOpen=true;updDebt()};$('mprojBtn').onclick=()=>{S.projOpen=true;updProj()};
 $('mulga').innerHTML='<option value="">— bez ulgi —</option>'+Object.entries(ULGI).map(([k,u])=>`<option value="${k}">${u.n}</option>`).join('');
 $('ma2').oninput=$('fxa').oninput=$('fxc').onchange=()=>updFx();$('mto').onchange=()=>{updFx();updSave()};
 $('fxBtn').onclick=()=>{S.fxOpen=true;updFx();$('fxa').focus()};
@@ -1250,7 +1252,7 @@ async function moveLent(){if(guard())return;const sid=S.cfg.cats.flatMap(c=>c.su
   toast('Przeniesiono do należności')}
 /* the sheet: which liability an expense pays off */
 function fillDebt(sel){const L=debtList('owe').filter(d=>debtState(d).left>0||d.id==sel);$('mdebt').innerHTML='<option value="">— nie —</option>'+L.map(d=>`<option value="${d.id}">${esc(dIcon(d)+' '+d.name)}</option>`).join('');$('mdebt').value=sel||'';updDebt()}
-function updDebt(){$('mdebtWrap').hidden=!(S.etype=='exp'&&!S.refEdit&&$('mdebt').options.length>1)}
+function updDebt(){const av=S.etype=='exp'&&!S.refEdit&&$('mdebt').options.length>1;$('mdebtWrap').hidden=!(av&&(S.debtOpen||$('mdebt').value));$('mdebtBtn').hidden=!av||!$('mdebtWrap').hidden}
 /* ---------- 📝 planning: positions to plan, the 3-month average ---------- */
 function toPlanH(){const ym=S.ym,cur=td().slice(0,7);if(ym<cur)return'';const pl=S.plans[ym]||{},{avg}=avgActuals(S.cfg,liveOf(S.tx),ym,3);
   const L=S.cfg.cats.flatMap(c=>c.subs.map(s=>({c,s}))).filter(x=>!pl[x.s.id]&&avg[x.s.id]>0);if(!L.length)return'';
@@ -1301,7 +1303,7 @@ function projPageH(){const p=projById(S.proj);if(!p){S.proj=null;return''}const 
 /* the sheet: project label, litres and odometer for a vehicle */
 function fillProj(sel){$('mproj').innerHTML='<option value="">— brak —</option>'+projs().map(p=>`<option value="${p.id}">${esc((p.icon||'🏷️')+' '+p.name)}</option>`).join('');$('mproj').value=sel||'';updProj()}
 function updProj(){if(!S.cfg)return;const has=projs().length>0,p=projById($('mproj').value),s=subsMap(S.cfg)[$('ms').value];
-  $('mprojWrap').hidden=!has||S.etype=='tr';$('mcarWrap').hidden=!(p&&p.kind=='car'&&S.etype=='exp'&&s&&/paliw|tankow|benzyn|diesel|lpg|ładowan/i.test(s.name))}
+  const av=has&&S.etype!='tr';$('mprojWrap').hidden=!(av&&(S.projOpen||$('mproj').value));$('mprojBtn').hidden=!av||!$('mprojWrap').hidden;$('mcarWrap').hidden=!(p&&p.kind=='car'&&S.etype=='exp'&&s&&/paliw|tankow|benzyn|diesel|lpg|ładowan/i.test(s.name))}
 /* ---------- 🔔 reminders (📌 Stałe → Przypomnienia): insurance, inspection, tyres, service, cats' vaccinations ---------- */
 const rems=()=>S.cfg.rems||[];
 const saveRem=x=>merge(H,{remM:{[x.id]:strip(x,rems().indexOf(x))}});
