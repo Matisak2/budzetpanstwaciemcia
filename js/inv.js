@@ -38,8 +38,14 @@ export function bondLotValue(b,l,today,macro){const T=BONDS[b.type]||BONDS.EDO,m
   let v=N,paid=0;for(let i=0;i<full;i++){if(T.cap)v=v*(1+rates[i]);else paid+=N*rates[i]}
   const cur=full<rates.length?rates[full]:0;
   return{value:Math.round(v*(1+cur*frac)),paid:Math.round(paid),end,cost:N}}
+/* the automat's quote for an instrument (only when newer than a price typed by hand); fx from NBP mid rates */
+export function marketQuote(it,acc,m){if(!m)return null;const ac=acc.cur||'PLN',ic=it.cur||ac,fx=c=>c=='PLN'?1:m.fx?.[c],newer=d=>d&&(!it.priceDate||d>=it.priceDate);
+  let p=null,d=null;const q=it.ticker&&m.prices?.[String(it.ticker).trim().toUpperCase()];
+  if(q&&(!q.cur||q.cur==ic)){p=q.p;d=q.d}else if(it.kind=='zloto'&&!it.ticker&&m.gold&&ic=='PLN'){p=m.gold;d=m.goldDate||m.date}
+  const f=ic==ac?1:(fx(ic)&&fx(ac)?fx(ic)/fx(ac):null);
+  return{p:newer(d)?p:null,fx:newer(m.fxDate||m.date)&&ic!=ac?f:null,d}}
 /* value of an instrument in the account currency, gains and the amount after the 19% tax */
-export function instValue(it,acc,today,macro={}){
+export function instValue(it,acc,today,macro={},mkt=null){
   if(it.kind=='obl'||it.kind=='lokata'){let value=0,cost=0,paid=0,next=null;
     for(const l of Object.values(it.lots||{}).filter(l=>!l.deleted&&l.kind!='sell')){
       let r;if(it.kind=='obl')r=bondLotValue(it.bond||{},l,today,macro);
@@ -47,11 +53,11 @@ export function instValue(it,acc,today,macro={}){
       value+=r.value;cost+=r.cost;paid+=r.paid;if(r.end>=today&&(!next||r.end<next))next=r.end}
     const gain=value-cost+paid,tax=taxFree(acc)?0:Math.round(Math.max(0,value-cost)*BELKA/100);
     return{value,cost,gain,gPx:gain,gFx:0,net:value-tax,tax,paid,next,qty:null,real:0}}
-  const p=position(it),px=+(it.price??p.avgPx),fx=it.cur&&it.cur!=(acc.cur||'PLN')?+(it.fxNow||p.avgFx||1):1;
+  const p=position(it),mq=marketQuote(it,acc,mkt),px=+(mq?.p??it.price??p.avgPx),fx=it.cur&&it.cur!=(acc.cur||'PLN')?+(mq?.fx||it.fxNow||p.avgFx||1):1;
   const value=Math.round(p.qty*px*fx*100)/100,costNoFee=Math.round(p.qty*p.avgPx*p.avgFx*100)/100;
   const gPx=Math.round(p.qty*(px-p.avgPx)*fx*100)/100,gFx=Math.round(p.qty*p.avgPx*(fx-p.avgFx)*100)/100;
   const v=Math.round(value*100),c=Math.round(p.cost),gain=v-c,tax=taxFree(acc)?0:Math.round(Math.max(0,gain)*BELKA/100);
-  return{value:v,cost:c,gain,gPx:Math.round(gPx*100),gFx:Math.round(gFx*100),net:v-tax,tax,qty:p.qty,px,fx,costNoFee,real:p.real}}
+  return{value:v,cost:c,gain,gPx:Math.round(gPx*100),gFx:Math.round(gFx*100),net:v-tax,tax,qty:p.qty,px,fx,costNoFee,real:p.real,auto:!!mq?.p}}
 /* payments into a tax wrapper in a year (transfers and incomes in, no value changes, no withdrawals subtracted) */
 export function paidInYear(tx,accId,year){let s=0;for(const t of tx){if(!t.date.startsWith(year))continue;
   if(t.type=='tr'&&t.to===accId)s+=t.amount2??t.amount;else if(t.acc===accId&&t.type=='inc'&&!t.ppk)s+=t.amount}return s}

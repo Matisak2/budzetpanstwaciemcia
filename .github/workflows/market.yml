@@ -1,0 +1,27 @@
+# 🤖 Automat Budżetu M&W: kursy walut i stopa NBP, inflacja, ceny instrumentów (raz w miesiącu także limity IKE/IKZE).
+# Działa za darmo na GitHubie. Potrzebuje sekretu FIREBASE_SA (klucz konta usługi Firebase) – instrukcja w PLAN.md.
+name: Automat – kursy i ceny
+on:
+  schedule:
+    - cron: '23 16 * * 1-5'   # w dni robocze ok. 18:23 czasu polskiego (po zamknięciu giełd w Europie i tabeli NBP)
+  workflow_dispatch: {}        # przycisk „Run workflow” – ręczne uruchomienie
+permissions:
+  contents: read
+concurrency:
+  group: market
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalacja firebase-admin
+        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0
+      - name: Pobranie kursów i cen
+        run: node scripts/market.mjs
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}

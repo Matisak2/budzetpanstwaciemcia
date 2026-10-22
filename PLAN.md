@@ -72,7 +72,13 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 - [x] Grupy kont z sumami, „🐷 Odłóż”, stały przelew na oszczędności w 📌 Stałe
 - [x] Aktualizacja wartości wszystkich kont na jednym ekranie
 - [x] Instrumenty na kontach: ETF, akcje, obligacje (zasady wg typu EDO/COI/TOS/ROS/ROD/OTS/DOR, edytowalne), złoto, krypto, lokaty; zysk z ceny, zysk z kursu, „na rękę” po Belce; wpisywane ręcznie
-- [ ] Automat na GitHubie (Actions, za darmo): codziennie kursy i inflacja do Firestore; raz w miesiącu szuka nowych limitów i pyta przed zmianą – **do zrobienia razem z Matim** (na razie ceny, inflację i stopę NBP wpisuje się ręcznie w „📈 Aktualizuj wartości”)
+- [x] Automat na GitHubie (Actions, za darmo): codziennie kursy i inflacja do Firestore; raz w miesiącu szuka nowych limitów i pyta przed zmianą (`.github/workflows/market.yml`, `scripts/market.mjs`; działa po dodaniu sekretu `FIREBASE_SA` – instrukcja niżej)
+
+### 🤖 Włączenie automatu (jednorazowo)
+1. Firebase → ⚙️ Ustawienia projektu → Konta usługi → „Wygeneruj nowy klucz prywatny” → pobierze się plik `.json`.
+2. GitHub → repozytorium → Settings → Secrets and variables → Actions → „New repository secret”: nazwa `FIREBASE_SA`, wartość = cała zawartość pliku `.json`.
+3. GitHub → Actions → „Automat – kursy i ceny” → „Run workflow”. Zielony ✓ = działa. Potem plik `.json` usuń z urządzenia.
+4. GitHub wyłącza zaplanowane automaty w repozytoriach bez zmian przez 60 dni – wtedy wystarczy kliknąć „Enable workflow” w zakładce Actions.
 - [x] Przypomnienia o wykupie obligacji
 - [x] Limity IKE, IKZE i OKI (od 1.01.2027): wpłaty liczone same, styczeń – nowe limity, grudzień – IKZE, OKI – szacunek podatku od aktywów
 - [x] Wykres „wpłacone a wartość” (pole zielone/różowe, 3 mies./rok/wszystko, całość/osoba/konto/instrument, osobno dla każdej waluty)

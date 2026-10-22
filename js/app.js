@@ -18,7 +18,7 @@ function applySeason(){const m=+S.ym.slice(5)-1,[c,l]=SEASON[m];const r=document
   const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.setAttribute('content',c)}
 
 /* ---------- state ---------- */
-const S={sub:'all',bf:'all',fold:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},hold:{},debts:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
+const S={sub:'all',bf:'all',fold:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},hold:{},debts:{},market:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
 let seeding=false;
 
 /* ---------- pure money logic ---------- */
@@ -124,7 +124,7 @@ const subOpts=type=>S.cfg.cats.filter(c=>!type||c.type==type).map(c=>({group:cat
 
 /* ---------- storage (Firebase Firestore) ---------- */
 const H=doc(fdb,'households','main');
-const DEBTS=()=>collection(H,'debts'),HOLD=()=>collection(H,'hold'),SLIPS=()=>collection(H,'slips'),MC=()=>collection(H,'months'),PLC=()=>collection(H,'plans'),INV=()=>collection(H,'inv'),GOALS=()=>collection(H,'goals');
+const MARKET=()=>collection(H,'market'),DEBTS=()=>collection(H,'debts'),HOLD=()=>collection(H,'hold'),SLIPS=()=>collection(H,'slips'),MC=()=>collection(H,'months'),PLC=()=>collection(H,'plans'),INV=()=>collection(H,'inv'),GOALS=()=>collection(H,'goals');
 function w(p){p.catch(e=>{err(e);
   if(e?.code=='permission-denied')toast('Brak uprawnień do zapisu – sprawdź logowanie i reguły Firestore.','bad');
   else if(e?.code=='resource-exhausted')toast('Przekroczono darmowy limit Firebase na dziś.','bad');
@@ -875,13 +875,14 @@ async function delSlip(){const {id,ym}=S.slip,old=slipOf(ym,id);if(!old)return c
 
 /* ---------- 📈 savings & investments: instruments, values on one screen, limits, paid vs value, FIRE ---------- */
 const accById=id=>S.cfg.accs.find(a=>a.id==id);
-const macro=()=>S.hraw?.macro||{};
+const macro=()=>{const m=S.hraw?.macro||{},r=S.market?.rates||{},pick=(k,at)=>r[k]!=null&&!(m[k]!=null&&(m[at]||'')>=(r.date||''))?r[k]:m[k];return{infl:pick('infl','inflAt'),nbp:pick('nbp','nbpAt')}};
+const mkt=()=>S.market?.rates||null;
 const instsOf=accId=>Object.entries(S.hold).filter(([,x])=>x.acc==accId&&!x.deleted).map(([id,x])=>({id,...x}));
 const nf=(x,d=2)=>(+x||0).toLocaleString('pl-PL',{minimumFractionDigits:d,maximumFractionDigits:Math.max(d,4)});
 const pn=v=>{const x=pnum(v);return isFinite(x)?x:0};
 /* value adjustment that makes the account balance show its instruments at today's value */
 function instDiff(a,hold){const L=Object.entries(hold||S.hold).filter(([,x])=>x.acc==a.id&&!x.deleted).map(([id,x])=>({id,...x}));if(!L.length)return null;
-  let unreal=0,val=0;L.forEach(it=>{const v=instValue(it,a,td(),macro());unreal+=v.value-v.cost+(v.real||0)});
+  let unreal=0,val=0;L.forEach(it=>{const v=instValue(it,a,td(),macro(),mkt());unreal+=v.value-v.cost+(v.real||0)});
   for(const t of liveOf(S.tx))if(t.acc===a.id&&t.type=='adj'&&t.val)val+=t.amount;return unreal-val}
 function addVal(a,d,note){if(!d)return null;const ym=td().slice(0,7),id='t'+rid();putTx(ym,id,{type:'adj',val:true,amount:d,date:td(),sub:'',acc:a.id,to:'',who:S.who,note,deleted:false,ts:Date.now()});return[ym,id]}
 /* bonds and deposits that end soon */
@@ -894,12 +895,13 @@ const matH=()=>maturities(30).map(m=>`<div class="note">${IICON[m.it.kind]} ${m.
 function openInst(id){S.instAcc=id;S.values=false;window.scrollTo(0,0);render()}
 function closeInst(){S.instAcc=null;S.values=false;render()}
 function instPageH(){const a=accById(S.instAcc);if(!a){S.instAcc=null;return''}const cur=CUR(a),M=v=>money(v,cur),L=instsOf(a.id),today=td(),mc=macro();
-  const vals=L.map(it=>({it,v:instValue(it,a,today,mc)})),T=vals.reduce((s,x)=>({value:s.value+x.v.value,cost:s.cost+x.v.cost,net:s.net+x.v.net}),{value:0,cost:0,net:0});
+  const vals=L.map(it=>({it,v:instValue(it,a,today,mc,mkt())})),T=vals.reduce((s,x)=>({value:s.value+x.v.value,cost:s.cost+x.v.cost,net:s.net+x.v.net}),{value:0,cost:0,net:0});
   const bal=balance(S.cfg,liveOf(S.tx),a.id,addDays(today,1)),diff=instDiff(a),w=wrapOf(a);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeInst()">‹ Oszczędności</button>
     <div class="worth"><div class="l">${esc(a.name)}${w?` · <span class="curtag">${w.toUpperCase()}</span>`:''}${isP(a)?'':` · <span class="curtag">${cur}</span>`}</div><div class="v num">${M(T.value)}</div>
     <div class="s">instrumenty · wpłacono ${M(T.cost)} · ${T.value-T.cost>=0?'+':''}${M(T.value-T.cost)}${T.cost?` (${((T.value-T.cost)/T.cost*100).toFixed(1).replace('.',',')}%)`:''}</div>
     <div class="s">na rękę ${taxFree(a)?'(bez podatku Belki)':'po podatku Belki 19%'}: <b>${M(T.net)}</b> · saldo konta w aplikacji: ${M(bal)}</div></div>`;
+  if(mkt()?.date&&L.some(it=>it.ticker||it.kind=='zloto'))h+=`<div class="mini" style="padding:0 4px">🤖 Ceny z automatu z ${mkt().date.split('-').reverse().join('.')} (gdy są nowsze niż wpisane ręcznie).</div>`;
   if(diff)h+=`<button class="btn primary" onclick="saveInstVal('${a.id}')">⚖️ Zapisz wycenę w saldzie konta (${diff>0?'+':''}${M(diff)})</button>`;
   h+=matH();
   h+=vals.map(({it,v})=>{const mk=it.kind!='obl'&&it.kind!='lokata',ic=it.cur||cur,lots=Object.entries(it.lots||{}).filter(([,l])=>!l.deleted).sort((x,y)=>x[1].date.localeCompare(y[1].date));
@@ -915,7 +917,7 @@ function instPageH(){const a=accById(S.instAcc);if(!a){S.instAcc=null;return''}c
   return h}
 async function editInst(id,accId){if(guard())return;const it0=id?S.hold[id]:null,a=accById(it0?.acc||accId);if(!a)return;
   const r=await ask({title:it0?'Instrument':'Nowy instrument – '+a.name,fields:[{id:'k',label:'Rodzaj',type:'select',value:it0?.kind||'etf',options:Object.entries(IKINDS)},
-    {id:'n',label:'Nazwa',value:it0?.name||'',ph:'np. MSCI World, EDO0336, Lokata 6 mies.'},{id:'t',label:'Symbol (opcjonalnie)',value:it0?.ticker||'',ph:'np. IWDA, CDR'}],ok:'Dalej',alt:it0?'Usuń instrument':null});
+    {id:'n',label:'Nazwa',value:it0?.name||'',ph:'np. MSCI World, EDO0336, Lokata 6 mies.'},{id:'t',label:'Symbol dla automatu (jak w stooq.pl)',value:it0?.ticker||'',ph:'np. IWDA.UK, VWCE.DE, CDR, AAPL.US, BTC'}],ok:'Dalej',alt:it0?'Usuń instrument':null});
   if(!r)return;
   if(r=='alt'){if(!await ask({title:'Usunąć instrument?',text:it0.name+'\nWycenę konta zapisz potem ponownie.',ok:'Usuń',danger:true}))return;merge(doc(HOLD(),id),{deleted:true});return toast('Usunięto instrument')}
   if(!r.n.trim())return toast('Podaj nazwę','bad');const k=r.k,isNew=!it0,f=[];
@@ -960,9 +962,9 @@ function saveInstVal(accId){const a=accById(accId),d=instDiff(a);if(!d)return to
 function openValues(){if(guard())return;S.values=true;S.instAcc=null;window.scrollTo(0,0);render()}
 function valuesH(){const today=td(),mc=macro(),tx=liveOf(S.tx),accs=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeInst()">‹ Oszczędności</button><div class="worth"><div class="l">📈 Aktualizuj wartości · ${today.split('-').reverse().join('.')}</div><div class="s">Wpisz ceny i wartości z aplikacji brokerów. Puste pole = bez zmian. Różnice zapiszę jako zmianę wartości (nie wpływa na wydatki).</div></div>
-    <div class="card"><h3>Do obliczeń obligacji</h3><label class="srow2"><span>Inflacja r/r (%)<small>GUS, ostatni odczyt</small></span><input class="planin" id="vInfl" value="${mc.infl!=null?nf(mc.infl,1):''}" inputmode="decimal" placeholder="np. 3,5"></label><label class="srow2"><span>Stopa referencyjna NBP (%)</span><input class="planin" id="vNbp" value="${mc.nbp!=null?nf(mc.nbp,2):''}" inputmode="decimal" placeholder="np. 4,50"></label></div>`;
+    <div class="card"><h3>Do obliczeń obligacji</h3>${mkt()?.date?`<div class="mini">🤖 Automat z ${mkt().date.split('-').reverse().join('.')}${mkt().infl!=null?` · inflacja ${nf(mkt().infl,1)}% (${esc(mkt().inflPer||'')})`:''}${mkt().nbp!=null?` · stopa NBP ${nf(mkt().nbp,2)}%`:''}. Wpisz własną wartość tylko, gdy chcesz ją zmienić.</div>`:''}<label class="srow2"><span>Inflacja r/r (%)<small>GUS, ostatni odczyt</small></span><input class="planin" id="vInfl" value="" inputmode="decimal" placeholder="${mc.infl!=null?nf(mc.infl,1):'np. 3,5'}"></label><label class="srow2"><span>Stopa referencyjna NBP (%)</span><input class="planin" id="vNbp" value="" inputmode="decimal" placeholder="${mc.nbp!=null?nf(mc.nbp,2):'np. 4,50'}"></label></div>`;
   h+=accs.map(a=>{const L=instsOf(a.id),bal=balance(S.cfg,tx,a.id,addDays(today,1)),M=v=>money(v,CUR(a));
-    return`<div class="card"><div class="r1"><h3>${esc(a.name)}</h3><span class="num mini">${M(bal)}</span></div>${L.length?L.map(it=>{const mk=it.kind!='obl'&&it.kind!='lokata',v=instValue(it,a,today,mc),fx=it.cur&&it.cur!=CUR(a);
+    return`<div class="card"><div class="r1"><h3>${esc(a.name)}</h3><span class="num mini">${M(bal)}</span></div>${L.length?L.map(it=>{const mk=it.kind!='obl'&&it.kind!='lokata',v=instValue(it,a,today,mc,mkt()),fx=it.cur&&it.cur!=CUR(a);
       return mk?`<label class="srow2"><span>${IICON[it.kind]} ${esc(it.name)}<small>${nf(v.qty,0)} szt. · cena (${curSym(it.cur)})</small></span><input class="planin" data-ip="${it.id}" placeholder="${it.price?nf(it.price):''}" inputmode="decimal" autocomplete="off"></label>${fx?`<label class="srow2"><span><small>kurs ${it.cur}</small></span><input class="planin" data-if="${it.id}" placeholder="${it.fxNow?nf(it.fxNow,4):''}" inputmode="decimal" autocomplete="off"></label>`:''}`
         :`<div class="r1 mini"><span>${IICON[it.kind]} ${esc(it.name)} – liczy się samo</span><b>${M(v.value)}</b></div>`}).join('')
       :`<label class="srow2"><span>Wartość dziś<small>z aplikacji brokera</small></span><input class="planin" data-av="${a.id}" placeholder="${f2(bal)}" inputmode="decimal" autocomplete="off"></label>`}</div>`}).join('');
@@ -970,7 +972,7 @@ function valuesH(){const today=td(),mc=macro(),tx=liveOf(S.tx),accs=S.cfg.accs.f
   return h+`<div class="g2"><button class="btn" onclick="closeInst()">Anuluj</button><button class="btn primary" onclick="saveValues()">Zapisz wszystko</button></div>`}
 function saveValues(){if(guard())return;const today=td(),q=s=>[...document.querySelectorAll(s)];
   const mi=$('vInfl').value.trim(),mn=$('vNbp').value.trim(),m0=macro();
-  if((mi&&pn(mi)!==m0.infl)||(mn&&pn(mn)!==m0.nbp)){const m={...m0};if(mi)m.infl=pn(mi);if(mn)m.nbp=pn(mn);S.hraw={...S.hraw,macro:m};merge(H,{macro:m})}
+  if((mi&&pn(mi)!==m0.infl)||(mn&&pn(mn)!==m0.nbp)){const m={...m0};if(mi){m.infl=pn(mi);m.inflAt=today}if(mn){m.nbp=pn(mn);m.nbpAt=today}S.hraw={...S.hraw,macro:m};merge(H,{macro:m})}
   const hold=clone(S.hold),ch=new Set();
   q('[data-ip]').forEach(el=>{if(!el.value.trim())return;const id=el.dataset.ip,p=pn(el.value);if(p>0){hold[id].price=p;ch.add(id)}});
   q('[data-if]').forEach(el=>{if(!el.value.trim())return;const id=el.dataset.if,x=pn(el.value);if(x>0){hold[id].fxNow=x;ch.add(id)}});
@@ -981,6 +983,17 @@ function saveValues(){if(guard())return;const today=td(),q=s=>[...document.query
     if(d){undo.push(addVal(a,d,el?'Zmiana wartości':'Wycena instrumentów'));n++}});
   S.values=false;render();toast(n?`Zapisano wartości ${n} ${plu(n,'konta','kont','kont')}`:'Nic się nie zmieniło',n?'':'',n?{label:'Cofnij',fn:()=>undo.forEach(u=>putTx(u[0],u[1],{deleted:true}))}:null)}
 /* IKE / IKZE / OKI: payments this year against the limit */
+function autoValH(){const r=mkt();if(!r?.date)return'';const L=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived&&instsOf(a.id).length).map(a=>({a,d:instDiff(a)})).filter(x=>x.d);
+  if(!L.length)return'';const sum=L.filter(x=>isP(x.a)).reduce((s,x)=>s+x.d,0);
+  return`<div class="note">🤖 Automat pobrał ceny z ${r.date.split('-').reverse().join('.')}. Wycena ${L.length} ${plu(L.length,'konta','kont','kont')} zmieni się o ${sum>=0?'+':''}${zl(sum)}. <button class="btn sm primary" onclick="saveAutoVal()">Zapisz wycenę</button></div>`}
+function saveAutoVal(){if(guard())return;const undo=[];S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived).forEach(a=>{const d=instDiff(a);if(d)undo.push(addVal(a,d,'Wycena instrumentów (automat)'))});
+  render();toast(`Zapisano wycenę ${undo.length} ${plu(undo.length,'konta','kont','kont')}`,'',{label:'Cofnij',fn:()=>undo.forEach(u=>putTx(u[0],u[1],{deleted:true}))})}
+/* a limits proposal found by the automat – used only after a yes */
+function limitPropH(){const L=S.market?.limits;if(!L?.year||!L.ike)return'';const cur={...(LIMITS[L.year]||{}),...((S.hraw?.limits||{})[L.year]||{})};
+  if(cur.ike==L.ike&&cur.ikze==L.ikze&&cur.ikzeB==L.ikzeB)return'';if((S.hraw?.limitsSeen||{})[L.year]==L.found)return'';
+  return`<div class="note">🛡️ ${kotki.mode=='off'?'':'<b>Bailey:</b> '}Znalazłem limity na ${L.year}: IKE ${zl0(L.ike)}, IKZE ${zl0(L.ikze)} (przy działalności ${zl0(L.ikzeB)}). Źródło: ${esc(L.src||'')}. Zaktualizować?<div class="btns" style="gap:6px;margin-top:6px"><button class="btn sm primary" onclick="acceptLimits(1)">Tak, zaktualizuj</button><button class="btn sm" onclick="acceptLimits(0)">Nie teraz</button></div></div>`}
+function acceptLimits(yes){const L=S.market?.limits;if(!L)return;if(yes){const v={ike:L.ike,ikze:L.ikze,ikzeB:L.ikzeB};S.hraw={...S.hraw,limits:{...(S.hraw?.limits||{}),[L.year]:v}};merge(H,{limits:{[L.year]:v}});toast('Zaktualizowano limity '+L.year+' ✓')}
+  S.hraw={...S.hraw,limitsSeen:{...(S.hraw?.limitsSeen||{}),[L.year]:L.found}};merge(H,{limitsSeen:{[L.year]:L.found}});render()}
 function limitsH(){const y=td().slice(0,4),tx=liveOf(S.tx),over=S.hraw?.limits,mo=+td().slice(5,7);
   const L=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived&&['ike','ikze','oki'].includes(wrapOf(a)));if(!L.length)return'';
   const rows=L.map(a=>{const w=wrapOf(a);
@@ -1256,11 +1269,11 @@ function catGridH(cfg,M){const cats=cfg.cats.filter(c=>c.type=='exp'&&M.some(a=>
 function inflationH(cfg,tx,y){const cur=td().slice(0,7),last=y<cur.slice(0,4)?12:+cur.slice(5),py=String(+y-1);
   const sum=(yy,id)=>{let s=0;for(let i=1;i<=last;i++){const a=agg(cfg,tx,yy+'-'+p2(i));s+=id?(a.cat[id]||0):a.exp}return s};
   const prevTot=sum(py);if(!prevTot)return`<section class="chart"><div class="ct"><b>📈 Wasza inflacja</b></div><div class="mini">Porównanie rok do roku pojawi się, gdy w aplikacji będą wydatki z ${py} roku.</div></section>`;
-  const curTot=sum(y),your=(curTot/prevTot-1)*100,gus=S.hraw?.macro?.infl;
+  const curTot=sum(y),your=(curTot/prevTot-1)*100,gus=macro().infl;
   const rows=cfg.cats.filter(c=>c.type=='exp').map(c=>({c,a:sum(y,c.id),b:sum(py,c.id)})).filter(x=>x.b>0&&x.a>0).map(x=>({...x,d:(x.a/x.b-1)*100})).sort((a,b)=>b.d-a.d);
   const f=x=>(x>=0?'+':'')+x.toFixed(1).replace('.',',')+'%';
   return`<section class="chart"><div class="ct"><b>📈 Wasza inflacja</b><span class="mini">${last==12?'cały rok':`styczeń–${MN[last-1].toLowerCase()}`} ${y} wobec ${py}</span></div>
-    <div class="kpis" style="gap:8px"><div class="kpi k-ro"><div class="l">Wasze wydatki</div><div class="v num">${f(your)}</div><div class="s">${zl0(curTot)} wobec ${zl0(prevTot)}</div></div><div class="kpi k-sk"><div class="l">Inflacja GUS</div><div class="v num">${gus!=null?f(+gus):'—'}</div><div class="s">${gus!=null?'wpisana w 📈 Aktualizuj wartości':'wpisze ją automat'}</div></div></div>
+    <div class="kpis" style="gap:8px"><div class="kpi k-ro"><div class="l">Wasze wydatki</div><div class="v num">${f(your)}</div><div class="s">${zl0(curTot)} wobec ${zl0(prevTot)}</div></div><div class="kpi k-sk"><div class="l">Inflacja GUS</div><div class="v num">${gus!=null?f(+gus):'—'}</div><div class="s">${gus!=null?(S.market?.rates?.inflPer?'automat, '+S.market.rates.inflPer:'wpisana ręcznie'):'wpisze ją automat'}</div></div></div>
     ${rows.slice(0,8).map(x=>`<div class="r1"><span>${esc(cleanCat(x.c.name))}</span><b class="num ${x.d>0?'t-exp':'t-inc'}">${x.d>0?'▲':'▼'} ${f(x.d)}</b></div>`).join('')}</section>`}
 /* CSV for Excel: semicolons, decimal comma, UTF-8 with BOM */
 function exportCsv(y){const sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>!y||t.date.startsWith(y)).sort((a,b)=>a.date.localeCompare(b.date));if(!L.length)return toast('Brak wpisów do eksportu','bad');
@@ -1299,6 +1312,7 @@ function todayItems(){if(!S.cfg)return[];const today=td(),ym=today.slice(0,7),da
   for(const m of maturities(30))add(IICON[m.it.kind],`${m.it.kind=='obl'?'Wykup':'Koniec lokaty'}: ${m.it.name} – ${m.end.split('-').reverse().join('.')}`,`closeToday();goTab('sav');openInst('${m.a.id}')`,'Zobacz');
   const mo=+today.slice(5,7),y=today.slice(0,4),wr=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   if(mo==12)for(const a of wr.filter(a=>wrapOf(a)=='ikze')){const left=limitOf(a,y,S.hraw?.limits)-paidInYear(tx,a.id,y);if(left>0)add('🛡️',`${a.name}: do 31.12 możesz wpłacić jeszcze ${zl(left)} (ulga w PIT).`,`closeToday();openTx(null,{type:'tr',to:'${a.id}'})`,'Wpłać')}
+  if(limitPropH())add('🛡️',`Automat znalazł limity IKE i IKZE na ${S.market.limits.year} – potwierdź w Oszczędnościach.`,"closeToday();S.sub='all';goTab('sav')",'Zobacz');
   if(mo==1&&wr.some(a=>['ike','ikze'].includes(wrapOf(a))))add('🛡️',`Nowy rok – sprawdź limity IKE i IKZE na ${y}.`,"closeToday();goTab('sav');editLimits()",'Limity');
   if(S.tx.length){const b=S.backup,days=b?Math.floor((Date.now()-b.at)/864e5):null;if(!b||days>=30)add('💾',b?`Ostatnia kopia danych: ${days} dni temu.`:'Nie zrobiliście jeszcze kopii danych.',"closeToday();exportJson()",'Kopia')}
   return out}
@@ -1535,7 +1549,7 @@ function render(){
 
     if(S.sub=='all'){
       h+=`<div class="worth"><div class="l">Oszczędności i inwestycje razem</div><div class="v num">${zl(savEnd)} ${trendH(savDelta)}</div>${fxTxt(ownFx(null,end))?`<div class="s">${esc(fxPlus(ownFx(null,end)).trim())} (bez przeliczania)</div>`:''}<div class="s">${OWN.map(o=>`${o} ${zl0(ownAt(o,end))}`).join(' · ')}</div></div>`;
-      h+=actH('all')+matH()+limitsH();
+      h+=actH('all')+autoValH()+limitPropH()+matH()+limitsH();
       const own=Object.fromEntries(OWN.map(o=>[o,Math.max(0,ownAt(o,end))])),ownTot=Object.values(own).reduce((a,v)=>a+v,0);
       if(ownTot>0)h+=`<section class="chart"><div class="ct"><b>Czyje oszczędności</b></div><div class="stack">${OWN.filter(n=>own[n]>0).map(n=>`<i style="width:${(own[n]/ownTot*100).toFixed(2)}%;background:${cols[n]}" data-tip="${n}: ${zl(own[n])}"></i>`).join('')}</div><div class="lg">${OWN.map(n=>`<span><i style="background:${cols[n]}"></i>${n}: <b class="num">${zl(own[n])}</b></span>`).join('')}</div><div class="tip mini">Dotknij paska albo przejdź do zakładki osoby.</div></section>`;
       const yDelta=savEnd-savAt(S.ym.slice(0,4)+'-00'),tg=S.savTarget,coins=coinSum(S.ym);
@@ -1604,6 +1618,7 @@ function render(){
   else{
     const rules=S.cfg.round||[];
     h+=`<div class="card"><div class="rowx" style="border:0;padding:0"><h3>🪙 Drobne</h3><button class="btn sm dark" onclick="editRound()">+ reguła</button></div><div class="mini">Jak w Revolucie: wydatek z wybranego konta zaokrągla się w górę do 5 albo 10 zł, a różnica (razy mnożnik) trafia na wskazane konto. W okienku wydatku pojawi się złota moneta – odznacz ją, gdy bank nie liczy drobnych (np. przy BLIK-u).</div>${rules.map(r=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(accN(r.from))} → ${esc(accN(r.to))}</b><br><span class="mini">do ${r.step} ${curSym(accCur(r.from))} · ×${r.mult}${r.full?' · pełne drobne przy równej kwocie':''} · w tym miesiącu ${am(coinSum(S.ym,r),r.from)}</span></span><button class="btn sm" onclick="editRound('${r.id}')">Edytuj</button></div>`).join('')||'<div class="mini" style="padding-top:4px">Nie ma jeszcze żadnej reguły.</div>'}</div>`;
+    {const r=S.market?.rates;h+=`<div class="card"><h3>🤖 Automat (GitHub)</h3><div class="mini">${r?.date?`Ostatnio: ${r.date.split('-').reverse().join('.')} · kursy walut ${Object.keys(r.fx||{}).length} · ceny ${Object.keys(r.prices||{}).length}${r.gold?' · złoto':''}${r.infl!=null?` · inflacja ${String(r.infl).replace('.',',')}% (${esc(r.inflPer||'')})`:''}${r.nbp!=null?` · stopa NBP ${String(r.nbp).replace('.',',')}%`:''}`:'Jeszcze nie działa – po włączeniu codziennie w dni robocze pobierze kursy NBP, stopę NBP, inflację i ceny instrumentów z symbolem.'}</div></div>`}
     h+=`<div class="card"><h3>🐾 Bailey i Ivo</h3><div class="seg seg3">${[['lots','Dużo'],['few','Mało'],['off','Wyłączone']].map(([k,l])=>`<button aria-pressed="${kotki.mode==k}" onclick="setKotki('${k}')">${l}</button>`).join('')}</div><div class="mini">Dużo – rysunki, porady i żarty. Mało – rysunki i tylko ważne komunikaty. Wyłączone – bez kotków. Ustawienie dotyczy tego telefonu.</div><div class="btns"><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button><button class="btn sm" onclick="showNews(true)">Co nowego</button></div></div>`;
     h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div><div class="seg seg2 acctabs">${Object.entries(ACCTAB).map(([g,l])=>`<button aria-pressed="${S.accTab==g}" onclick="setAccTab('${g}')">${{cur:'💳',sub:'🗂️',sav:'🐷',inv:'📈'}[g]} ${l} (${S.cfg.accs.filter(a=>a.grp==g&&!a.archived).length})</button>`).join('')}</div>${(()=>{const list=S.cfg.accs.filter(a=>a.grp==S.accTab&&!a.archived);
@@ -1675,6 +1690,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
     S.tx=all;syncLabel(s.metadata);render()},onErr));
   unsub.push(onSnapshot(PLC(),{includeMetadataChanges:true},s=>{const p={};s.docs.forEach(d=>p[d.id]={...d.data()});S.plans=p;S.plansSrv=!s.metadata.fromCache;render()},onErr));
   unsub.push(onSnapshot(META(),s=>{S.backup=s.exists()?s.data():null;render()},onErr));
+  unsub.push(onSnapshot(MARKET(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.market=p;render()},onErr));
   unsub.push(onSnapshot(DEBTS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.debts=p;render()},onErr));
   unsub.push(onSnapshot(HOLD(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.hold=p;render()},onErr));
   unsub.push(onSnapshot(SLIPS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data().s||{}));S.slips=p;render()},onErr));
@@ -1682,4 +1698,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(INV(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.inv=p;render()},onErr));
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-Object.assign(window,{showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
+Object.assign(window,{saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,updateValue,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,calendarExport,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,delInv,exportJson,logout});
