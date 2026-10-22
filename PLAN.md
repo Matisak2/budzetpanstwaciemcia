@@ -108,8 +108,58 @@ Strona z planem dla Werci: https://claude.ai/artifact/LxDu6XeH9GH9F1VSK3sSJL
 ## Etap 12. Okno „Na dziś”
 - [x] Opłaty, pensje, przypomnienie po 20:00 (gdy danego dnia nic nie wpisano), wydatki roczne, auto, należności, obligacje, limity, kopia – tylko w aplikacji, bez kalendarza
 
+# Część 2 – automatyzacja, wygoda i wersja demo (uzgodnione z Matim)
+Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komendę Matiego, dane nigdy nie znikają. Wszystko w darmowych limitach (GitHub Actions w publicznym repo bez limitu minut, Firestore Spark, Gmail).
+
+## Etap A. Automat bez przerw, prawdziwe powiadomienia, strażnik porządku
+- [ ] Ochrona przed wyłączeniem automatu po 60 dniach: raz w miesiącu automat dopisuje mały plik z datą (zeruje licznik GitHuba)
+- [ ] Gdy automat kilka dni roboczych nic nie pobierze → powiadomienie „🤖 Automat nie działa” z przyciskiem do GitHuba
+- [ ] Prawdziwe powiadomienia (Web Push) na iPhone'ach obojga (aplikacja na ekranie głównym, iOS 16.4+): ⚙️ „Włącz powiadomienia” na każdym telefonie; klucze generuje automat sam (bez nowych sekretów)
+- [ ] Rano ok. 7:30 „🔔 Na dziś” (tylko gdy coś czeka), wieczorem ok. 20:00 tylko gdy danego dnia nic nie wpisano; najwyżej 2 dziennie; stuknięcie otwiera właściwe miejsce (godziny mogą się spóźnić do ok. 40 min – ograniczenie GitHuba)
+- [ ] Wspólne sprawy (opłaty, wydatki roczne, auto, kopia, strażnik) do obojga; osobiste (pasek pensji, IKZE, JDG) tylko do właściciela
+- [ ] Telefon z włączonymi powiadomieniami nie pokazuje już okienek „Na dziś” w aplikacji (dzwonek 🔔 zostaje); telefon bez powiadomień – jak dziś
+- [ ] Logika „Na dziś” w osobnym pliku, wspólnym dla aplikacji i automatu
+- [ ] Strażnik porządku co tydzień: zdublowane wpisy, wpisy bez pozycji, ujemne saldo konta bieżącego, niezgodne paski pensji – w „Na dziś” i w porannym powiadomieniu; sam niczego nie zmienia
+
+## Etap B. Maile: kopia zapasowa i podsumowanie miesiąca
+- [ ] Wysyłka z Gmaila Matiego (weryfikacja dwuetapowa włączona → „hasło do aplikacji” w sekretach GitHuba; poprowadzić krok po kroku)
+- [ ] Adresy odbiorców = adresy logowania z Firebase (automat odczytuje je sam); aplikacja zapamiętuje, który adres to Mati, a który Wercia
+- [ ] Kopia zapasowa **raz w miesiącu** (pierwsza niedziela miesiąca ok. 21:00), spakowana, **tylko do Matiego**; wczytuje się przez ⚙️ „Wczytaj kopię”; nigdy do repozytorium
+- [ ] Podsumowanie miesiąca 1. dnia miesiąca **do obojga**: plan a wydatki, przekroczone, odłożone – pastelowo, z kotkami
+
+## Etap C. Inwestycje i opłaty – automatycznie
+- [ ] Obligacje dokładnie: historia inflacji miesiąc po miesiącu, rok odsetkowy = marża + inflacja z miesiąca 2 miesiące przed jego początkiem (EDO, COI, ROS, ROD); próba pobrania inflacji z GUS (zapasowo Eurostat); oprocentowanie każdego roku można poprawić ręcznie; podpowiedź oprocentowania nowej serii
+- [ ] PPK i fundusze TFI: przy koncie wybór instytucji i funduszu z listy (do wyboru, bo jeszcze nie wiadomo), wpisuje się liczbę jednostek, automat codziennie pobiera wycenę jednostki
+- [ ] Wycena kont z instrumentami sama na koniec miesiąca (wpis „(automat)”, przy weekendzie w pierwszy dzień roboczy z datą ostatniego dnia miesiąca; można usunąć w Rejestrze)
+- [ ] Wykrywanie stałych opłat spoza 📌 Stałe: podobna kwota i notatka 3 miesiące z rzędu → „Dodać do opłat stałych?”
+
+## Etap D. Wygoda na co dzień
+- [ ] Siri / Skróty na iPhone'ach: „Hej Siri, wydatek” otwiera okienko nowego wydatku; skróty z gotową kwotą i notatką (adres z parametrami); instrukcja krok po kroku
+- [ ] Skróty na ikonie aplikacji (przytrzymanie ikony: ➕ Wydatek, 🔔 Na dziś, 📊 Budżet – na iPhonie mogą się nie pokazać, wtedy zostaje Siri)
+- [ ] „Kto co zmienił”: przy każdym wpisie zapisuje się, z czyjego telefonu dodano / zmieniono; widać po otwarciu wpisu i na liście ostatnich zmian w ⚙️ (nie w wierszach Rejestru)
+- [ ] Gwarancje: przy zakupie od 300 zł pytanie o gwarancję (domyślnie 2 lata – rękojmia); przypomnienie miesiąc przed końcem; lista „co ma jeszcze gwarancję”
+- [ ] Pomocnik PIT osobno dla Matiego i Werci: oznaczanie wydatków „do ulgi” z prostymi objaśnieniami każdej ulgi (co to, kto może, ile – jako podpowiedź, nie porada podatkowa); w styczniu zestawienie z sumami do zeznania
+
+## Etap E. Wygląd i ergonomia
+- [ ] „Zapisz” przyklejony na dole okienka transakcji + „Zapisz i dodaj kolejny”
+- [ ] Przytrzymanie wpisu w Rejestrze: 📋 Duplikuj, ↩️ Zwrot, 🗑️ Usuń
+- [ ] Przesunięcie palcem w lewo / prawo zmienia miesiąc
+- [ ] Budżet krótszy: w kategorii tylko pozycje z planem lub wydatkami, pod nimi „＋ N pustych pozycji ›”; puste kategorie zebrane na dole w jednej linijce; filtr „Bez planu” pokazuje wszystko
+- [ ] Mniej zakładek: Budżet · Rejestr · Stałe · Majątek (Oszczędności + Konta z przełącznikiem) · Analiza dostępna z Budżetu (📊); przycisk ➕ zostaje tam, gdzie jest teraz (zaokrąglony kwadrat)
+- [ ] Lupa 🔍 w nagłówku: jedno wyszukiwanie po wpisach, pozycjach, kontach i instrumentach
+- [ ] Większe liczby, krótsze opisy, szczegóły pod „więcej ›”
+- [ ] ⚙️ „🎨 Wygląd” na każdym telefonie: kolor akcentu (pastelowe kółka; na start Wercia różowy, Mati miętowy) i rozmiar tekstu A / A+ / A++
+- [ ] Płynniejsze przejścia (paski „rosną”, szkic ekranu zamiast „Wczytywanie…”)
+- [ ] Większe pola do stukania (małe przyciski „Edytuj”, „⋯”)
+
+## Etap F. Wersja demonstracyjna
+- [ ] Osobny link `…/budzetpanstwaciemcia/demo/` do wysłania znajomym; bez połączenia z Firebase i bez dostępu do Waszych danych
+- [ ] Na starcie „Jak masz na imię?” – imię oglądającego; druga osoba wymyślona (losowe imię, można zmienić)
+- [ ] Wymyślone dane z całego roku (pensje, zakupy, opłaty, konta, ETF, obligacje, kredyt, cele, auto); zmiany tylko w przeglądarce oglądającego, przycisk „Zacznij od nowa”; pasek „Wersja demonstracyjna – dane są wymyślone”
+- [ ] Imiona Mati / Wercia wyciągnięte z kodu do ustawień (w Waszej aplikacji bez zmian)
+
 ## Rezygnujemy
-Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu.
+Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 
 ## Później
 Kopia zapasowa na domowy NAS (5–10 TB) – Mati odezwie się, gdy kupi sprzęt.
