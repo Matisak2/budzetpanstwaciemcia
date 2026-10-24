@@ -1,8 +1,8 @@
 /* 🔔 „Na dziś” and the tidiness guard – pure functions shared by the app and the GitHub automat (no DOM, no Firebase).
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
-   and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
+   and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,addDays,addMonths,money,zl} from './util.js';
-import {balance,carStats,dueAlerts,subsMap} from './logic.js';
+import {balance,carStats,dueAlerts,fixedDate,subsMap} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS} from './inv.js';
 import {calcNet} from './pay.js';
 export const ownerOf=a=>a?.owner||(/wercia|weronika/i.test(a?.name||'')?'Wercia':/mati/i.test(a?.name||'')?'Mati':'Wspólne');
@@ -15,14 +15,34 @@ export function yearStateP(cfg,tx,hraw,ym,today){const id=hraw?.yearAcc,years=cf
   const now=balance(cfg,tx,id,addDays(today,1)),base=yearPlan(years,balance(cfg,tx,id,ym+'-01'),ym),need=base.reduce((a,x)=>a+x.need,0);
   const dep=tx.filter(t=>t.type=='tr'&&t.to===id&&t.date.startsWith(ym)).reduce((a,t)=>a+(t.amount2??t.amount),0);
   return{id,now,list:yearPlan(years,now,ym),need,dep,left:Math.max(0,need-dep),soon:base.filter(x=>x.months<=2&&x.fill<x.it.amount)}}
-/* a liability or receivable: what is left, estimated end, overdue */
+/* 🔻 interest of a liability: a monthly rate from the nominal yearly % (not RRSO) */
+const mRate=d=>d?.dir=='owe'&&+d.rate>0?d.rate/1200:0;
+const mDiff=(a,b)=>(+b.slice(0,4)-+a.slice(0,4))*12+(+b.slice(5,7)-+a.slice(5,7));
+/* a liability or receivable: what is left, estimated end, overdue;
+   with interest only the capital part of a payment lowers the debt (the first payment of a month pays that month's interest first; the payoff is capital only) */
 export function debtStateP(d,tx,today){if(!d?.id)return{left:0,paid:0,pc:0,src:'auto',end:null,pays:[],late:false};
   const pays=tx.filter(t=>d.dir=='owe'?t.debt===d.id:t.lendOf===d.id).sort((a,b)=>a.date.localeCompare(b.date)),paid=pays.reduce((a,t)=>a+t.amount,0);
-  const bl=Object.entries(d.left||{}).sort((a,b)=>a[0].localeCompare(b[0])).at(-1);let left=Math.max(0,(d.start||0)-paid),src='auto';
-  if(d.mode=='bank'&&bl){const after=pays.filter(t=>t.date>bl[0]).reduce((a,t)=>a+t.amount,0);left=Math.max(0,bl[1]-after);src=bl[0]}
+  const r=mRate(d),run=(bal,L)=>{let ym='';for(const t of L){const i=!r||t.payoff||t.date.slice(0,7)==ym?0:Math.round(bal*r);ym=t.date.slice(0,7);bal=Math.max(0,bal-Math.max(0,t.amount-i))}return bal};
+  const bl=Object.entries(d.left||{}).sort((a,b)=>a[0].localeCompare(b[0])).at(-1);let left=run(d.start||0,pays),src='auto';
+  if(d.mode=='bank'&&bl){left=run(bl[1],pays.filter(t=>t.date>bl[0]));src=bl[0]}
   const pc=d.start?Math.min(100,(1-left/d.start)*100):0,last3=pays.slice(-3),avg=last3.length?last3.reduce((a,t)=>a+t.amount,0)/last3.length:(d.inst||0);
-  const months=left&&(d.inst||avg)>0?Math.ceil(left/(d.inst||avg)):null,end=months?addMonths(today.slice(0,7),months):null;
+  const A=d.inst||avg,months=left&&A>0&&A>left*r?Math.ceil(r?-Math.log(1-left*r/A)/Math.log(1+r):left/A):null,end=months?addMonths(today.slice(0,7),months):null;
   return{left,paid,pc,src,end,pays,late:d.dir=='lent'&&!!d.until&&d.until<today&&left>0}}
+/* 🔻 the instalment to pay this month – a hint the person can change:
+   the decreasing instalment from the rate, else the instalment from the contract, else an equal instalment from the rate,
+   else what is left ÷ months to the end, else the last one paid; plus its interest part, the end and the interest still to pay */
+export function rataP(d,tx,today){const st=debtStateP(d,tx,today),L=st.left;if(!L||d.dir!='owe')return null;
+  const r=mRate(d),ym=today.slice(0,7),now=st.pays.some(t=>t.date.startsWith(ym)&&!t.payoff),int=Math.round(L*r);
+  const n=d.until?Math.max(1,mDiff(ym,d.until.slice(0,7))+(now?0:1)):0;
+  let amt=0,src='';
+  if(d.amort=='dec'&&r&&n){amt=Math.round(L/n)+int;src='dec'}else if(d.inst>0){amt=d.inst;src='inst'}
+  else if(r&&n){amt=Math.round(L*r/(1-Math.pow(1+r,-n)));src='ann'}else if(n){amt=Math.ceil(L/n);src='eq'}
+  else if(st.pays.length){amt=st.pays.filter(t=>!t.payoff).at(-1)?.amount||0;src='last'}
+  if(!amt)return null;const last=amt>=L+int;amt=Math.min(amt,L+int);
+  /* the months that are left and their interest, paying this way every month (rounding leaves at most a grosz per instalment – not a month of its own) */
+  let bal=L,k=0,intAll=0;const cap0=src=='dec'?Math.round(L/n):0;
+  while(bal>0&&k<600){const i=Math.round(bal*r),pay=src=='dec'?Math.min(bal,cap0)+i:Math.min(amt,bal+i);if(pay<=i){k=-1;break}intAll+=i;bal-=pay-i;if(bal<=n)bal=0;k++}
+  return{amt,int:Math.min(int,amt),cap:amt-Math.min(int,amt),n,src,last,paid:now,left:L,rate:r*1200,months:k>0?k:null,never:k<0,end:k>0?addMonths(ym,k-(now?0:1)):null,intAll:k>0?intAll:null}}
 /* 💰 saving up for a one-time payoff: every liability counts what was put aside for it – tx.save{debtId:grosze}
    (+ a transfer into the account, − money taken back, the payoff and its interest) */
 export const savedP=(id,tx)=>tx.reduce((a,t)=>a+(+t.save?.[id]||0),0);
@@ -102,6 +122,9 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
     if(n<=7)add('🔺',`${d.party||d.name} – zwrot ${zl(s.left)} ${n<0?'po terminie ('+dmy(d.until)+')':n==0?'dziś':'za '+n+' '+plu(n,'dzień','dni','dni')}`,{a:'lent'},'Zobacz',n<0?'bad':'',person(d.payer))}
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='owe'||!x.saveAcc)continue;const d={id,...x},s=debtStateP(d,tx,today),saved=savedP(id,tx),from=+d.day||1;
     if(s.left>0&&saved>=s.left&&day>=from&&day<=from+2)add('💰',`${d.name}: uzbierane ${zl(saved)} – możesz spłacić całość (${zl(s.left)}).`,{a:'owe'},'Zobacz','',person(d.payer))}
+  for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='owe'||!x.day||(cfg.fixed||[]).some(f=>f.debt==id&&f.kind!='inc'))continue;const d={id,...x},s=debtStateP(d,tx,today);
+    const due=fixedDate(d,ym),n=dd(today,due);if(!s.left||n>1||(d.date&&d.date>due)||s.pays.some(t=>t.date.startsWith(ym)))continue;const r=rataP(d,tx,today);
+    add('🔻',`Rata: ${d.name}${r?' – ok. '+zl(r.amt):''} · ${n<0?'po terminie ('+dmy(due)+')':n==0?'termin dziś':'termin jutro'}`,{a:'rata',id},'Wpisz',n<0?'bad':'',person(d.payer))}
   for(const m of maturitiesP(cfg,hold,today,30))add(IICON[m.it.kind],`${m.it.kind=='obl'?'Wykup':'Koniec lokaty'}: ${m.it.name} – ${dmy(m.end)}`,{a:'inst',acc:m.a.id},'Zobacz','',person(ownerOf(m.a)));
   const mo=+today.slice(5,7),y=today.slice(0,4),wr=cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   if(mo==12)for(const a of wr.filter(a=>wrapOf(a)=='ikze')){const left=limitOf(a,y,hraw?.limits)-paidInYear(tx,a.id,y);if(left>0)add('🛡️',`${a.name}: do 31.12 możesz wpłacić jeszcze ${zl(left)} (ulga w PIT).`,{a:'tr',to:a.id},'Wpłać','',person(ownerOf(a)))}

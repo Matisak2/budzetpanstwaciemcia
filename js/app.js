@@ -7,7 +7,7 @@ import {CELEBRATE,HELP,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} f
 import {PAL,P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,gainSvg,sankeySvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
 import {CURS,HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,catMark,freeHue,pastel,seed,tint} from './data.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,addM,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue} from './inv.js';
-import {ULGI,pitSummaryP,recurringP,automatStale,debtStateP,savedP,saveSplitP,limitPropP,maturitiesP,remStateP,todayItems as todayItemsP,yearStateP} from './today.js';
+import {ULGI,pitSummaryP,recurringP,automatStale,debtStateP,rataP,savedP,saveSplitP,limitPropP,maturitiesP,remStateP,todayItems as todayItemsP,yearStateP} from './today.js';
 import {KINDS,TAXF,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
 import {yearBody,yearStats} from './report.js';
 import {anomalies,avgActuals,carStats,seasonal,actuals,agg,balance,buildIcs,cleanCat,dueAlerts,fixedDate,invPln,liveOf,planRecon,roundUp,status,subsMap} from './logic.js';
@@ -280,7 +280,7 @@ function openTx(id,pre){if(guard())return;
   $('mwar').value=t?.war?'date':'';$('mward').value=t?.war||'';$('mulga').value=t?.ulga||'';S.ulgaOpen=!!t?.ulga;updX();
   {const f=x=>new Date(x).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
    $('shWho').textContent=t&&(t.by||t.eby)?[t.by?`➕ ${t.by=='Wercia'?'dodała':'dodał'} ${t.by}${t.ts?' · '+f(t.ts):''}`:'',t.eby?`✏️ ${t.eby=='Wercia'?'zmieniła':'zmienił'} ${t.eby}${t.eAt?' · '+f(t.eAt):''}`:''].filter(Boolean).join('   '):'';$('shWho').hidden=!$('shWho').textContent}
-  setMs(t?t.sub:pre?.sub||(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');fillProj(t?.proj||pre?.proj||'');$('mlit').value=t?.lit?String(t.lit).replace('.',','):'';$('modo').value=t?.odo||'';S.coinOn=true;updCoin();
+  setMs(t?t.sub:pre?.sub||(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');updDebtHint(!t&&!pre?.amount);fillProj(t?.proj||pre?.proj||'');$('mlit').value=t?.lit?String(t.lit).replace('.',','):'';$('modo').value=t?.odo||'';S.coinOn=true;updCoin();
   if(!$('fxc').options.length)$('fxc').innerHTML=CURS.map(([c,n])=>`<option value="${c}">${c} – ${esc(n)}</option>`).join('');
   $('ma2').value=t?.amount2?f2(t.amount2):'';S.fxOpen=!!t?.fxCur;$('fxc').value=t?.fxCur||'EUR';$('fxa').value=t?.fxAmt?f2(t.fxAmt):'';updFx();
   SV={mode:'',ids:'',auto:t?'x':pre?.saveFor||''};$('msaveRows').innerHTML='';updSave();if(t?.save)$('msaveRows').querySelectorAll('input').forEach(i=>{const v=+t.save[i.dataset.sv]||0;if(v)i.value=f2(Math.abs(v))});updSaveHint();
@@ -365,7 +365,7 @@ $('mproj').onchange=()=>updProj();
 $('mwar').onchange=()=>{if($('mwar').value=='date'&&!$('mward').value)$('mward').value=addM($('md').value||td(),24);updX()};
 $('mulga').onchange=()=>updX();$('mulgaBtn').onclick=()=>{S.ulgaOpen=true;updX()};
 /* rarely needed: a liability and a project stay folded into small buttons at the bottom, unless the entry already has one */
-$('mdebtBtn').onclick=()=>{S.debtOpen=true;updDebt()};$('mprojBtn').onclick=()=>{S.projOpen=true;updProj()};
+$('mdebtBtn').onclick=()=>{S.debtOpen=true;updDebt()};$('mdebt').onchange=()=>updDebtHint(true);$('mprojBtn').onclick=()=>{S.projOpen=true;updProj()};
 $('mulga').innerHTML='<option value="">— bez ulgi —</option>'+Object.entries(ULGI).map(([k,u])=>`<option value="${k}">${u.n}</option>`).join('');
 $('ma2').oninput=$('fxa').oninput=$('fxc').onchange=()=>updFx();$('mto').onchange=()=>{updFx();updSave()};
 $('fxBtn').onclick=()=>{S.fxOpen=true;updFx();$('fxa').focus()};
@@ -1184,19 +1184,20 @@ function setAccView(k){S.accView=k;S.recon=false;window.scrollTo(0,0);render()}
 const accSegH=()=>`<div class="seg seg3">${[['acc','👛 Konta'],['owe','🔻 My winni'],['lent','🔺 Nam winni']].map(([k,l])=>`<button aria-pressed="${(S.accView||'acc')==k}" onclick="setAccView('${k}')">${segL(l)}</button>`).join('')}</div>`;
 function debtsH(dir){const L=debtList(dir).map(d=>({d,st:debtState(d)})),act=L.filter(x=>x.st.left>0),done=L.filter(x=>x.st.left<=0),owe=dir=='owe';let h='';
   const tot=act.reduce((a,x)=>a+x.st.left,0);
-  h+=`<div class="worth ${owe?'':'wsp'}"><div class="l">${owe?'Razem do spłaty':'Razem do oddania Wam'}</div><div class="v num">${zl(tot)}</div><div class="s">${OWN.map(o=>`${o} ${zl0(act.filter(x=>(x.d.payer||'Wspólne')==o).reduce((a,x)=>a+x.st.left,0))}`).join(' · ')} · zmniejsza${owe?'':' się'} ${owe?'łączny majątek':'– powiększa łączny majątek'}</div></div>`;
+  h+=`<div class="worth ${owe?'':'wsp'}"><div class="l">${owe?'Razem do spłaty':'Razem do oddania Wam'}</div><div class="v num">${zl(tot)}</div><div class="s">${OWN.map(o=>`${o} ${zl0(act.filter(x=>(x.d.payer||'Wspólne')==o).reduce((a,x)=>a+x.st.left,0))}`).join(' · ')} · w 👛 Konta widać to osobno – stan kont się nie zmienia</div></div>`;
   if(!owe){const sid=S.cfg.cats.flatMap(c=>c.subs).find(s=>/udzielone pożyczki/i.test(s.name))?.id,old=sid?liveOf(S.tx).filter(t=>t.type=='exp'&&t.sub===sid):[];
     if(old.length)h+=`<div class="note">💡 W pozycji „Udzielone pożyczki” jest ${old.length} ${plu(old.length,'wydatek','wydatki','wydatków')} (${zl(old.reduce((a,t)=>a+t.amount,0))}). Pożyczka to nie wydatek – ktoś Wam ją odda. <button class="btn sm primary" onclick="moveLent()">Przenieś do należności</button></div>`}
   h+=`<button class="btn dark" onclick="editDebt(null,'${dir}')">+ ${owe?'Dodaj zobowiązanie':'Pożyczyliśmy komuś'}</button>`;
   if(!L.length)h+=catsEmpty(owe?'Dodaj kredyt, raty albo pożyczkę. Raty w Budżecie zostają wydatkami, a tu zobaczysz, ile jeszcze zostało.':'Zapisz, komu pożyczyliście pieniądze i do kiedy ma oddać. Przypomnę o terminie.',1,'envelope');
   const tx=liveOf(S.tx),svH=(d,st)=>{if(!owe||!d.saveAcc||!st.left)return'';const sv=savedP(d.id,tx),pc=Math.min(100,sv/st.left*100);
     return`<div class="dsave"><div class="r1"><span>💰 Odłożone na „${esc(accN(d.saveAcc))}”</span><b class="num">${zl(sv)}</b></div><div class="gbar"><i style="width:${Math.max(0,pc).toFixed(1)}%"></i></div><div class="mini">${sv>=st.left?'✓ Uzbierane – możesz spłacić całość':`${Math.floor(Math.max(0,pc))}% · brakuje ${zl(st.left-sv)}`}</div></div>`};
-  const card=({d,st})=>`<div class="debt${st.late?' late':''}"><div class="r1"><b>${dIcon(d)} ${esc(d.name)}</b><b class="num">${zl(st.left)}</b></div>
+  const raH=ra=>ra?`<div class="mini">🔻 ${ra.paid?'✓ w tym miesiącu zapłacona · następna rata':'rata w tym miesiącu'}: ok. <b>${zl(ra.amt)}</b>${ra.int?` (kapitał ${zl(ra.cap)} · odsetki ${zl(ra.int)})`:''}${ra.never?' · <b class="t-exp">⚠️ rata nie pokrywa odsetek</b>':ra.end?` · koniec: ${MN[+ra.end.slice(5)-1].toLowerCase()} ${ra.end.slice(0,4)}`:''}${ra.intAll?` · odsetki do końca ok. ${zl0(ra.intAll)}`:''}</div>`:'';
+  const card=({d,st})=>{const ra=owe?rataP(d,tx,td()):null;return`<div class="debt${st.late?' late':''}"><div class="r1"><b>${dIcon(d)} ${esc(d.name)}</b><b class="num">${zl(st.left)}</b></div>
     <div class="mini">${esc(d.party||'')}${d.party?' · ':''}${owe?'spłaca':'pieniądze'}: ${esc(d.payer||'Wspólne')}${d.inst?` · rata ${zl(d.inst)}${d.day?` do ${d.day}.`:''}`:''}${d.rate?` · ${esc(String(d.rate).replace('.',','))}%${d.rtype=='var'?' zmienne':' stałe'}`:''}</div>
     <div class="gbar"><i style="width:${st.pc.toFixed(1)}%"></i></div>
-    <div class="mini">${owe?'spłacono':'oddano'} ${zl((d.start||0)-st.left)} z ${zl(d.start||0)} (${Math.round(st.pc)}%)${st.left?(owe?(st.end?` · szacowany koniec: ${MN[+st.end.slice(5)-1].toLowerCase()} ${st.end.slice(0,4)}`:d.until?` · do ${d.until.split('-').reverse().join('.')}`:''):(d.until?` · termin zwrotu ${d.until.split('-').reverse().join('.')}`:'')):' · ✓ '+(owe?'spłacone':'oddane')}${d.mode=='bank'&&st.src!='auto'?` · wg banku z ${st.src.split('-').reverse().join('.')}`:''}</div>
-    ${svH(d,st)}${st.late?'<div class="mini t-exp"><b>⚠️ Termin zwrotu minął</b></div>':''}${d.note?`<div class="mini">📝 ${esc(d.note)}</div>`:''}
-    <div class="btns" style="gap:6px;margin-top:4px">${st.left?(owe?`<button class="chip" onclick="openTx(null,{type:'exp',debt:'${d.id}'})">+ Rata</button>${d.saveAcc?`<button class="chip sv" onclick="openTx(null,{type:'tr',to:'${d.saveAcc}',saveFor:'${d.id}'})">💰 Odłóż</button>${savedP(d.id,tx)>0?`<button class="chip" onclick="openTx(null,{type:'tr',from:'${d.saveAcc}',saveFor:'${d.id}'})">↑ Weź z odłożonych</button>`:''}`:''}<button class="chip" onclick="payoffDebt('${d.id}')">✅ Spłać całość</button>${d.mode=='bank'?`<button class="chip" onclick="setDebtLeft('${d.id}')">✎ Pozostało</button>`:''}`:`<button class="chip" onclick="lentBack('${d.id}')">↩️ Zwrot</button>`):''}<button class="chip" onclick="editDebt('${d.id}')">Edytuj</button></div></div>`;
+    <div class="mini">${owe?'spłacono':'oddano'} ${zl((d.start||0)-st.left)} z ${zl(d.start||0)} (${Math.round(st.pc)}%)${st.left?(owe?(!ra&&st.end?` · szacowany koniec: ${MN[+st.end.slice(5)-1].toLowerCase()} ${st.end.slice(0,4)}`:d.until&&!ra?.end?` · do ${d.until.split('-').reverse().join('.')}`:''):(d.until?` · termin zwrotu ${d.until.split('-').reverse().join('.')}`:'')):' · ✓ '+(owe?'spłacone':'oddane')}${d.mode=='bank'&&st.src!='auto'?` · wg banku z ${st.src.split('-').reverse().join('.')}`:''}</div>
+    ${raH(ra)}${svH(d,st)}${st.late?'<div class="mini t-exp"><b>⚠️ Termin zwrotu minął</b></div>':''}${d.note?`<div class="mini">📝 ${esc(d.note)}</div>`:''}
+    <div class="btns" style="gap:6px;margin-top:4px">${st.left?(owe?`<button class="chip" onclick="openTx(null,{type:'exp',debt:'${d.id}'})">+ Rata</button>${d.saveAcc?`<button class="chip sv" onclick="openTx(null,{type:'tr',to:'${d.saveAcc}',saveFor:'${d.id}'})">💰 Odłóż</button>${savedP(d.id,tx)>0?`<button class="chip" onclick="openTx(null,{type:'tr',from:'${d.saveAcc}',saveFor:'${d.id}'})">↑ Weź z odłożonych</button>`:''}`:''}<button class="chip" onclick="payoffDebt('${d.id}')">✅ Spłać całość</button>${d.mode=='bank'?`<button class="chip" onclick="setDebtLeft('${d.id}')">✎ Pozostało</button>`:''}`:`<button class="chip" onclick="lentBack('${d.id}')">↩️ Zwrot</button>`):''}<button class="chip" onclick="editDebt('${d.id}')">Edytuj</button></div></div>`}
   h+=act.map(card).join('');
   if(done.length)h+=`<div class="h2">${owe?'Spłacone':'Oddane'}</div>`+done.map(card).join('');
   return h}
@@ -1209,7 +1210,8 @@ async function editDebt(id,dir){if(guard())return;const d0=id?S.debts[id]:null;d
     {id:'d',label:'Data',type:'date',value:d0?.date||td()}];
   if(owe)f.push({id:'m',label:'Jak liczyć, ile zostało',type:'select',value:d0?.mode||'auto',options:[['bank','Kredyt w banku – wpisuję „pozostało” z aplikacji banku'],['auto','Sama odejmuj spłaty (np. pożyczka prywatna, raty 0%)']]},
     {id:'i',label:'Rata miesięczna (zł, zwykle)',type:'decimal',value:d0?.inst?f2(d0.inst):''},{id:'dy',label:'Dzień raty (1–31)',type:'int',value:d0?.day||''},
-    {id:'r',label:'Oprocentowanie (%)',type:'decimal',value:d0?.rate!=null?String(d0.rate).replace('.',','):''},{id:'rt',label:'Oprocentowanie',type:'select',value:d0?.rtype||'fix',options:[['fix','Stałe'],['var','Zmienne (np. WIBOR / WIRON + marża)']]},
+    {id:'r',label:'Oprocentowanie nominalne (%, nie RRSO)',type:'decimal',value:d0?.rate!=null?String(d0.rate).replace('.',','):''},{id:'rt',label:'Oprocentowanie',type:'select',value:d0?.rtype||'fix',options:[['fix','Stałe'],['var','Zmienne (np. WIBOR / WIRON + marża)']]},
+    {id:'am',label:'Raty',type:'select',value:d0?.amort||'eq',options:[['eq','Równe (co miesiąc ta sama rata)'],['dec','Malejące']]},
     {id:'sa',label:'💰 Zbieram na spłatę całości na koncie',type:'select',value:d0?.saveAcc||'',options:[['','— nie zbieram —'],...accOpts()]});
   f.push({id:'u',label:owe?'Do kiedy (ostatnia rata)':'Termin zwrotu',type:'date',value:d0?.until||''},{id:'t',label:'Warunki, notatki',value:d0?.note||''});
   if(!d0)f.push({id:'c',label:owe?'Pieniądze wpłynęły na konto':'Pieniądze wyszły z konta',type:'select',value:'',options:[['','— nie zapisuj ruchu na koncie —'],...accOpts()]});
@@ -1217,7 +1219,7 @@ async function editDebt(id,dir){if(guard())return;const d0=id?S.debts[id]:null;d
   if(!r)return;if(r=='alt'){if(!await ask({title:'Usunąć?',text:d0.name+'\nWpisy w rejestrze zostaną.',ok:'Usuń',danger:true}))return;merge(doc(DEBTS(),id),{deleted:true});return toast('Usunięto')}
   const start=gr(r.a);if(!r.n.trim()||start<=0)return toast('Podaj nazwę i kwotę','bad');if(!isDate(r.d))return toast('Wybierz datę','bad');
   const body={dir,kind:r.k,name:r.n.trim(),party:r.p.trim(),payer:r.w,start,date:r.d,until:isDate(r.u)?r.u:'',note:r.t.trim(),deleted:false,ts:Date.now()};
-  if(owe){body.mode=r.m;body.inst=gr(r.i);body.day=Math.round(pnum(r.dy))||0;body.rate=r.r.trim()?pn(r.r):null;body.rtype=r.rt;body.saveAcc=r.sa||''}
+  if(owe){body.mode=r.m;body.inst=gr(r.i);body.day=Math.round(pnum(r.dy))||0;body.rate=r.r.trim()?pn(r.r):null;body.rtype=r.rt;body.amort=r.am;body.saveAcc=r.sa||''}
   const did=id||'d'+rid();merge(doc(DEBTS(),did),body);
   if(!d0&&r.c){const ym=r.d.slice(0,7);putTx(ym,'t'+rid(),owe?{type:'inc',amount:start,date:r.d,sub:'',acc:r.c,to:'',who:S.who,note:'🔻 Pożyczka od '+(body.party||body.name),debtIn:did,deleted:false,ts:Date.now()}
     :{type:'lend',amount:start,date:r.d,sub:'',acc:r.c,to:'',who:S.who,note:'🔺 Pożyczka dla '+(body.party||body.name),lendId:did,deleted:false,ts:Date.now()})}
@@ -1252,6 +1254,9 @@ async function moveLent(){if(guard())return;const sid=S.cfg.cats.flatMap(c=>c.su
   toast('Przeniesiono do należności')}
 /* the sheet: which liability an expense pays off */
 function fillDebt(sel){const L=debtList('owe').filter(d=>debtState(d).left>0||d.id==sel);$('mdebt').innerHTML='<option value="">— nie —</option>'+L.map(d=>`<option value="${d.id}">${esc(dIcon(d)+' '+d.name)}</option>`).join('');$('mdebt').value=sel||'';updDebt()}
+const rataTxt=r=>r?`💡 ${{dec:'rata malejąca',inst:'rata z umowy',ann:`rata równa (${String(+r.rate.toFixed(2)).replace('.',',')}%, ${r.n} ${plu(r.n,'rata','raty','rat')} do końca)`,eq:`${zl(r.left)} ÷ ${r.n} ${plu(r.n,'miesiąc','miesiące','miesięcy')} do końca`,last:'jak ostatnio'}[r.src]}: ${zl(r.amt)}${r.int?` – w tym odsetki ok. ${zl(r.int)}`:''}${r.last?' · ostatnia rata':''}`:'';
+function updDebtHint(fill){const d=S.debts[$('mdebt').value],r=d&&!S.edit?rataP({id:$('mdebt').value,...d},liveOf(S.tx),$('md').value||td()):null;$('mdebtHint').textContent=rataTxt(r);$('mdebtHint').hidden=!r;
+  if(fill&&r&&!calcAmt($('ma').value)){$('ma').value=f2(r.amt);$('ma').oninput()}}
 function updDebt(){const av=S.etype=='exp'&&!S.refEdit&&$('mdebt').options.length>1;$('mdebtWrap').hidden=!(av&&(S.debtOpen||$('mdebt').value));$('mdebtBtn').hidden=!av||!$('mdebtWrap').hidden}
 /* ---------- 📝 planning: positions to plan, the 3-month average ---------- */
 function toPlanH(){const ym=S.ym,cur=td().slice(0,7);if(ym<cur)return'';const pl=S.plans[ym]||{},{avg}=avgActuals(S.cfg,liveOf(S.tx),ym,3);
@@ -1446,7 +1451,7 @@ function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='today')return showToday();if(a=='add')return openTx(null,{type:['exp','inc','tr'].includes(g.type)?g.type:'exp',...(g.amount?{amount:pg(g.amount)}:{}),...(g.note?{note:g.note}:{})});
   if(a=='pit'){S.fixSub='pay';S.payView='y';S.ym=(g.y||String(+td().slice(0,4)-1))+'-12';return goTab('fix')}if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);
   if(a=='pay'){S.fixSub='pay';return goTab('fix')}if(a=='year')return goYear();if(a=='rem'){S.fixSub='rem';return goTab('fix')}
-  if(a=='lent'||a=='owe'){S.accView=a;return goTab('acc')}if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
+  if(a=='lent'||a=='owe'){S.accView=a;return goTab('acc')}if(a=='rata')return openTx(null,{type:'exp',debt:g.id});if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
   if(a=='tr')return openTx(null,{type:'tr',to:g.to});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);
@@ -1759,15 +1764,18 @@ function render(){
     const accsO=(ow,g)=>S.cfg.accs.filter(a=>(!ow||accOwner(a)==ow)&&(!g||a.grp==g)),sumO=(ow,g)=>accsO(ow,g).filter(isP).reduce((x,a)=>x+bal(a),0),fxO=(ow,g)=>fxOf(accsO(ow,g),bal);
     const oldInv=ow=>invList.filter(i=>!ow||(i.owner||'Wspólne')==ow).reduce((x,i)=>x+i.pln,0);
     const GL={cur:'bieżące',sub:'subkonta',sav:'oszczędności',inv:'inwestycje'};
-    const parts=ow=>['cur','sub','sav','inv'].map(g=>[g,sumO(ow,g)+(g=='inv'?oldInv(ow):0)]).filter(([g,v])=>v||g=='cur').map(([g,v])=>`${GL[g]} ${zl0(v)}${fxPlus(fxO(ow,g))}`).join(' · ')+(debtSum('owe',ow)?` · zobowiązania −${zl0(debtSum('owe',ow))}`:'')+(debtSum('lent',ow)?` · należności +${zl0(debtSum('lent',ow))}`:'');
-    const total=ow=>sumO(ow)+oldInv(ow)-debtSum('owe',ow)+debtSum('lent',ow),otag=ow=>`<span class="otag o-${ow=='Mati'?'m':ow=='Wercia'?'w':'s'}">${ow}</span>`;
+    const parts=ow=>['cur','sub','sav','inv'].map(g=>[g,sumO(ow,g)+(g=='inv'?oldInv(ow):0)]).filter(([g,v])=>v||g=='cur').map(([g,v])=>`${GL[g]} ${zl0(v)}${fxPlus(fxO(ow,g))}`).join(' · ')+'';
+    /* liabilities and receivables do not change what is on the accounts – they are shown beside it */
+    const dl=ow=>[debtSum('owe',ow)?`🔻 do spłaty ${zl0(debtSum('owe',ow))}`:'',debtSum('lent',ow)?`🔺 pożyczone innym ${zl0(debtSum('lent',ow))}`:''].filter(Boolean).join(' · ');
+    const dlH=ow=>dl(ow)?`<div class="s">${dl(ow)} · po rozliczeniu wszystkiego: ${zl0(total(ow)-debtSum('owe',ow)+debtSum('lent',ow))}</div>`:'';
+    const total=ow=>sumO(ow)+oldInv(ow),otag=ow=>`<span class="otag o-${ow=='Mati'?'m':ow=='Wercia'?'w':'s'}">${ow}</span>`;
     h+=majSegH()+accSegH()+`<button class="btn dark" style="width:100%" onclick="openRecon()">⚖️ Wyrównaj wszystkie salda naraz</button>`;
     h+=`<div class="seg seg4">${[['all','Wszyscy'],...OWN.map(x=>[x,x])].map(([k,l])=>`<button aria-pressed="${o==k}"${k=='Wercia'?' class="wbtn"':''} onclick="setAccSub('${k}')">${l}${k=='Wercia'?' 🌸':''}</button>`).join('')}</div>`;
     h+=`<div class="ptab ${o=='Wercia'?'pink':''}">`;
     if(o=='all'){const own=OWN.map(x=>[x,total(x)]),pos=own.filter(([,v])=>v>0),pt=pos.reduce((a,[,v])=>a+v,0);
-      h+=`<div class="worth"><div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(total())}${fxSmall(fxO())}</div><div class="s">${parts()}</div></div>`;
-      h+=`<section class="chart"><div class="ct"><b>Czyj majątek</b><span class="mini">stuknij osobę, żeby zobaczyć tylko jej konta</span></div>${pt>0?`<div class="stack">${pos.map(([x,v])=>`<i style="width:${(v/pt*100).toFixed(2)}%;background:${OWN_COL[x]}" data-tip="${x}: ${zl(v)}"></i>`).join('')}</div>`:''}<div class="owners">${own.map(([x,v])=>`<button class="orow" onclick="setAccSub('${x}')"><i style="background:${OWN_COL[x]}"></i><span class="ot"><b>${x}</b><small>${parts(x)}</small></span><b class="num">${zl(v)}</b></button>`).join('')}</div></section>`}
-    else h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}"><div class="l">${o=='Wspólne'?'Wspólny majątek':'Majątek: '+o}</div><div class="v num">${zl(total(o))}${fxSmall(fxO(o))}</div><div class="s">${parts(o)}</div></div>`;
+      h+=`<div class="worth"><div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(total())}${fxSmall(fxO())}</div><div class="s">${parts()}</div>${dlH()}</div>`;
+      h+=`<section class="chart"><div class="ct"><b>Czyj majątek</b><span class="mini">stuknij osobę, żeby zobaczyć tylko jej konta</span></div>${pt>0?`<div class="stack">${pos.map(([x,v])=>`<i style="width:${(v/pt*100).toFixed(2)}%;background:${OWN_COL[x]}" data-tip="${x}: ${zl(v)}"></i>`).join('')}</div>`:''}<div class="owners">${own.map(([x,v])=>`<button class="orow" onclick="setAccSub('${x}')"><i style="background:${OWN_COL[x]}"></i><span class="ot"><b>${x}</b><small>${parts(x)}${dl(x)?'<br>'+dl(x):''}</small></span><b class="num">${zl(v)}</b></button>`).join('')}</div></section>`}
+    else h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}"><div class="l">${o=='Wspólne'?'Wspólny majątek':'Majątek: '+o}</div><div class="v num">${zl(total(o))}${fxSmall(fxO(o))}</div><div class="s">${parts(o)}</div>${dlH(o)}</div>`;
     const GH={cur:'KONTA BIEŻĄCE',sub:'SUBKONTA',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE, IKE, IKZE'},groups=['cur','sub','sav','inv'].filter(g=>S.cfg.accs.some(a=>a.grp==g&&vis(a)));
     if(!groups.length)h+=`<div class="empty">Brak kont – dodasz je w ⚙️ Ustawieniach.</div>`;
     h+=groups.map(g=>{const accs=S.cfg.accs.filter(a=>a.grp==g&&vis(a));
