@@ -1,5 +1,5 @@
 # 🤖 Robot Budżetu M&W: po każdej zmianie sprawdza aplikację, a dopiero potem ją publikuje.
-# 1) „Sprawdzenie”: brakujące importy (eslint), składnia plików, wersja demo w niewidocznej przeglądarce jak na telefonie
+# 1) „Sprawdzenie”: brakujące importy (eslint), składnia plików, obliczenia na przykładach (tests/calc.mjs), wersja demo w niewidocznej przeglądarce jak na telefonie
 #    (wszystkie ekrany, 4 ustawienia telefonu: błędy JavaScript, napisy wychodzące poza ekran).
 # 2) „Publikacja”: tylko gdy sprawdzenie jest zielone. Działa, gdy w Settings → Pages → Source wybrano „GitHub Actions”
 #    (przy starym ustawieniu „Deploy from a branch” GitHub publikuje sam, a ten krok się pomija).
@@ -32,6 +32,8 @@ jobs:
         run: npx eslint -c tests/eslint.config.mjs js/ demo/ sw.js
       - name: Składnia plików
         run: for f in js/*.js demo/*.js sw.js scripts/*.mjs tests/*.mjs; do node --check "$f" || exit 1; done
+      - name: Obliczenia pieniędzy (pensje, obligacje, raty, salda)
+        run: node tests/calc.mjs
       - name: Wszystkie ekrany jak na telefonie
         run: node tests/screens.mjs
       - name: Zrzuty ekranów (gdy coś nie przeszło)

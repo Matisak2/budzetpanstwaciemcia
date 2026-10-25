@@ -194,6 +194,13 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 ## Etap L. Porządek w kodzie
 - [x] `js/app.js` podzielony na mniejsze pliki (bez zmian na ekranie), sprawdzony przez robota
 
+## Etap M. Ulepszenia po części 3 (uzgodnione 25.10.2026)
+- [x] 🤖 Robot liczy na przykładach (`tests/calc.mjs`): pensje, obligacje i Belka, raty, salda, budżet, drobne, zapis kwot
+- [ ] ✍️ Podpowiadanie notatki przy wpisywaniu (te same nazwy sklepów → lepsze „Gdzie wydajemy”)
+- [ ] 📷 Przy gwarancji podpowiedź o zdjęciu paragonu; na liście gwarancji widać, co ma zdjęcie
+- [ ] 🙈 Szybkie włączanie trybu dyskretnego – przytrzymanie nazwy miesiąca
+- [ ] 🔍 Świeży przegląd wszystkich ekranów i poprawki
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

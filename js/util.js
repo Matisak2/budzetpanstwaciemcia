@@ -11,7 +11,7 @@ export const zl=n=>(priv.on?'•••':fmtN(n/100))+' zł';
 /* other currencies: amounts in the smallest unit (cents), shown with their symbol; PLN stays „zł” */
 const SYM={PLN:'zł',EUR:'€',USD:'$',GBP:'£'};
 export const curSym=c=>SYM[c||'PLN']||c;
-export const money=(n,c)=>!c||c=='PLN'?zl(n):(priv.on?'•••':fmtN(n/100))+' '+curSym(c);
+export const money=(n,c)=>!c||c=='PLN'?zl(n):(priv.on?'•••':fmtN(n/100))+' '+curSym(c);
 /* {EUR:4500,USD:-1000} → "45,00 € − 10,00 $"; fxPlus adds them after a złoty sum: " + 45,00 € − 10,00 $" */
 const fxList=m=>Object.entries(m||{}).filter(([,v])=>v).sort((a,b)=>a[0].localeCompare(b[0]));
 export const fxPlus=m=>fxList(m).map(([c,v])=>(v<0?' − ':' + ')+money(Math.abs(v),c)).join('');
