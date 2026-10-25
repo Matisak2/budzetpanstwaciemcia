@@ -270,7 +270,8 @@ function openTx(id,pre){if(guard())return;
   $('mw').value=(t&&t.who)||S.who;
   $('ma').value=t?f2(t.amount):'';$('maSum').textContent='';
   $('md').value=t?t.date:(td().startsWith(S.ym)?td():S.ym+'-01');
-  if(t){$('mc').value=t.acc;$('mto').value=t.to||''}else{const last=ls.get('mw_acc_'+S.who);if(last&&S.cfg.accs.some(a=>a.id==last))$('mc').value=last}
+  if(t){$('mc').value=t.acc;$('mto').value=t.to||''}else{const last=ls.get('mw_acc_'+S.who),own=S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived&&a.owner==S.who);
+    if(last&&S.cfg.accs.some(a=>a.id==last&&!a.archived))$('mc').value=last;else if(own)$('mc').value=own.id}
   if(pre?.from){$('mc').value=pre.from;const c=S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived);if(c)$('mto').value=c.id}
   if(pre?.to)$('mto').value=pre.to;if(pre?.acc&&S.cfg.accs.some(a=>a.id==pre.acc))$('mc').value=pre.acc;
   if(pre?.amount)$('ma').value=f2(pre.amount);
@@ -796,13 +797,15 @@ function payMonthH(){const ym=S.ym,live=new Set(liveOf(S.tx).map(t=>t.id));let h
   const b2b=incs().filter(s=>s.kind=='b2b');
   if(b2b.length&&ym==td().slice(0,7)){const res=b2b.reduce((a,s)=>a+(slipOf(ym,s.id)?reserve(slipOf(ym,s.id)):0),0);
     h+=`<div class="note">📅 JDG: do 20. dnia miesiąca zapłać ZUS, zdrowotną i zaliczkę na podatek${res?` – według pasków ok. <b>${zl(res)}</b>`:''}.</div>`}
+  const none=!incs().length;
   for(const who of ['Mati','Wercia']){const list=incs().filter(s=>s.who==who);
     h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">💼 ${who}</span><button class="btn sm dark" onclick="editInc(null,'${who}')">+ Źródło dochodu</button></div>`;
-    if(!list.length){h+=`<div class="mini" style="padding:0 6px">Dodaj pracodawcę albo zleceniodawcę. Co miesiąc wpiszesz pasek, a netto, potrącenia i PPK same trafią do budżetu.</div>`;continue}
+    if(!list.length){if(!none)h+=`<div class="mini" style="padding:0 6px">Brak źródła dochodu – dodaj pracodawcę albo zleceniodawcę.</div>`;continue}
     h+=`<div class="list">${list.map(s=>{const sl=slipOf(ym,s.id),ok=sl&&sl.booked&&live.has(sl.booked),b=s.kind=='b2b';
       return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(s.name)}</b><button class="btn sm" style="padding:3px 9px" aria-label="Edytuj źródło dochodu" onclick="editInc('${s.id}')">⋯</button></div><div class="mini">${KINDS[s.kind]} · ${esc(accN(s.acc))}${s.ppk?' · PPK':''}</div>
         ${sl?`<div class="mini">${b?'faktury':'brutto'} <b style="color:var(--fg)">${zl(brutto(sl))}</b> · ${b?'na rękę':'netto'} <b style="color:var(--fg)">${zl(b?onHand(sl):sl.net)}</b> · ${ok?'<span class="t-inc">✓ w budżecie</span>':'<span class="t-exp">nie zaksięgowano</span>'}</div>`:`<div class="mini">Brak paska w tym miesiącu${s.day?` · wypłata zwykle do ${s.day}.`:''}</div>`}
         <div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="openSlip('${s.id}')">${sl?'📝 Pasek':'+ Wpisz pasek'}</button></div></div></div>`}).join('')}</div>`}
+  if(none)h+=catsEmpty('Dodaj pracodawcę albo zleceniodawcę. Co miesiąc wpiszesz pasek, a netto, potrącenia i PPK same trafią do budżetu.',0,'calc');
   const T=totals(Object.values(S.slips[ym]||{}));
   if(T.n)h+=`<section class="chart"><div class="ct"><b>Razem w miesiącu</b><span class="mini">${T.n} ${plu(T.n,'pasek','paski','pasków')} · ZUS, zdrowotna i podatek nie są wydatkami w budżecie</span></div>${payTabH(T)}</section>`;
   return h}
@@ -909,7 +912,7 @@ function slipH(){const {id,ym,d}=S.slip,src=incById(id);if(!src){S.slip=null;ret
     ${d.est?'<div class="note">🧮 To <b>szacunek</b> wyliczony z brutto. Sprawdź i popraw kwoty według paska z wypłaty.</div>':''}
     <div class="sl-sec">${b2b?'FAKTURY':'SKŁADNIKI (BRUTTO)'}</div>
     ${d.comp.map((c,i)=>`<div class="sl-row"><input data-c="${i}" data-f="n" value="${esc(c.n||'')}" placeholder="${b2b?'np. Faktura za październik':'np. Dyżury'}" aria-label="Nazwa składnika" autocomplete="off"><input class="planin" data-c="${i}" data-f="a" value="${V(c.a)}" placeholder="0,00" inputmode="decimal" aria-label="Kwota" autocomplete="off">${b2b?'':`<input class="planin hrs" data-c="${i}" data-f="h" value="${c.h?String(c.h).replace('.',','):''}" placeholder="godz." inputmode="decimal" aria-label="Godziny (opcjonalnie)" autocomplete="off">`}<button type="button" class="x" onclick="slipRow('comp',${i})" aria-label="Usuń składnik">×</button></div>`).join('')}
-    <button class="btn sm" style="align-self:flex-start" onclick="slipRow('comp')">+ ${b2b?'faktura':'składnik'}</button>
+    <button class="btn sm" style="align-self:flex-start" onclick="slipRow('comp')">+ ${b2b?'Faktura':'Składnik'}</button>
     <div class="r1 sl-tot"><span>${b2b?'Razem faktury':'Brutto'}</span><b class="num" id="slB"></b></div>
     <div class="sl-sec">${b2b?'ZAPŁACISZ SAM':'SKŁADKI I PODATEK'}</div>
     ${b2b?inp('costs','Koszty firmy','np. leasing, sprzęt, księgowa')+inp('zus','Twój ZUS (społeczny)')+inp('health','Zdrowotna')+inp('tax','Podatek (zaliczka)')
@@ -917,7 +920,7 @@ function slipH(){const {id,ym,d}=S.slip,src=incById(id);if(!src){S.slip=null;ret
     ${src.ppk&&!b2b?`<div class="sl-sec">PPK → ${esc(accN(src.ppk))}</div>${inp('ppkOwn','Moja wpłata','odejmuje się od wypłaty')}${inp('ppkEmp','Wpłata pracodawcy','dodatkowo, na konto PPK')}`:''}
     ${b2b?'':`<div class="sl-sec">POTRĄCENIA</div><div class="mini">Np. Multisport, ubezpieczenie grupowe. Trafią do budżetu jako wydatki w wybranej pozycji.</div>
     ${d.ded.map((x,i)=>`<div class="sl-ded"><div class="sl-row"><input data-d="${i}" data-f="n" value="${esc(x.n||'')}" placeholder="np. Multisport" aria-label="Nazwa potrącenia" autocomplete="off"><input class="planin" data-d="${i}" data-f="a" value="${V(x.a)}" placeholder="0,00" inputmode="decimal" aria-label="Kwota potrącenia" autocomplete="off"><button type="button" class="x" onclick="slipRow('ded',${i})" aria-label="Usuń potrącenie">×</button></div><select data-d="${i}" data-f="sub" aria-label="Pozycja budżetu"><option value="">— pozycja budżetu —</option>${sopt(x.sub)}</select></div>`).join('')}
-    <button class="btn sm" style="align-self:flex-start" onclick="slipRow('ded')">+ potrącenie</button>`}
+    <button class="btn sm" style="align-self:flex-start" onclick="slipRow('ded')">+ Potrącenie</button>`}
     <div class="sl-sec">WPŁYW</div>
     <label class="srow2"><span>Data wpływu</span><input type="date" id="slDate" value="${esc(d.date||'')}"></label>
     <label class="srow2"><span>Wpłynęło na konto<small>${esc(accN(src.acc))} – kwota z aplikacji banku</small></span><input class="planin" data-k="net" id="slNet" value="${V(d.net)}" inputmode="decimal" autocomplete="off"></label>
@@ -1181,7 +1184,7 @@ const debtList=dir=>Object.entries(S.debts).filter(([,d])=>!d.deleted&&(!dir||d.
 function debtState(d){return debtStateP(d,liveOf(S.tx),td())}
 const debtSum=(dir,owner)=>debtList(dir).filter(d=>!owner||(d.payer||'Wspólne')==owner).reduce((a,d)=>a+debtState(d).left,0);
 function setAccView(k){S.accView=k;S.recon=false;window.scrollTo(0,0);render()}
-const accSegH=()=>`<div class="seg seg3">${[['acc','👛 Konta'],['owe','🔻 My winni'],['lent','🔺 Nam winni']].map(([k,l])=>`<button aria-pressed="${(S.accView||'acc')==k}" onclick="setAccView('${k}')">${segL(l)}</button>`).join('')}</div>`;
+const accSegH=()=>`<div class="seg seg3">${[['acc','🏦 Salda'],['owe','🔻 My winni'],['lent','🔺 Nam winni']].map(([k,l])=>`<button aria-pressed="${(S.accView||'acc')==k}" onclick="setAccView('${k}')">${segL(l)}</button>`).join('')}</div>`;
 function debtsH(dir){const L=debtList(dir).map(d=>({d,st:debtState(d)})),act=L.filter(x=>x.st.left>0),done=L.filter(x=>x.st.left<=0),owe=dir=='owe';let h='';
   const tot=act.reduce((a,x)=>a+x.st.left,0);
   h+=`<div class="worth ${owe?'':'wsp'}"><div class="l">${owe?'Razem do spłaty':'Razem do oddania Wam'}</div><div class="v num">${zl(tot)}</div><div class="s">${OWN.map(o=>`${o} ${zl0(act.filter(x=>(x.d.payer||'Wspólne')==o).reduce((a,x)=>a+x.st.left,0))}`).join(' · ')} · w 👛 Konta widać to osobno – stan kont się nie zmienia</div></div>`;
@@ -1374,8 +1377,8 @@ function personsH(cfg,tx,ym){const sm=subsMap(cfg),per={Mati:{},Wercia:{}},tot={
 function sankeyH(cfg,tx,ym,A){const act=actuals(cfg,tx,ym),cats=Object.fromEntries(cfg.cats.map(c=>[c.id,c]));
   const inc=cfg.cats.filter(c=>c.type=='inc').flatMap(c=>c.subs).map(s=>({l:s.name,v:act[s.id]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
   if(!inc.length||!A.exp)return'';const L=inc.slice(0,4);const rest=inc.slice(4).reduce((a,x)=>a+x.v,0);if(rest>0)L.push({l:'Inne przychody',v:rest});L.forEach((x,i)=>x.c=['#6fd0a8','#86efac','#a7f3d0','#bbf7d0','#d1fae5'][i]);
-  const ex=Object.entries(A.cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]),R=ex.slice(0,6).map(([id,v])=>({l:cleanCat(cats[id]?.name),v,c:markOf(cats[id])}));
-  const er=ex.slice(6).reduce((a,[,v])=>a+v,0);if(er>0)R.push({l:'Pozostałe',v:er,c:P_OTHER});
+  const ex=Object.entries(A.cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]),R=ex.slice(0,5).map(([id,v])=>({l:cleanCat(cats[id]?.name),v,c:markOf(cats[id])}));
+  const er=ex.slice(5).reduce((a,[,v])=>a+v,0);if(er>0)R.push({l:'Pozostałe',v:er,c:P_OTHER});
   const left=A.inc-A.exp;if(left>0)R.push({l:'Zostało',v:left,c:'#7fb0ec'});else if(left<0)L.push({l:'Z oszczędności',v:-left,c:'#fda4af'});
   return chartBox('Przepływ pieniędzy','skąd przyszły i dokąd poszły',sankeySvg(L,R))}
 function wealthH(y){const cur=td().slice(0,7),ms=Array.from({length:12},(_,i)=>y+'-'+p2(i+1)),tx=liveOf(S.tx),A=S.cfg.accs.filter(isP);
@@ -1488,9 +1491,9 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
   let h=`<div class="kpis">
     <div class="kpi k-em"><div class="l">Przychody</div><div class="v num">${zl(A.inc)}</div><div class="s">${deltaH(A.inc,Pm.inc,true)||'&nbsp;'}</div></div>
     <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(A.exp)}</div><div class="s">${deltaH(A.exp,Pm.exp,false)||'&nbsp;'}</div></div>
-    <div class="kpi k-sk"><div class="l">Zostało (bilans)</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,pbal,true)||'&nbsp;'}</div></div>
+    <div class="kpi k-sk"><div class="l">Bilans miesiąca</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,pbal,true)||'&nbsp;'}</div></div>
     <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów${prate!==null&&rate!==null?` · ${prevName}: ${prate.toFixed(0)}%`:''}</div></div></div>
-    <div class="mini" style="text-align:center">Strzałki porównują z miesiącem: ${prevName}.</div>`+fxNote(A.fx);
+    ${Pm.inc||Pm.exp?`<div class="mini" style="text-align:center">Strzałki porównują z miesiącem: ${prevName}.</div>`:''}`+fxNote(A.fx);
   const cur=td().slice(0,7);
   if(ym==cur&&pexp>0&&A.exp>pexp)h+=`<div class="note bad">⚠️ Plan wydatków przekroczony o <b>${zl(A.exp-pexp)}</b>.</div>`;
   h+=monthSumH(cfg,tx,ym);
@@ -1524,22 +1527,25 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
   if(accRows.length)h+=chartBox('Z jakich kont','',hbarsH(accRows,wsum));
   // fixed vs variable
   if(A.fixed)h+=`<section class="chart"><div class="ct"><b>Opłaty stałe a reszta</b></div><div class="stack"><i style="width:${(A.fixed/wsum*100).toFixed(1)}%;background:#b4a8f0" data-tip="Opłaty stałe: ${zl(A.fixed)}"></i><i style="width:${((wsum-A.fixed)/wsum*100).toFixed(1)}%;background:${P_OTHER}" data-tip="Pozostałe wydatki: ${zl(wsum-A.fixed)}"></i></div>
-    <div class="lg" style="margin-top:8px"><span><i style="background:#b4a8f0"></i>📌 Opłaty stałe: <b class="num">${zl(A.fixed)}</b> (${pctS(A.fixed,wsum)})</span><span><i style="background:${P_OTHER}"></i>Pozostałe: <b class="num">${zl(wsum-A.fixed)}</b></span></div></section>`;
+    <div class="lg" style="margin-top:8px"><span><i style="background:#b4a8f0"></i>📌 Opłaty stałe: <b class="num">${zl(A.fixed)}</b> (${pctS(A.fixed,wsum)})</span><span><i style="background:${P_OTHER}"></i>Pozostałe: <b class="num">${zl(wsum-A.fixed)}</b> (${pctS(wsum-A.fixed,wsum)})</span></div></section>`;
   // biggest
   if(A.big.length)h+=`<section class="chart"><div class="ct"><b>Największe pojedyncze wydatki</b></div><div class="list" style="border:0">${A.big.map(t=>txRowH(t,sm)).join('')}</div></section>`;
   return h}
 
+const n0=v=>zl0(v).replace(/\s*zł$/,'');
 function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Object.fromEntries(cfg.cats.map(c=>[c.id,c]));
   const cur=td().slice(0,7),months=Array.from({length:12},(_,i)=>y+'-'+p2(i+1));
   const M=months.map(m=>agg(cfg,tx,m)),Y=agg(cfg,tx,y),PY=agg(cfg,tx,String(+y-1));
   const elapsed=y<cur.slice(0,4)?12:y==cur.slice(0,4)?+cur.slice(5):0;
-  const fxN=fxNote(Y.fx),bal=Y.inc-Y.exp,rate=Y.inc?bal/Y.inc*100:null,avgExp=elapsed?Y.exp/elapsed:0,avgInc=elapsed?Y.inc/elapsed:0;
+  /* averages count months from the first one with entries (a budget started in July must not be divided by 10 months) */
+  const first=M.findIndex(a=>a.inc||a.exp),nMon=first<0?0:Math.max(1,elapsed-first);
+  const fxN=fxNote(Y.fx),bal=Y.inc-Y.exp,rate=Y.inc?bal/Y.inc*100:null,avgExp=nMon?Y.exp/nMon:0,avgInc=nMon?Y.inc/nMon:0,hasPY=!!(PY.inc||PY.exp);
   let h=`<div class="kpis">
     <div class="kpi k-em"><div class="l">Przychody ${y}</div><div class="v num">${zl(Y.inc)}</div><div class="s">śr. ${zl0(avgInc)}/mies. ${deltaH(Y.inc,PY.inc,true)}</div></div>
     <div class="kpi k-ro"><div class="l">Wydatki ${y}</div><div class="v num">${zl(Y.exp)}</div><div class="s">śr. ${zl0(avgExp)}/mies. ${deltaH(Y.exp,PY.exp,false)}</div></div>
     <div class="kpi k-sk"><div class="l">Zostało w roku</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,PY.inc-PY.exp,true)||'&nbsp;'}</div></div>
     <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów w roku</div></div></div>
-    <div class="mini" style="text-align:center">Strzałki porównują z rokiem ${+y-1}.</div>`+fxN+`<div class="g2"><button class="btn" onclick="exportCsv('${y}')">📥 Eksport do Excela</button><button class="btn primary" onclick="wrapped('${y}')">🎁 Money Wrapped</button></div>`;
+    ${hasPY?`<div class="mini" style="text-align:center">Strzałki porównują z rokiem ${+y-1}.</div>`:''}`+fxN+`<div class="g2"><button class="btn" onclick="exportCsv('${y}')">📥 Eksport do Excela</button><button class="btn primary" onclick="wrapped('${y}')">🎁 Money Wrapped</button></div>`;
   if(!Y.inc&&!Y.exp)return h+`<div class="empty">Brak danych za rok ${y}.</div>`;
   const ml=['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
   h+=chartBox('Przychody i wydatki','miesiąc po miesiącu',barsSvg(ml,[{name:'Przychody',color:C_INC,values:M.map(a=>Math.max(0,a.inc))},{name:'Wydatki',color:C_EXP,values:M.map(a=>Math.max(0,a.exp))}],{tipLabel:i=>MN[i]}),legendH([{l:'Przychody',c:C_INC},{l:'Wydatki',c:C_EXP}]));
@@ -1548,7 +1554,7 @@ function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Object.fro
   if(sv.some(v=>v!==null))h+=chartBox('Oszczędności','konta oszczędnościowe + wpłacone w inwestycje, na koniec miesiąca',lineSvg(ml,sv,C_SAV));
   h+=wealthH(y)+catGridH(cfg,M)+inflationH(cfg,tx,y);
   // months table
-  h+=`<section class="chart"><div class="ct"><b>Miesiąc po miesiącu</b></div><div class="tw"><table class="tbl"><thead><tr><th>Miesiąc</th><th>Przychody</th><th>Wydatki</th><th>Bilans</th></tr></thead><tbody>${M.map((a,i)=>a.inc||a.exp?`<tr><td>${MN[i]}</td><td class="num">${zl0(a.inc)}</td><td class="num">${zl0(a.exp)}</td><td class="num ${a.inc-a.exp<0?'t-exp':'t-inc'}">${zl0(a.inc-a.exp)}</td></tr>`:'').join('')}<tr class="tot"><td>Razem</td><td class="num">${zl0(Y.inc)}</td><td class="num">${zl0(Y.exp)}</td><td class="num">${zl0(bal)}</td></tr></tbody></table></div></section>`;
+  h+=`<section class="chart"><div class="ct"><b>Miesiąc po miesiącu</b><span class="mini">kwoty w zł</span></div><div class="tw"><table class="tbl"><thead><tr><th><span class="mf">Miesiąc</span><span class="msh">Mies.</span></th><th>Przychody</th><th>Wydatki</th><th>Bilans</th></tr></thead><tbody>${M.map((a,i)=>a.inc||a.exp?`<tr><td><span class="mf">${MN[i]}</span><span class="msh">${MN[i].slice(0,3)}</span></td><td class="num">${n0(a.inc)}</td><td class="num">${n0(a.exp)}</td><td class="num ${a.inc-a.exp<0?'t-exp':'t-inc'}">${n0(a.inc-a.exp)}</td></tr>`:'').join('')}<tr class="tot"><td>Razem</td><td class="num">${n0(Y.inc)}</td><td class="num">${n0(Y.exp)}</td><td class="num">${n0(bal)}</td></tr></tbody></table></div></section>`;
   // best / worst
   const withData=M.map((a,i)=>({i,a})).filter(x=>x.a.inc||x.a.exp);
   if(withData.length>1){const best=withData.reduce((p,c)=>c.a.inc-c.a.exp>p.a.inc-p.a.exp?c:p),most=withData.reduce((p,c)=>c.a.exp>p.a.exp?c:p),least=withData.reduce((p,c)=>c.a.exp<p.a.exp?c:p);
@@ -1557,7 +1563,7 @@ function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Object.fro
       <div>💸 Najwięcej wydatków: <b>${MN[most.i]}</b> (${zl0(most.a.exp)})</div>
       <div>🌿 Najmniej wydatków: <b>${MN[least.i]}</b> (${zl0(least.a.exp)})</div></div></section>`}
   // categories in the year
-  const catRows=Object.entries(Y.cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([id,v])=>({l:cleanCat(cats[id]?.name),v,c:markOf(cats[id]),dot:markOf(cats[id]),note:`średnio ${zl0(elapsed?v/elapsed:v)} / mies.`}));
+  const catRows=Object.entries(Y.cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([id,v])=>({l:cleanCat(cats[id]?.name),v,c:markOf(cats[id]),dot:markOf(cats[id]),note:`średnio ${zl0(nMon?v/nMon:v)} / mies.`}));
   if(catRows.length)h+=chartBox('Kategorie w całym roku','suma, udział i średnia miesięczna',hbarsH(catRows,Y.exp));
   const wsum=Object.values(Y.who).reduce((a,v)=>a+v,0);
   h+=chartBox('Kto wydawał w roku','',whoH(Y.who,wsum));
@@ -1583,7 +1589,7 @@ function fitNums(){document.querySelectorAll('#app .kpi .v,#app .worth .v').forE
     while(over()&&fs>14&&n++<10){fs-=1.5;e.style.fontSize=fs+'px'}});
   const L=$('mlabel');if(L&&L.scrollWidth>L.clientWidth+1&&L.dataset.short)L.textContent=L.dataset.short}
 /* 💰 Majątek = 🐷 Oszczędności + 👛 Konta */
-const majSegH=()=>`<div class="seg seg2 majseg">${[['sav','🐷 Oszczędności'],['acc','💳 Konta']].map(([k,l])=>`<button aria-pressed="${S.tab==k}" onclick="${k=='acc'?"S.accView='acc';":''}goTab('${k}')">${segL(l)}</button>`).join('')}</div>`;
+const majSegH=()=>`<div class="seg seg2 majseg">${[['sav','🐷 Oszczędności'],['acc','👛 Konta']].map(([k,l])=>`<button aria-pressed="${S.tab==k}" onclick="${k=='acc'?"S.accView='acc';":''}goTab('${k}')">${segL(l)}</button>`).join('')}</div>`;
 function setAccSub(k){S.accSub=k;window.scrollTo(0,0);render()}
 
 function render(){
@@ -1627,7 +1633,7 @@ function render(){
     const keep=(c,s)=>BF=='all'||(BF=='over'?c.type=='exp'&&stOf(c,s).k=='over':!(pl[s.id]||0));
     const nOver=S.cfg.cats.reduce((a,c)=>a+c.subs.filter(s=>c.type=='exp'&&stOf(c,s).k=='over').length,0),nNo=S.cfg.cats.reduce((a,c)=>a+c.subs.filter(s=>!(pl[s.id]||0)).length,0);
     h+=toPlanH();
-    h+=`<div class="seg seg3 bfilt">${[['all','Wszystko'],['over','▲ Przekroczone'+(nOver?` (${nOver})`:'')],['none','Bez planu'+(nNo?` (${nNo})`:'')]].map(([k,l])=>`<button aria-pressed="${BF==k}" onclick="setBF('${k}')">${l}</button>`).join('')}</div>`;
+    h+=`<div class="seg seg3 bfilt">${[['all','Wszystko'],['over','▲ Ponad plan'+(nOver?` (${nOver})`:'')],['none','Bez planu'+(nNo?` (${nNo})`:'')]].map(([k,l])=>`<button aria-pressed="${BF==k}" onclick="setBF('${k}')">${l}</button>`).join('')}</div>`;
     const isE=s=>!(pl[s.id]||0)&&!(act[s.id]||0)&&!fxTxt(FX.sub[s.id]);
     let shownCats=S.cfg.cats.map((c,i)=>({c,i,subs:c.subs.filter(s=>keep(c,s))})).filter(x=>BF=='all'||x.subs.length);
     const anyData=shownCats.some(x=>!x.c.subs.every(isE)),emptyCats=BF=='all'&&anyData?shownCats.filter(x=>x.c.subs.every(isE)&&!S.showCat[x.c.id]):[];
@@ -1645,7 +1651,7 @@ function render(){
   else if(S.tab=='tx'){
     const F=S.f,fc=F.cat&&S.cfg.cats.find(c=>c.id==F.cat),sel=(k,opts,st='')=>`<select aria-label="${k}" onchange="setF('${k}',this.value)"${st?` style="${st}"`:''}>${opts.map(o=>o.group?`<optgroup label="${esc(o.group)}">${o.items.map(i=>`<option value="${esc(i[0])}"${F[k]==i[0]?' selected':''}>${esc(i[1])}</option>`).join('')}</optgroup>`:`<option value="${esc(o[0])}"${F[k]==o[0]?' selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
     const active=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m';
-    h+=`<div class="filters"><input id="fq" type="search" enterkeyhint="search" placeholder="🔍 Szukaj: notatka, pozycja, kwota albo np. >200" value="${esc(F.q)}" oninput="setQ(this.value)" autocomplete="off">
+    h+=`<div class="filters"><input id="fq" type="search" enterkeyhint="search" placeholder="🔍 Szukaj, np. Biedronka albo >200" value="${esc(F.q)}" oninput="setQ(this.value)" autocomplete="off">
       <div class="frow">${sel('scope',[['m','Ten miesiąc'],['y','Cały rok '+S.ym.slice(0,4)],['a','Wszystko']])}${sel('type',[['','Wszystkie rodzaje'],['exp','Wydatki'],['inc','Przychody'],['tr','Przelewy'],['inv','Inwestycje'],['adj','Wyrównania']])}${sel('who',[['','Wszyscy'],['Mati','Mati'],['Wercia','Wercia']])}${sel('acc',[['','Wszystkie konta'],...accOpts()])}${sel('cat',[['','Wszystkie kategorie'],...S.cfg.cats.map(c=>[c.id,catL(c)])],fc?catColor(fc)+';background:var(--c);color:var(--c3);border-color:var(--c4);font-weight:700':'')}</div>
       ${active?`<button class="btn sm" style="align-self:flex-start" onclick="clearF()">✕ Wyczyść filtry</button>`:''}</div><div id="txlist">${txListH()}</div>`}
 
@@ -1674,7 +1680,7 @@ function render(){
       if(!fx.length)return x+`<div class="mini" style="padding:0 6px">${inc?'Dodaj np. pensje – co miesiąc odhaczysz, ile faktycznie wpłynęło, razem z wpłatami na PPK.':trf?'Np. 500 zł co miesiąc z konta bieżącego na oszczędności – odhaczasz, gdy przelew wyjdzie.':'Dodaj np. czynsz, prąd albo Spotify – co miesiąc odhaczysz je na liście.'}</div>`;
       const rows=fx.map(f=>({f,paid:fixedPaid(f.id,S.ym)})),done=rows.filter(r=>r.paid),left=rows.filter(r=>!r.paid);
       const sumDone=done.reduce((a,r)=>a+r.paid.amount,0),sumLeft=left.reduce((a,r)=>a+(r.f.vary?0:r.f.amount),0);
-      x+=`<div class="prog"><div class="r1"><b>${inc?'Wpłynęło':'Zapłacone'} ${done.length} z ${rows.length}</b><span class="num">${zl(sumDone)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:${inc?'#93c5fd':'#86efac'}"></i></div><div class="mini">${inc?'Jeszcze oczekiwane: ok. ':'Zostało do zapłaty: '}<b class="num" style="color:var(--fg)">${zl(sumLeft)}</b></div></div>`;
+      x+=`<div class="prog"><div class="r1"><b>${inc?'Wpłynęło':'Zapłacone'} ${done.length} z ${rows.length}</b><span class="num">${zl(sumDone)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:#86efac"></i></div><div class="mini">${done.length==rows.length?`<b class="t-inc">✓ ${inc?'wszystko wpłynęło':trf?'wszystko przelane':'wszystko zapłacone'}</b>`:`${inc?'Jeszcze oczekiwane: ok. ':'Zostało do zapłaty: '}<b class="num" style="color:var(--fg)">${zl(sumLeft)}</b>`}</div></div>`;
       return x+`<div class="list">${rows.map(r=>row(r.f,r.paid)).join('')}</div>`};
     if(!all.length)h+=catsEmpty('Dodaj stałe przychody (np. pensje) i opłaty (np. czynsz, prąd, Spotify).<br>Co miesiąc odhaczysz je na liście, a wpisy same trafią do rejestru.',0,'bell');
     h+=block('inc')+block('exp')+block('tr');
@@ -1788,7 +1794,7 @@ function render(){
   else if(S.help)h+=helpH();
   else{
     const rules=S.cfg.round||[];
-    h+=`<div class="card"><div class="rowx" style="border:0;padding:0"><h3>🪙 Drobne</h3><button class="btn sm dark" onclick="editRound()">+ reguła</button></div><div class="mini">Jak w Revolucie: wydatek z wybranego konta zaokrągla się w górę do 5 albo 10 zł, a różnica (razy mnożnik) trafia na wskazane konto. W okienku wydatku pojawi się złota moneta – odznacz ją, gdy bank nie liczy drobnych (np. przy BLIK-u).</div>${rules.map(r=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(accN(r.from))} → ${esc(accN(r.to))}</b><br><span class="mini">do ${r.step} ${curSym(accCur(r.from))} · ×${r.mult}${r.full?' · pełne drobne przy równej kwocie':''} · w tym miesiącu ${am(coinSum(S.ym,r),r.from)}</span></span><button class="btn sm" onclick="editRound('${r.id}')">Edytuj</button></div>`).join('')||'<div class="mini" style="padding-top:4px">Nie ma jeszcze żadnej reguły.</div>'}</div>`;
+    h+=`<div class="card"><div class="rowx" style="border:0;padding:0"><h3>🪙 Drobne</h3><button class="btn sm dark" onclick="editRound()">+ Reguła</button></div><div class="mini">Jak w Revolucie: wydatek z wybranego konta zaokrągla się w górę do 5 albo 10 zł, a różnica (razy mnożnik) trafia na wskazane konto. W okienku wydatku pojawi się złota moneta – odznacz ją, gdy bank nie liczy drobnych (np. przy BLIK-u).</div>${rules.map(r=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(accN(r.from))} → ${esc(accN(r.to))}</b><br><span class="mini">do ${r.step} ${curSym(accCur(r.from))} · ×${r.mult}${r.full?' · pełne drobne przy równej kwocie':''} · w tym miesiącu ${am(coinSum(S.ym,r),r.from)}</span></span><button class="btn sm" onclick="editRound('${r.id}')">Edytuj</button></div>`).join('')||'<div class="mini" style="padding-top:4px">Nie ma jeszcze żadnej reguły.</div>'}</div>`;
     h+=DEMO?demoCardH():pushCardH();
     h+=changesH();
     if(!DEMO)h+=`<div class="card"><h3>🗣️ Siri i skróty</h3><div class="mini">„Hej Siri, wydatek” – Siri zapyta o kwotę i notatkę, a aplikacja otworzy się z gotowym okienkiem. Skrót otwiera się w Safari, więc raz zaloguj się tam do aplikacji.</div><button class="btn sm" onclick="siriHelp()">Jak to ustawić</button></div>`;
@@ -1797,10 +1803,10 @@ function render(){
     h+=lookH();
     if(!DEMO)h+=`<div class="card"><h3>🧪 Pokaż komuś aplikację</h3><div class="mini">Wersja demonstracyjna z przykładowymi danymi – bez Waszych danych i bez logowania. Każdy zobaczy swoją kopię, a zmiany zostają tylko w jego przeglądarce.</div><div class="btns"><button class="btn sm primary" onclick="shareDemo()">📤 Wyślij link</button><a class="btn sm" href="./demo/" target="_blank" rel="noopener">Otwórz demo</a></div></div>`;
     h+=`<div class="card"><h3>🐾 Bailey i Ivo</h3><div class="seg seg3">${[['lots','Dużo'],['few','Mało'],['off','Wyłączone']].map(([k,l])=>`<button aria-pressed="${kotki.mode==k}" onclick="setKotki('${k}')">${l}</button>`).join('')}</div><div class="mini">Dużo – rysunki, porady i żarty. Mało – rysunki i tylko ważne komunikaty. Wyłączone – bez kotków. Ustawienie dotyczy tego telefonu.</div><div class="btns"><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button><button class="btn sm" onclick="openHelp()">📖 Co nowego i jak to działa</button></div></div>`;
-    h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
-    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ konto</button></div><div class="seg seg2 acctabs">${Object.entries(ACCTAB).map(([g,l])=>`<button aria-pressed="${S.accTab==g}" onclick="setAccTab('${g}')">${{cur:'💳',sub:'🗂️',sav:'🐷',inv:'📈'}[g]} ${l} (${S.cfg.accs.filter(a=>a.grp==g&&!a.archived).length})</button>`).join('')}</div>${(()=>{const list=S.cfg.accs.filter(a=>a.grp==S.accTab&&!a.archived);
+    h+=`<div class="card"><h3>Kto korzysta z tego telefonu?</h3><div class="seg seg2">${['Mati','Wercia'].map(n=>`<button aria-pressed="${S.who==n}" onclick="setWho('${n}')">${n}</button>`).join('')}</div><div class="mini">Nowe transakcje będą podpisane tym imieniem.</div></div>
+    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ Konto</button></div><div class="seg seg2 acctabs">${Object.entries(ACCTAB).map(([g,l])=>`<button aria-pressed="${S.accTab==g}" onclick="setAccTab('${g}')">${{cur:'💳',sub:'🗂️',sav:'🐷',inv:'📈'}[g]} ${l} (${S.cfg.accs.filter(a=>a.grp==g&&!a.archived).length})</button>`).join('')}</div>${(()=>{const list=S.cfg.accs.filter(a=>a.grp==S.accTab&&!a.archived);
       return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)}${isP(a)?'':' · '+CUR(a)} · saldo początkowe ${money(a.open,CUR(a))}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
-    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button class="catname" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))}&nbsp;✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
+    <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ Kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button class="catname" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))}&nbsp;✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ Pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
     <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button>${DEMO?'':'<button class="btn" onclick="logout()">Wyloguj</button>'}</div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
   if(DEMO)h=`<div class="demob">🧪 Wersja demonstracyjna · przykładowe dane, tylko w tej przeglądarce <button onclick="MW_DEMO.reset()">Zacznij od nowa</button></div>`+h;
   $('app').innerHTML=h;updToday();fitNums();

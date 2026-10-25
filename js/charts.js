@@ -67,7 +67,11 @@ export function sankeySvg(left,right,{h=260}={}){const W=340,NW=10,GAP=6,tot=Mat
   const lOff=Ls.map(n=>n.y),rOff=Rs.map(n=>n.y);
   Ls.forEach((l,i)=>Rs.forEach((r,j)=>{const f=l.v*r.v/totR;if(f<=0)return;const hl=f/l.v*l.h,hr=f/r.v*r.h,ya=lOff[i],yb=rOff[j];lOff[i]+=hl;rOff[j]+=hr;
     flows+=`<path d="M${x0},${ya.toFixed(1)}C${(x0+x1)/2},${ya.toFixed(1)} ${(x0+x1)/2},${yb.toFixed(1)} ${x1},${yb.toFixed(1)}L${x1},${(yb+hr).toFixed(1)}C${(x0+x1)/2},${(yb+hr).toFixed(1)} ${(x0+x1)/2},${(ya+hl).toFixed(1)} ${x0},${(ya+hl).toFixed(1)}Z" fill="${r.c}" opacity=".38" class="hit" data-tip="${esc(l.l+' → '+r.l+': '+zl(Math.round(f)))}"/>`}));
-  const lab=(n,x,anchor)=>`<text x="${x}" y="${(n.y+n.h/2+4).toFixed(1)}" text-anchor="${anchor}" class="ax" style="font-size:10.5px">${esc(n.l.length>16?n.l.slice(0,15)+'…':n.l)}</text>`;
-  Ls.forEach(n=>{nodes+=`<rect x="${x0-NW}" y="${n.y.toFixed(1)}" width="${NW}" height="${n.h.toFixed(1)}" rx="3" fill="${n.c}" data-tip="${esc(n.l+': '+zl(n.v))}" class="hit"/>`+lab(n,x0-NW-4,'end')});
-  Rs.forEach(n=>{nodes+=`<rect x="${x1}" y="${n.y.toFixed(1)}" width="${NW}" height="${n.h.toFixed(1)}" rx="3" fill="${n.c}" data-tip="${esc(n.l+': '+zl(n.v))}" class="hit"/>`+lab(n,x1+NW+4,'start')});
+  /* labels of small neighbouring nodes are spread apart (at least 12 px), so they never overlap */
+  const spread=N=>{const y=N.map(n=>n.y+n.h/2+4);for(let i=1;i<y.length;i++)y[i]=Math.max(y[i],y[i-1]+12);
+    const n=y.length-1;if(n>=0&&y[n]>h-2){y[n]=h-2;for(let i=n-1;i>=0;i--)y[i]=Math.min(y[i],y[i+1]-12)}return y};
+  const lab=(n,x,y,anchor)=>`<text x="${x}" y="${y.toFixed(1)}" text-anchor="${anchor}" class="ax" style="font-size:10.5px">${esc(n.l.length>14?n.l.slice(0,13)+'…':n.l)}</text>`;
+  const yl=spread(Ls),yr=spread(Rs);
+  Ls.forEach((n,i)=>{nodes+=`<rect x="${x0-NW}" y="${n.y.toFixed(1)}" width="${NW}" height="${n.h.toFixed(1)}" rx="3" fill="${n.c}" data-tip="${esc(n.l+': '+zl(n.v))}" class="hit"/>`+lab(n,x0-NW-4,yl[i],'end')});
+  Rs.forEach((n,i)=>{nodes+=`<rect x="${x1}" y="${n.y.toFixed(1)}" width="${NW}" height="${n.h.toFixed(1)}" rx="3" fill="${n.c}" data-tip="${esc(n.l+': '+zl(n.v))}" class="hit"/>`+lab(n,x1+NW+4,yr[i],'start')});
   return`<svg viewBox="0 0 ${W} ${h}" class="bars" role="img" aria-label="Przepływ pieniędzy">${flows}${nodes}</svg>`}

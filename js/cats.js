@@ -56,7 +56,9 @@ function head(k,face){const{L,id,R,F,S,fur,rim}=k;
   /* eyes */
   const happy=face=='happy',lidOf=x=>face=='sleepy'?0.1:face=='grumpy'?0.5:happy||(face=='wink'&&x>110)?0.2:1;
   const eye=(cx,m)=>{const lid=lidOf(cx),onMask=L.mask&&cx<110,big=face=='surprised';
-    if(lid<0.3){const up=happy||face=='wink';return(up?`<path d="M${cx-12} 92 Q${cx} 81 ${cx+12} 92" stroke="#3b2a22" stroke-width="2.6" fill="none" stroke-linecap="round"/>`:`<path d="M${cx-12} 89 Q${cx} 96 ${cx+12} 89" stroke="#3b2a22" stroke-width="2.6" fill="none" stroke-linecap="round"/>`)+(onMask?'':`<path d="M${cx-10} ${up?94:91} Q${cx} ${up?86:97} ${cx+10} ${up?94:91}" stroke="#e7ddd2" stroke-width="2" fill="none" opacity=".7"/>`)}
+    /* a closed eye on Bailey's dark patch gets a light rim under the line – otherwise dark on dark is invisible */
+    if(lid<0.3){const up=happy||face=='wink',d=up?`M${cx-12} 92 Q${cx} 81 ${cx+12} 92`:`M${cx-12} 89 Q${cx} 96 ${cx+12} 89`;
+      return(onMask?`<path d="${d}" stroke="#f1e2d2" stroke-width="5.6" fill="none" stroke-linecap="round" opacity=".9"/>`:'')+`<path d="${d}" stroke="${onMask?'#2a1a12':'#3b2a22'}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`+(onMask?'':`<path d="M${cx-10} ${up?94:91} Q${cx} ${up?86:97} ${cx+10} ${up?94:91}" stroke="#e7ddd2" stroke-width="2" fill="none" opacity=".7"/>`)}
     const rx=big?14:12.3,ry=big?13:10.5;let e=`<ellipse cx="${cx}" cy="89" rx="${rx+1.2}" ry="${ry+1}" fill="#2a1d17" opacity=".9"/><ellipse cx="${cx}" cy="89" rx="${rx}" ry="${ry}" fill="url(#${id}e)"/>`;
     for(let j=0;j<14;j++){const a=j/14*Math.PI*2;e+=`<path d="M${f1(cx+Math.cos(a)*5)} ${f1(90+Math.sin(a)*6.5)} L${f1(cx+Math.cos(a)*(rx-1.3))} ${f1(89+Math.sin(a)*(ry-1))}" stroke="${L.eye1}" stroke-width=".8" opacity=".55"/>`}
     e+=`<ellipse cx="${cx}" cy="90" rx="${big?6:4.8}" ry="${big?6.5:7.6}" fill="#0b1020"/><ellipse cx="${cx+4}" cy="84.5" rx="3.3" ry="2.7" fill="#fff"/><circle cx="${cx-4.5}" cy="94.5" r="1.3" fill="#fff" opacity=".8"/>`;

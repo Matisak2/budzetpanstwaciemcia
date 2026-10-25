@@ -29,7 +29,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 input,select,button{font:inherit;color:inherit}
 input,select{font-size:16px}
 button{cursor:pointer;background:none;border:0;padding:0}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+:focus-visible{outline:2px solid var(--a-line);outline-offset:2px}
 .gut{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
 @media (min-width:420px){.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
 .num{font-variant-numeric:tabular-nums;font-weight:800;white-space:nowrap}
@@ -131,7 +131,7 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .grp-h.sav{background:#e0e7ff} .grp-h.inv{background:#ede9fe} .grp-h.subk{background:#fef3c7}
 .acc{display:flex;justify-content:space-between;gap:10px;padding:11px 12px;border-top:1px solid var(--line);font-size:13px;align-items:flex-start}
 .acc .r{text-align:right}
-.chip{display:inline-block;margin-top:6px;border-radius:10px;padding:7px 11px;min-height:34px;font-size:13px;font-weight:700;background:#eef2ff;color:#4338ca}
+.chip{display:inline-block;margin-top:6px;border-radius:10px;padding:7px 11px;min-height:34px;font-size:13px;font-weight:700;background:var(--a-btn);color:var(--a-ink)}
 
 /* fixed costs checklist */
 .fx{display:flex;align-items:center;gap:12px;padding:11px 12px;border-top:1px solid var(--line)}
@@ -207,6 +207,11 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .tbl th{text-align:right;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;padding:6px 6px;border-bottom:1px solid var(--line)}
 .tbl th:first-child,.tbl td:first-child{text-align:left}
 .tbl td{text-align:right;padding:6px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+/* narrow phone or big text: short month names in tables (Paź instead of Październik), so every column fits */
+.tbl .msh{display:none}
+@media (max-width:340px){.tbl .mf{display:none}.tbl .msh{display:inline}.tbl td,.tbl th{padding:6px 4px}}
+@media (max-width:380px){body[data-size="1"] .tbl .mf{display:none}body[data-size="1"] .tbl .msh{display:inline}}
+@media (max-width:430px){body[data-size="2"] .tbl .mf{display:none}body[data-size="2"] .tbl .msh{display:inline}body[data-size="2"] .tbl td,body[data-size="2"] .tbl th{padding:6px 4px}body[data-size="2"] .tbl th{letter-spacing:0}}
 .tbl tr.tot td{font-weight:800;border-top:2px solid var(--line)}
 .seg.seg4{display:grid;grid-template-columns:repeat(4,1fr);width:100%}
 .seg.seg4 button{padding:9px 2px;font-size:14px}
@@ -294,7 +299,7 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .tabs button .e{font-size:20px;line-height:1.2;filter:grayscale(.35);opacity:.8}
 .tabs button[aria-current=page]{color:var(--a-dk)}
 .tabs button[aria-current=page] .e{filter:none;opacity:1}
-.tabs .add{color:var(--accent-dk);font-weight:800}
+.tabs .add{color:var(--a-dk);font-weight:800}
 .tabs .add .e{filter:none;opacity:1}
 
 .fab{position:fixed;z-index:25;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(72px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:20px;background:var(--a-box);color:var(--a-ink);font-size:34px;font-weight:500;line-height:1;display:grid;place-items:center;box-shadow:0 6px 16px rgb(var(--a-sh) / .28);border:1px solid var(--a-line);transition:transform .15s}
@@ -380,7 +385,7 @@ details.more[open] summary{margin-bottom:4px}
 .calc input{padding-right:76px}
 .cop{position:absolute;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:9px;background:#eef2ff;color:#3730a3;font-weight:900;font-size:18px;line-height:1}
 .cop[data-op="+"]{right:40px}.cop[data-op="-"]{right:6px}
-#maSum{min-height:0;font-weight:700;color:var(--accent-ink)}
+#maSum{min-height:0;font-weight:700;color:var(--a-ink)}
 
 /* position picker button + picker sheet */
 .pickbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;text-align:left;border:1px solid #cbd5e1;border-radius:14px;padding:8px 10px;background:#fff}
@@ -390,7 +395,7 @@ details.more[open] summary{margin-bottom:4px}
 .pickbtn .pt b{font-size:15px;overflow-wrap:anywhere}
 .pickbtn .ph{color:var(--muted);font-weight:700}
 .pickbtn .cico{margin-right:0;background:var(--c,#f1f5f9)}
-#msHint{color:var(--accent-ink);font-weight:700}
+#msHint{color:var(--a-ink);font-weight:700}
 #pick{z-index:55}
 .pick{max-height:88%;min-height:60%}
 .pq{width:100%;border:1px solid #cbd5e1;background:#fff;border-radius:12px;padding:11px 12px;font-size:16px}
@@ -547,7 +552,7 @@ details.more[open] summary{margin-bottom:4px}
 .accs{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px}
 .accdot{width:40px;height:40px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
 .accdot[aria-pressed=true]{box-shadow:0 0 0 3px var(--a-dk)}
-.chip.ghost{background:transparent;border:1px dashed #c4b5fd;color:#6d28d9}
+.chip.ghost{background:#f1f5f9;color:#0f172a}
 
 /* 🕑 changes, ⓘ */
 .chg2{display:flex;flex-direction:column}
@@ -587,3 +592,13 @@ body[data-size="2"] .seg .si{display:none}
 .dsave .mini{color:#92400e}
 .chip.sv{background:#fef3c7;color:#92400e}
 .mini.svin{color:#a16207}
+/* section header rows: the „+ …” button never breaks into two lines – the title wraps instead */
+.r1>.btn.sm{white-space:nowrap;flex-shrink:0}
+/* budget filter: each label in one line, wider labels get more room */
+.seg.seg3.bfilt{display:flex}
+.bfilt button{flex:1 1 auto;white-space:nowrap}
+body[data-size="2"] .bfilt button{font-size:12.5px;padding:9px 1px}
+@media (max-width:340px){.bfilt button{font-size:12px;padding:9px 1px}}
+/* chart title with a small button right after it (🛡️ Limity, 💧 Kaskada): button on the same line, on the right */
+.chart .ct:has(>b+.btn.sm:last-child){flex-direction:row;align-items:center;justify-content:space-between;gap:8px}
+.chart .ct>b+.btn.sm:last-child{flex-shrink:0;white-space:nowrap}

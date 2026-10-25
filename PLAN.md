@@ -167,16 +167,16 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 - [x] Kopia zasad dostępu Firebase w `firebase/` (bez adresów e-mail – repozytorium jest publiczne)
 
 ## Etap H. Poprawki z przeglądu ekranów
-- [ ] Średnie „/mies.” w Analizie → Rok liczone tylko z miesięcy z wpisami
-- [ ] Tabela „Miesiąc po miesiącu” mieści się na wąskim telefonie z dużym tekstem
-- [ ] ⚙️ „Kto korzysta z tego telefonu?” – przyciski na całą szerokość
-- [ ] „+ Przelew” i filtr „▲ Przekroczone” w jednej linijce; pełna podpowiedź w szukaniu Rejestru
-- [ ] Kolor akcentu telefonu także w ramce pola i podpowiedziach okienka transakcji
-- [ ] Jedna ikonka 👛 dla „Konta”; jednakowe przyciski propozycji „Dodać do opłat stałych?”; „+ …” zawsze wielką literą
-- [ ] Kwoty od 1000 zł zawsze z odstępem („5 449,18 zł”)
-- [ ] Drobiazgi: „✓ wszystko wpłynęło”, napis o strzałkach tylko gdy są strzałki, jeden kolor pasków „z”, kotek przy pustych Pensjach, procent przy „Pozostałe”, napisy w „Przepływie pieniędzy” nie nachodzą na siebie, „✎ Limity” obok tytułu
-- [ ] Nowy wpis na telefonie bez historii – konto osoby telefonu
-- [ ] Oko Bailey na brązowej łacie widoczne przy uśmiechu
+- [x] Średnie „/mies.” w Analizie → Rok liczone tylko z miesięcy z wpisami
+- [x] Tabela „Miesiąc po miesiącu” mieści się na wąskim telefonie z dużym tekstem
+- [x] ⚙️ „Kto korzysta z tego telefonu?” – przyciski na całą szerokość
+- [x] „+ Przelew” i filtr „▲ Przekroczone” w jednej linijce; pełna podpowiedź w szukaniu Rejestru
+- [x] Kolor akcentu telefonu także w ramce pola i podpowiedziach okienka transakcji
+- [x] Jedna ikonka 👛 dla „Konta”; jednakowe przyciski propozycji „Dodać do opłat stałych?”; „+ …” zawsze wielką literą
+- [x] Kwoty od 1000 zł zawsze z odstępem („5 449,18 zł”)
+- [x] Drobiazgi: „✓ wszystko wpłynęło”, napis o strzałkach tylko gdy są strzałki, jeden kolor pasków „z”, kotek przy pustych Pensjach, procent przy „Pozostałe”, napisy w „Przepływie pieniędzy” nie nachodzą na siebie, „✎ Limity” obok tytułu
+- [x] Nowy wpis na telefonie bez historii – konto osoby telefonu
+- [x] Oko Bailey na brązowej łacie widoczne przy uśmiechu
 
 ## Etap I. Bezpieczeństwo i dyskrecja
 - [ ] 🗑️ ⚙️ „Ostatnio usunięte” – usunięte wpisy z przyciskiem „Przywróć”
