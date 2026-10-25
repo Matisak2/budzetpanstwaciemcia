@@ -100,6 +100,28 @@ for(const C of CASES){
   }catch(e){fail(`${tag}: test zdjęcia – ${e.message.split('\n')[0]}`)}}
   await ctx.close();
 }
+/* 3. the real start page (index.html, not the demo): Firebase replaced by small stand-ins with no data –
+   a) nobody logged in → the login screen, b) logged in to an empty household → the app starts with the default budget */
+const FB={
+  'firebase-app.js':`export const initializeApp=()=>({});`,
+  'firebase-auth.js':`export const getAuth=()=>({currentUser:window.__TEST_USER||null});export const setPersistence=async()=>{};export const browserLocalPersistence={};
+    export const onAuthStateChanged=(a,cb)=>{setTimeout(()=>cb(window.__TEST_USER||null),20);return()=>{}};export const signInWithEmailAndPassword=async()=>{throw new Error('test')};export const signOut=async()=>{};`,
+  'firebase-firestore.js':`const meta={fromCache:false,hasPendingWrites:false};export const initializeFirestore=()=>({});export const persistentLocalCache=()=>({});export const persistentMultipleTabManager=()=>({});
+    export const doc=(b,...s)=>({p:[b&&b.p,...s].filter(Boolean).join('/'),doc:true});export const collection=(b,n)=>({p:[b&&b.p,n].filter(Boolean).join('/'),col:true});
+    export const onSnapshot=(ref,a,b)=>{const cb=typeof a=='function'?a:b;setTimeout(()=>cb(ref.doc?{exists:()=>false,data:()=>undefined,id:ref.p.split('/').pop(),metadata:meta}:{docs:[],metadata:meta}),30);return()=>{}};
+    export const setDoc=async()=>{};export const updateDoc=async()=>{};export const deleteDoc=async()=>{};export const deleteField=()=>({});export const increment=n=>n;export const waitForPendingWrites=async()=>{};
+    export const getDoc=async()=>({exists:()=>false,data:()=>undefined});export const getDocs=async()=>({docs:[]});`};
+for(const [tag,user] of [['prawdziwa strona – logowanie',null],['prawdziwa strona – pusty budżet',{uid:'test',email:'test@example.com'}]]){
+  const ctx=await browser.newContext({viewport:{width:390,height:800},serviceWorkers:'block'});const p=await ctx.newPage();
+  p.on('pageerror',e=>fail(`${tag}: błąd JavaScript: ${e.message}`));
+  p.on('console',m=>{if(m.type()=='error'&&!/Failed to load resource|net::|ERR_/.test(m.text()))fail(`${tag}: błąd w konsoli: ${m.text()}`)});
+  await p.route('https://www.gstatic.com/firebasejs/**',r=>{const f=Object.keys(FB).find(k=>r.request().url().endsWith(k));return f?r.fulfill({contentType:'text/javascript',body:FB[f]}):r.abort()});
+  await p.addInitScript(u=>{window.__TEST_USER=u},user);
+  await p.goto(BASE+'/');await p.waitForTimeout(1500);
+  if(!user&&!await p.isVisible('#loginBtn'))fail(`${tag}: nie widać ekranu logowania`);
+  if(user&&!await p.evaluate(()=>!!document.querySelector('#app .kpis,#app .card')))fail(`${tag}: aplikacja nie pokazała budżetu`);
+  await p.screenshot({path:path.join(OUT,`${tag.replace(/\W+/g,'-')}.png`),fullPage:true});await ctx.close()}
+
 await browser.close();srv.close();
 console.log(fails.length?`\n❌ Robot znalazł ${fails.length} problem(ów).`:`\n✅ Wszystkie ekrany w porządku (${CASES.length} ustawienia telefonu × ${SCREENS.length} ekranów).`);
 process.exit(fails.length?1:0);
