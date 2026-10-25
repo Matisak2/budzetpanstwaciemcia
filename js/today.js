@@ -4,7 +4,7 @@
 import {MN,MNG,addDays,addMonths,money,zl} from './util.js';
 import {balance,carStats,dueAlerts,fixedDate,inPeriod,subsMap,ownerOf,yearDueIn} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS} from './inv.js';
-import {calcNet,RULES_YEAR} from './pay.js';
+import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 export {ownerOf};
 const person=o=>o=='Mati'||o=='Wercia'?o:null;
 const plu=(n,a,b,c)=>n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c;
@@ -125,6 +125,11 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const x of dueAlerts(cfg.fixed||[],tx,today))add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – czeka na odhaczenie`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(ownerOf(accOf(x.f.acc))));
   const live=new Set(tx.map(t=>t.id));
   for(const s of incs)if(day>=(s.day||10)){const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata zwykle do ${s.day||10}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}
+  /* 🎓 the end of ulga dla młodych: from a month before the 26th birthday – later payslips are taxed; the drop estimated from the last payslip of each source */
+  for(const w of ['Mati','Wercia']){const un=youngUntil(hraw?.birth?.[w]),n=un?dd(today,un):-1,L=incs.filter(s=>s.who==w&&youngKind(s.kind)),key='young:'+w+':'+un;
+    if(n<0||n>31||!L.length||hraw?.checkIgnore?.[key])continue;
+    const tax=L.reduce((a,s)=>{const m=Object.keys(slips||{}).filter(m=>slips[m]?.[s.id]).sort().pop();return a+(m?suggest(s,slips[m][s.id]).tax:0)},0);
+    out.push({key,icon:'🎓',text:`${w}: ${dmy(un)} – 26. urodziny i koniec ulgi dla młodych. Wypłaty po tym dniu będą z podatkiem${tax?` – na konto ok. ${zl(tax)} mniej co miesiąc`:''}. Warto to uwzględnić w planie.`,go:{a:'pay'},label:'Pensje',k:'young',who:w,quiet:!(n==31||n==7)})}
   if(day>=14&&day<=20)for(const s of incs.filter(s=>s.kind=='b2b'))add('🧾',`JDG (${s.name}): do 20. zapłać ZUS, zdrowotną i podatek.`,{a:'pay'},'Pensje','',person(s.who));
   if(hour>=20&&!tx.some(t=>t.date==today&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val)))add('✍️','Po 20:00 – dziś nic jeszcze nie wpisano. Były jakieś wydatki?',{a:'add'},'Wpisz');
   const ys=yearStateP(cfg,tx,hraw,ym,today);if(ys){if(ys.left)add('📅',`Wydatki roczne: w tym miesiącu odłóż jeszcze ${zl(ys.left)}.`,{a:'year'},'Odłóż');

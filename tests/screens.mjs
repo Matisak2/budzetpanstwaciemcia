@@ -34,7 +34,10 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['stale',"go
   ['umowa-stale',"{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp');f.until=new Date(Date.now()+40*864e5).toISOString().slice(0,10);window.__umowa=f.id;goTab('fix');setFixSub('fix')}"],
   ['umowa-na-dzis',"closeAll();showToday()"],['umowa-edycja',"closeAll();editFixed(window.__umowa)"],['gdzie-wydajemy',"closeAll();goTab('ana');setAnaMode('full');setAna('m')"],
   ['podpowiedz-notatki',"closeAll();openTx();setTimeout(()=>{const m=$('mn');m.focus();m.value='bi';m.dispatchEvent(new Event('input'))},200)"],
-  ['dyskretny-budzet',"setHide(1);goTab('dash')"],['dyskretny-analiza',"goTab('ana');setAna('m')"],['dyskretny-majatek',"goTab('sav')"],['dyskretny-koniec',"setHide(0);goTab('dash')"],['nowy-wpis',"goTab('dash');openTx()"],['na-dzis',"closeAll();showToday()"],['pomoc',"closeAll();openHelp()"]];
+  ['dyskretny-budzet',"setHide(1);goTab('dash')"],['dyskretny-analiza',"goTab('ana');setAna('m')"],['dyskretny-majatek',"goTab('sav')"],['dyskretny-koniec',"setHide(0);goTab('dash')"],['nowy-wpis',"goTab('dash');openTx()"],['na-dzis',"closeAll();showToday()"],['pomoc',"closeAll();openHelp()"],
+  ['urodziny',"closeAll();askBirth(true)"],
+  ['pasek-mlodzi',"closeAll();{S.hraw={...S.hraw,birth:{Mati:'2001-05-12',Wercia:'2001-05-12'}};if(!S.cfg.incs.some(x=>x.id=='iy'))S.cfg.incs.push({id:'iy',name:'Szpital',who:S.who,kind:'uop',acc:S.cfg.accs[0].id,sub:'',day:10});goTab('fix');setFixSub('pay');openSlip('iy');setTimeout(()=>{document.querySelector('.slip [data-c=\"0\"][data-f=\"a\"]').value='8000';slipSuggest()},100)}"],
+  ['urodziny-powitanie',"closeAll();S.slip=null;{const t=new Date().toISOString().slice(0,10);S.hraw={...S.hraw,birth:{Mati:'1995'+t.slice(4),Wercia:'1996'+t.slice(4)}};goTab('dash')}"]];
 const CASES=[{w:390,size:'0',role:'Wercia'},{w:360,size:'2',role:'Mati'},{w:320,size:'0',role:'Mati'},{w:390,size:'1',role:'Wercia'}];
 
 for(const C of CASES){

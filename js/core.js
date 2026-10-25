@@ -45,8 +45,8 @@ export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=t
   const late=unpaid.filter(f=>fixedDate(f,ym)<today).map(f=>f.name),soon=unpaid.filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)}).map(f=>f.name);
   const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({name:g.name,pct:goalAlloc(g)/g.target*100})).sort((a,b)=>b.pct-a.pct)[0]||null;
   const act=actuals(cfg,tx,ym),treats=cfg.cats.reduce((a,c)=>a+c.subs.filter(x=>isTreat(x.name)).reduce((b,x)=>b+Math.max(0,act[x.id]||0),0),0);
-  const g=greeting({jdg:(cfg.incs||[]).some(s=>s.kind=='b2b')&&+today.slice(8)>=14&&+today.slice(8)<=20,coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats});
-  if(g.scene.startsWith('birthday')&&kotki.mode!='off'&&!ls.get('mw_bd_'+today)){ls.set('mw_bd_'+today,'1');setTimeout(confetti,400)}
+  const g=greeting({jdg:(cfg.incs||[]).some(s=>s.kind=='b2b')&&+today.slice(8)>=14&&+today.slice(8)<=20,coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats,births:S.hraw?.birth||{}});
+  if((g.scene.startsWith('birthday')||g.bday)&&kotki.mode!='off'&&!ls.get('mw_bd_'+today)){ls.set('mw_bd_'+today,'1');setTimeout(confetti,400)}
   const pic=kotki.mode=='off'?'':`<div class="gcats${WIDE.has(g.scene)?' w':''}">${scene(g.scene,'kot',g.arg)}</div>`;
   return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${kotki.mode=='off'?'':`<em class="who">${g.who}:</em> `}${esc(g.text)}</span></div>${pic}</section>`}
 /* Bailey & Ivo slides: first steps, "Co nowego", celebrations */
@@ -64,7 +64,19 @@ export function maybeIntro(){if(S.introDone||!S.cfg||!$('dlg').hidden||!$('sheet
   if(!ls.get('mw_tour')&&kotki.mode!='off'){ls.set('mw_tour','1');ls.set('mw_news',String(NEWS_V));showTour()}
   else if(+(ls.get('mw_news')||0)<NEWS_V)showNews();
   else if(S.goPending){const g=S.goPending;S.goPending=null;setTimeout(()=>runGo(g),300)}
+  else if(birthDue())askBirth().then(()=>setTimeout(maybeToday,400));
   else setTimeout(maybeToday,400)}
+/* 🎂 Bailey & Ivo ask this phone's person for the date of birth (shared on both phones: birthday wishes, ulga dla młodych in the payslip until 26).
+   „Nie teraz” – asked again after 60 days; changed in ⚙️ → „Kto korzysta z tego telefonu?” */
+const birthDue=()=>!DEMO&&!!S.cfg&&!S.hraw?.birth?.[S.who]&&!((ls.get('mw_bask')||'')>addDays(td(),-60));
+export function askBirth(force){const who=S.who,cur=S.hraw?.birth?.[who]||'';if(!force)ls.set('mw_bask',td());
+  return new Promise(res=>{const d=$('dlg');
+    $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene('duo','kot')}<h2>${cur?'🎂 Data urodzenia':`Kiedy masz urodziny, ${esc(who)}? 🎂`}</h2><p class="dtext">${cur?'':'Bailey i Ivo chcą złożyć Ci życzenia. '}Do 26. urodzin aplikacja sama policzy też ulgę dla młodych w pasku pensji (bez podatku). Datę widzicie tylko Wy dwoje.</p></div>
+      <label class="fld"><span>Data urodzenia</span><input id="f_bd" type="date" value="${esc(cur)}" max="${td()}"></label><div class="g2"><button class="btn" id="dlgNo">${cur||force?'Anuluj':'Nie teraz'}</button><button class="btn primary" id="dlgOk">Zapisz</button></div>`;
+    d.hidden=false;const done=v=>{d.hidden=true;d.onkeydown=null;d.onclick=null;res(v)};
+    $('dlgNo').onclick=()=>done(false);d.onclick=e=>{if(e.target===d)done(false)};d.onkeydown=e=>{if(e.key=='Escape')done(false)};
+    $('dlgOk').onclick=()=>{const v=$('f_bd').value;if(!/^\d{4}-\d\d-\d\d$/.test(v)||v>td()||v<'1920-01-01')return toast('Wybierz datę urodzenia','bad');
+      merge(H,{birth:{[who]:v}});done(true);toast(v.slice(5)==td().slice(5)?'🎂 Wszystkiego najlepszego!':'Zapisane 🎂 Bailey i Ivo już pamiętają')}})}
 /* a celebration: confetti + Bailey & Ivo (or just a message when they are switched to "few"/"off") */
 export function celebrate(c){confetti();if(kotki.mode=='lots')catSlides([c],'Hura!');else toast(c.title)}
 /* drobne saved in a month (all rules, one rule, or into one account) */

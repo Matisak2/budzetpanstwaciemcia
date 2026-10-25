@@ -21,8 +21,15 @@ const msgFor=who=>{
   const L=todayItems(D,{today,hour:8,checks:weekday=='Mon'}).filter(x=>x.go?.a!='add'&&!x.quiet&&(!x.who||x.who==who));if(!L.length)return null;
   const bad=L.filter(x=>x.k=='bad'),first=[...bad,...L.filter(x=>x.k!='bad')].slice(0,3);
   return{title:`🔔 Na dziś${L.length>1?` (${L.length})`:''}${bad.length?' – coś po terminie':''}`,body:first.map(x=>x.icon+' '+x.text).join('\n')+(L.length>3?`\n+${L.length-3} więcej`:''),url:'./#go=today',tag:'today'}};
+/* 🎂 birthday wishes from Bailey & Ivo in the morning (the person) and a reminder for the other one */
+const bdayFor=who=>{if(slot!='m')return null;const B=D.hraw?.birth||{},y=+today.slice(0,4),md=today.slice(5),leap=y%4==0&&(y%100!=0||y%400==0);
+  const is=w=>{const m=(B[w]||'').slice(5);return!!m&&(m==md||(m=='02-29'&&md=='02-28'&&!leap))};
+  if(is(who))return{title:`🎂 Wszystkiego najlepszego, ${who}!`,body:'Sto lat! Dużo zdrowia, spokoju i pełnej skarbonki. Bailey i Ivo mruczą życzenia 🐾',url:'./',tag:'bday'};
+  const o=who=='Mati'?'Wercia':'Mati';return is(o)?{title:`🎂 Dziś urodziny ${o=='Wercia'?'Werci':'Matiego'}!`,body:'Pamiętasz o życzeniach? Bailey pilnuje tortu, Ivo – niespodzianki 💝',url:'./',tag:'bday'}:null};
 let sent=0,gone=0;
-for(const d of subs){const s=d.data(),msg=msgFor(s.who);if(!msg)continue;
+for(const d of subs){const s=d.data(),bd=bdayFor(s.who);
+  if(bd)try{await webpush.sendNotification(s.sub,JSON.stringify(bd),{TTL:6*3600,urgency:'normal'});sent++}catch(e){console.log('– nie udało się wysłać ('+(e.statusCode||e.message)+')')}
+  const msg=msgFor(s.who);if(!msg)continue;
   try{await webpush.sendNotification(s.sub,JSON.stringify(msg),{TTL:6*3600,urgency:'normal'});sent++}
   catch(e){if(e.statusCode==404||e.statusCode==410){await d.ref.delete();gone++}else console.log('– nie udało się wysłać ('+(e.statusCode||e.message)+')')}}
 if(slot!='test')await logRef.set({[slot]:today},{merge:true});

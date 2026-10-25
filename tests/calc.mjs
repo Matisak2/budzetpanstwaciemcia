@@ -1,6 +1,6 @@
 /* 🤖 Robot: czy obliczenia pieniędzy dalej dają dobre wyniki. Oczekiwane liczby policzone niezależnie (ręcznie / kalkulatorem), nie skopiowane z kodu.
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
-import {suggest,calcNet,totals,fromNet} from '../js/pay.js';
+import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn} from '../js/logic.js';
@@ -41,6 +41,35 @@ const N=' ';
     // wiele kwot z rzędu: każda daje dokładnie tę kwotę netto (albo różnicę najwyżej 1 zł przy rzadkim skoku zaokrąglenia podatku)
     let worst=0;for(let x=300000;x<=1500000;x+=12347){const q=back(src,x);worst=Math.max(worst,Math.abs(q.net-x))}eq('Z netto – 100 kwot, różnica najwyżej 1 zł',worst<=100,true)}
   eq('Suma pasków',totals([{comp:[{a:100}],net:80},{comp:[{a:50}],net:40}]).net,120);
+}
+/* ---------- 🎓 ulga dla młodych (do 26 lat, limit 85 528 zł) ---------- */
+{ // 10 000 zł brutto w całości w limicie: ZUS 1 371 i zdrowotna 776,61 jak zwykle, podatku 0 → na konto 7 852,39 zł
+  const src={kind:'uop'},sl={comp:[{a:1000000}]},o=suggest(src,sl,undefined,8552800);
+  eq('Młodzi – ZUS bez zmian',o.zus,137100);eq('Młodzi – zdrowotna bez zmian',o.health,77661);eq('Młodzi – podatek 0',o.tax,0);eq('Młodzi – zwolnione',o.young,1000000);
+  eq('Młodzi – netto',calcNet(src,{...sl,...o}),785239);
+  // w limicie zostało 4 000 zł: opodatkowane 6 000 zł, ZUS odliczany w 60% (822,60), koszty 250 → podstawa 4 927,40 → 4 927 zł,
+  // 12% = 591,24 − 300 = 291,24 → 291 zł; na konto 10 000 − 1 371 − 776,61 − 291 = 7 561,39 zł
+  const q=suggest(src,sl,undefined,400000);eq('Młodzi – część ponad limit, podstawa',q.base,492700);eq('Młodzi – część ponad limit, podatek',q.tax,29100);
+  eq('Młodzi – część ponad limit, netto',calcNet(src,{...sl,...q}),756139);
+  eq('Młodzi – brak ulgi = jak zwykle',suggest(src,sl,undefined,null).tax,70500);
+  // podstawa zapisywana przy pasku (do progu 32% i PIT-11) – bez zwolnionej części
+  eq('Młodzi – podstawa paska',baseOf(src,{...sl,zus:137100,kup:25000,young:400000}),492700);eq('Podstawa paska bez ulgi',baseOf(src,{...sl,zus:137100,kup:25000}),837900);
+  // z netto: 7 852,39 zł na konto → ok. 10 000 zł brutto
+  {const r=fromNet(src,785239,0,undefined,8552800);eq('Młodzi z netto – brutto',Math.abs(r.b-1000000)<=2,true);eq('Młodzi z netto – rachunek',calcNet(src,{comp:[{a:r.b}],...r}),785239)}
+  // koniec ulgi: dzień 26. urodzin włącznie; 29 lutego → 28 lutego w zwykłym roku
+  eq('26. urodziny',youngUntil('2001-05-12'),'2027-05-12');eq('26. urodziny – 29 lutego',youngUntil('2000-02-29'),'2026-02-28');eq('Bez daty',youngUntil(''),'');
+  // limit liczony ze wszystkich pasków tej osoby w roku: 9 000 + 135 PPK pracodawcy (stary pasek bez „young”) + 5 000 zapisane = 14 135 zł → zostaje 71 393 zł
+  const slips={'2025-12':{a:{who:'Wercia',kind:'uop',comp:[{a:900000}],date:'2025-12-10'}},'2026-01':{a:{who:'Wercia',kind:'uop',comp:[{a:900000}],ppkEmp:13500,date:'2026-01-10'},m:{who:'Mati',kind:'uop',comp:[{a:900000}],date:'2026-01-10'}},'2026-02':{a:{who:'Wercia',kind:'uop',comp:[{a:900000}],young:500000,date:'2026-02-10'}},'2026-04':{a:{who:'Wercia',kind:'uop',comp:[{a:900000}],date:'2026-04-10'}}};
+  const incs=[{id:'a',who:'Wercia',kind:'uop'},{id:'b',who:'Wercia',kind:'zlec'},{id:'m',who:'Mati',kind:'uop'}];
+  eq('Młodzi – limit z innych pasków',youngLeft(slips,incs,incs[1],'2001-05-12','2026-03','2026-03-10'),7139300);
+  eq('Młodzi – po 26. urodzinach brak',youngLeft(slips,incs,incs[1],'2001-05-12','2027-05','2027-05-13'),null);
+  eq('Młodzi – w dniu urodzin jeszcze tak',youngLeft({},incs,incs[1],'2001-05-12','2027-05','2027-05-12'),8552800);
+  eq('Młodzi – dzieło bez ulgi',youngLeft(slips,incs,{id:'d',who:'Wercia',kind:'dzielo'},'2001-05-12','2026-03','2026-03-10'),null);
+  eq('Młodzi – pasek po urodzinach nie zużywa limitu',youngLeft(slips,incs,incs[1],'2000-03-15','2026-05','2026-03-14'),8552800-900000-13500-500000);
+  // „Na dziś” miesiąc przed 26. urodzinami: koniec ulgi i ok. 705 zł mniej (podatek z ostatniego paska 10 000 zł)
+  const D={cfg:{accs:[],cats:[],fixed:[],years:[],incs:[{id:'a',who:'Wercia',kind:'uop',day:10}]},tx:[],slips:{'2027-04':{a:{comp:[{a:1000000}]}}},hold:{},debts:{},market:{},backup:null,hraw:{birth:{Wercia:'2001-05-12'}}};
+  const yi=todayItems(D,{today:'2027-04-20',checks:false}).find(x=>x.k=='young');eq('Na dziś – koniec ulgi',!!yi&&yi.who=='Wercia'&&yi.text.includes('705,00'),true);
+  eq('Na dziś – za wcześnie',todayItems(D,{today:'2027-03-20',checks:false}).some(x=>x.k=='young'),false);
 }
 
 /* ---------- 🏛️ obligacje i podatek Belki ---------- */

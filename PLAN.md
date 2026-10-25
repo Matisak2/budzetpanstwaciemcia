@@ -246,6 +246,30 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] ⚙️ Ustawienia w grupach: Ten telefon / Budżet / Bezpieczeństwo / Automaty / Pomoc
 - [x] Przewodnik „Która koperta do czego” (Cel / Roczne / odkładanie na spłatę / Projekt) + podpowiedź przy zakładaniu
 
+# Część 5 – po drugiej analizie przydatności (uzgodnione z Matim 25.10.2026)
+Mati wybrał: punkty 1–4, Rejestr i ulgę dla młodych; wszystkie etapy po kolei bez pytania o kolejny. Kolejność: W → S → T → U. Kopia zrobiona przed startem.
+
+## Etap W. Urodziny i ulga dla młodych
+- [x] 🎂 Bailey i Ivo pytają przy starcie o datę urodzenia osoby telefonu („Nie teraz” – znowu za 60 dni); zmiana w ⚙️ → „Kto korzysta z tego telefonu?”; data w kopii zapasowej
+- [x] 🎂 W dniu urodzin życzenia na Budżecie (konfetti) i rano w powiadomieniu; drugiej osobie przypomnienie o życzeniach
+- [x] 🎓 Ulga dla młodych (Wercia): umowa o pracę i zlecenie bez podatku do dnia 26. urodzin włącznie, limit 85 528 zł w roku ze wszystkich umów (z PPK pracodawcy); ZUS i zdrowotna bez zmian; przy przekroczeniu limitu podatek od nadwyżki
+- [x] 🎓 „Podpowiedz z brutto” i „z netto” liczą z ulgą, w pasku informacja o limicie, w widoku roku przychód zwolniony (do PIT-11)
+- [x] 🎓 Miesiąc przed 26. urodzinami w „Na dziś”: koniec ulgi i o ile mniej będzie na konto
+
+## Etap S. Opłaty stałe bez podwójnego liczenia
+- [ ] Wydatek wpisany przez ＋ podobny do niezapłaconej opłaty stałej albo wydatku rocznego → pytanie „To … z opłat stałych? Odhaczyć?”
+- [ ] Odhaczanie w 📌 Stałe, gdy podobny wpis już jest w miesiącu → „Połącz z wpisem z …” zamiast drugiego wydatku
+- [ ] Budżet: uwaga, gdy plan pozycji jest niższy niż jej opłaty stałe, z przyciskiem do poprawy
+
+## Etap T. Analiza trwającego miesiąca i Rejestr
+- [ ] W trwającym miesiącu porównanie z poprzednim miesiącem do tego samego dnia („miesiąc jeszcze trwa”)
+- [ ] „Zmieściło się” i „wyraźnie mniej niż plan” dopiero po końcu miesiąca
+- [ ] Rejestr: filtry schowane pod jednym przyciskiem „Filtry”, suma wydatków przy każdym dniu
+
+## Etap U. Zamknięcie miesiąca
+- [ ] Jeden ekran z krokami: salda z bankiem (data ostatniego sprawdzenia, „✓ zgadza się” / „Wyrównaj”), co było ponad plan, nadwyżka (kaskada), plan na nowy miesiąc, cele
+- [ ] Karta na Budżecie w pierwszych dniach miesiąca, w „Na dziś” i powiadomienie 1. dnia; odhaczone kroki wspólne dla obu telefonów
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

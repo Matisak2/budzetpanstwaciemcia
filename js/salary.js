@@ -4,7 +4,7 @@ import {catsEmpty} from './art.js';
 import {C_INC,barsSvg,chartBox} from './charts.js';
 import {position} from './inv.js';
 import {ULGI,pitSummaryP} from './today.js';
-import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
+import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf,youngLeft,youngUntil,youngPart,baseOf} from './pay.js';
 import {liveOf,subsMap} from './logic.js';
 import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0} from './util.js';
 import {S,toast,ask,accCur,am,accOwner,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard} from './core.js';
@@ -15,6 +15,9 @@ import {accN,render} from './app.js';
 /* ---------- 💼 salaries (📌 Stałe → Pensje): income sources per person, a payslip per source and month ---------- */
 export const incs=()=>S.cfg.incs||[],incById=id=>incs().find(s=>s.id==id);
 export const slipOf=(ym,id)=>(S.slips[ym]||{})[id];
+/* 🎓 ulga dla młodych: the limit left for this payslip (null = the relief does not apply – no date of birth, after the 26th birthday, other contract) */
+const payDate=(src,ym,d)=>isDate(d?.date)&&d.date.startsWith(ym)?d.date:ym+'-'+p2(Math.min(+src.day||10,daysIn(ym)));
+export const youngOf=(src,ym,d)=>youngLeft(S.slips,incs(),src,S.hraw?.birth?.[src.who],ym,payDate(src,ym,d));
 export const putSlip=(ym,id,body)=>merge(doc(SLIPS(),ym),{s:{[id]:body}});
 export const saveInc=x=>merge(H,{incM:{[x.id]:strip(x,incs().indexOf(x))}});
 export const delIncDb=id=>w(updateDoc(H,{['incM.'+id]:deleteField()}));
@@ -63,7 +66,7 @@ export function payYearH(){const y=S.ym.slice(0,4),ms=Array.from({length:12},(_,
   h+=`<section class="chart"><div class="ct"><b>Cały rok ${y}</b></div>${payTabH(T)}</section><div class="h2">Do sprawdzenia PIT-11</div>`;
   h+=[...new Set(rows.map(r=>r.id))].map(id=>{const list=rows.filter(r=>r.id==id).map(r=>r.sl),last=list[list.length-1],src=incById(id)||last,t=totals(list),b2b=src.kind=='b2b';
     const L=b2b?[['Przychód (faktury)',t.brutto],['Składki ZUS',t.zus],['Zdrowotna',t.health],['Podatek',t.tax]]
-      :[['Przychód'+(t.ppkEmp?' (z PPK pracodawcy)':''),t.brutto+t.ppkEmp],['Koszty uzyskania',t.kup],['Składki ZUS',t.zus],['Zdrowotna',t.health],['Zaliczka na podatek',t.tax]];
+      :[['Przychód'+(t.ppkEmp?' (z PPK pracodawcy)':''),t.brutto+t.ppkEmp],...(t.young?[['🎓 w tym zwolniony (ulga dla młodych)',t.young]]:[]),['Koszty uzyskania',t.kup],['Składki ZUS',t.zus],['Zdrowotna',t.health],['Zaliczka na podatek',t.tax]];
     return`<section class="chart"><div class="ct"><b>${esc(src.name||'?')}</b><span class="mini">${KINDS[src.kind]||''} · ${esc(src.who||'')} · ${t.n} ${plu(t.n,'pasek','paski','pasków')}</span></div><div class="ptbl">${L.map(([l,v])=>`<div class="r1"><span>${l}</span><b class="num">${zl(v)}</b></div>`).join('')}</div>${b2b?'<div class="mini">JDG rozliczasz we własnym zeznaniu (PIT-36, PIT-36L albo PIT-28), nie z PIT-11.</div>':''}</section>`}).join('');
   return h+`<div class="mini" style="padding:0 4px">Liczone według miesiąca wypłaty. Porównaj z PIT-11 od pracodawcy – drobne różnice mogą wynikać z zaokrągleń.</div>`+pitH(y)}
 /* 🧾 tax reliefs of each person for the year (marked payments, IKZE payments) – a hint, not tax advice */
@@ -171,6 +174,9 @@ export function slipCalc(){if(!S.slip||!$('slB'))return;const d=slipRead(),src=i
   else if(d.net){const df=d.net-calc;chk=df==0?'<span class="t-inc">✓ Rachunek się zgadza</span>':`<span class="t-exp">⚠️ Różnica ${df>0?'+':'−'}${zl(Math.abs(df))}</span> – brutto minus składki, podatek, PPK i potrącenia daje ${zl(calc)}. Sprawdź kwoty z paska.`}
   else chk=`Wyliczone netto: <b>${zl(calc)}</b> – wpisz kwotę z banku, a sprawdzę rachunek.`;
   $('slChk').innerHTML=chk;
+  {const yl=youngOf(src,S.slip.ym,d),un=youngUntil(S.hraw?.birth?.[src.who]),dm=x=>x.split('-').reverse().join('.'),e=$('slYg');
+   const t=yl==null?(un&&(src.kind=='uop'||src.kind=='zlec')&&payDate(src,S.slip.ym,d).slice(0,4)==un.slice(0,4)?`🎓 Ulga dla młodych skończyła się ${dm(un)} (26. urodziny) – ta wypłata już z podatkiem.`:'')
+     :`🎓 <b>Ulga dla młodych</b> (do ${dm(un)}): ${yl?`bez podatku ${zl(youngPart(d,yl))} z tej wypłaty · w ${S.slip.ym.slice(0,4)} r. zostało ${zl(yl)} limitu.`:`limit 85 528 zł w ${S.slip.ym.slice(0,4)} r. już wykorzystany – podatek jak zwykle.`} ZUS i zdrowotna bez zmian.`;if(e){e.innerHTML=t;e.style.display=t?'':'none'}}
   const net=d.net||calc,ratio=b>0?net/b:0,hc=d.comp.filter(c=>+c.h>0&&c.a>0);
   $('slHr').innerHTML=hc.map(c=>`⏱️ ${esc(c.n||'Składnik')} (${String(c.h).replace('.',',')} h): ${zl(Math.round(c.a/c.h))} brutto · ok. ${zl(Math.round(c.a*ratio/c.h))} netto za godzinę`).join('<br>')}
 export function slipRow(kind,i){slipRead();const L=S.slip.d[kind];if(i==null)L.push(kind=='comp'?{n:'',a:0,h:0}:{n:'',a:0,sub:''});else L.splice(i,1);
@@ -181,7 +187,7 @@ export function slipCopy(){const {id,ym}=S.slip,prev=Object.keys(S.slips).filter
   Object.assign(d,{comp:p.comp||[],zus:p.zus||0,health:p.health||0,kup:p.kup||0,tax:p.tax||0,ppkOwn:p.ppkOwn||0,ppkEmp:p.ppkEmp||0,costs:p.costs||0,ded:p.ded||[],net:0,est:false,estNet:false});
   if(document.activeElement)document.activeElement.blur();render();toast('Skopiowano pasek z miesiąca: '+MN[+prev.slice(5)-1].toLowerCase()+'. Wpisz kwotę z banku.')}
 export function slipSuggest(){const {id,ym}=S.slip,src=incById(id),d=slipRead();if(brutto(d)<=0)return toast(src.kind=='b2b'?'Najpierw wpisz kwotę faktury':'Najpierw wpisz składniki brutto','bad');
-  Object.assign(d,suggest(src,d,ytdOf(S.slips,id,ym)),{est:true,estNet:false});if(document.activeElement)document.activeElement.blur();render();toast('🧮 Wpisałem szacunek – sprawdź go z paskiem')}
+  Object.assign(d,suggest(src,d,ytdOf(S.slips,id,ym),youngOf(src,ym,d)),{est:true,estNet:false});if(document.activeElement)document.activeElement.blur();render();toast('🧮 Wpisałem szacunek – sprawdź go z paskiem')}
 export function slipReal(){slipRead();Object.assign(S.slip.d,{est:false,estNet:false});render()}
 /* 🧮 „Podpowiedz z netto”: only the amount from the bank is known (no payslip yet) – brutto, contributions, tax and PPK are estimated back from it;
    deductions taken from the pay are added first, PPK can be switched off for this month */
@@ -190,7 +196,7 @@ export async function slipNetto(){const {id,ym}=S.slip,src=incById(id),d=slipRea
   const r=await ask({title:'🧮 Podpowiedz z kwoty netto',text:`Wpisz, ile wpłynęło na konto (z aplikacji banku). Policzę z tego orientacyjnie brutto, ZUS, zdrowotną, podatek${src.ppk?' i PPK':''}.${ded?`\n✂️ Potrącenia z pensji (${zl(ded)}) doliczę – są w pasku poniżej, zmienisz je tam.`:'\n✂️ Jeśli coś jest potrącane od razu z pensji (np. ubezpieczenie grupowe, Multisport), dodaj to najpierw w pasku w „Potrącenia”.'}${many?'\nSkładniki brutto zastąpię jedną kwotą.':''}`,
     fields:[{id:'n',label:'Wpłynęło na konto (zł)',type:'decimal',value:d.net?f2(d.net):'',ph:'np. 7 147,39'},...(src.ppk?[{id:'p',label:'PPK w tej wypłacie',type:'select',value:d.ppkOwn||!d.est?'1':'0',options:[['1','Tak – odliczam moją wpłatę na PPK'],['0','Nie – bez PPK w tym miesiącu']]}]:[])],ok:'Policz'});
   if(!r)return;const net=gr(r.n);if(net<=0)return toast('Podaj kwotę, która wpłynęła','bad');
-  const ppkOn=!!src.ppk&&r.p!='0',o=fromNet({...src,ppk:ppkOn?src.ppk:''},net,ded,ytdOf(S.slips,id,ym));if(!o)return toast('Nie udało się policzyć – wpisz brutto z paska','bad');
+  const ppkOn=!!src.ppk&&r.p!='0',o=fromNet({...src,ppk:ppkOn?src.ppk:''},net,ded,ytdOf(S.slips,id,ym),youngOf(src,ym,d));if(!o)return toast('Nie udało się policzyć – wpisz brutto z paska','bad');
   const hrs=d.comp.reduce((a,c)=>a+(+c.h||0),0);
   Object.assign(d,{comp:[{n:'Wynagrodzenie (z netto)',a:o.b,h:hrs}],zus:o.zus,health:o.health,kup:o.kup,tax:o.tax,ppkOwn:o.ppkOwn,ppkEmp:o.ppkEmp,net,est:true,estNet:true});
   if(document.activeElement)document.activeElement.blur();render();toast('🧮 Policzyłem z netto – brutto ok. '+zl(o.b))}
@@ -199,7 +205,7 @@ export function slipH(){const {id,ym,d}=S.slip,src=incById(id);if(!src){S.slip=n
   const inp=(k,label,hint)=>`<label class="srow2"><span>${label}${hint?`<small>${hint}</small>`:''}</span><input class="planin" data-k="${k}" value="${V(d[k])}" placeholder="0,00" inputmode="decimal" autocomplete="off"></label>`;
   const sopt=sel=>subOpts('exp').map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(([v,l])=>`<option value="${v}"${v==sel?' selected':''}>${esc(l)}</option>`).join('')}</optgroup>`).join('');
   let h=`<div class="slip" oninput="slipCalc()" onchange="slipCalc()"><div class="sl-h"><b>💼 ${esc(src.name)}</b><span class="mini">${KINDS[src.kind]} · ${src.who} · wypłata: ${MN[+ym.slice(5)-1].toLowerCase()} ${ym.slice(0,4)}</span></div>
-    <div class="btns" style="gap:6px"><button class="chip" onclick="slipCopy()">⧉ Skopiuj z poprzedniego miesiąca</button><button class="chip" onclick="slipSuggest()">🧮 Podpowiedz z brutto</button>${b2b?'':'<button class="chip" onclick="slipNetto()">🧮 Podpowiedz z netto</button>'}</div><div class="mini">Podpowiedź liczy według zasad ${RULES_YEAR} r. – zawsze sprawdź z paskiem.</div>
+    <div class="btns" style="gap:6px"><button class="chip" onclick="slipCopy()">⧉ Skopiuj z poprzedniego miesiąca</button><button class="chip" onclick="slipSuggest()">🧮 Podpowiedz z brutto</button>${b2b?'':'<button class="chip" onclick="slipNetto()">🧮 Podpowiedz z netto</button>'}</div><div class="mini">Podpowiedź liczy według zasad ${RULES_YEAR} r. – zawsze sprawdź z paskiem.</div><div class="note" id="slYg" style="display:none"></div>
     ${d.est?(d.estNet?`<div class="note">🧮 To <b>szacunek z kwoty netto</b>${dedSum(d)?` (z potrąceniami ${zl(dedSum(d))})`:''}. Dodatki od pracodawcy (np. karta sportowa, część ubezpieczenia) bywają doliczane do przychodu – wtedy prawdziwy pasek różni się o kilka–kilkanaście zł. Gdy dostaniesz pasek, przepisz z niego brutto. <button class="btn sm" onclick="slipReal()">✓ To już kwoty z paska</button></div>`:'<div class="note">🧮 To <b>szacunek</b> wyliczony z brutto. Sprawdź i popraw kwoty według paska z wypłaty. <button class="btn sm" onclick="slipReal()">✓ To już kwoty z paska</button></div>'):''}
     <div class="sl-sec">${b2b?'FAKTURY':'SKŁADNIKI (BRUTTO)'}</div>
     ${d.comp.map((c,i)=>`<div class="sl-row"><input data-c="${i}" data-f="n" value="${esc(c.n||'')}" placeholder="${b2b?'np. Faktura za październik':'np. Dyżury'}" aria-label="Nazwa składnika" autocomplete="off"><input class="planin" data-c="${i}" data-f="a" value="${V(c.a)}" placeholder="0,00" inputmode="decimal" aria-label="Kwota" autocomplete="off">${b2b?'':`<input class="planin hrs" data-c="${i}" data-f="h" value="${c.h?String(c.h).replace('.',','):''}" placeholder="godz." inputmode="decimal" aria-label="Godziny (opcjonalnie)" autocomplete="off">`}<button type="button" class="x" onclick="slipRow('comp',${i})" aria-label="Usuń składnik">×</button></div>`).join('')}
@@ -237,9 +243,9 @@ export async function saveSlip(){if(guard())return;const {id,ym}=S.slip,src=incB
   const pb={date:d.date,sub:'',acc:src.ppk,to:'',who:src.who,deleted:false,ts,ppkOf:iid,...(src.fixed?{fixedRef:src.fixed}:{})};
   if(d.ppkOwn>0)putTx(ym,'t'+rid(),{...pb,type:'inc',amount:d.ppkOwn,note:'PPK – moja wpłata',ppk:'own'});
   if(d.ppkEmp>0)putTx(ym,'t'+rid(),{...pb,type:'inc',amount:d.ppkEmp,note:'PPK – wpłata pracodawcy',ppk:'emp'});
-  const base=src.kind=='b2b'?Math.max(0,b-(d.costs||0)-(d.zus||0)):Math.max(0,Math.round((b-(d.zus||0)-(d.kup||0)+(d.ppkEmp||0))/100)*100);
+  const yl=youngOf(src,ym,d),young=yl==null?null:youngPart(d,yl),base=baseOf(src,{...d,young});
   putSlip(ym,id,{comp:d.comp.map(c=>({n:String(c.n||''),a:c.a||0,h:+c.h||0})),zus:d.zus||0,health:d.health||0,kup:d.kup||0,tax:d.tax||0,ppkOwn:d.ppkOwn||0,ppkEmp:d.ppkEmp||0,costs:d.costs||0,
-    ded:d.ded.map(x=>({n:String(x.n||''),a:x.a||0,sub:x.sub||''})),net,date:d.date,base,booked:iid,name:src.name,kind:src.kind,who:src.who,est:!!d.est,estNet:!!d.estNet,ts});
+    ded:d.ded.map(x=>({n:String(x.n||''),a:x.a||0,sub:x.sub||''})),net,date:d.date,base,young,booked:iid,name:src.name,kind:src.kind,who:src.who,est:!!d.est,estNet:!!d.estNet,ts});
   if(dd.length){src.dedSub={...(src.dedSub||{})};dd.forEach(x=>{if(x.n)src.dedSub[x.n.trim().toLowerCase()]=x.sub});saveInc(src)}
   S.slip=null;render();toast(`Zaksięgowano: ${src.name} · ${zl(net)} na konto${dd.length?` · ${dd.length} ${plu(dd.length,'potrącenie','potrącenia','potrąceń')} w budżecie`:''}`)}
 export async function delSlip(){const {id,ym}=S.slip,old=slipOf(ym,id);if(!old)return closeSlip();
