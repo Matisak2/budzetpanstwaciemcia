@@ -179,8 +179,9 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 - [x] Oko Bailey na brązowej łacie widoczne przy uśmiechu
 
 ## Etap I. Bezpieczeństwo i dyskrecja
-- [ ] 🗑️ ⚙️ „Ostatnio usunięte” – usunięte wpisy z przyciskiem „Przywróć”
-- [ ] 🙈 Tryb dyskretny – kwoty jako „•••” (stuknięcie w nagłówku / ⚙️)
+- [x] 🗑️ ⚙️ „Ostatnio usunięte” – usunięte wpisy z przyciskiem „Przywróć”
+- [x] 🙈 Tryb dyskretny – kwoty jako „•••” (stuknięcie w nagłówku / ⚙️)
+- [x] 🚫 Bez przybliżania podwójnym stuknięciem (prośba Matiego): `*{touch-action:manipulation}` + w `app.js` drugie szybkie stuknięcie zatrzymane, przycisk dostaje kliknięcie; dwa palce dalej przybliżają
 
 ## Etap J. Umowy, koszty roczne, sklepy
 - [ ] „Umowa do…” przy opłacie stałej – przypomnienie 2 miesiące przed końcem (w „Na dziś” i w powiadomieniu)

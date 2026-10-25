@@ -1,7 +1,7 @@
-import {esc,zl} from './util.js';
+import {esc,zl,priv} from './util.js';
 export const PAL=['#7fb0ec','#f4a582','#6fd0a8','#f2c45f','#f0a3c3'],P_OTHER='#cbd5e1',C_INC='#6fd0a8',C_EXP='#f4a582',C_SAV='#7fb0ec';
 export const niceMax=v=>{if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v))),n=v/p;return(n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p};
-export const kfmt=g=>{const z=g/100,a=Math.abs(z);return a>=1e6?(z/1e6).toFixed(1).replace('.0','').replace('.',',')+' mln':a>=1e3?(z/1e3).toFixed(a>=1e4?0:1).replace('.0','').replace('.',',')+' tys.':Math.round(z)+''};
+export const kfmt=g=>{if(priv.on&&g)return'•••';const z=g/100,a=Math.abs(z);return a>=1e6?(z/1e6).toFixed(1).replace('.0','').replace('.',',')+' mln':a>=1e3?(z/1e3).toFixed(a>=1e4?0:1).replace('.0','').replace('.',',')+' tys.':Math.round(z)+''};
 export const pctS=(a,b)=>b?(a/b*100).toFixed(1).replace('.',',')+'%':'—';
 export function deltaH(cur,prev,goodUp){if(!prev)return'';const d=(cur-prev)/Math.abs(prev)*100;if(Math.abs(d)<0.5)return`<span class="dl flat">= jak poprzednio</span>`;
   const up=d>0,good=up===goodUp;return`<span class="dl ${good?'good':'bad'}">${up?'▲':'▼'} ${Math.abs(d).toFixed(0)}%</span>`}

@@ -19,8 +19,9 @@ body[data-acc=lemon]{--a-btn:#fef08a;--a-seg:#fef9c3;--a-box:#fef08a;--a-line:#f
 body[data-size="1"] #app,body[data-size="1"] .sheet,body[data-size="1"] .dlg{zoom:1.08}
 body[data-size="2"] #app,body[data-size="2"] .sheet,body[data-size="2"] .dlg{zoom:1.17}
 *{box-sizing:border-box}
-html{padding-top:env(safe-area-inset-top,0px);touch-action:manipulation}
-button,a,input,select,label,summary{touch-action:manipulation}
+html{padding-top:env(safe-area-inset-top,0px)}
+/* no double-tap zoom (pinch still works); JS in app.js catches the rest on iPhone */
+*{touch-action:manipulation}
 body{margin:0}
 img{max-width:100%}
 [hidden]{display:none!important}
@@ -602,3 +603,6 @@ body[data-size="2"] .bfilt button{font-size:12.5px;padding:9px 1px}
 /* chart title with a small button right after it (🛡️ Limity, 💧 Kaskada): button on the same line, on the right */
 .chart .ct:has(>b+.btn.sm:last-child){flex-direction:row;align-items:center;justify-content:space-between;gap:8px}
 .chart .ct>b+.btn.sm:last-child{flex-shrink:0;white-space:nowrap}
+/* 🙈 discreet mode banner – soft lavender instead of the demo yellow */
+.demob.hideb{background:#f3e8ff;border-color:#e9d5ff;color:#6b21a8}
+.demob.hideb button{color:#6b21a8}
