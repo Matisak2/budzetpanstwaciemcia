@@ -65,6 +65,30 @@ export function yearPlanOf(cfg,tx,ym){const sub={},items=[];
 export function planOf(cfg,plans,tx,ym){const p={...((plans||{})[ym]||{})};for(const[k,v]of Object.entries(yearPlanOf(cfg,tx,ym).sub))p[k]=(p[k]||0)+v;return p}
 /* positions of yearly expenses – the 3-month average would spread their big payment over every month, so hints skip them */
 export const yearSubs=cfg=>new Set((cfg.years||[]).map(it=>it.sub).filter(Boolean));
+/* 📌 typed expenses and fixed / yearly payments – so one bill is never booked twice.
+   A fixed payment matches an expense of the same position with an amount within 15% (a variable bill – any amount),
+   or with its name in the note (amount within 50%). */
+const nn=s=>String(s||'').toLowerCase().replace(/\d+/g,' ').replace(/[^\p{L} ]+/gu,' ').replace(/\s+/g,' ').trim();
+const near=(a,b,p)=>Math.abs(a-b)<=b*p;
+const fixLike=(f,t)=>(f.sub&&f.sub==t.sub&&(f.vary||near(t.amount,+f.amount||0,.15)))||(nn(f.name).length>=3&&nn(t.note).includes(nn(f.name))&&near(t.amount,+f.amount||0,.5));
+const fixedPaidIn=(tx,id,ym)=>inPeriod(tx,ym).some(x=>x.fixedId===id&&!x.deleted);
+/* a new typed expense (not saved yet) → the unpaid fixed payment of its month it probably is */
+export function fixedMatch(cfg,tx,t){if(t.type!='exp'||!isDate(t.date))return null;const ym=t.date.slice(0,7);
+  const L=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&!fixedPaidIn(tx,f.id,ym)&&fixLike(f,t));
+  return L.sort((a,b)=>Math.abs(t.amount-a.amount)-Math.abs(t.amount-b.amount))[0]||null}
+/* ticking a fixed payment → a typed expense of that month that is probably the same bill (not linked to anything yet), the closest amount first */
+export function fixedTwin(cfg,tx,f,ym){if((f.kind||'exp')!='exp')return null;
+  const L=inPeriod(tx,ym).filter(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.yearId&&!t.slipOf&&!t.roundOf&&!t.ppk&&!t.payoff&&fixLike(f,t));
+  return L.sort((a,b)=>Math.abs(a.amount-f.amount)-Math.abs(b.amount-f.amount))[0]||null}
+/* 📅 the due month of a yearly expense closest to ym (±2 months; null when none) – the payment of that date */
+export function yearDueNear(it,ym){let best=null;for(const k of [0,-1,1,-2,2]){const m=new Date(Date.UTC(+ym.slice(0,4),+ym.slice(5,7)-1+k,1)).toISOString().slice(0,7);if(yearDueIn(it,m)){best=m;break}}return best}
+/* a typed expense → the yearly expense it probably pays: the same position, amount within 25%, due within 2 months and not paid yet */
+export function yearMatch(cfg,tx,t){if(t.type!='exp'||!isDate(t.date))return null;const ym=t.date.slice(0,7);
+  return(cfg.years||[]).find(it=>it.sub&&it.sub==t.sub&&+it.amount>0&&near(t.amount,+it.amount,.25)&&(()=>{const m=yearDueNear(it,ym);if(!m)return false;
+    const from=new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7)-4,1)).toISOString().slice(0,10);return!tx.some(x=>x.yearId===it.id&&!x.deleted&&x.type=='exp'&&x.date>=from)})())||null}
+/* positions whose fixed payments cost more than their plan (pl = the plan as used everywhere) */
+export function fixedPlanGap(cfg,pl){const by={};for(const f of cfg.fixed||[])if((f.kind||'exp')=='exp'&&f.sub&&+f.amount>0)by[f.sub]=(by[f.sub]||0)+(+f.amount);
+  const sm=subsMap(cfg);return Object.entries(by).filter(([id,v])=>sm[id]&&v>(pl[id]||0)).map(([id,v])=>({sub:sm[id],fix:v,plan:pl[id]||0}))}
 /* "drobne": a card payment rounded up to the next full 5 / 10 zł, the difference × multiplier is put aside;
    an exact amount (e.g. 15,00) gives a full step only when rule.full is on – this is how Revolut does it */
 export function roundUp(amt,r){const st=(+r.step||5)*100,rem=amt%st,base=rem?st-rem:(r.full?st:0);return base*(+r.mult||1)}

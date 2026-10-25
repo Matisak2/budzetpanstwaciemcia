@@ -5,7 +5,7 @@ import {kotki} from './guide.js';
 import {gainSvg} from './charts.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue} from './inv.js';
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
-import {seasonal,agg,balance,liveOf,carStats} from './logic.js';
+import {seasonal,agg,balance,liveOf,carStats,yearDueNear} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym} from './util.js';
 import {S,toast,ask,CUR,isP,CUR_OPTS,accOwner,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard} from './core.js';
 import {plu,openTx} from './sheet.js';
@@ -258,8 +258,14 @@ export async function editYear(id,pre){if(guard())return;const y0=id?years().fin
   S.cfg.years=years();let x=y0;if(x)Object.assign(x,body);else{x=body;S.cfg.years.push(x)}
   if(!yearAccId()){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);S.hraw={...S.hraw,yearAcc:a.id};merge(H,{yearAcc:a.id});toast('Założyłem wspólne subkonto na wydatki roczne')}
   render();saveYear(x)}
-export async function payYear(id){if(guard())return;const it=years().find(x=>x.id==id);if(!it)return;const due=yearDue(it,td().slice(0,7));
+/* 📅 paid: the next date counts from the due month closest to the payment (paid early or a little late – the same term) */
+export function markYearPaid(it,date){const ym=date.slice(0,7),due=yearDueNear(it,ym)||yearDue(it,ym);it.last=due;saveYear(it);render();return due}
+export async function payYear(id){if(guard())return;const it=years().find(x=>x.id==id);if(!it)return;
+  /* already typed through ＋ (the same position, a similar amount, the last 2 months, not linked to anything) → link that entry instead of a second expense */
+  {const from=addDays(td(),-62),tw=liveOf(S.tx).filter(t=>t.type=='exp'&&t.sub==it.sub&&!t.yearId&&!t.fixedId&&!t.slipOf&&!t.roundOf&&t.date>=from&&Math.abs(t.amount-it.amount)<=it.amount*.25).sort((a,b)=>b.date.localeCompare(a.date))[0];
+   if(tw){const r=await ask({title:'Ten wydatek już jest wpisany?',text:`W Rejestrze jest ${tw.note?'„'+tw.note+'” ':''}${zl(tw.amount)} z ${tw.date.split('-').reverse().join('.')}. Jeśli to zapłata za „${it.name}”, połączę ten wpis – bez drugiego wydatku.`,ok:'Połącz z tym wpisem',cancel:'Anuluj',alt:'To inny – wpisz nową zapłatę'});
+     if(!r)return;if(r!=='alt'){if(await putTx(tw.date.slice(0,7),tw.id,{yearId:id})){const due=markYearPaid(it,tw.date);toast('Zapłacone: '+it.name+' ✓ – kolejny termin: '+MN[+yearDue(it,due).slice(5)-1].toLowerCase())}return}}}
   const r=await ask({title:'Zapłacone: '+it.name,fields:[{id:'a',label:'Kwota (zł)',type:'decimal',value:f2(it.amount)},{id:'d',label:'Data',type:'date',value:td()},{id:'c',label:'Z konta',type:'select',value:yearAccId()||'',options:accOpts()}],ok:'Zapisz'});
   if(!r)return;const amt=gr(r.a);if(amt<=0||!isDate(r.d))return toast('Podaj kwotę i datę','bad');
   if(await putTx(r.d.slice(0,7),'t'+rid(),{type:'exp',amount:amt,date:r.d,sub:it.sub,acc:r.c,to:'',who:S.who,note:'📅 '+it.name,yearId:id,deleted:false,ts:Date.now()})){
-    it.last=due<r.d.slice(0,7)?r.d.slice(0,7):due;saveYear(it);render();toast('Zapłacone: '+it.name+' ✓ – kolejny termin: '+MN[+yearDue(it,it.last).slice(5)-1].toLowerCase())}}
+    const due=markYearPaid(it,r.d);toast('Zapłacone: '+it.name+' ✓ – kolejny termin: '+MN[+yearDue(it,due).slice(5)-1].toLowerCase())}}

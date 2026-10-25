@@ -5,11 +5,12 @@ import {isTreat,kotki,treatJoke} from './guide.js';
 import {CURS,catHue,pastel} from './data.js';
 import {addM,position} from './inv.js';
 import {ULGI,savedP,saveSplitP} from './today.js';
-import {cleanCat,liveOf,roundUp,subsMap} from './logic.js';
+import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch} from './logic.js';
 import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays} from './util.js';
 import {S,toast,ask,accCur,am,fxRate,stripFx,accOwner,accOpts,H,DEBTS,w,merge,putTx,liveById,guard} from './core.js';
 import {exportJson,downloadBlob} from './actions.js';
 import {incById,openSlip} from './salary.js';
+import {markYearPaid} from './savings.js';
 import {dIcon,debtList,debtState,setDebtLeft,fillDebt,updDebtHint,updDebt,fillProj,updProj} from './debts.js';
 import {accN,render} from './app.js';
 
@@ -209,6 +210,11 @@ export async function saveTx(next){if(guard())return;
   if(main<=0)return toast('Pozycje paragonu przekraczają jego kwotę','bad');
   if(!S.edit){const d=dupOf(type,amount,date,$('mn').value,type=='tr'?'':$('ms').value,$('mc').value,$('mto').value);
     if(d&&!await ask({title:'Taki wpis już jest',text:`${d.label}\n\nCzy to ten sam zakup? Jeśli tak, nie zapisuj go drugi raz.`,ok:'Zapisz mimo to',cancel:'Nie zapisuj'}))return}
+  /* 📌 a typed bill that is an unpaid fixed payment (or a 📅 yearly expense) – linked, so it is not reminded about or booked again when ticked */
+  let link={},yItem=null;
+  if(!S.edit&&type=='exp'&&!parts.length){const t={type,amount,date,sub:$('ms').value,note:$('mn').value},tx=liveOf(S.tx),f=fixedMatch(S.cfg,tx,t);
+    if(f){if(await ask({title:`To „${f.name}” z opłat stałych?`,text:`W 📌 Stałe „${f.name}” (${am(f.amount,f.acc)}, termin ${f.day}.) nie jest jeszcze odhaczony w tym miesiącu. Jeśli to ten sam rachunek, ten wpis go odhaczy – bez przypomnienia i bez drugiego wydatku.`,ok:'Tak, odhacz',cancel:'Nie, to coś innego'}))link={fixedId:f.id,...(f.debt&&!$('mdebt').value?{debt:f.debt}:{})}}
+    else{const it=yearMatch(S.cfg,tx,t);if(it&&await ask({title:`To „${it.name}” z wydatków rocznych?`,text:`W 📅 Roczne i terminy „${it.name}” (${zl(it.amount)}) czeka na zapłatę. Jeśli to ten wydatek, zapiszę go jako zapłacony – przypomnienie zniknie, a koperta i plan policzą się dobrze.`,ok:'Tak, to ten',cancel:'Nie, to coś innego'})){link={yearId:it.id};yItem=it}}}
   ls.set('mw_acc_'+S.who,$('mc').value);
   const old=S.edit?liveById(S.edit):null,id=old?old.id:'t'+rid();
   const base={type,date,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?S.who:$('mw').value,note:[stripFx($('mn').value.trim()),auto].filter(Boolean).join(' · '),deleted:false,ts:Date.now()};
@@ -223,12 +229,13 @@ export async function saveTx(next){if(guard())return;
   const debt=type=='exp'&&!$('mdebtWrap').hidden?$('mdebt').value:'';if(debt)body.debt=debt;else if(old?.debt)body.debt='';
   if(debt&&S.debts[debt]&&!subsMap(S.cfg)[S.debts[debt].sub]&&body.sub)merge(doc(DEBTS(),debt),{sub:body.sub});
   if(old){for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];body.by=old.by||'';body.ts=old.ts||body.ts;body.eby=S.who;body.eAt=Date.now()}
-  const g=parts.length?'g'+rid():'';if(g)body.split=g;
+  const g=parts.length?'g'+rid():'';if(g)body.split=g;Object.assign(body,link);
   const coin=!old&&type=='exp'&&S.coinOn&&S.coin;
   const phKeep=type=='tr'?[]:PH.filter(p=>!p.removed),phDel=PH.filter(p=>!p.isNew&&(p.removed||type=='tr'));if(phKeep.length||old?.rcpt?.length)body.rcpt=phKeep.map(p=>p.id);
   closeSheet();
   const ym=date.slice(0,7),ok=await putTx(ym,id,body);
   if(ok)phCommit(id,ym,phKeep,phDel);
+  if(ok&&yItem)markYearPaid(yItem,date);
   if(ok)for(const x of parts)putTx(ym,'t'+rid(),{...base,amount:x.amount,sub:x.sub,split:g});
   if(ok&&coin)putTx(ym,'t'+rid(),{type:'tr',amount:coin.v,date,sub:'',acc:coin.r.from,to:coin.r.to,who:base.who,note:'🪙 drobne',roundOf:id,deleted:false,ts:Date.now()});
   if(ok&&old&&old.date.slice(0,7)!=ym)await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});

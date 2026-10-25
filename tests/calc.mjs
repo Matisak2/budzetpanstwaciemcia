@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP} from '../js/today.js';
-import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn} from '../js/logic.js';
+import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 
 let n=0,bad=0;
@@ -41,6 +41,36 @@ const N=' ';
     // wiele kwot z rzędu: każda daje dokładnie tę kwotę netto (albo różnicę najwyżej 1 zł przy rzadkim skoku zaokrąglenia podatku)
     let worst=0;for(let x=300000;x<=1500000;x+=12347){const q=back(src,x);worst=Math.max(worst,Math.abs(q.net-x))}eq('Z netto – 100 kwot, różnica najwyżej 1 zł',worst<=100,true)}
   eq('Suma pasków',totals([{comp:[{a:100}],net:80},{comp:[{a:50}],net:40}]).net,120);
+}
+/* ---------- 📌 wpis z ＋ a opłata stała / wydatek roczny (bez podwójnego liczenia) ---------- */
+{ const cfg={accs:[{id:'a',grp:'cur'}],cats:[{id:'c',type:'exp',name:'Dom',subs:[{id:'czy',name:'Czynsz'},{id:'net',name:'Netflix'},{id:'pr',name:'Prąd'},{id:'jed',name:'Jedzenie'},{id:'oc',name:'OC'}]}],
+    fixed:[{id:'f1',name:'Czynsz',amount:185000,day:10,sub:'czy',acc:'a'},{id:'f2',name:'Netflix',amount:4300,day:20,sub:'net',acc:'a'},{id:'f3',name:'Prąd',amount:18000,day:15,sub:'pr',acc:'a',vary:true},{id:'f4',name:'Spotify',amount:2999,day:12,sub:'jed',acc:'a'}],
+    years:[{id:'y1',name:'OC auta',amount:120000,month:11,day:5,every:12,sub:'oc'}]};
+  const E=(sub,amount,date,note='')=>({type:'exp',sub,amount,date,note,acc:'a'});
+  eq('Czynsz 1 850 → opłata stała',fixedMatch(cfg,[],E('czy',185000,'2026-10-09'))?.id,'f1');
+  eq('Czynsz +10% → dalej ta sama',fixedMatch(cfg,[],E('czy',203500,'2026-10-09'))?.id,'f1');
+  eq('Czynsz +20% → już nie',fixedMatch(cfg,[],E('czy',222000,'2026-10-09')),null);
+  eq('Prąd (zmienna kwota) – każda kwota',fixedMatch(cfg,[],E('pr',31234,'2026-10-15'))?.id,'f3');
+  eq('Notatka „Spotify” w innej pozycji',fixedMatch(cfg,[],E('net',2999,'2026-10-12','Spotify premium'))?.id,'f4');
+  eq('Zakupy – nic',fixedMatch(cfg,[],E('jed',18500,'2026-10-12','Biedronka')),null);
+  const paid=[{id:'t1',...E('czy',185000,'2026-10-10'),fixedId:'f1'}];
+  eq('Już odhaczony w tym miesiącu → nie pyta',fixedMatch(cfg,paid,E('czy',185000,'2026-10-12')),null);
+  eq('Odhaczony we wrześniu → w październiku pyta',fixedMatch(cfg,[{...paid[0],date:'2026-09-10'}],E('czy',185000,'2026-10-12'))?.id,'f1');
+  const typed=[{id:'t2',...E('net',4300,'2026-10-05','Netflix')},{id:'t3',...E('net',4300,'2026-10-06'),fixedId:'f9'},{id:'t4',...E('net',4300,'2026-09-30')}];
+  eq('Odhaczanie → jest wpis z ＋',fixedTwin(cfg,typed,cfg.fixed[1],'2026-10')?.id,'t2');
+  eq('Odhaczanie → nic w tym miesiącu',fixedTwin(cfg,typed,cfg.fixed[0],'2026-10'),null);
+  eq('Odhaczanie → usunięty się nie liczy',fixedTwin(cfg,[{...typed[0],deleted:true}],cfg.fixed[1],'2026-10'),null);
+  // OC 1 200 zł do 5 listopada: zapłacone 28 października przez ＋ (1 180 zł) → to ten wydatek roczny; po zapłacie już nie pyta
+  eq('OC zapłacone przez ＋',yearMatch(cfg,[],E('oc',118000,'2026-10-28'))?.id,'y1');
+  eq('OC w lutym – za daleko od terminu',yearMatch(cfg,[],E('oc',118000,'2026-02-10')),null);
+  eq('OC już zapłacone',yearMatch(cfg,[{id:'p',...E('oc',120000,'2026-10-20'),yearId:'y1'}],E('oc',118000,'2026-10-28')),null);
+  eq('Termin najbliższy zapłacie – wcześniej',yearDueNear(cfg.years[0],'2026-10'),'2026-11');eq('Termin najbliższy zapłacie – po terminie',yearDueNear(cfg.years[0],'2026-12'),'2026-11');
+  eq('Co miesiąc – ten miesiąc',yearDueNear({month:1,every:1},'2026-07'),'2026-07');
+  // plan niższy niż opłaty stałe: Czynsz plan 1 800 < 1 850; Netflix plan 43 = opłata → bez uwagi
+  const g=fixedPlanGap(cfg,{czy:180000,net:4300,pr:20000,jed:100000});eq('Plan < opłaty stałe',g.map(x=>[x.sub.id,x.fix,x.plan]),[['czy',185000,180000]]);
+  // „Na dziś”: Czynsz po terminie, ale jest podobny wpis → propozycja połączenia zamiast „po terminie”
+  const D={cfg:{...cfg,years:[]},tx:[{id:'t5',...E('czy',185000,'2026-10-03','czynsz')}],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-20T12:00:00').getTime()},hraw:{}};
+  const it=todayItems(D,{today:'2026-10-20',checks:false});eq('Na dziś – połącz zamiast po terminie',it.some(x=>x.icon=='💡'&&x.text.startsWith('Czynsz'))&&!it.some(x=>x.text.startsWith('Czynsz')&&x.k=='bad'),true);
 }
 /* ---------- 🎓 ulga dla młodych (do 26 lat, limit 85 528 zł) ---------- */
 { // 10 000 zł brutto w całości w limicie: ZUS 1 371 i zdrowotna 776,61 jak zwykle, podatku 0 → na konto 7 852,39 zł

@@ -257,9 +257,9 @@ Mati wybrał: punkty 1–4, Rejestr i ulgę dla młodych; wszystkie etapy po kol
 - [x] 🎓 Miesiąc przed 26. urodzinami w „Na dziś”: koniec ulgi i o ile mniej będzie na konto
 
 ## Etap S. Opłaty stałe bez podwójnego liczenia
-- [ ] Wydatek wpisany przez ＋ podobny do niezapłaconej opłaty stałej albo wydatku rocznego → pytanie „To … z opłat stałych? Odhaczyć?”
-- [ ] Odhaczanie w 📌 Stałe, gdy podobny wpis już jest w miesiącu → „Połącz z wpisem z …” zamiast drugiego wydatku
-- [ ] Budżet: uwaga, gdy plan pozycji jest niższy niż jej opłaty stałe, z przyciskiem do poprawy
+- [x] Wydatek wpisany przez ＋ podobny do niezapłaconej opłaty stałej albo wydatku rocznego → pytanie „To … z opłat stałych? Odhaczyć?”
+- [x] Odhaczanie w 📌 Stałe, gdy podobny wpis już jest w miesiącu → „Połącz z wpisem z …” zamiast drugiego wydatku
+- [x] Budżet: uwaga, gdy plan pozycji jest niższy niż jej opłaty stałe, z przyciskiem do poprawy
 
 ## Etap T. Analiza trwającego miesiąca i Rejestr
 - [ ] W trwającym miesiącu porównanie z poprzednim miesiącem do tego samego dnia („miesiąc jeszcze trwa”)

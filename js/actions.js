@@ -6,7 +6,7 @@ import {HUES,catHue,freeHue} from './data.js';
 import {position,wrapOf} from './inv.js';
 import {ULGI} from './today.js';
 import {suggest} from './pay.js';
-import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap} from './logic.js';
+import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf} from './logic.js';
 import {$,MN,addDays,addMonths,clone,daysIn,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv} from './util.js';
 import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOwner,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,INV,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,delFixedDb,putTx,putInv,liveById,guard} from './core.js';
 import {plu,catColor,P,RCPT,RMETA,phCache,openTx} from './sheet.js';
@@ -19,6 +19,11 @@ import {accN,render} from './app.js';
 export function setPlan(sid,v){if(guard())return;const ym=S.ym,val=pg(v);
   if(((S.plans[ym]||{})[sid]||0)===val)return;
   merge(doc(PLC(),ym),{[sid]:val})}
+/* 📌 „Podnieś plan do opłat stałych”: the typed plan of each such position grows so that the plan (with 📅 yearly expenses) covers its fixed payments */
+export async function planToFixed(){if(guard())return;const ym=S.ym,tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),typed=S.plans[ym]||{},d={};
+  for(const x of fixedPlanGap(S.cfg,pl))if(!x.sub.hidden&&!x.sub.cat.hidden)d[x.sub.id]=(typed[x.sub.id]||0)+x.fix-x.plan;const n=Object.keys(d).length;if(!n)return;
+  if(!await ask({title:'Podnieść plan?',text:Object.entries(d).map(([id,v])=>`${subsMap(S.cfg)[id].name}: ${zl(v)}`).join('\n')+`\n\nZmieniam plan na ${MN[+ym.slice(5)-1].toLowerCase()}. Następny miesiąc skopiuje go sam, jeśli nie ma jeszcze planu.`,ok:'Podnieś'}))return;
+  merge(doc(PLC(),ym),d);toast('Plan podniesiony ✓')}
 /* 📊 „Popraw plan od następnego miesiąca”: one position of next month's plan; when that month has no plan yet, it starts as a copy
    of the latest plan (otherwise the month would get just this one position – the automatic copy only runs for a month with no plan) */
 export function fixPlan(sid,val){if(guard())return;const nm=addMonths(td().slice(0,7),1),src=S.plans[nm]?null:Object.keys(S.plans).filter(k=>k<nm&&Object.values(S.plans[k]).some(v=>v)).sort().pop();
@@ -166,6 +171,10 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
     const sf=f.saveFor&&S.debts[f.saveFor]?.saveAcc==r.t?f.saveFor:'';
     S.justChecked=f.id;if(await putTx(S.ym,'t'+rid(),{type:'tr',amount:amt,date:r.d,sub:'',acc:r.c,to:r.t,who:S.who,note:'🐷 '+f.name,fixedId:f.id,...(sf?{save:{[sf]:amt}}:{}),deleted:false,ts:Date.now()}))toast('Odłożono: '+zl(amt)+(sf?' na spłatę: '+S.debts[sf].name:'')+' 🐷');return}
   if(!inc){
+    /* 📌 already typed through ＋ this month (the same position and a similar amount, or its name in the note) → link that entry, no second expense */
+    const tw=fixedTwin(S.cfg,liveOf(S.tx),f,S.ym);
+    if(tw){const who=tw.by||tw.who,r=await ask({title:'Ten rachunek już jest wpisany?',text:`W Rejestrze jest ${tw.note?'„'+tw.note+'” ':''}${am(tw.amount,tw.acc)} z ${tw.date.split('-').reverse().join('.')}${who?` (${who=='Wercia'?'dodała':'dodał'} ${who})`:''}. Jeśli to ten sam rachunek, połączę go z „${f.name}” – bez drugiego wydatku.`,ok:'Połącz z tym wpisem',cancel:'Anuluj',alt:'To inny – dodaj nowy wpis'});
+      if(!r)return;if(r!=='alt'){S.justChecked=f.id;if(await putTx(tw.date.slice(0,7),tw.id,{fixedId:f.id,...(f.debt&&!tw.debt?{debt:f.debt}:{})}))toast('Połączono: '+f.name+' ✓');return}}
     const r=await ask({title:'Zapłacono: '+f.name,text:'Kwotę możesz zmienić, jeśli w tym miesiącu rachunek był inny.',fields:[
       {id:'a',label:'Kwota (zł)',type:'decimal',value:f2(f.amount)},
       {id:'d',label:'Data zapłaty',type:'date',value:date},
