@@ -6,7 +6,7 @@ import {scene} from './cats.js';
 import {NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
 import {CURS,SEASON,tint} from './data.js';
 import {wrapOf} from './inv.js';
-import {actuals,agg,balance,cleanCat,fixedDate,liveOf,savFlow,savIds} from './logic.js';
+import {actuals,agg,balance,cleanCat,fixedDate,liveOf,savFlow,savIds,planOf} from './logic.js';
 import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus} from './util.js';
 import {goalAlloc} from './actions.js';
 import {incs} from './salary.js';
@@ -28,7 +28,7 @@ export const DEMO=window.MW_DEMO||null;
 export const S={sub:'all',bf:'all',fold:{},showEmpty:{},showCat:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},hold:{},debts:{},market:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
 
 /* ---------- pure money logic ---------- */
-export const catL=c=>(S.cfg.cats.indexOf(c)+1)+'. '+cleanCat(c.name);
+export const catL=c=>(S.cfg.cats.findIndex(x=>x.id===c.id)+1)+'. '+cleanCat(c.name);
 
 /* ---------- decorations ---------- */
 export function confetti(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -39,7 +39,7 @@ kotki.mode=ls.get('mw_kotki')||'lots';
 /* greeting on the Budget screen: Bailey or Ivo says one thing (special day, something to fix, good news or an everyday line) */
 export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=td(),ym=today.slice(0,7),who=S.who;
   const [hi,em]=hr<5?['Dobranoc','🌙']:hr<12?['Dzień dobry','☀️']:hr<18?['Miłego dnia','🌤️']:hr<23?['Dobry wieczór','🌆']:['Dobranoc','🌙'];
-  const tx=liveOf(txAll),A=agg(cfg,tx,ym),pl=S.plans[ym]||{},pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,x)=>b+(pl[x.id]||0),0),0);
+  const tx=liveOf(txAll),A=agg(cfg,tx,ym),pl=planOf(cfg,S.plans,tx,ym),pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,x)=>b+(pl[x.id]||0),0),0);
   const sd=savFlow(cfg,tx,savIds(cfg),ym).flow;
   const unpaid=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym)));
   const late=unpaid.filter(f=>fixedDate(f,ym)<today).map(f=>f.name),soon=unpaid.filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)}).map(f=>f.name);
@@ -127,7 +127,9 @@ export const stripFx=n=>String(n||'').replace(/\s*(·\s*)?💱.*$/,'');
 export const GRPN={cur:'Konto bieżące',sub:'Subkonto',sav:'Oszczędności',inv:'Inwestycje'};
 export const accOwner=a=>a.owner||(/wercia|weronika/i.test(a.name)?'Wercia':/mati/i.test(a.name)?'Mati':'Wspólne');
 export const accOpts=()=>[['cur','Konta bieżące'],['sub','Subkonta'],['sav','Oszczędności'],['inv','Inwestycje']].map(([g,l])=>({group:l,items:S.cfg.accs.filter(a=>a.grp==g&&!a.archived).map(a=>[a.id,a.name])})).filter(g=>g.items.length);
-export const subOpts=type=>S.cfg.cats.filter(c=>!type||c.type==type).map(c=>({group:catL(c),items:c.subs.map(s=>[s.id,s.name])}));
+/* positions for a select; 🙈 hidden ones last in their own group (a dialog may still show one that is already chosen) */
+export const subOpts=type=>{const C=S.cfg.cats.filter(c=>!type||c.type==type),hid=C.flatMap(c=>c.subs.filter(s=>s.hidden||c.hidden).map(s=>[s.id,s.name+' ('+cleanCat(c.name).toLowerCase()+')']));
+  return[...C.filter(c=>!c.hidden).map(c=>({group:catL(c),items:c.subs.filter(s=>!s.hidden).map(s=>[s.id,s.name])})).filter(g=>g.items.length),...(hid.length?[{group:'🙈 Ukryte',items:hid}]:[])]};
 
 /* ---------- storage (Firebase Firestore) ---------- */
 export const H=doc(fdb,'households','main');

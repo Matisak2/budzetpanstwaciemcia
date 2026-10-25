@@ -71,8 +71,10 @@ export function autoWho(){const a=S.cfg.accs.find(x=>x.id==$('mc').value),o=a&&a
 export const P={kind:'exp',cat:null,cb:null,cur:''};
 export function openPick(cur,cb){P.kind=pickKind();P.cb=cb;P.cur=cur||'';P.cat=null;$('pq').value='';renderPick();$('pick').hidden=false;$('pkBody').scrollTop=0}
 export const closePick=()=>{$('pick').hidden=true;P.cb=null};
+/* 🙈 a hidden position (or one in a hidden category) is not offered when choosing */
+export const hidS=s=>!!(s&&(s.hidden||s.cat?.hidden));
 export function recentSubs(kind,n){const sm=subsMap(S.cfg),seen=new Map();
-  liveOf(S.tx).filter(t=>sm[t.sub]&&sm[t.sub].cat.type==kind&&(t.type=='exp'||t.type=='inc')&&!t.fixedId&&!t.refundOf).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,80)
+  liveOf(S.tx).filter(t=>sm[t.sub]&&!hidS(sm[t.sub])&&sm[t.sub].cat.type==kind&&(t.type=='exp'||t.type=='inc')&&!t.fixedId&&!t.refundOf).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,80)
     .forEach((t,i)=>{const x=seen.get(t.sub)||{n:0,i};x.n++;seen.set(t.sub,x)});
   return[...seen].sort((a,b)=>b[1].n-a[1].n||a[1].i-b[1].i).slice(0,n).map(([id])=>sm[id])}
 /* the position usually chosen with this note: the same note first, then the same first word */
@@ -86,21 +88,21 @@ function noteSugs(q,kind){const k=norm(q),since=addDays(td(),-365),G={};
 function renderNoteSug(){const box=$('mnSug');if(!box)return;const on=document.activeElement===$('mn')&&S.etype!='tr'&&!S.refEdit,L=on?noteSugs($('mn').value,S.etype):[];
   box.hidden=!L.length;box.innerHTML=L.map(n=>`<button type="button" class="chip" data-note="${esc(n)}">${esc(n)}</button>`).join('')}
 function noteSub(note,kind){const k=norm(note);if(k.length<2)return null;const w=k.split(/\s+/)[0],sm=subsMap(S.cfg),ex={},fw={};
-  for(const t of liveOf(S.tx)){if(!t.note||!sm[t.sub]||sm[t.sub].cat.type!=kind||t.refundOf)continue;const n=norm(t.note);
+  for(const t of liveOf(S.tx)){if(!t.note||!sm[t.sub]||hidS(sm[t.sub])||sm[t.sub].cat.type!=kind||t.refundOf)continue;const n=norm(t.note);
     if(n==k)ex[t.sub]=(ex[t.sub]||0)+1;else if(w.length>=3&&n.split(/\s+/)[0]==w)fw[t.sub]=(fw[t.sub]||0)+1}
   for(const m of[ex,fw]){const e=Object.entries(m).sort((a,b)=>b[1]-a[1]),tot=e.reduce((a,x)=>a+x[1],0);if(e.length&&e[0][1]/tot>=.6)return sm[e[0][0]]}
   return null}
 export function paintPick(btn,sid){const s=sid&&subsMap(S.cfg)[sid];btn.className='pickbtn'+(s?' on':'');btn.style.cssText=s?catColor(s.cat):'';
   btn.innerHTML=s?`<span class="cico">${catIcon(s.cat)}</span><span class="pt"><small>${esc(cleanCat(s.cat.name))}</small><b>${esc(s.name)}</b></span>`:`<span class="ph">${btn.dataset.i!=null?'wybierz pozycję':'— stuknij, żeby wybrać pozycję —'}</span>`}
 export function setMs(sid,hint){$('ms').value=sid||'';paintPick($('msBtn'),sid);$('msHint').textContent=hint||'';updSplit();updProj()}
-export function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.cats.filter(c=>c.type==kind),sm=subsMap(S.cfg);
+export function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.cats.filter(c=>c.type==kind&&!c.hidden),sm=subsMap(S.cfg);
   const chip=(s,cls='')=>`<button type="button" class="pchip ${cls}" style="${catColor(s.cat)}" data-sid="${s.id}"><span>${esc(s.name)}</span></button>`;
   const row=s=>`<button type="button" class="prow" style="${catColor(s.cat)}" data-sid="${s.id}"${s.id==P.cur?' aria-current="true"':''}><i></i><span><b>${esc(s.name)}</b><small>${catIcon(s.cat)} ${esc(cleanCat(s.cat.name))}</small></span></button>`;
   let h='';
-  if(q){const ws=q.split(/\s+/),res=cats.flatMap(c=>c.subs.map(s=>sm[s.id])).filter(s=>{const hay=norm(s.name+' '+cleanCat(s.cat.name));return ws.every(w=>hay.includes(w))});
+  if(q){const ws=q.split(/\s+/),res=cats.flatMap(c=>c.subs.filter(s=>!s.hidden).map(s=>sm[s.id])).filter(s=>{const hay=norm(s.name+' '+cleanCat(s.cat.name));return ws.every(w=>hay.includes(w))});
     h=res.length?`<div class="list">${res.slice(0,40).map(row).join('')}</div>`:'<div class="empty" style="padding:20px">Nic nie znaleziono.<br>Spróbuj innych liter albo wybierz kategorię.</div>'}
   else if(P.cat){const c=S.cfg.cats.find(x=>x.id==P.cat);
-    h=`<button type="button" class="btn sm pback" data-back="1">‹ Wszystkie kategorie</button><div class="pkh">${catIcon(c)} ${esc(cleanCat(c.name))}</div><div class="list">${c.subs.map(s=>row(sm[s.id])).join('')||'<div class="prow mini">Ta kategoria nie ma jeszcze pozycji – dodasz je w ⚙️.</div>'}</div>`}
+    h=`<button type="button" class="btn sm pback" data-back="1">‹ Wszystkie kategorie</button><div class="pkh">${catIcon(c)} ${esc(cleanCat(c.name))}</div><div class="list">${c.subs.filter(s=>!s.hidden).map(s=>row(sm[s.id])).join('')||'<div class="prow mini">Ta kategoria nie ma jeszcze pozycji – dodasz je w ⚙️.</div>'}</div>`}
   else{const note=$('mn').value.trim(),sug=noteSub(note,kind),rec=recentSubs(kind,8).filter(s=>!sug||s.id!=sug.id);
     if(sug)h+=`<div class="pkh">💡 Zwykle przy „${esc(note)}”</div><div class="chips">${chip(sug,'sug')}</div>`;
     if(rec.length)h+=`<div class="pkh">Ostatnio używane</div><div class="chips">${rec.map(s=>chip(s)).join('')}</div>`;
@@ -219,7 +221,7 @@ export async function saveTx(next){if(guard())return;
   {const wv=type=='exp'&&!$('mwarWrap').hidden?$('mwar').value:'',war=wv=='date'?(isDate($('mward').value)?$('mward').value:''):wv?addM(date,+wv):'';if(war)body.war=war;else if(old?.war)body.war='';
    const ul=type=='exp'&&!$('mulgaWrap').hidden?$('mulga').value:'';if(ul){body.ulga=ul;body.ulgaWho=base.who}else if(old?.ulga){body.ulga='';body.ulgaWho=''}}
   const debt=type=='exp'&&!$('mdebtWrap').hidden?$('mdebt').value:'';if(debt)body.debt=debt;else if(old?.debt)body.debt='';
-  if(debt&&S.debts[debt]&&!S.debts[debt].sub&&body.sub)merge(doc(DEBTS(),debt),{sub:body.sub});
+  if(debt&&S.debts[debt]&&!subsMap(S.cfg)[S.debts[debt].sub]&&body.sub)merge(doc(DEBTS(),debt),{sub:body.sub});
   if(old){for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];body.by=old.by||'';body.ts=old.ts||body.ts;body.eby=S.who;body.eAt=Date.now()}
   const g=parts.length?'g'+rid():'';if(g)body.split=g;
   const coin=!old&&type=='exp'&&S.coinOn&&S.coin;

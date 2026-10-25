@@ -58,6 +58,21 @@ export function invPln(it,before='9999-99-99'){
     if(l.kind=='sell'){if(qty<=0)continue;const k=Math.min(q,qty);pln-=Math.round(pln/qty*k);qty-=k;if(qty<1e-9){qty=0;pln=0}}
     else{qty+=q;pln+=l.pln||0}}
   return pln}
+/* 📅 yearly expenses in the plan: the month an item is due (or paid) adds its amount to the plan of its position – computed, never stored,
+   so copying a plan to the next month never carries it on. Due: every 12 / 6 / 4 / 3 / 2 / 1 months counted from its month; every 24 months from
+   the last payment (before the first one – its month every year). Paid in this month (📅 „Zapłacone”) – the amount paid; paid up to 3 months early – not again. */
+const ymN=ym=>+ym.slice(0,4)*12+(+ym.slice(5,7))-1;
+export function yearDueIn(it,ym){const e=Math.max(1,+it.every||12),m=+ym.slice(5,7)-1,m0=(+it.month||1)-1;
+  if(12%e==0)return((m-m0)%e+e)%e==0;if(it.last){const d=ymN(ym)-ymN(it.last);return d>=0&&d%e==0}return m==m0}
+export function yearPlanOf(cfg,tx,ym){const sub={},items=[];
+  for(const it of cfg.years||[]){if(!it.sub||!(+it.amount>0))continue;const paid=inPeriod(tx,ym).filter(t=>t.yearId===it.id&&t.type=='exp'&&!t.deleted).reduce((a,t)=>a+t.amount,0);
+    let amt=0;if(paid)amt=paid;else if(yearDueIn(it,ym)){const early=[1,2,3].some(k=>{const p=new Date(Date.UTC(+ym.slice(0,4),+ym.slice(5,7)-1-k,1)).toISOString().slice(0,7);return inPeriod(tx,p).some(t=>t.yearId===it.id&&t.type=='exp'&&!t.deleted)});if(!early)amt=+it.amount}
+    if(amt){sub[it.sub]=(sub[it.sub]||0)+amt;items.push({it,amt})}}
+  return{sub,items}}
+/* the plan of a month as used everywhere: what you typed + yearly expenses due that month */
+export function planOf(cfg,plans,tx,ym){const p={...((plans||{})[ym]||{})};for(const[k,v]of Object.entries(yearPlanOf(cfg,tx,ym).sub))p[k]=(p[k]||0)+v;return p}
+/* positions of yearly expenses – the 3-month average would spread their big payment over every month, so hints skip them */
+export const yearSubs=cfg=>new Set((cfg.years||[]).map(it=>it.sub).filter(Boolean));
 /* "drobne": a card payment rounded up to the next full 5 / 10 zł, the difference × multiplier is put aside;
    an exact amount (e.g. 15,00) gives a full step only when rule.full is on – this is how Revolut does it */
 export function roundUp(amt,r){const st=(+r.step||5)*100,rem=amt%st,base=rem?st-rem:(r.full?st:0);return base*(+r.mult||1)}

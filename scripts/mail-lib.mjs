@@ -1,13 +1,13 @@
 // E-mails of Budżet M&W: the backup file (same format as ⚙️ „Pobierz kopię”) and a pastel summary of a month. Pure functions – easy to test.
 import {MN,zl,zl0,addMonths} from '../js/util.js';
-import {actuals,agg,subsMap,cleanCat,savFlow,savIds} from '../js/logic.js';
+import {actuals,agg,subsMap,cleanCat,savFlow,savIds,planOf} from '../js/logic.js';
 export const APP='https://matisak2.github.io/budzetpanstwaciemcia/';
 /* the full backup – the app reads it back with ⚙️ „Wczytaj kopię” */
 export function backupDoc(D,now=new Date()){return{format:'budzet-mw-2',exported:now.toISOString(),auto:true,cfg:D.cfg,savTarget:D.hraw?.savTarget||0,tx:D.txAll,plans:D.plans,inv:D.inv,goals:D.goals,
   slips:Object.fromEntries(Object.entries(D.slips||{})),hold:D.hold,debts:D.debts}}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 /* numbers of one month (ym) for the summary */
-export function monthStats(D,ym){const{cfg,tx}=D,A=agg(cfg,tx,ym),act=actuals(cfg,tx,ym),pl=D.plans?.[ym]||{},sm=subsMap(cfg);
+export function monthStats(D,ym){const{cfg,tx}=D,A=agg(cfg,tx,ym),act=actuals(cfg,tx,ym),pl=planOf(cfg,D.plans,tx,ym),sm=subsMap(cfg);
   const exp=cfg.cats.filter(c=>c.type=='exp').flatMap(c=>c.subs.map(s=>({s,c,p:pl[s.id]||0,a:act[s.id]||0}))).filter(x=>x.p||x.a);
   const over=exp.filter(x=>x.p&&x.a>x.p).sort((a,b)=>(b.a-b.p)-(a.a-a.p)),out=exp.filter(x=>!x.p&&x.a>0).sort((a,b)=>b.a-a.a),fit=exp.filter(x=>x.p&&x.a<=x.p);
   const pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,s)=>b+(pl[s.id]||0),0),0);

@@ -230,10 +230,10 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] Mati ↔ Wercia według właściciela konta (Mati / Wercia / Wspólne); bez zdublowanej karty „Kto wydawał”
 
 ## Etap P. Planowanie
-- [ ] Wydatki roczne same w planie miesiąca płatności (nie kopiują się na kolejny miesiąc)
-- [ ] Analiza Roku → „Plan a rzeczywistość”: pozycje często ponad plan + „Popraw plan od następnego miesiąca”
-- [ ] Ukrywanie pozycji i całych kategorii (⚙️ → Kategorie: Zmień nazwę / 🙈 Ukryj / Usuń; ukryte w szarej linijce z ↺); ukryta pozycja z wpisem w danym miesiącu i tak widoczna w Budżecie
-- [ ] Usuwanie tylko pustych pozycji; z wpisami – ukrycie; „Połącz z inną” jako rzadka opcja, przenosi też wydatki roczne, źródła dochodu i zobowiązania; jednorazowe sprawdzenie danych
+- [x] Wydatki roczne same w planie miesiąca płatności (nie kopiują się na kolejny miesiąc)
+- [x] Analiza Roku → „Plan a rzeczywistość”: pozycje często ponad plan + „Popraw plan od następnego miesiąca”
+- [x] Ukrywanie pozycji i całych kategorii (⚙️ → Kategorie: Zmień nazwę / 🙈 Ukryj / Usuń; ukryte w szarej linijce z ↺); ukryta pozycja z wpisem w danym miesiącu i tak widoczna w Budżecie
+- [x] Usuwanie tylko pustych pozycji; z wpisami – ukrycie; „Połącz z inną” jako rzadka opcja, przenosi też wydatki roczne, źródła dochodu i zobowiązania; jednorazowe sprawdzenie danych
 
 ## Etap R. Roczne i terminy, porządki
 - [ ] Jedna zakładka „📅 Roczne i terminy” zamiast Roczne + Przyp.: kwota opcjonalna (z kwotą – odkładanie na subkonto, bez – samo przypomnienie), opcjonalnie „co X km”, przypomnienie zawsze ok. 14 dni przed terminem (także przy pełnej kopercie), gotowe szablony (OC, ubezpieczenie mieszkania, przegląd, opony, serwis, szczepienie i odrobaczanie kotów), lista 🛡️ gwarancji na dole; obecne przypomnienia przeniesione automatycznie

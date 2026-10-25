@@ -98,6 +98,24 @@ for(const C of CASES){
     await p.click('#mph [data-phx]');await p.click('#shSave');await p.waitForTimeout(600);
     if(await p.evaluate(()=>S.rcptMeta?.n||0))fail(`${tag}: po usunięciu zdjęcia licznik się nie zmniejszył`);
   }catch(e){fail(`${tag}: test zdjęcia – ${e.message.split('\n')[0]}`)}}
+  /* 🙈 hiding a position: it leaves the position picker and comes back with ↺; „Plan a rzeczywistość” in Analiza → Rok; a yearly expense due this month is in the plan */
+  if(C===CASES[0]){try{
+    const r=await p.evaluate(()=>{closeAll();const ci=S.cfg.cats.findIndex(c=>c.type=='exp'&&c.subs.length>1),s=S.cfg.cats[ci].subs[1];hideSub(ci,1,true);
+      goTab('set');const inSet=/Ukryte:/.test(document.getElementById('app').innerText);openTx();$('pq').value='';window.__hid=s;return{ci,id:s.id,inSet}});
+    await p.waitForTimeout(300);await p.evaluate(()=>{$('msBtn').click();$('pq').value=window.__hid.name.slice(0,6);$('pq').dispatchEvent(new Event('input'))});await p.waitForTimeout(200);
+    const inPick=await p.evaluate(id=>!!document.querySelector(`#pkBody [data-sid="${id}"]`),r.id);
+    await p.screenshot({path:path.join(OUT,`${tag}-ukryta-pozycja.png`),fullPage:true});
+    if(!r.inSet)fail(`${tag}: brak linijki „Ukryte” w ⚙️ → Kategorie`);if(inPick)fail(`${tag}: ukryta pozycja dalej jest w oknie wyboru`);
+    await p.evaluate(ci=>{closeAll();hideSub(ci,1,false)},r.ci);await p.waitForTimeout(200);
+    if(await p.evaluate(ci=>!!S.cfg.cats[ci].subs[1].hidden,r.ci))fail(`${tag}: ↺ nie przywraca ukrytej pozycji`);
+    await p.evaluate(()=>{goTab('ana');setAnaMode('full');setAna('y')});await p.waitForTimeout(300);
+    if(!await p.evaluate(()=>/plan a rzeczywisto/i.test(document.getElementById('app').innerText)))fail(`${tag}: brak „Plan a rzeczywistość” w Analizie roku`);
+    await p.screenshot({path:path.join(OUT,`${tag}-plan-a-rzeczywistosc.png`),fullPage:true});
+    const y=await p.evaluate(()=>{const sub=S.cfg.cats.find(c=>c.type=='exp').subs.at(-1);S.cfg.years=[{id:'yT',name:'OC (test)',amount:120000,month:+S.ym.slice(5),every:12,sub:sub.id}];
+      setAna('m');goTab('dash');S.open[S.cfg.cats.find(c=>c.subs.includes(sub)).id]=true;S.showEmpty={};render();return/OC \(test\)/.test(document.getElementById('app').innerText)});
+    if(!y)fail(`${tag}: wydatek roczny z terminem w tym miesiącu nie doliczył się do planu w Budżecie`);
+    await p.evaluate(()=>{S.cfg.years=[];render()});
+  }catch(e){fail(`${tag}: test ukrywania / planu – ${e.message.split('\n')[0]}`)}}
   /* 💼 payslip from the net amount: a test income source with a deduction (Multisport 150 zł) – the deduction is in the new payslip by itself,
      „Podpowiedz z netto” 7 000 zł gives a payslip that adds up, saving books 7 150 zł income + 150 zł expense; „Przychody spoza pasków” is shown */
   if(C===CASES[0]){try{

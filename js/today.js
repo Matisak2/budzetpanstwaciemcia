@@ -75,6 +75,12 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
   for(const t of tx){if(t.date<from)continue;
     if(t.acc&&!acc.has(t.acc)){add('acc:'+t.id,'❓',`Wpis z ${dmy(t.date)} (${zl(t.amount)}) ma konto, którego już nie ma`,{a:'tx',id:t.id});continue}
     if(((t.type=='exp'&&!t.payoff)||(t.type=='inc'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.slip))&&!sm[t.sub])add('sub:'+t.id,'🏷️',`${t.type=='exp'?'Wydatek':'Przychód'} ${money(t.amount,cm[t.acc])} z ${dmy(t.date)} nie ma pozycji budżetu`,{a:'tx',id:t.id})}
+  /* settings that point to a budget position that no longer exists (e.g. deleted before merging moved everything) */
+  const gone=id=>id&&!sm[id];
+  for(const y of cfg.years||[])if(gone(y.sub))add('ref:y:'+y.id+':'+y.sub,'🏷️',`Wydatek roczny „${y.name}” ma usuniętą pozycję budżetu – wybierz nową.`,{a:'year'});
+  for(const x of cfg.incs||[])if(gone(x.sub)||(x.deds||[]).some(d=>gone(d.sub)))add('ref:i:'+x.id+':'+x.sub,'🏷️',`Źródło dochodu „${x.name}” ma usuniętą pozycję budżetu (wpływ albo potrącenie) – popraw ją.`,{a:'pay'});
+  for(const f of cfg.fixed||[])if(f.kind!='tr'&&gone(f.sub))add('ref:f:'+f.id+':'+f.sub,'🏷️',`${f.kind=='inc'?'Przychód stały':'Opłata stała'} „${f.name}” ma usuniętą pozycję budżetu – wybierz nową.`,{a:'fixEdit',id:f.id});
+  for(const[id,d]of Object.entries(D.debts||{}))if(!d.deleted&&gone(d.sub))add('ref:d:'+id+':'+d.sub,'🏷️',`Zobowiązanie „${d.name}” ma usuniętą pozycję budżetu – nowa ustawi się przy następnej racie.`,{a:'owe'});
   for(const a of cfg.accs.filter(a=>!a.archived)){const s=saveSplitP(cfg,tx,D.debts,a.id,today);if(s.L.length&&s.free<=-100)
     add('save:'+a.id+':'+s.sum+':'+s.bal,'💰',`${a.name}: na koncie ${money(s.bal,a.cur)}, a odłożone na spłatę pożyczek to ${zl(s.sum)} – brakuje ${zl(-s.free)}. Może wypłata albo płatność z tego konta bez wybrania pożyczki?`,{a:'owe'})}
   for(const a of cfg.accs.filter(a=>a.grp=='cur'&&!a.archived)){const b=balance(cfg,tx,a.id,addDays(today,1));if(b<0)add('neg:'+a.id+':'+today.slice(0,7),'➖',`Ujemne saldo: ${a.name} ${money(b,a.cur)} – coś nie wpisane albo wyrównanie?`,{a:'acc'})}

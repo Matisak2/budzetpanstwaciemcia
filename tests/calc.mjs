@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems} from '../js/today.js';
-import {balance,actuals,agg,roundUp,status,savFlow,savIds} from '../js/logic.js';
+import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 
 let n=0,bad=0;
@@ -88,6 +88,17 @@ const N=' ';
   eq('Budżet – kto wydał (po zwrocie)',A.who.Mati,15000);
   // konto 'a' bez właściciela i bez imienia w nazwie = wspólne: 200 − 50 zwrotu = 150 zł z konta wspólnego
   eq('Budżet – z czyjego konta (po zwrocie)',A.own['Wspólne'],15000);
+}
+/* ---------- 📅 wydatki roczne w planie miesiąca płatności ---------- */
+{ const cfg={accs:[],cats:[],years:[{id:'oc',name:'OC',amount:120000,month:3,every:12,sub:'ub'},{id:'op',name:'Opony',amount:40000,month:4,every:6,sub:'op'},{id:'pr',name:'Przegląd',amount:20000,month:5,every:24,sub:'pr',last:'2026-05'}]};
+  const plans={'2027-03':{ub:5000,jed:150000}},tx=[];
+  eq('Roczne – marzec: plan pozycji + OC',planOf(cfg,plans,tx,'2027-03').ub,125000);eq('Roczne – reszta planu bez zmian',planOf(cfg,plans,tx,'2027-03').jed,150000);
+  eq('Roczne – kwiecień bez OC',planOf(cfg,plans,tx,'2027-04').ub,undefined);
+  eq('Roczne – co pół roku: kwiecień i październik',[yearDueIn(cfg.years[1],'2027-04'),yearDueIn(cfg.years[1],'2027-10'),yearDueIn(cfg.years[1],'2027-07')],[true,true,false]);
+  eq('Roczne – co 2 lata od ostatniej zapłaty',[yearDueIn(cfg.years[2],'2027-05'),yearDueIn(cfg.years[2],'2028-05')],[false,true]);
+  // OC zapłacone już w lutym (1 150 zł) – w lutym plan = zapłacone, w marcu nie drugi raz
+  const paid=[{type:'exp',amount:115000,date:'2027-02-20',sub:'ub',yearId:'oc'}];
+  eq('Roczne – zapłacone wcześniej: plan w miesiącu zapłaty',planOf(cfg,{},paid,'2027-02').ub,115000);eq('Roczne – zapłacone wcześniej: bez planu w terminie',planOf(cfg,{},paid,'2027-03').ub,undefined);
 }
 /* ---------- 🐷 odłożone = wpłaty, nie zmiana kursów ---------- */
 { const cfg={accs:[{id:'cur',grp:'cur',owner:'Mati',open:500000},{id:'sav',grp:'sav',owner:'Mati',open:0},{id:'ike',grp:'inv',owner:'Mati',wrap:'ike',open:0},

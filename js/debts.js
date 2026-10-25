@@ -5,7 +5,7 @@ import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
 import {addM,position} from './inv.js';
 import {debtStateP,rataP,savedP,remStateP} from './today.js';
-import {avgActuals,carStats,balance,cleanCat,liveOf,status,subsMap} from './logic.js';
+import {avgActuals,carStats,balance,cleanCat,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
 import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0} from './util.js';
 import {S,toast,ask,isP,am,accOwner,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard} from './core.js';
 import {plu,calcAmt,P,openTx} from './sheet.js';
@@ -102,12 +102,13 @@ export function updDebtHint(fill){const d=S.debts[$('mdebt').value],r=d&&!S.edit
   if(fill&&r&&!calcAmt($('ma').value)){$('ma').value=f2(r.amt);$('ma').oninput()}}
 export function updDebt(){const av=S.etype=='exp'&&!S.refEdit&&$('mdebt').options.length>1;$('mdebtWrap').hidden=!(av&&(S.debtOpen||$('mdebt').value));$('mdebtBtn').hidden=!av||!$('mdebtWrap').hidden}
 /* ---------- 📝 planning: positions to plan, the 3-month average ---------- */
-export function toPlanH(){const ym=S.ym,cur=td().slice(0,7);if(ym<cur)return'';const pl=S.plans[ym]||{},{avg}=avgActuals(S.cfg,liveOf(S.tx),ym,3);
-  const L=S.cfg.cats.flatMap(c=>c.subs.map(s=>({c,s}))).filter(x=>!pl[x.s.id]&&avg[x.s.id]>0);if(!L.length)return'';
+/* positions to plan: no plan yet, spending in recent months; hidden positions and 📅 yearly expenses (they come into the plan by themselves) are skipped */
+export function toPlanH(){const ym=S.ym,cur=td().slice(0,7);if(ym<cur)return'';const tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),{avg}=avgActuals(S.cfg,tx,ym,3),YS=yearSubs(S.cfg);
+  const L=S.cfg.cats.filter(c=>!c.hidden).flatMap(c=>c.subs.filter(s=>!s.hidden).map(s=>({c,s}))).filter(x=>!pl[x.s.id]&&avg[x.s.id]>0&&!YS.has(x.s.id));if(!L.length)return'';
   const tot=L.filter(x=>x.c.type=='exp').reduce((a,x)=>a+avg[x.s.id],0);
   return`<div class="note">📝 <b>Do zaplanowania: ${L.length} ${plu(L.length,'pozycja','pozycje','pozycji')}</b> bez planu, które w ostatnich miesiącach miały wpisy${tot?` (wydatki średnio ${zl0(tot)}/mies.)`:''}. Średnią widać w pustym polu planu.<br><button class="btn sm primary" style="margin-top:6px" onclick="fillAvg()">Wypełnij średnimi</button></div>`}
-export async function fillAvg(){if(guard())return;const ym=S.ym,pl=S.plans[ym]||{},{avg,months}=avgActuals(S.cfg,liveOf(S.tx),ym,3),d={};
-  S.cfg.cats.forEach(c=>c.subs.forEach(s=>{if(!pl[s.id]&&avg[s.id]>0)d[s.id]=Math.ceil(avg[s.id]/1000)*1000}));const n=Object.keys(d).length;if(!n)return;
+export async function fillAvg(){if(guard())return;const ym=S.ym,tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),{avg,months}=avgActuals(S.cfg,tx,ym,3),YS=yearSubs(S.cfg),d={};
+  S.cfg.cats.filter(c=>!c.hidden).forEach(c=>c.subs.forEach(s=>{if(!s.hidden&&!YS.has(s.id)&&!pl[s.id]&&avg[s.id]>0)d[s.id]=Math.ceil(avg[s.id]/1000)*1000}));const n=Object.keys(d).length;if(!n)return;
   if(!await ask({title:'Wypełnić średnimi?',text:`${n} ${plu(n,'pozycja','pozycje','pozycji')} dostanie plan równy średniej z ${months} ${plu(months,'miesiąca','miesięcy','miesięcy')}, zaokrąglonej w górę do 10 zł. Pozycje z planem zostają bez zmian.`,ok:'Wypełnij'}))return;
   merge(doc(PLC(),ym),d);toast('Wypełniono plan średnimi ✓')}
 /* ---------- 🏷️ projects and labels (cars, cats, trips) ---------- */

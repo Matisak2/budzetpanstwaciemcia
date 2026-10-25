@@ -7,10 +7,11 @@ import {position,wrapOf} from './inv.js';
 import {ULGI} from './today.js';
 import {suggest} from './pay.js';
 import {balance,buildIcs,cleanCat,fixedDate,liveOf,planRecon,subsMap} from './logic.js';
-import {$,MN,addDays,clone,daysIn,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,money,curSym,fxPlus,priv} from './util.js';
+import {$,MN,addDays,addMonths,clone,daysIn,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv} from './util.js';
 import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOwner,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,INV,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,delFixedDb,putTx,putInv,liveById,guard} from './core.js';
 import {plu,catColor,P,RCPT,RMETA,phCache,openTx} from './sheet.js';
-import {incs,gr,openSlip} from './salary.js';
+import {incs,gr,openSlip,saveInc} from './salary.js';
+import {saveYear} from './savings.js';
 import {debtList,debtState} from './debts.js';
 import {accN,render} from './app.js';
 
@@ -18,6 +19,11 @@ import {accN,render} from './app.js';
 export function setPlan(sid,v){if(guard())return;const ym=S.ym,val=pg(v);
   if(((S.plans[ym]||{})[sid]||0)===val)return;
   merge(doc(PLC(),ym),{[sid]:val})}
+/* 📊 „Popraw plan od następnego miesiąca”: one position of next month's plan; when that month has no plan yet, it starts as a copy
+   of the latest plan (otherwise the month would get just this one position – the automatic copy only runs for a month with no plan) */
+export function fixPlan(sid,val){if(guard())return;const nm=addMonths(td().slice(0,7),1),src=S.plans[nm]?null:Object.keys(S.plans).filter(k=>k<nm&&Object.values(S.plans[k]).some(v=>v)).sort().pop();
+  if(S.plans[nm])merge(doc(PLC(),nm),{[sid]:val});else{S.autoPlanned[nm]=1;w(setDoc(doc(PLC(),nm),{...(src?S.plans[src]:{}),[sid]:val}))}
+  toast(`Plan na ${MN[+nm.slice(5)-1].toLowerCase()}: ${subsMap(S.cfg)[sid]?.name||''} ${zl0(val)}`)}
 export async function copyPlan(){if(guard())return;const[y,m]=S.ym.split('-').map(Number);const prev=m==1?(y-1)+'-12':y+'-'+p2(m-1);const src=S.plans[prev];
   if(!src||!Object.values(src).some(v=>v))return toast('Poprzedni miesiąc nie ma planu','bad');
   if(!await ask({title:'Skopiować plan?',text:`Plan z miesiąca ${MN[+prev.slice(5)-1]} zastąpi plan na ${MN[m-1]}.`,ok:'Kopiuj'}))return;
@@ -41,30 +47,50 @@ export async function addSub(ci){if(guard())return;const r=await ask({title:'Now
   if(!r||!r.n.trim())return;const c=S.cfg.cats[ci],s={id:'s'+rid(),name:r.n.trim()};c.subs.push(s);render();saveSub(c,s)}
 export async function renSub(ci,si){if(guard())return;const s=S.cfg.cats[ci].subs[si];const r=await ask({title:'Zmień nazwę',fields:[{id:'n',label:'Nazwa',value:s.name}]});
   if(!r||!r.n.trim())return;s.name=r.n.trim();render();saveSub(S.cfg.cats[ci],s)}
-export async function delSub(ci,si){if(guard())return;const c=S.cfg.cats[ci],s=c.subs[si];
-  const txs=S.tx.filter(t=>t.sub===s.id),live=liveOf(txs),fx=(S.cfg.fixed||[]).filter(f=>f.sub===s.id),plans=Object.entries(S.plans).filter(([ym,p])=>p[s.id]);
-  if(!live.length&&!fx.length){if(!await ask({title:'Usunąć pozycję?',text:s.name,ok:'Usuń',danger:true}))return;
-    for(const[ym]of plans)w(updateDoc(doc(PLC(),ym),{[s.id]:deleteField()}));c.subs.splice(si,1);render();delSubDb(c,s);return}
-  const opts=S.cfg.cats.filter(k=>k.type==c.type).map(k=>({group:catL(k),items:k.subs.filter(x=>x.id!==s.id).map(x=>[x.id,x.name])})).filter(g=>g.items.length);
-  if(!opts.length)return ask({title:'Nie można usunąć',text:'Nie ma innej pozycji tego rodzaju, do której można przenieść wpisy.',ok:'OK',cancel:'Zamknij'});
+/* what uses a position: entries, fixed payments, yearly expenses, income sources (income position, deductions), liabilities */
+export function subUse(sid){const live=liveOf(S.tx).filter(t=>t.sub===sid),fx=(S.cfg.fixed||[]).filter(f=>f.sub===sid),yr=(S.cfg.years||[]).filter(y=>y.sub===sid),
+    inc=incs().filter(x=>x.sub===sid||(x.deds||[]).some(d=>d.sub===sid)||Object.values(x.dedSub||{}).includes(sid)),db=debtList().filter(d=>d.sub===sid);
   const plf=(n,a,b,c)=>n+' '+(n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c);
-  const parts=[live.length?plf(live.length,'wpis','wpisy','wpisów'):'',fx.length?plf(fx.length,'opłata stała','opłaty stałe','opłat stałych'):'',plans.length?`plan z ${plans.length} mies.`:''].filter(Boolean).join(', ');
-  const r=await ask({title:'Połącz z inną pozycją',text:`„${s.name}” jest w użyciu (${parts}).\nWybierz pozycję, do której wszystko przeniosę. Potem „${s.name}” zostanie usunięta.`,
+  return{n:live.length+fx.length+yr.length+inc.length+db.length,txt:[live.length?plf(live.length,'wpis','wpisy','wpisów'):'',fx.length?plf(fx.length,'opłata stała','opłaty stałe','opłat stałych'):'',yr.length?plf(yr.length,'wydatek roczny','wydatki roczne','wydatków rocznych'):'',inc.length?plf(inc.length,'źródło dochodu','źródła dochodu','źródeł dochodu'):'',db.length?plf(db.length,'zobowiązanie','zobowiązania','zobowiązań'):''].filter(Boolean).join(', ')}}
+/* ⚙️ → Kategorie: tap a position – rename, 🙈 hide, delete (only an unused one), or (rarely) merge into another one */
+export function subMenu(ci,si){if(guard())return;const c=S.cfg.cats[ci],s=c.subs[si],u=subUse(s.id),d=$('dlg');
+  $('dlgBody').innerHTML=`<h2>${esc(s.name)}</h2><p class="dtext">${esc(catL(c))}${u.n?' · w użyciu: '+esc(u.txt):' · jeszcze nieużywana'}</p>
+    <div class="menu"><button class="btn" data-m="ren">✏️ Zmień nazwę</button><button class="btn" data-m="hide">🙈 Ukryj</button>${u.n?'':'<button class="btn" data-m="del" style="color:var(--exp)">🗑️ Usuń</button>'}<button class="btn" data-m="">Anuluj</button>
+    ${u.n?'<div class="mini" style="text-align:center">Pozycji z wpisami nie da się usunąć – ukryj ją. Historia zostaje.</div><button class="btn sm" data-m="merge" style="align-self:center;background:none">🔀 Połącz z inną pozycją (rzadko potrzebne)</button>':''}</div>`;
+  d.hidden=false;d.onclick=e=>{if(e.target===d){d.hidden=true;return}const b=e.target.closest('[data-m]');if(!b)return;d.hidden=true;const m=b.dataset.m;
+    if(m=='ren')renSub(ci,si);else if(m=='hide')hideSub(ci,si,true);else if(m=='del')delSub(ci,si);else if(m=='merge')mergeSub(ci,si)}}
+export function hideSub(ci,si,on){const c=S.cfg.cats[ci],s=c.subs[si];if(!s)return;s.hidden=!!on;render();saveSub(c,s);
+  toast(on?`🙈 Ukryto: ${s.name} – historia zostaje`:`Przywrócono: ${s.name}`,'',on?{label:'Cofnij',fn:()=>hideSub(ci,c.subs.indexOf(s),false)}:null)}
+/* deleting: only a position nothing uses (its empty plans go with it) */
+export async function delSub(ci,si){if(guard())return;const c=S.cfg.cats[ci],s=c.subs[si];if(subUse(s.id).n)return subMenu(ci,si);
+  if(!await ask({title:'Usunąć pozycję?',text:s.name,ok:'Usuń',danger:true}))return;
+  for(const[ym,p]of Object.entries(S.plans))if(p[s.id]!=null)w(updateDoc(doc(PLC(),ym),{[s.id]:deleteField()}));
+  c.subs.splice(si,1);render();delSubDb(c,s)}
+/* merging (rarely needed – e.g. two positions for the same thing): everything moves to the other position, then this one is deleted */
+export async function mergeSub(ci,si){if(guard())return;const c=S.cfg.cats[ci],s=c.subs[si],u=subUse(s.id);
+  const txs=S.tx.filter(t=>t.sub===s.id),plans=Object.entries(S.plans).filter(([,p])=>p[s.id]);
+  const opts=S.cfg.cats.filter(k=>k.type==c.type).map(k=>({group:catL(k),items:k.subs.filter(x=>x.id!==s.id).map(x=>[x.id,x.name])})).filter(g=>g.items.length);
+  if(!opts.length)return ask({title:'Nie można połączyć',text:'Nie ma innej pozycji tego rodzaju.',ok:'OK',cancel:'Zamknij'});
+  const r=await ask({title:'Połącz z inną pozycją',text:`„${s.name}”${u.n?` (${u.txt})`:''} – wszystko przeniosę do wybranej pozycji, a „${s.name}” zniknie. Historia obu pozycji się połączy.\nJeśli chcesz tylko schować pozycję, wybierz „Ukryj”.`,
     fields:[{id:'t',label:'Przenieś do',type:'select',value:'',options:[['','— wybierz —'],...opts]}],ok:'Połącz i usuń',danger:true});
   if(!r)return;if(!r.t)return toast('Wybierz pozycję docelową','bad');
   const tgt=r.t,byM={};
   txs.forEach(t=>{const ym=t.date.slice(0,7);(byM[ym]=byM[ym]||{})[t.id]={sub:tgt}});
   for(const[ym,m]of Object.entries(byM))merge(doc(MC(),ym),{tx:m});
   for(const[ym,p]of plans)w(updateDoc(doc(PLC(),ym),{[tgt]:(p[tgt]||0)+p[s.id],[s.id]:deleteField()}));
-  for(const f of fx){f.sub=tgt;saveFixed(f)}
+  for(const f of (S.cfg.fixed||[]).filter(f=>f.sub===s.id)){f.sub=tgt;saveFixed(f)}
+  for(const y of (S.cfg.years||[]).filter(y=>y.sub===s.id)){y.sub=tgt;saveYear(y)}
+  for(const x of incs()){let ch=false;if(x.sub===s.id){x.sub=tgt;ch=true}(x.deds||[]).forEach(d=>{if(d.sub===s.id){d.sub=tgt;ch=true}});
+    for(const k of Object.keys(x.dedSub||{}))if(x.dedSub[k]===s.id){x.dedSub[k]=tgt;ch=true}if(ch)saveInc(x)}
+  for(const d of debtList().filter(d=>d.sub===s.id))merge(doc(DEBTS(),d.id),{sub:tgt});
   const ix=c.subs.indexOf(s);if(ix>=0)c.subs.splice(ix,1);render();delSubDb(c,s);
   toast('Przeniesiono do: '+(subsMap(S.cfg)[tgt]?.name||''))}
 export const HUE_N={150:'Miętowy',205:'Błękitny',28:'Brzoskwiniowy',340:'Różowy',265:'Lawendowy',48:'Miodowy',185:'Morski',12:'Łososiowy',295:'Fiołkowy',95:'Pistacjowy',228:'Chabrowy',320:'Malinowy',62:'Cytrynowy',168:'Szałwiowy',245:'Niebieski',0:'Koralowy'};
 export async function editCat(ci){if(guard())return;const c=S.cfg.cats[ci],empty=!c.subs.length;
-  const r=await ask({title:'Kategoria '+(ci+1),fields:[{id:'n',label:'Nazwa (numer dodaje się sam)',value:cleanCat(c.name)},{id:'i',label:'Ikonka (emoji, np. 🍕 🐱 ✈️)',value:catIcon(c)},{id:'h',label:'Kolor',type:'select',value:String(catHue(c,ci)),options:HUES.map(h=>[String(h),HUE_N[h]])}],alt:empty?'Usuń kategorię':null});
+  const r=await ask({title:'Kategoria '+(ci+1),fields:[{id:'n',label:'Nazwa (numer dodaje się sam)',value:cleanCat(c.name)},{id:'i',label:'Ikonka (emoji, np. 🍕 🐱 ✈️)',value:catIcon(c)},{id:'h',label:'Kolor',type:'select',value:String(catHue(c,ci)),options:HUES.map(h=>[String(h),HUE_N[h]])},{id:'v',label:'Widoczność',type:'select',value:c.hidden?'0':'1',options:[['1','Widoczna'],['0','🙈 Ukryta – nie ma jej w Budżecie ani przy wpisywaniu (historia zostaje)']]}],alt:empty?'Usuń kategorię':null});
   if(!r)return;
   if(r=='alt'){if(!await ask({title:'Usunąć kategorię?',text:cleanCat(c.name),ok:'Usuń',danger:true}))return;S.cfg.cats.splice(ci,1);render();delCatDb(c.id);S.cfg.cats.forEach(saveCat);return}
-  if(!r.n.trim())return;c.name=cleanCat(r.n);c.icon=(r.i||'').trim().slice(0,8);c.hue=+r.h;render();saveCat(c)}
+  if(!r.n.trim())return;c.name=cleanCat(r.n);c.icon=(r.i||'').trim().slice(0,8);c.hue=+r.h;c.hidden=r.v=='0';render();saveCat(c)}
 export async function addCat(){if(guard())return;
   const r=await ask({title:'Nowa kategoria',fields:[{id:'n',label:'Nazwa',ph:'np. EDUKACJA'},{id:'t',label:'Rodzaj',type:'select',value:'exp',options:[['exp','Wydatki'],['inc','Przychody']]}],ok:'Dodaj'});
   if(!r||!r.n.trim())return;const c={id:'c'+rid(),name:cleanCat(r.n),type:r.t,hue:freeHue(S.cfg.cats),subs:[]};S.cfg.cats.push(c);render();saveCat(c);toast('Dodano kategorię – dodaj do niej pozycje')}
