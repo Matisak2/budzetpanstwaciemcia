@@ -3,15 +3,15 @@ import {doc,updateDoc,deleteField} from "https://www.gstatic.com/firebasejs/10.1
 import {catsEmpty} from './art.js';
 import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
-import {addM,position} from './inv.js';
+import {addM,position,limitOf,paidInYear,wrapOf} from './inv.js';
 import {debtStateP,rataP,savedP,remStateP} from './today.js';
-import {avgActuals,carStats,balance,cleanCat,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
+import {avgActuals,actuals,carStats,balance,cleanCat,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
 import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0} from './util.js';
 import {S,toast,ask,isP,am,accOwner,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard} from './core.js';
 import {plu,calcAmt,P,openTx} from './sheet.js';
 import {fixedPaid,txRowH} from './actions.js';
 import {gr,segL} from './salary.js';
-import {accById,pn} from './savings.js';
+import {accById,pn,newYear} from './savings.js';
 import {accN,render} from './app.js';
 
 /* ---------- 🔻 liabilities (we owe) and 🔺 receivables (owed to us), in 👛 Konta ---------- */
@@ -124,7 +124,7 @@ export function projectsH(){const L=projs(),tx=liveOf(S.tx);let h=`<div class="r
       <div class="mini">${p.kind=='car'?'pojazd · ':''}${p.inBudget===false?'poza codziennym budżetem':'liczy się do budżetu'}${p.budget?` · budżet ${zl0(p.budget)}`:''}${p.from?` · ${p.from.split('-').reverse().join('.')}${p.to?' – '+p.to.split('-').reverse().join('.'):''}`:''}</div>
       ${st?`<div class="bar ${st.k}"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div><div class="smsg ${st.k}">${esc(st.msg)}</div>`:''}</div></button>`}).join('')}</div>`}
 export async function editProj(id){if(guard())return;const p0=id?projById(id):null;
-  const r=await ask({title:p0?'Projekt':'Nowy projekt',fields:[{id:'n',label:'Nazwa',value:p0?.name||'',ph:'np. Toyota, Bailey i Ivo, Wakacje 2027'},{id:'i',label:'Ikonka (emoji)',value:p0?.icon||'',ph:'🚗 🐱 ✈️ 🔨'},
+  const r=await ask({title:p0?'Projekt':'Nowy projekt',text:p0?'':'Projekt nie odkłada pieniędzy – liczy, ile coś kosztuje (auto, koty, remont). Odkładanie: 🎯 Cel w Oszczędnościach albo 📅 Roczne i terminy.',fields:[{id:'n',label:'Nazwa',value:p0?.name||'',ph:'np. Toyota, Bailey i Ivo, Wakacje 2027'},{id:'i',label:'Ikonka (emoji)',value:p0?.icon||'',ph:'🚗 🐱 ✈️ 🔨'},
     {id:'k',label:'Rodzaj',type:'select',value:p0?.kind||'stały',options:PKIND},
     {id:'b',label:'Czy liczyć do codziennego budżetu',type:'select',value:p0?(p0.inBudget===false?'0':'1'):'',options:[['','Według rodzaju'],['1','Tak'],['0','Nie – osobno']]},
     {id:'g',label:'Budżet projektu (zł, opcjonalnie)',type:'decimal',value:p0?.budget?f2(p0.budget):''},
@@ -157,24 +157,28 @@ export function updProj(){if(!S.cfg)return;const has=projs().length>0,p=projById
 export const rems=()=>S.cfg.rems||[];
 export const saveRem=x=>merge(H,{remM:{[x.id]:strip(x,rems().indexOf(x))}});
 export const delRemDb=id=>w(updateDoc(H,{['remM.'+id]:deleteField()}));
-export const REM_PRE=[['','— własne —'],['🛡️ OC samochodu','12'],['🔧 Przegląd techniczny','12'],['🛞 Wymiana opon','6'],['🧰 Serwis / olej','12'],['💉 Szczepienie kotów','12'],['🐾 Odrobaczenie kotów','3'],['🏠 Ubezpieczenie mieszkania','12']];
+export const REM_PRE=[['','— własne —'],['🔧 Przegląd techniczny','12'],['🛞 Wymiana opon','6'],['🧰 Serwis / olej','12'],['💉 Szczepienie kotów','12'],['🐾 Odrobaczenie kotów','3']];
 export function remState(r){return remStateP(r,S.cfg,liveOf(S.tx),td())}
 export function warrantiesH(){const today=td(),sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>t.war&&t.type=='exp').sort((a,b)=>a.war.localeCompare(b.war)),act=L.filter(t=>t.war>=today),old=L.length-act.length;
   if(!L.length)return'';return`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">🛡️ Gwarancje</span><span class="mini">${act.length} ${plu(act.length,'aktywna','aktywne','aktywnych')}${old?` · ${old} ${plu(old,'wygasła','wygasłe','wygasłych')}`:''}</span></div>
   <div class="list">${act.map(t=>{const n=Math.round((new Date(t.war)-new Date(today))/864e5);return`<button class="acc" style="width:100%;text-align:left" onclick="openTx('${t.id}')"><div style="flex:1;min-width:0"><div class="r1"><b>${esc(t.note||sm[t.sub]?.name||'Zakup')}${t.rcpt?.length?' 📷':''}</b><b class="num">${zl(t.amount)}</b></div><div class="mini">kupione ${t.date.split('-').reverse().join('.')} · gwarancja do ${t.war.split('-').reverse().join('.')}${n<=30?` · <b class="t-exp">za ${n} ${plu(n,'dzień','dni','dni')}</b>`:''}</div></div></button>`}).join('')||'<div class="acc mini">Brak aktywnych gwarancji.</div>'}</div>`}
-export function remsH(){const L=rems().map(r=>({r,st:remState(r)})).sort((a,b)=>(a.r.next||'9999').localeCompare(b.r.next||'9999'));
-  let h=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">🔔 Przypomnienia</span><button class="btn sm dark" onclick="editRem()">+ Przypomnienie</button></div>`;
-  if(!L.length)return h+catsEmpty('OC, przegląd, opony, serwis co X km, szczepienia Bailey i Ivo. Przypomnę w aplikacji, gdy termin się zbliży.',0,'bell')+warrantiesH();
-  return h+`<div class="list">${L.map(({r,st})=>`<div class="acc${st.late?' late':''}"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(r.name)}</b>${st.late?'<span class="pill over">po terminie</span>':st.due?'<span class="pill near">wkrótce</span>':''}</div>
+/* 🔔 dates without putting money aside (📌 Stałe → 📅 Roczne i terminy) */
+export function remsH(){const L=rems().map(r=>({r,st:remState(r)})).sort((a,b)=>(a.r.next||'9999').localeCompare(b.r.next||'9999'));if(!L.length)return'';
+  return`<div class="h2" style="padding:0 4px">🔔 Terminy bez odkładania</div><div class="list">${L.map(({r,st})=>`<div class="acc${st.late?' late':''}"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(r.name)}</b>${st.late?'<span class="pill over">po terminie</span>':st.due?'<span class="pill near">wkrótce</span>':''}</div>
     <div class="mini">${r.next?`termin ${r.next.split('-').reverse().join('.')}${st.days!=null?` · ${st.days<0?Math.abs(st.days)+' dni temu':st.days==0?'dziś':'za '+st.days+' '+plu(st.days,'dzień','dni','dni')}`:''}`:''}${r.km?`${r.next?' · ':''}co ${r.km.toLocaleString('pl-PL')} km${st.kmLeft!=null?` · zostało ${st.kmLeft.toLocaleString('pl-PL')} km`:''}`:''}${+r.every?` · co ${r.every} mies.`:' · jednorazowe'}${r.proj&&projById(r.proj)?' · '+esc(projById(r.proj).name):''}</div>
-    ${r.note?`<div class="mini">📝 ${esc(r.note)}</div>`:''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="doneRem('${r.id}')">✓ Zrobione</button><button class="chip" onclick="editRem('${r.id}')">Edytuj</button></div></div></div>`).join('')}</div>`+warrantiesH()}
+    ${r.note?`<div class="mini">📝 ${esc(r.note)}</div>`:''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="doneRem('${r.id}')">✓ Zrobione</button><button class="chip" onclick="editRem('${r.id}')">Edytuj</button></div></div></div>`).join('')}</div>`}
 export async function editRem(id){if(guard())return;const r0=id?rems().find(x=>x.id==id):null,cars=projs().filter(p=>p.kind=='car');
   const r=await ask({title:r0?'Przypomnienie':'Nowe przypomnienie',fields:[...(r0?[]:[{id:'p',label:'Gotowe',type:'select',value:'',options:REM_PRE.map(([n,e])=>[n?n+'|'+e:'',n||'— własne —'])}]),
     {id:'n',label:'Nazwa (gdy własne)',value:r0?.name||'',ph:'np. Wymiana klocków'},{id:'d',label:'Termin',type:'date',value:r0?.next||''},
     {id:'e',label:'Powtarzaj',type:'select',value:String(r0?.every??12),options:[['0','Jednorazowo'],['1','Co miesiąc'],['3','Co 3 miesiące'],['6','Co pół roku'],['12','Co rok'],['24','Co 2 lata']]},
     ...(cars.length?[{id:'c',label:'Pojazd',type:'select',value:r0?.proj||'',options:[['','— nie dotyczy —'],...cars.map(p=>[p.id,p.name])]},{id:'k',label:'Albo co ile km (np. serwis)',type:'int',value:r0?.km||''}]:[]),
-    {id:'t',label:'Notatka',value:r0?.note||''}],ok:r0?'Zapisz':'Dodaj',alt:r0?'Usuń':null});
+    {id:'t',label:'Notatka',value:r0?.note||''},
+    {id:'a',label:'Kwota (zł, opcjonalnie) – z kwotą będę liczyć odkładanie',type:'decimal',value:'',ph:'puste = samo przypomnienie'},{id:'s',label:'Pozycja budżetu (gdy jest kwota)',type:'select',value:'',options:[['','— wybierz —'],...subOpts('exp')]}],ok:r0?'Zapisz':'Dodaj',alt:r0?'Usuń':null});
   if(!r)return;if(r=='alt'){S.cfg.rems=rems().filter(x=>x!==r0);render();delRemDb(r0.id);return}
+  /* with an amount the date becomes a yearly expense (money put aside every month) – the reminder moves there */
+  const amt=gr(r.a);if(amt>0){const nm=r.n.trim()||r0?.name||(r.p||'').split('|')[0],ev=+r.e;
+    if(!nm)return toast('Podaj nazwę','bad');if(!isDate(r.d))return toast('Podaj termin płatności','bad');if(!ev)return toast('Wydatek z kwotą musi się powtarzać','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');
+    if(r0){S.cfg.rems=rems().filter(x=>x!==r0);delRemDb(r0.id)}newYear(nm,amt,r.d,ev,r.s);return toast('Przeniesione do odkładania: '+nm+' 📅')}
   let name=r.n.trim(),every=+r.e;if(!name&&r.p){const[n,e]=r.p.split('|');name=n;if(!r0&&r.e=='12')every=+e}
   if(!name)return toast('Podaj nazwę albo wybierz gotowe','bad');const km=Math.round(pnum(r.k||''))||0;if(!isDate(r.d)&&!km)return toast('Podaj termin albo liczbę km','bad');
   const car=r.c?projById(r.c):null,body={id:r0?.id||'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),lastOdo:r0?.lastOdo??(car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0)};
@@ -182,14 +186,20 @@ export async function editRem(id){if(guard())return;const r0=id?rems().find(x=>x
 export async function doneRem(id){const r=rems().find(x=>x.id==id);if(!r)return;const st=remState(r);
   if(!+r.every&&!r.km){if(!await ask({title:'Zrobione: '+r.name,text:'To przypomnienie było jednorazowe – usunąć je?',ok:'Usuń'}))return;S.cfg.rems=rems().filter(x=>x!==r);render();delRemDb(r.id);return toast('Gotowe ✓')}
   if(r.next&&+r.every)r.next=addM(r.next<td()?td():r.next,+r.every);if(r.km)r.lastOdo=st.odo;render();saveRem(r);toast('Gotowe ✓'+(r.next?' – następny termin '+r.next.split('-').reverse().join('.'):''))}
-/* ---------- 💧 cascade of surpluses: only a proposal, per person; current accounts (no subaccounts) above a buffer → savings ---------- */
-export function cascadeH(o){const cfgc=(S.hraw?.cascade||{})[o]||{},buf=cfgc.buf||0,tom=addDays(td(),1),tx=liveOf(S.tx),ym=td().slice(0,7);
-  const to=accById(cfgc.to)?.id||S.cfg.accs.find(a=>(a.grp=='sav'||a.grp=='inv')&&!a.archived&&accOwner(a)==o&&!/poduszk/i.test(a.name))?.id;
-  const src=S.cfg.accs.filter(a=>a.grp=='cur'&&!a.archived&&isP(a)&&accOwner(a)==o);if(!src.length||!to)return'';
+/* ---------- 💧 cascade of surpluses: only a proposal, per person – what is on the current accounts above a buffer (250 zł by default)
+   and the unpaid fixed payments can go to savings; never to PPK / OKI (you cannot pay into them yourself), never from cash, not above the IKE / IKZE limit ---------- */
+const CASC_BUF=25000;
+export const cascTargets=o=>S.cfg.accs.filter(a=>!a.archived&&isP(a)&&accOwner(a)==o&&(a.grp=='sav'||(a.grp=='inv'&&!['ppk','oki'].includes(wrapOf(a)))));
+export function cascadeH(o){const cfgc=(S.hraw?.cascade||{})[o]||{},buf=cfgc.buf??CASC_BUF,tom=addDays(td(),1),tx=liveOf(S.tx),ym=td().slice(0,7),y=ym.slice(0,4);
+  const T=cascTargets(o),rank=a=>a.grp=='sav'?(/poduszk/i.test(a.name)?1:0):!wrapOf(a)?2:3,to=T.find(a=>a.id==cfgc.to)?.id||T.slice().sort((a,b)=>rank(a)-rank(b))[0]?.id;
+  const src=S.cfg.accs.filter(a=>a.grp=='cur'&&!a.archived&&isP(a)&&accOwner(a)==o&&!/gotówk/i.test(a.name));if(!src.length||!to)return'';
+  const ta=accById(to),w=wrapOf(ta),room=w=='ike'||w=='ikze'?Math.max(0,limitOf(ta,y,S.hraw?.limits)-paidInYear(tx,to,y)):Infinity;
   const unpaid=a=>(S.cfg.fixed||[]).filter(f=>(f.kind||'exp')!='inc'&&f.acc==a.id&&!fixedPaid(f.id,ym)).reduce((x,f)=>x+f.amount,0);
-  const L=src.map(a=>({a,sur:balance(S.cfg,tx,a.id,tom)-buf-unpaid(a),u:unpaid(a)})).filter(x=>x.sur>=10000);
-  return`<section class="chart"><div class="ct"><b>💧 Kaskada nadwyżek</b><button class="btn sm" onclick="setCascade('${o}')">⚙️</button></div><div class="mini">Propozycja: to, co na kontach bieżących ponad zapas ${zl0(buf)} i niezapłacone opłaty stałe, możesz przelać na „${esc(accN(to))}”.</div>
-    ${L.length?L.map(x=>`<div class="r1"><span>${esc(x.a.name)}${x.u?` <span class="mini">(po opłatach ${zl0(x.u)})</span>`:''}</span><button class="chip" onclick="openTx(null,{type:'tr',from:'${x.a.id}',to:'${to}',amount:${x.sur}})">→ ${zl(x.sur)}</button></div>`).join(''):'<div class="mini">Teraz nie ma nadwyżek do przelania.</div>'}</section>`}
-export async function setCascade(o){if(guard())return;const c=(S.hraw?.cascade||{})[o]||{},savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&!a.archived);
-  const r=await ask({title:'Kaskada nadwyżek – '+o,fields:[{id:'b',label:'Zapas na każdym koncie bieżącym (zł)',type:'decimal',value:f2(c.buf||0)},{id:'t',label:'Przelewaj na',type:'select',value:c.to||'',options:[['','Pierwsze konto oszczędnościowe'],...savs.map(a=>[a.id,a.name])]}]});
+  let left=room;const L=src.map(a=>{const sur=Math.min(balance(S.cfg,tx,a.id,tom)-buf-unpaid(a),left);const x={a,sur,u:unpaid(a)};if(sur>=10000)left-=sur;return x}).filter(x=>x.sur>=10000);
+  const pl=planOf(S.cfg,S.plans,tx,ym),act=actuals(S.cfg,tx,ym),planLeft=S.cfg.cats.filter(c=>c.type=='exp').flatMap(c=>c.subs).reduce((a,s)=>a+Math.max(0,(pl[s.id]||0)-(act[s.id]||0)),0);
+  return`<section class="chart"><div class="ct"><b>💧 Kaskada nadwyżek</b><button class="btn sm" onclick="setCascade('${o}')">⚙️</button></div><div class="mini">Propozycja: to, co na kontach bieżących ponad zapas ${zl0(buf)} i niezapłacone opłaty stałe, możesz przelać na „${esc(accN(to))}”.${room<Infinity?` Limit ${w.toUpperCase()} na ${y}: zostało ${zl0(room)}.`:''}</div>
+    ${planLeft>0?`<div class="mini">📝 W planie do końca miesiąca zostało jeszcze <b>${zl0(planLeft)}</b> wydatków (całego domu) – zostawcie na to pieniądze.</div>`:''}
+    ${L.length?L.map(x=>`<div class="r1"><span>${esc(x.a.name)}${x.u?` <span class="mini">(po opłatach ${zl0(x.u)})</span>`:''}</span><button class="chip" onclick="openTx(null,{type:'tr',from:'${x.a.id}',to:'${to}',amount:${x.sur}})">→ ${zl(x.sur)}</button></div>`).join(''):`<div class="mini">${room<=0?`Limit ${w.toUpperCase()} na ten rok jest już wykorzystany – wybierz inne konto (⚙️).`:'Teraz nie ma nadwyżek do przelania.'}</div>`}</section>`}
+export async function setCascade(o){if(guard())return;const c=(S.hraw?.cascade||{})[o]||{},T=cascTargets(o);
+  const r=await ask({title:'Kaskada nadwyżek – '+o,text:'Na PPK i OKI nie można wpłacać samemu, więc ich tu nie ma.',fields:[{id:'b',label:'Zapas na każdym koncie bieżącym (zł)',type:'decimal',value:f2(c.buf??CASC_BUF)},{id:'t',label:'Przelewaj na',type:'select',value:T.some(a=>a.id==c.to)?c.to:'',options:[['','Pierwsze konto oszczędnościowe'],...T.map(a=>[a.id,a.name])]}]});
   if(!r)return;const v={buf:gr(r.b),to:r.t};S.hraw={...S.hraw,cascade:{...(S.hraw?.cascade||{}),[o]:v}};merge(H,{cascade:{[o]:v}});render()}

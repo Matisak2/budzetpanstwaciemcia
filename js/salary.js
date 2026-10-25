@@ -20,8 +20,9 @@ export const saveInc=x=>merge(H,{incM:{[x.id]:strip(x,incs().indexOf(x))}});
 export const delIncDb=id=>w(updateDoc(H,{['incM.'+id]:deleteField()}));
 export const gr=v=>{const x=pg(v||'0');return isFinite(x)?x:0};
 export const segL=l=>l.replace(/^(\S+) /,'<i class="si">$1</i> ');
-export const fixSegH=()=>`<div class="seg seg4">${[['fix','📌 Opłaty'],['pay','💼 Pensje'],['year','📅 Roczne'],['rem','🔔 Przyp.']].map(([k,l])=>`<button aria-pressed="${(S.fixSub||'fix')==k}" onclick="setFixSub('${k}')">${segL(l)}</button>`).join('')}</div>`;
-export function setFixSub(k){S.fixSub=k;S.slip=null;window.scrollTo(0,0);render()}
+/* 📌 Stałe: payments · salaries · 📅 yearly expenses and other dates (the former „🔔 Przyp.” tab is part of it) */
+export const fixSegH=()=>`<div class="seg seg3">${[['fix','📌 Opłaty'],['pay','💼 Pensje'],['year','📅 Roczne i terminy']].map(([k,l])=>`<button aria-pressed="${(S.fixSub=='rem'?'year':S.fixSub||'fix')==k}" onclick="setFixSub('${k}')">${segL(l)}</button>`).join('')}</div>`;
+export function setFixSub(k){S.fixSub=k=='rem'?'year':k;S.slip=null;window.scrollTo(0,0);render()}
 export function setPayView(k){S.payView=k;render()}
 export const payTabH=T=>`<div class="ptbl">${[['Brutto / faktury',T.brutto],['ZUS (społeczne)',-T.zus],['Zdrowotna',-T.health],['Zaliczka na podatek',-T.tax],['PPK – moje wpłaty',-T.ppkOwn],['PPK – pracodawca (na PPK)',T.ppkEmp],['Potrącenia',-T.ded],['Netto na konto',T.net]].filter(([,v],i)=>v||i==0||i==7).map(([l,v],i,a)=>`<div class="r1${i==a.length-1?' tot':''}"><span>${l}</span><b class="num">${v<0?'−'+zl(-v):zl(v)}</b></div>`).join('')}${T.hours?`<div class="mini">${String(T.hours).replace('.',',')} h wpisanych godzin</div>`:''}</div>`;
 export function payH(){const y=S.ym.slice(0,4);

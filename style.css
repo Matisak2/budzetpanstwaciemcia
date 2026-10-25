@@ -628,3 +628,10 @@ body[data-size="2"] .bfilt button{font-size:12.5px;padding:9px 1px}
 
 /* 📊 plan a rzeczywistość */
 .pvr{display:flex;flex-direction:column;gap:3px;padding:8px 0;border-top:1px solid var(--line,#eef0f4)}.pvr .chip{align-self:flex-start;margin-top:2px}
+
+/* ⚙️ settings in groups */
+.sgrp{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.sgrp>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px}.sgrp>summary::-webkit-details-marker{display:none}
+.sgrp>summary span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.sgrp>summary b{font-size:16px}.sgrp>summary small{color:var(--muted);font-size:13px}
+.sgrp>summary i{font-style:normal;font-size:20px;color:var(--muted);transition:transform .2s}.sgrp[open]>summary i{transform:rotate(90deg)}
+.sgrp>.sgb{display:flex;flex-direction:column;gap:12px;padding:0 10px 12px}.sgrp>.sgb>.card{box-shadow:none;background:var(--surface-2)}

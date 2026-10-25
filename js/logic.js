@@ -50,14 +50,6 @@ export function status(type,plan,act){
   if(act==plan)return{k:'full',txt:'✓ 100%',pct,msg:'✓ plan wykonany co do grosza'};
   if(pct>=85)return{k:'near',txt:'● '+r+'%',pct,msg:`zostało tylko ${zl(plan-act)}`};
   return{k:'ok',txt:r+'%',pct,msg:`zostało ${zl(plan-act)}`}}
-/* old investments module: złoty put in and still held at a date (buys minus the average cost of what was sold) */
-export function invPln(it,before='9999-99-99'){
-  const all=Object.values(it.lots||{}).filter(l=>!l.deleted&&l.date<before).sort((a,b)=>a.date.localeCompare(b.date)||(a.ts||0)-(b.ts||0));
-  let qty=0,pln=0;
-  for(const l of all){const q=+l.qty||0;
-    if(l.kind=='sell'){if(qty<=0)continue;const k=Math.min(q,qty);pln-=Math.round(pln/qty*k);qty-=k;if(qty<1e-9){qty=0;pln=0}}
-    else{qty+=q;pln+=l.pln||0}}
-  return pln}
 /* 📅 yearly expenses in the plan: the month an item is due (or paid) adds its amount to the plan of its position – computed, never stored,
    so copying a plan to the next month never carries it on. Due: every 12 / 6 / 4 / 3 / 2 / 1 months counted from its month; every 24 months from
    the last payment (before the first one – its month every year). Paid in this month (📅 „Zapłacone”) – the amount paid; paid up to 3 months early – not again. */
@@ -85,18 +77,6 @@ export function dueAlerts(fixed,tx,today){const out=[],tom=addDays(today,1);
     if(!paid(f,ym)){if(due<today)out.push({f,when:'late',due});else if(due==today)out.push({f,when:'today',due});else if(due==tom)out.push({f,when:'tomorrow',due})}
     const tym=tom.slice(0,7);if(tym!=ym&&fixedDate(f,tym)==tom&&!paid(f,tym))out.push({f,when:'tomorrow',due:tom})}
   const ord={late:0,today:1,tomorrow:2,inc:3};return out.sort((a,b)=>ord[a.when]-ord[b.when]||a.due.localeCompare(b.due))}
-/* iCalendar file: one monthly all-day event per fixed cost, alarm at 18:00 the evening before */
-export function buildIcs(fixed,today){const esc2=t=>String(t).replace(/[\\;,]/g,m=>'\\'+m).replace(/\n/g,'\\n');
-  const stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
-  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Budzet MW//PL','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Opłaty stałe'];
-  for(const f of fixed.filter(x=>(x.kind||'exp')=='exp')){const day=Math.min(31,Math.max(1,+f.day||1));let first=fixedDate(f,today.slice(0,7));if(first<today){const n=addDays(today.slice(0,7)+'-01',32).slice(0,7);first=fixedDate(f,n)}
-    const ds=first.replace(/-/g,''),de=addDays(first,1).replace(/-/g,'');
-    L.push('BEGIN:VEVENT','UID:oplata-'+f.id+'@budzet-mw','DTSTAMP:'+stamp,'DTSTART;VALUE=DATE:'+ds,'DTEND;VALUE=DATE:'+de,
-      'RRULE:FREQ=MONTHLY;BYMONTHDAY='+(day>=31?'-1':day),'SUMMARY:'+esc2('💳 '+f.name+' – '+zl(f.amount).replace(/\s/g,' ')),
-      'DESCRIPTION:'+esc2('Termin opłaty stałej. Po zapłaceniu odhacz ją w aplikacji Budżet M&W.'),'TRANSP:TRANSPARENT',
-      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc2('Jutro termin: '+f.name),'TRIGGER:-PT6H','END:VALARM','END:VEVENT')}
-  L.push('END:VCALENDAR');return L.join('\r\n')+'\r\n'}
-
 /* bulk reconcile: diffs per account → transfers (too much → too little), leftovers → adjustments; investment accounts → value change */
 export function planRecon(diffs){// diffs: [{id,d,inv,cur}] – transfers only between accounts of the same currency
   const ops=[];

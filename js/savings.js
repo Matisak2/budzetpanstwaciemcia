@@ -5,11 +5,12 @@ import {kotki} from './guide.js';
 import {gainSvg} from './charts.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue} from './inv.js';
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
-import {seasonal,agg,balance,liveOf} from './logic.js';
-import {$,MN,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym} from './util.js';
+import {seasonal,agg,balance,liveOf,carStats} from './logic.js';
+import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym} from './util.js';
 import {S,toast,ask,CUR,isP,CUR_OPTS,accOwner,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard} from './core.js';
 import {plu,openTx} from './sheet.js';
 import {gr} from './salary.js';
+import {remsH,warrantiesH,rems,saveRem,projs} from './debts.js';
 import {accN,render} from './app.js';
 
 /* ---------- 📈 savings & investments: instruments, values on one screen, limits, paid vs value, FIRE ---------- */
@@ -200,30 +201,60 @@ export function yearState(ym){return yearStateP(S.cfg,liveOf(S.tx),S.hraw,ym,td(
 export function yearLineH(){const st=yearState(td().slice(0,7));if(!st||S.ym!=td().slice(0,7))return'';
   return`<button class="alert info" onclick="goYear()"><b>📅 Wydatki roczne: ${st.left?`w tym miesiącu odłóż jeszcze ${zl(st.left)}`:'✓ w tym miesiącu odłożone'}</b><span class="mini">${st.dep?`odłożono ${zl(st.dep)} z ${zl(st.need)} · `:''}na subkoncie ${zl(st.now)}${st.soon.length?' · ⏰ wkrótce: '+st.soon.map(x=>esc(x.it.name)).join(', '):''}</span></button>`}
 export function goYear(){S.tab='fix';S.fixSub='year';S.slip=null;window.scrollTo(0,0);render()}
+/* 📅 Roczne i terminy: yearly expenses with money put aside (an envelope on one shared subaccount) + dates without money + warranties; one „+ Dodaj” */
 export function yearH(){const ym=S.ym,st=yearState(ym),id=yearAccId();let h='';
   const sea=seasonal(S.cfg,liveOf(S.tx),td().slice(0,7)).filter(x=>!years().some(y=>y.sub==x.sub.id)).slice(0,3);
   const seaH=sea.map(x=>`<div class="note">💡 Zeszłego roku w miesiącu ${MN[x.month-1].toLowerCase()}: <b>${esc(x.sub.name)} ${zl0(x.v)}</b> – dużo więcej niż zwykle. <button class="btn sm primary" onclick="editYear(null,${esc(JSON.stringify({name:x.sub.name,amount:x.v,month:x.month,sub:x.sub.id}))})">Dodać do wydatków rocznych?</button></div>`).join('');
-  h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">📅 Wydatki roczne</span><button class="btn sm dark" onclick="editYear()">+ Wydatek roczny</button></div>`;
-  if(!years().length)return h+seaH+catsEmpty('Dodaj wydatki, które przychodzą raz w roku albo co kilka miesięcy: OC, przegląd, prezenty, wakacje.<br>Aplikacja policzy, ile odkładać co miesiąc na jedno wspólne subkonto.',0,'envelope');
-  h+=`<div class="worth wsp"><div class="l">Subkonto: ${id?esc(accN(id)):'—'} <button class="btn sm" style="padding:2px 8px" onclick="setYearAcc()">zmień</button></div><div class="v num">${zl(st?.now||0)}</div><div class="s">${st?`w tym miesiącu odłóż ${zl(st.need)}${st.dep?` · odłożono ${zl(st.dep)}`:''}`:''}</div>${st&&st.left?`<button class="btn sm primary" style="align-self:flex-start" onclick="openTx(null,{type:'tr',to:'${id}',amount:${st.left}})">🐷 Odłóż ${zl(st.left)}</button>`:''}</div>`;
+  h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">📅 Roczne i terminy</span><button class="btn sm dark" onclick="addTerm()">+ Dodaj</button></div>`;
+  if(!years().length&&!rems().length)return h+seaH+catsEmpty('OC, ubezpieczenie mieszkania, przegląd, opony, szczepienie kotów, prezenty.<br>Z kwotą – policzę, ile odkładać co miesiąc na wspólne subkonto. Bez kwoty – tylko przypomnę.<br>Zawsze ok. 2 tygodnie przed terminem.',0,'envelope')+warrantiesH();
+  if(!years().length)return h+remsH()+seaH+warrantiesH();
+  h+=`<div class="h2" style="padding:0 4px">💰 Z odkładaniem</div><div class="worth wsp"><div class="l">Subkonto: ${id?esc(accN(id)):'—'} <button class="btn sm" style="padding:2px 8px" onclick="setYearAcc()">zmień</button></div><div class="v num">${zl(st?.now||0)}</div><div class="s">${st?`w tym miesiącu odłóż ${zl(st.need)}${st.dep?` · odłożono ${zl(st.dep)}`:''}`:''}</div>${st&&st.left?`<button class="btn sm primary" style="align-self:flex-start" onclick="openTx(null,{type:'tr',to:'${id}',amount:${st.left}})">🐷 Odłóż ${zl(st.left)}</button>`:''}</div>`;
   h+=`<div class="list">${(st?.list||[]).map(x=>{const it=x.it,pc=it.amount?x.fill/it.amount*100:0,dn=MN[+x.due.slice(5)-1].toLowerCase()+' '+x.due.slice(0,4);
+    const dd=it.day?`${it.day} ${MNG[+x.due.slice(5)-1]} ${x.due.slice(0,4)}`:dn;
     return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(it.name)}</b><b class="num">${zl(it.amount)}</b></div><div class="gbar"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div>
-      <div class="mini">${x.months<=2&&x.fill<it.amount?'⏰ ':''}termin: ${dn}${+it.every!=12?` · co ${it.every} mies.`:''} · w kopercie ${zl(x.fill)}${x.need?` · odkładaj ok. ${zl(x.need)}/mies.`:' · ✓ uzbierane'}</div>
+      <div class="mini">${x.months<=2&&x.fill<it.amount?'⏰ ':''}termin: ${dd}${+it.every!=12?` · co ${it.every} mies.`:''} · w kopercie ${zl(x.fill)}${x.need?` · odkładaj ok. ${zl(x.need)}/mies.`:' · ✓ uzbierane'}</div>
       <div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="payYear('${it.id}')">✓ Zapłacone</button><button class="chip" onclick="editYear('${it.id}')">Edytuj</button></div></div></div>`}).join('')}</div>`;
-  h+=seaH;
-  return h+`<div class="mini" style="padding:0 4px">Pieniądze na subkoncie wypełniają koperty od najbliższego terminu. Po zapłacie odliczanie rusza od nowa.</div>`}
+  h+=`<div class="mini" style="padding:0 4px">Pieniądze na subkoncie wypełniają koperty od najbliższego terminu. Po zapłacie odliczanie rusza od nowa. Ok. 2 tygodnie przed terminem przypomnę o zapłacie.</div>`;
+  return h+remsH()+seaH+warrantiesH()}
+/* a new yearly expense from a date (the shared subaccount is made the first time); every 24 months is counted from that date */
+export function newYear(name,amount,date,every,sub){const ym=date.slice(0,7),body={id:'y'+rid(),name,amount,month:+date.slice(5,7),day:+date.slice(8),every,sub,...(12%every?{last:addMonths(ym,-every)}:{})};
+  S.cfg.years=years();S.cfg.years.push(body);if(!yearAccId()){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);S.hraw={...S.hraw,yearAcc:a.id};merge(H,{yearAcc:a.id});toast('Założyłem wspólne subkonto na wydatki roczne')}
+  render();saveYear(body);return body}
+/* „+ Dodaj” in 📅 Roczne i terminy: a ready template or your own; with an amount → a yearly expense (money put aside every month),
+   without → just a date to remember (also every X km for a car) */
+export const TERM_PRE=[['oc','🛡️ OC samochodu',12,1],['ac','🚗 AC samochodu',12,1],['mieszk','🏠 Ubezpieczenie mieszkania',12,1],['podatek','🏛️ Podatek od nieruchomości',12,1],['prezenty','🎁 Prezenty świąteczne',12,1],
+  ['przeglad','🔧 Przegląd techniczny',12,0],['opony','🛞 Wymiana opon',6,0],['serwis','🧰 Serwis / olej',12,0],['szczep','💉 Szczepienie kotów',12,0],['odrob','🐾 Odrobaczenie kotów',3,0]];
+export async function addTerm(){if(guard())return;const cars=projs().filter(p=>p.kind=='car');
+  const r=await ask({title:'Roczne i terminy',text:'Z kwotą – policzę, ile odkładać co miesiąc na wspólne subkonto. Bez kwoty – tylko przypomnę. Zawsze ok. 2 tygodnie przed terminem.\nJednorazowy duży zakup (np. wakacje)? Lepszy będzie 🎯 Cel w Oszczędnościach.',fields:[
+    {id:'p',label:'Gotowe',type:'select',value:'',options:[['','— własne —'],...TERM_PRE.map(([k,n])=>[k,n])]},
+    {id:'n',label:'Nazwa (gdy własne)',value:'',ph:'np. Ubezpieczenie na życie'},
+    {id:'a',label:'Kwota (zł, opcjonalnie)',type:'decimal',value:'',ph:'puste = samo przypomnienie'},
+    {id:'d',label:'Najbliższy termin',type:'date',value:''},
+    {id:'e',label:'Powtarzaj',type:'select',value:'',options:[['','Według gotowego (zwykle co rok)'],['0','Jednorazowo'],['1','Co miesiąc'],['3','Co 3 miesiące'],['6','Co pół roku'],['12','Co rok'],['24','Co 2 lata']]},
+    {id:'s',label:'Pozycja budżetu (gdy jest kwota)',type:'select',value:'',options:[['','— wybierz —'],...subOpts('exp')]},
+    ...(cars.length?[{id:'c',label:'Pojazd',type:'select',value:'',options:[['','— nie dotyczy —'],...cars.map(p=>[p.id,p.name])]},{id:'k',label:'Albo co ile km (np. serwis)',type:'int',value:''}]:[]),
+    {id:'t',label:'Notatka',value:''}],ok:'Dodaj'});
+  if(!r)return;const pre=TERM_PRE.find(x=>x[0]==r.p),name=r.n.trim()||(pre?pre[1]:''),every=r.e!==''?+r.e:pre?pre[2]:12,amount=gr(r.a),km=Math.round(pnum(r.k||''))||0;
+  if(!name)return toast('Podaj nazwę albo wybierz gotowe','bad');
+  if(amount>0){if(!isDate(r.d))return toast('Podaj najbliższy termin płatności','bad');if(!every)return toast('Wydatek z kwotą musi się powtarzać – jednorazowy zakup zaplanuj jako 🎯 Cel','bad');if(km)return toast('Przy „co ile km” zostaw kwotę pustą','bad');
+    if(!r.s)return toast('Wybierz pozycję budżetu – tam trafi wydatek','bad');
+    newYear(name,amount,r.d,every,r.s);return toast('Dodano: '+name+' 📅')}
+  if(!isDate(r.d)&&!km)return toast('Podaj termin albo liczbę km','bad');
+  const car=r.c?projs().find(p=>p.id==r.c):null,body={id:'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),lastOdo:car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0};
+  S.cfg.rems=rems();S.cfg.rems.push(body);render();saveRem(body);toast('Dodano przypomnienie 🔔')}
 export async function setYearAcc(){if(guard())return;const subs=S.cfg.accs.filter(a=>(a.grp=='sub'||a.grp=='sav')&&!a.archived);
   const r=await ask({title:'Subkonto na wydatki roczne',fields:[{id:'a',label:'Konto',type:'select',value:yearAccId()||'',options:[['new','+ Nowe: Subkonto – wydatki roczne'],...subs.map(a=>[a.id,a.name])]}]});if(!r)return;
   let id=r.a;if(id=='new'){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);id=a.id}
   S.hraw={...S.hraw,yearAcc:id};merge(H,{yearAcc:id});render()}
 export async function editYear(id,pre){if(guard())return;const y0=id?years().find(x=>x.id==id):null;pre=pre||{};
-  const r=await ask({title:y0?'Wydatek roczny':'Nowy wydatek roczny',fields:[{id:'n',label:'Nazwa',value:y0?.name||pre.name||'',ph:'np. OC samochodu, Prezenty świąteczne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:y0?f2(y0.amount):pre.amount?f2(pre.amount):''},
+  const r=await ask({title:y0?'Wydatek roczny':'Nowy wydatek roczny',text:y0?'':'Co roku (albo co kilka miesięcy) – policzę, ile odkładać co miesiąc na wspólne subkonto. Jednorazowy duży zakup? Lepszy 🎯 Cel w Oszczędnościach.',fields:[{id:'n',label:'Nazwa',value:y0?.name||pre.name||'',ph:'np. OC samochodu, Prezenty świąteczne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:y0?f2(y0.amount):pre.amount?f2(pre.amount):''},
     {id:'m',label:'Miesiąc płatności',type:'select',value:String(y0?.month||pre.month||+td().slice(5,7)),options:MN.map((n,i)=>[String(i+1),n])},
+    {id:'dy',label:'Dzień płatności (1–31, opcjonalnie)',type:'int',value:y0?.day||'',ph:'przypomnę ok. 2 tygodnie wcześniej'},
     {id:'e',label:'Jak często',type:'select',value:String(y0?.every||12),options:[['12','Co rok'],['6','Co pół roku'],['3','Co kwartał'],['24','Co 2 lata']]},
     {id:'s',label:'Pozycja budżetu',type:'select',value:y0?.sub||pre.sub||'',options:[['','— wybierz —'],...subOpts('exp')]}],ok:y0?'Zapisz':'Dodaj',alt:y0?'Usuń':null});
   if(!r)return;if(r=='alt'){S.cfg.years=years().filter(x=>x!==y0);render();delYearDb(y0.id);return toast('Usunięto')}
   const amount=gr(r.a);if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');
-  const body={id:y0?.id||'y'+rid(),name:r.n.trim(),amount,month:+r.m,every:+r.e,sub:r.s,...(y0?.last?{last:y0.last}:{})};
+  const dy=Math.round(pnum(r.dy||''))||0,body={id:y0?.id||'y'+rid(),name:r.n.trim(),amount,month:+r.m,day:dy>=1&&dy<=31?dy:0,every:+r.e,sub:r.s,...(y0?.last?{last:y0.last}:{})};
   S.cfg.years=years();let x=y0;if(x)Object.assign(x,body);else{x=body;S.cfg.years.push(x)}
   if(!yearAccId()){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);S.hraw={...S.hraw,yearAcc:a.id};merge(H,{yearAcc:a.id});toast('Założyłem wspólne subkonto na wydatki roczne')}
   render();saveYear(x)}

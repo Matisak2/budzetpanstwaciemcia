@@ -2,7 +2,7 @@
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
-import {debtStateP,rataP,recurringP,savedP,todayItems} from '../js/today.js';
+import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 
@@ -99,6 +99,22 @@ const N=' ';
   // OC zapłacone już w lutym (1 150 zł) – w lutym plan = zapłacone, w marcu nie drugi raz
   const paid=[{type:'exp',amount:115000,date:'2027-02-20',sub:'ub',yearId:'oc'}];
   eq('Roczne – zapłacone wcześniej: plan w miesiącu zapłaty',planOf(cfg,{},paid,'2027-02').ub,115000);eq('Roczne – zapłacone wcześniej: bez planu w terminie',planOf(cfg,{},paid,'2027-03').ub,undefined);
+}
+/* ---------- 📅 przypomnienia: termin wydatku rocznego, podatek od najmu, PIT ---------- */
+{ const oc={id:'oc',name:'OC',amount:120000,month:3,day:15,every:12,sub:'ub'};
+  eq('Termin rocznego – 10 dni przed',yearPayP(oc,[],'2027-03-05'),{m:'2027-03',due:'2027-03-15',n:10});
+  eq('Termin rocznego – za wcześnie (23 dni)',yearPayP(oc,[],'2027-02-20'),null);
+  eq('Termin rocznego – po terminie, niezapłacone',yearPayP(oc,[],'2027-04-10')?.n,-26);
+  eq('Termin rocznego – zapłacone',yearPayP(oc,[{type:'exp',amount:120000,date:'2027-03-02',yearId:'oc'}],'2027-03-05'),null);
+  const D=(fixed,tx,today)=>todayItems({cfg:{accs:[{id:'a',grp:'cur',owner:'Wercia'}],cats:[],fixed,years:[]},tx,slips:{},hold:{},debts:{},market:{},backup:{at:new Date(today+'T12:00:00').getTime()},hraw:{}},{today,checks:false});
+  const naj={id:'fn',name:'Najem',kind:'inc',amount:300000,day:10,sub:'x',acc:'a',najem:'m'},rent=[{type:'inc',amount:300000,date:'2027-02-10',acc:'a',sub:'x',fixedId:'fn'}];
+  const it=D([naj],rent,'2027-03-05').find(x=>x.icon=='🏠'&&/Ryczałt/.test(x.text));eq('Najem – ryczałt 8,5% z 3 000 zł',/255,00/.test(it?.text||''),true);eq('Najem – czyje (właściciel konta)',it?.who,'Wercia');
+  eq('Najem co kwartał – w marcu nic',D([{...naj,najem:'q'}],rent,'2027-03-05').some(x=>/Ryczałt/.test(x.text)),false);
+  // kwartał styczeń–marzec: 3 000 + 3 000 zł → 8,5% = 510 zł
+  eq('Najem co kwartał – w kwietniu za styczeń–marzec',/510,00/.test(D([{...naj,najem:'q'}],[...rent,{...rent[0],date:'2027-01-10'}],'2027-04-05').find(x=>/Ryczałt/.test(x.text))?.text||''),true);
+  eq('Najem – PIT-28 w lutym',D([naj],rent,'2027-02-03').some(x=>/PIT-28/.test(x.text)),true);
+  const pit=D([],[],'2027-03-01').filter(x=>x.key?.startsWith('pit:'));eq('PIT – w marcu dla obojga',pit.map(x=>x.who),['Mati','Wercia']);eq('PIT – 1 marca powiadomienie',pit[0].quiet,false);
+  eq('PIT – 5 marca bez powiadomienia (tylko w „Na dziś”)',D([],[],'2027-03-05').find(x=>x.key?.startsWith('pit:')).quiet,true);eq('PIT – w maju już nie',D([],[],'2027-05-02').some(x=>x.key?.startsWith('pit:')),false);
 }
 /* ---------- 🐷 odłożone = wpłaty, nie zmiana kursów ---------- */
 { const cfg={accs:[{id:'cur',grp:'cur',owner:'Mati',open:500000},{id:'sav',grp:'sav',owner:'Mati',open:0},{id:'ike',grp:'inv',owner:'Mati',wrap:'ike',open:0},

@@ -236,15 +236,15 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] Usuwanie tylko pustych pozycji; z wpisami – ukrycie; „Połącz z inną” jako rzadka opcja, przenosi też wydatki roczne, źródła dochodu i zobowiązania; jednorazowe sprawdzenie danych
 
 ## Etap R. Roczne i terminy, porządki
-- [ ] Jedna zakładka „📅 Roczne i terminy” zamiast Roczne + Przyp.: kwota opcjonalna (z kwotą – odkładanie na subkonto, bez – samo przypomnienie), opcjonalnie „co X km”, przypomnienie zawsze ok. 14 dni przed terminem (także przy pełnej kopercie), gotowe szablony (OC, ubezpieczenie mieszkania, przegląd, opony, serwis, szczepienie i odrobaczanie kotów), lista 🛡️ gwarancji na dole; obecne przypomnienia przeniesione automatycznie
-- [ ] Podatek od najmu: przy przychodzie stałym z najmu przypomnienie o ryczałcie do 20. (co miesiąc / co kwartał – do wyboru)
-- [ ] PIT: 1 marca „Czas na PIT” z zestawieniem ulg i IKZE osobno dla Matiego i Werci, powtórka 1 i 20 kwietnia do „✓ Złożone” (każde osobno), termin 30 kwietnia
-- [ ] Kaskada nadwyżek: zapas 250 zł na każdym koncie bieżącym (do zmiany) + niezapłacone opłaty stałe, informacja o planie do końca miesiąca, nigdy na PPK / OKI ani z gotówki, pilnuje limitów IKE i IKZE
-- [ ] Usunięcie „Dodaj opłaty do kalendarza”
-- [ ] Wartość inwestycji: automat + jeden ekran „📈 Aktualizuj wartości” (bez przycisków przy kontach i bez inwestycji w „Wyrównaj wszystkie salda”)
-- [ ] Usunięcie starego modułu inwestycji i filtra „Inwestycje” w Rejestrze (u Matiego i Werci pusty)
-- [ ] ⚙️ Ustawienia w grupach: Ten telefon / Budżet / Bezpieczeństwo / Automaty / Pomoc
-- [ ] Przewodnik „Która koperta do czego” (Cel / Roczne / odkładanie na spłatę / Projekt) + podpowiedź przy zakładaniu
+- [x] Jedna zakładka „📅 Roczne i terminy” zamiast Roczne + Przyp.: kwota opcjonalna (z kwotą – odkładanie na subkonto, bez – samo przypomnienie), opcjonalnie „co X km”, przypomnienie zawsze ok. 14 dni przed terminem (także przy pełnej kopercie), gotowe szablony (OC, ubezpieczenie mieszkania, przegląd, opony, serwis, szczepienie i odrobaczanie kotów), lista 🛡️ gwarancji na dole; obecne przypomnienia przeniesione automatycznie
+- [x] Podatek od najmu: przy przychodzie stałym z najmu przypomnienie o ryczałcie do 20. (co miesiąc / co kwartał – do wyboru)
+- [x] PIT: 1 marca „Czas na PIT” z zestawieniem ulg i IKZE osobno dla Matiego i Werci, powtórka 1 i 20 kwietnia do „✓ Złożone” (każde osobno), termin 30 kwietnia
+- [x] Kaskada nadwyżek: zapas 250 zł na każdym koncie bieżącym (do zmiany) + niezapłacone opłaty stałe, informacja o planie do końca miesiąca, nigdy na PPK / OKI ani z gotówki, pilnuje limitów IKE i IKZE
+- [x] Usunięcie „Dodaj opłaty do kalendarza”
+- [x] Wartość inwestycji: automat + jeden ekran „📈 Aktualizuj wartości” (bez przycisków przy kontach i bez inwestycji w „Wyrównaj wszystkie salda”)
+- [x] Usunięcie starego modułu inwestycji i filtra „Inwestycje” w Rejestrze (u Matiego i Werci pusty)
+- [x] ⚙️ Ustawienia w grupach: Ten telefon / Budżet / Bezpieczeństwo / Automaty / Pomoc
+- [x] Przewodnik „Która koperta do czego” (Cel / Roczne / odkładanie na spłatę / Projekt) + podpowiedź przy zakładaniu
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.

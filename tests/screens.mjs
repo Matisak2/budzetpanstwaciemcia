@@ -29,8 +29,8 @@ const browser=await chromium.launch(exe?{executablePath:exe}:{});
 const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['stale',"goTab('fix');setFixSub('fix')"],['pensje',"setFixSub('pay')"],['pit',"setPayView&&setPayView('year')"],
   ['roczne',"setFixSub('year')"],['przypomnienia',"setFixSub('rem')"],['oszczednosci',"goTab('sav')"],['konta',"goTab('acc');setAccView('acc')"],['my-winni',"setAccView('owe')"],
   ['nam-winni',"setAccView('lent')"],['analiza',"goTab('ana');setAna('m');setAnaMode('full')"],['analiza-podst',"setAnaMode('basic')"],['analiza-rok',"setAnaMode('full');setAna('y')"],
-  ['ustawienia',"goTab('set')"],
-  ['usuniete',"{const L=S.tx.filter(t=>!t.deleted&&t.type=='exp').slice(0,3);S.tx=S.tx.map(t=>{const i=L.indexOf(t);return i<0?t:{...t,deleted:true,dAt:Date.now()-i*1000,dby:'Mati'}});goTab('dash');goTab('set')}"],
+  ['ustawienia',"S.setOpen={bud:1,tel:1,bez:1,auto:1,pom:1};goTab('set')"],
+  ['usuniete',"{const L=S.tx.filter(t=>!t.deleted&&t.type=='exp').slice(0,3);S.tx=S.tx.map(t=>{const i=L.indexOf(t);return i<0?t:{...t,deleted:true,dAt:Date.now()-i*1000,dby:'Mati'}});S.setOpen={bez:1};goTab('dash');goTab('set')}"],
   ['umowa-stale',"{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp');f.until=new Date(Date.now()+40*864e5).toISOString().slice(0,10);window.__umowa=f.id;goTab('fix');setFixSub('fix')}"],
   ['umowa-na-dzis',"closeAll();showToday()"],['umowa-edycja',"closeAll();editFixed(window.__umowa)"],['gdzie-wydajemy',"closeAll();goTab('ana');setAnaMode('full');setAna('m')"],
   ['podpowiedz-notatki',"closeAll();openTx();setTimeout(()=>{const m=$('mn');m.focus();m.value='bi';m.dispatchEvent(new Event('input'))},200)"],
@@ -116,6 +116,21 @@ for(const C of CASES){
     if(!y)fail(`${tag}: wydatek roczny z terminem w tym miesiącu nie doliczył się do planu w Budżecie`);
     await p.evaluate(()=>{S.cfg.years=[];render()});
   }catch(e){fail(`${tag}: test ukrywania / planu – ${e.message.split('\n')[0]}`)}}
+  /* 📅 „+ Dodaj” in Roczne i terminy: with an amount → a yearly expense, without → a reminder; 💧 the cascade never proposes PPK */
+  if(C===CASES[0]){try{
+    const d=new Date(Date.now()+20*864e5).toISOString().slice(0,10);
+    await p.evaluate(()=>{closeAll();goTab('fix');setFixSub('year');addTerm()});await p.waitForTimeout(300);
+    await p.selectOption('#f_p','oc');await p.fill('#f_a','1 200');await p.fill('#f_d',d);await p.evaluate(()=>{const x=document.getElementById('f_s');x.value=[...x.options].find(o=>o.value).value});await p.click('#dlgOk');await p.waitForTimeout(400);
+    await p.evaluate(()=>{addTerm()});await p.waitForTimeout(300);await p.selectOption('#f_p','szczep');await p.fill('#f_d',d);await p.click('#dlgOk');await p.waitForTimeout(400);
+    const t=await p.evaluate(()=>({y:(S.cfg.years||[]).map(x=>x.name+'|'+x.amount+'|'+x.day),r:(S.cfg.rems||[]).map(x=>x.name),txt:document.getElementById('app').innerText}));
+    if(!t.y.some(x=>/OC samochodu\|120000\|\d+/.test(x)))fail(`${tag}: „+ Dodaj” z kwotą nie dodał wydatku rocznego (${t.y})`);
+    if(!t.r.some(x=>/Szczepienie/.test(x)))fail(`${tag}: „+ Dodaj” bez kwoty nie dodał przypomnienia`);
+    if(!/Z odkładaniem/i.test(t.txt)||!/Terminy bez odkładania/i.test(t.txt))fail(`${tag}: brak obu części „Roczne i terminy”`);
+    await p.screenshot({path:path.join(OUT,`${tag}-roczne-i-terminy.png`),fullPage:true});
+    const k=await p.evaluate(()=>{const out=[];for(const o of ['Mati','Wercia','Wspólne']){goTab('sav');setSub(o);const x=document.getElementById('app').innerText,i=x.indexOf('Kaskada');if(i>=0)out.push(x.slice(i,i+400))}return out.join(' || ')});
+    if(/PPK/.test(k.split('Konta „inwest.”')[0]))fail(`${tag}: kaskada proponuje PPK: ${k.slice(0,200)}`);
+    if(/Gotówka\s*→/.test(k))fail(`${tag}: kaskada proponuje przelew z gotówki`);
+  }catch(e){fail(`${tag}: test „Roczne i terminy” / kaskady – ${e.message.split('\n')[0]}`)}}
   /* 💼 payslip from the net amount: a test income source with a deduction (Multisport 150 zł) – the deduction is in the new payslip by itself,
      „Podpowiedz z netto” 7 000 zł gives a payslip that adds up, saving books 7 150 zł income + 150 zł expense; „Przychody spoza pasków” is shown */
   if(C===CASES[0]){try{

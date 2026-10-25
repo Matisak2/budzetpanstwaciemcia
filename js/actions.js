@@ -6,7 +6,7 @@ import {HUES,catHue,freeHue} from './data.js';
 import {position,wrapOf} from './inv.js';
 import {ULGI} from './today.js';
 import {suggest} from './pay.js';
-import {balance,buildIcs,cleanCat,fixedDate,liveOf,planRecon,subsMap} from './logic.js';
+import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap} from './logic.js';
 import {$,MN,addDays,addMonths,clone,daysIn,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv} from './util.js';
 import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOwner,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,INV,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,delFixedDb,putTx,putInv,liveById,guard} from './core.js';
 import {plu,catColor,P,RCPT,RMETA,phCache,openTx} from './sheet.js';
@@ -130,9 +130,10 @@ export async function editFixed(fid,kind,pre){if(guard())return;
   if(!inc)fields.push({id:'u',label:'📄 Umowa do (opcjonalnie) – przypomnę 2 miesiące wcześniej',type:'date',value:f?.until||''});
   if(!inc&&debtList('owe').length)fields.push({id:'db',label:'🔻 Spłata zobowiązania',type:'select',value:f?.debt||'',options:[['','— nie —'],...debtList('owe').map(d=>[d.id,d.name])]});
   if(inc){fields.push({id:'v',label:'Kwota co miesiąc',type:'select',value:f?.vary?'1':'0',options:[['0','Podpowiadaj ostatnią kwotę'],['1','Zawsze inna – wpisuję od zera']]});
+    fields.push({id:'nj',label:'🏠 Najem – przypominać o ryczałcie (8,5%)?',type:'select',value:f?.najem||'',options:[['','Nie'],['m','Tak – co miesiąc (do 20. następnego miesiąca)'],['q','Tak – co kwartał (do 20. po kwartale)']]});
     if(f0?.ppk)fields.push({id:'p',label:'Wpłaty PPK przy tej pensji',type:'select',value:f?.ppk||'',options:[['','Bez PPK'],...invAccs.map(a=>[a.id,a.name])]})}
   const lsrc=inc&&f0?incs().find(x=>x.fixed==f0.id):null;
-  const r=await ask({title:f0?(inc?'Edytuj przychód stały':'Edytuj opłatę stałą'):(inc?'Nowy przychód stały':'Nowa opłata stała'),text:inc?(lsrc?`Połączony ze źródłem dochodu „${lsrc.name}” – odhaczenie otwiera pasek (💼 Pensje).`:'Np. najem mieszkania albo świadczenie. Pensje wpisujesz w 💼 Pensje – z paska albo z samej kwoty netto.'):'',fields,ok:f0?'Zapisz':'Dodaj',alt:f0?(inc?'Usuń przychód':'Usuń opłatę'):null});
+  const r=await ask({title:f0?(inc?'Edytuj przychód stały':'Edytuj opłatę stałą'):(inc?'Nowy przychód stały':'Nowa opłata stała'),text:inc?(lsrc?`Połączony ze źródłem dochodu „${lsrc.name}” – odhaczenie otwiera pasek (💼 Pensje).`:'Np. najem mieszkania albo świadczenie. Pensje wpisujesz w 💼 Pensje – z paska albo z samej kwoty netto.\nNajem: nie wiecie, czy płacić ryczałt co miesiąc, czy co kwartał? Zostawcie „co miesiąc” – zmienicie później.'):'',fields,ok:f0?'Zapisz':'Dodaj',alt:f0?(inc?'Usuń przychód':'Usuń opłatę'):null});
   if(!r)return;
   if(r=='alt'){if(!await ask({title:inc?'Usunąć przychód stały?':'Usunąć opłatę stałą?',text:f.name+'\nWpisy już zapisane w rejestrze zostaną.',ok:'Usuń',danger:true}))return;S.cfg.fixed=S.cfg.fixed.filter(x=>x.id!=fid);render();delFixedDb(fid);return}
   const amount=pg(r.a),day=Math.round(pnum(r.d));
@@ -141,7 +142,7 @@ export async function editFixed(fid,kind,pre){if(guard())return;
   if(day<1||day>31)return toast('Dzień miesiąca musi być od 1 do 31','bad');
   if(!r.s)return toast('Wybierz pozycję budżetu','bad');
   const body={id:f0?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:r.s,acc:r.c,kind};if(!inc){body.debt=r.db||'';body.until=isDate(r.u)?r.u:''}
-  if(inc){body.vary=r.v=='1';body.ppk=r.p||''}
+  if(inc){body.vary=r.v=='1';body.ppk=r.p||'';body.najem=r.nj||''}
   let tgt=f0;if(f0)Object.assign(f0,body);else{tgt=body;S.cfg.fixed.push(body)}
   render();saveFixed(tgt)}
 export async function editFixedTr(f){const savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv'||a.grp=='sub')&&!a.archived),svd=debtList('owe').filter(d=>d.saveAcc&&(debtState(d).left>0||d.id==f?.saveFor));
@@ -198,18 +199,9 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
       if(emp>0)putTx(S.ym,'t'+rid(),{...base,type:'inc',amount:emp,note:'PPK – wpłata pracodawcy',ppk:'emp'})}
     toast(`Wpłynęło: ${f.name} ${zl(amt)} ✓`)}}
 
-export function calendarExport(){if(!S.cfg?.fixed?.some(f=>(f.kind||'exp')=='exp'))return toast('Najpierw dodaj opłaty stałe','bad');
-  const blob=new Blob([buildIcs(S.cfg.fixed,td())],{type:'text/calendar'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download='oplaty-stale.ics';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
-  ask({title:'Dodaj do kalendarza',text:'Otwórz pobrany plik „oplaty-stale.ics” i wybierz „Dodaj wszystkie” (iPhone) albo kalendarz, do którego mają trafić.\n\nKażda opłata pojawi się co miesiąc w dniu terminu, z przypomnieniem dzień wcześniej o 18:00.\n\nJeśli zmienisz opłaty, usuń stare wydarzenia i dodaj plik ponownie.',ok:'Rozumiem',cancel:'Zamknij'})}
 export function goFixed(){S.ym=td().slice(0,7);S.tab='fix';S.fixSub='fix';S.slip=null;window.scrollTo(0,0);render()}
 
 /* ---------- investments ---------- */
-/* old investments module (first app version): shown read-only, can only be deleted together with its register entries */
-export async function delInv(iid){if(guard())return;const it=S.inv[iid];if(!it)return;const lots=Object.values(it.lots||{}).filter(l=>!l.deleted);
-  if(!await ask({title:'Usunąć starszy wpis inwestycji?',text:it.name+(lots.length?`\nRazem z ${lots.length} zakupami i sprzedażami. Powiązane wpisy w rejestrze kont też zostaną usunięte.`:''),ok:'Usuń',danger:true}))return;
-  for(const l of lots)if(l.txId){const t=liveById(l.txId);if(t)await putTx(t.date.slice(0,7),t.id,{deleted:true})}
-  w(deleteDoc(doc(INV(),iid)));toast('Usunięto '+it.name)}
 
 /* ---------- investment accounts ---------- */
 /* contributed = opening balance + money moved in − money moved out; value change = sum of value updates (adj) */
@@ -218,12 +210,6 @@ export function invAccStats(cfg,tx,id,before){const a=cfg.accs.find(x=>x.id==id)
     if(t.acc===id){if(t.type=='adj'){chg+=t.amount;if(!last||t.date>last)last=t.date}else if(t.type=='inc'||t.type=='invs'){paid+=t.amount;if(t.ppk=='own')own+=t.amount;if(t.ppk=='emp')emp+=t.amount}else paid-=t.amount}
     if(t.type=='tr'&&t.to===id)paid+=t.amount2??t.amount}
   const value=paid+chg;return{paid,chg,value,pct:paid>0?chg/paid*100:null,last,own,emp}}
-export async function updateValue(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id),tom=addDays(td(),1),cur=balance(S.cfg,liveOf(S.tx),id,tom);
-  const r=await ask({title:'Aktualna wartość: '+a.name,text:`W aplikacji: ${money(cur,CUR(a))}\nWpisz, ile jest teraz warte konto w aplikacji brokera. Różnicę zapiszę jako zysk albo stratę (nie wpływa na wydatki).`,fields:[{id:'v',label:`Wartość dziś (${curSym(CUR(a))})`,type:'decimal',value:f2(cur)}],ok:'Zapisz wartość'});
-  if(!r||!r.v.trim())return;const d=pg(r.v)-cur;if(!d)return toast('Wartość się zgadza');
-  const ym=td().slice(0,7),tid='t'+rid();
-  if(await putTx(ym,tid,{type:'adj',val:true,amount:d,date:td(),sub:'',acc:id,to:'',who:S.who,note:'Zmiana wartości',deleted:false,ts:Date.now()}))
-    toast(`${d>0?'Zysk':'Strata'} ${money(Math.abs(d),CUR(a))} zapisany`,'',{label:'Cofnij',fn:()=>putTx(ym,tid,{deleted:true})})}
 
 /* ---------- savings goals as envelopes: money in savings + investment accounts is assigned to goals ---------- */
 export const goalAlloc=g=>g.alloc??g.saved??0;
@@ -236,7 +222,7 @@ export function goalProgress(g,cfg,tx,today){const saved=goalAlloc(g);
   return{saved,pct,left,months,perMonth,done:saved>=g.target&&g.target>0}}
 export const unallocated=owner=>poolNow(S.cfg,liveOf(S.tx),owner)-Object.values(S.goals).filter(g=>goalOwner(g)==owner).reduce((a,g)=>a+goalAlloc(g),0);
 export async function editGoal(gid,owner){if(guard())return;const g=gid?S.goals[gid]:null;owner=g?goalOwner(g):(owner||'Wspólne');
-  const r=await ask({title:g?'Edytuj cel':'Nowy cel (koperta)',text:g?'':`Cel to „koperta”: przydzielacie do niej część oszczędności (${owner=='Wspólne'?'wspólnych':owner=='Mati'?'Matiego':'Werci'}).`,fields:[
+  const r=await ask({title:g?'Edytuj cel':'Nowy cel (koperta)',text:g?'':`Cel to „koperta”: przydzielacie do niej część oszczędności (${owner=='Wspólne'?'wspólnych':owner=='Mati'?'Matiego':'Werci'}).\nCo roku to samo (OC, prezenty)? Lepsze będzie 📌 Stałe → 📅 Roczne i terminy.`,fields:[
     {id:'n',label:'Na co oszczędzacie?',value:g?.name||'',ph:'np. Wakacje 2027'},
     {id:'t',label:'Ile potrzebujecie (zł)',type:'decimal',value:g?f2(g.target):'',ph:'np. 6000'},
     {id:'d',label:'Do kiedy (miesiąc, opcjonalnie)',type:'month',value:g?.deadline||''},
@@ -262,11 +248,12 @@ export async function setSavTarget(){if(guard())return;const r=await ask({title:
   if(!r)return;merge(H,{savTarget:Math.max(0,pg(r.v))});toast('Zapisano cel miesięczny')}
 export function setSub(k){S.sub=k;render()}
 /* bulk reconcile screen in the Accounts tab */
-export const recAccs=()=>{const o={cur:0,sub:1,sav:2,inv:3},cur=(S.recScope||'cur')=='cur';return S.cfg.accs.filter(a=>!a.archived&&(cur?a.grp=='cur'||a.grp=='sub':a.grp=='sav'||a.grp=='inv')).slice().sort((a,b)=>o[a.grp]-o[b.grp])};
+/* investments are not here – their value is updated in 📈 „Aktualizuj wartości” (and by the automat) */
+export const recAccs=()=>{const o={cur:0,sub:1,sav:2},cur=(S.recScope||'cur')=='cur';return S.cfg.accs.filter(a=>!a.archived&&(cur?a.grp=='cur'||a.grp=='sub':a.grp=='sav')).slice().sort((a,b)=>o[a.grp]-o[b.grp])};
 export function setRecScope(k){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});S.recScope=k;render()}
 export function openRecon(scope){if(guard())return;S.recon=true;S.recVals={};S.recScope=scope||'cur';window.scrollTo(0,0);render()}
 export function closeRecon(){S.recon=false;render()}
-export function recRead(all){const tx=liveOf(S.tx),tom=addDays(td(),1),list=all?S.cfg.accs.filter(a=>!a.archived):recAccs();
+export function recRead(all){const tx=liveOf(S.tx),tom=addDays(td(),1),list=all?S.cfg.accs.filter(a=>!a.archived&&a.grp!='inv'):recAccs();
   return list.map(a=>{const el=$('rv_'+a.id),app=balance(S.cfg,tx,a.id,tom),raw=(el?el.value:(S.recVals[a.id]||'')).trim();return{a,app,filled:raw!=='',real:raw===''?app:pg(raw)}})}
 export function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(),rp=r.filter(x=>isP(x.a)),app=rp.reduce((s,x)=>s+x.app,0),real=rp.reduce((s,x)=>s+x.real,0),n=r.filter(x=>x.filled).length,d=real-app;
   $('recApp').textContent=zl(app);$('recReal').textContent=zl(real);$('recN').textContent=n?`uzupełniono ${n} z ${r.length}`:'nic jeszcze nie wpisano';
