@@ -163,7 +163,7 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 
 ## Etap G. Robot i zasady dostępu
 - [x] 🤖 Robot na GitHubie (`.github/workflows/test.yml`, `tests/`): po każdej zmianie eslint (brakujące importy), składnia, wersja demo w niewidocznej przeglądarce – wszystkie ekrany w 4 ustawieniach telefonu (320/360/390 px, A/A+/A++), błędy JavaScript, napisy poza ekranem, okienko transakcji takie samo w `index.html` i `demo/index.html`; zrzuty ekranów przy błędzie
-- [ ] Publikacja dopiero po zielonym sprawdzeniu – Mati przełącza raz: Settings → Pages → Source → „GitHub Actions”
+- [x] Publikacja dopiero po zielonym sprawdzeniu – Mati przełączył 25.10.2026: Settings → Pages → Source → „GitHub Actions” (sprawdzone: robot publikuje sam)
 - [x] Kopia zasad dostępu Firebase w `firebase/` (bez adresów e-mail – repozytorium jest publiczne)
 
 ## Etap H. Poprawki z przeglądu ekranów
