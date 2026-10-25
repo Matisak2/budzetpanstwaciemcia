@@ -3,6 +3,7 @@
 // Recipients are the e-mails people log in with (households/main/users). Logs contain only counts.
 import nodemailer from 'nodemailer';
 import {gzipSync} from 'node:zlib';
+import {writeFileSync} from 'node:fs';
 import {getAuth} from 'firebase-admin/auth';
 import {addMonths} from '../js/util.js';
 import {db,household,warsaw} from './common.mjs';
@@ -24,6 +25,7 @@ const mati=people.find(u=>u.who=='Mati')?.email||user,all=[...new Set([...accoun
 const tr=nodemailer.createTransport({host:'smtp.gmail.com',port:465,secure:true,auth:{user,pass}});
 const from={name:'Budżet M&W 🐾',address:user};
 if(doBackup){const json=JSON.stringify(backupDoc(D)),gz=gzipSync(Buffer.from(json));
+  if(process.env.BACKUP_FILE)writeFileSync(process.env.BACKUP_FILE,json); // next step of mail.yml checks that this backup loads (tests/restore.mjs), then deletes the file
   await tr.sendMail({from,to:mati,subject:`💾 Kopia budżetu – ${today}`,
     text:`Comiesięczna kopia Waszego budżetu (${D.txAll.length} wpisów).\n\nJak wczytać: zapisz załącznik w Plikach, potem w aplikacji ⚙️ → „Wczytaj kopię (.json)” i wybierz ten plik.\nZachowaj ten mail – to Wasze zabezpieczenie.\n\nBudżet M&W`,
     attachments:[{filename:`budzet-kopia-${today}.json.gz`,content:gz,contentType:'application/gzip'}]});

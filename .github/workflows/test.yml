@@ -38,6 +38,8 @@ jobs:
         run: node tests/calc.mjs
       - name: Wszystkie ekrany jak na telefonie
         run: node tests/screens.mjs
+      - name: Kopia zapasowa się wczytuje (przykładowe dane)
+        run: node tests/restore.mjs --demo
       - name: Zrzuty ekranów (gdy coś nie przeszło)
         if: failure()
         uses: actions/upload-artifact@v4

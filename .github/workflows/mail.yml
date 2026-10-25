@@ -37,3 +37,15 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           MODE: ${{ github.event.inputs.tryb || 'auto' }}
+          BACKUP_FILE: ${{ runner.temp }}/kopia.json
+      # 💾 czy kopia naprawdę się wczytuje: czysta wersja demo w niewidocznej przeglądarce wczytuje świeżą kopię i porównuje wpisy i salda
+      # (dziennik pokazuje tylko liczby; plik z kopią zostaje tylko na chwilę na maszynie GitHuba i jest od razu usuwany)
+      - name: Sprawdzenie, czy kopia się wczytuje
+        env:
+          BACKUP_FILE: ${{ runner.temp }}/kopia.json
+        run: |
+          if [ -f "$BACKUP_FILE" ]; then
+            npm install --no-save --no-audit --no-fund playwright@1.49.1 >/dev/null
+            npx playwright install --with-deps chromium >/dev/null
+            node tests/restore.mjs "$BACKUP_FILE"; s=$?; rm -f "$BACKUP_FILE"; exit $s
+          else echo "– dziś nie było kopii do sprawdzenia"; fi
