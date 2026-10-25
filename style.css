@@ -641,3 +641,4 @@ body[data-size="2"] .bfilt button{font-size:12.5px;padding:9px 1px}
 .fbtn[aria-pressed="true"]{background:var(--a-seg);border-color:var(--a-line);color:var(--a-ink)}
 .day{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .dsum{text-transform:none;letter-spacing:0;font-size:13px;color:#be6b84;white-space:nowrap}
+.cstep .chip{white-space:nowrap}.cstep.done{opacity:.85}

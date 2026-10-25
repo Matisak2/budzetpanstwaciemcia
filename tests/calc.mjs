@@ -2,7 +2,7 @@
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
-import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP} from '../js/today.js';
+import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP,closeDueP} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 
@@ -76,6 +76,18 @@ const N=' ';
 { const cfg={accs:[{id:'a',grp:'cur'}],cats:[{id:'c',type:'exp',name:'Dom',subs:[{id:'s',name:'Jedzenie'}]}]},E=(d,a)=>({id:d,type:'exp',sub:'s',acc:'a',amount:a,date:d});
   const tx=[E('2026-09-03',10000),E('2026-09-25',20000),E('2026-09-26',40000),E('2026-10-02',5000)];
   eq('Wrzesień do 25. dnia',agg(cfg,upToDay(tx,'2026-09',25),'2026-09').exp,30000);eq('Cały wrzesień',agg(cfg,tx,'2026-09').exp,70000);
+}
+/* ---------- 🗓️ zamknięcie miesiąca ---------- */
+{ const tx=[{id:'x',type:'exp',amount:100,date:'2026-09-12',sub:'s',acc:'a'}];
+  eq('Zamknięcie – 3 października czeka wrzesień',closeDueP({},tx,'2026-10-03'),{ym:'2026-09',n:0});
+  eq('Zamknięcie – kroki z obu telefonów',closeDueP({closeM:{'2026-09':{steps:{bank:{by:'Mati'},plan:{by:'Wercia'},prev:null}}}},tx,'2026-10-05').n,2);
+  eq('Zamknięcie – po 10. dniu już nie',closeDueP({},tx,'2026-10-11'),null);
+  eq('Zamknięcie – zrobione',closeDueP({closeM:{'2026-09':{done:{by:'Mati'}}}},tx,'2026-10-03'),null);
+  eq('Zamknięcie – „Pomiń”',closeDueP({checkIgnore:{'close:2026-09':true}},tx,'2026-10-03'),null);
+  eq('Zamknięcie – pusty miesiąc',closeDueP({},tx,'2026-11-03'),null);
+  const D={cfg:{accs:[],cats:[],fixed:[],years:[]},tx,slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-01T12:00:00').getTime()},hraw:{}};
+  const c1=todayItems(D,{today:'2026-10-01',checks:false}).find(x=>x.k=='close'),c3=todayItems(D,{today:'2026-10-03',checks:false}).find(x=>x.k=='close');
+  eq('Na dziś – zamknięcie, powiadomienie 1. dnia',!!c1&&!c1.quiet&&c3.quiet,true);
 }
 /* ---------- 🎓 ulga dla młodych (do 26 lat, limit 85 528 zł) ---------- */
 { // 10 000 zł brutto w całości w limicie: ZUS 1 371 i zdrowotna 776,61 jak zwykle, podatku 0 → na konto 7 852,39 zł

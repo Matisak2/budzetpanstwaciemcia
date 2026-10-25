@@ -267,8 +267,8 @@ Mati wybrał: punkty 1–4, Rejestr i ulgę dla młodych; wszystkie etapy po kol
 - [x] Rejestr: filtry schowane pod jednym przyciskiem „Filtry”, suma wydatków przy każdym dniu
 
 ## Etap U. Zamknięcie miesiąca
-- [ ] Jeden ekran z krokami: salda z bankiem (data ostatniego sprawdzenia, „✓ zgadza się” / „Wyrównaj”), co było ponad plan, nadwyżka (kaskada), plan na nowy miesiąc, cele
-- [ ] Karta na Budżecie w pierwszych dniach miesiąca, w „Na dziś” i powiadomienie 1. dnia; odhaczone kroki wspólne dla obu telefonów
+- [x] Jeden ekran z krokami: salda z bankiem (data ostatniego sprawdzenia, „✓ zgadza się” / „Wyrównaj”), co było ponad plan, nadwyżka (kaskada), plan na nowy miesiąc, cele
+- [x] Karta na Budżecie w pierwszych dniach miesiąca, w „Na dziś” i powiadomienie 1. dnia; odhaczone kroki wspólne dla obu telefonów
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.

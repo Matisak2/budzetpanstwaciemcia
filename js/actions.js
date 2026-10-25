@@ -33,9 +33,11 @@ export async function copyPlan(){if(guard())return;const[y,m]=S.ym.split('-').ma
   if(!src||!Object.values(src).some(v=>v))return toast('Poprzedni miesiąc nie ma planu','bad');
   if(!await ask({title:'Skopiować plan?',text:`Plan z miesiąca ${MN[+prev.slice(5)-1]} zastąpi plan na ${MN[m-1]}.`,ok:'Kopiuj'}))return;
   if(w(setDoc(doc(PLC(),S.ym),{...src})))toast('Skopiowano plan')}
+/* 🗓️ „sprawdzone z bankiem” – the date an account's balance was compared with the bank (zamknięcie miesiąca) */
+export function markRecon(ids){if(!ids.length)return;const v=td(),m=Object.fromEntries(ids.map(id=>[id,v]));S.hraw={...S.hraw,reconM:{...(S.hraw?.reconM||{}),...m}};merge(H,{reconM:m})}
 export async function recon(id){if(guard())return;const before=S.ym+'-32',cur=balance(S.cfg,liveOf(S.tx),id,before),a=S.cfg.accs.find(x=>x.id==id);
   const r=await ask({title:'Wyrównaj saldo',text:`${a.name}\nW aplikacji na koniec miesiąca: ${money(cur,CUR(a))}`,fields:[{id:'v',label:`Rzeczywiste saldo (${curSym(CUR(a))})`,type:'decimal',value:f2(cur)}],ok:'Wyrównaj'});
-  if(!r||!r.v.trim())return;const d=pg(r.v)-cur;if(!d)return toast('Saldo się zgadza');
+  if(!r||!r.v.trim())return;const d=pg(r.v)-cur;markRecon([id]);if(!d){render();return toast('Saldo się zgadza')}
   const date=td().startsWith(S.ym)?td():S.ym+'-'+p2(daysIn(S.ym));
   if(await putTx(S.ym,'t'+rid(),{type:'adj',amount:d,date,sub:'',acc:id,to:'',who:S.who,note:'Wyrównanie salda',deleted:false,ts:Date.now()}))toast('Dodano wyrównanie '+(d>0?'+':'')+money(d,CUR(a)))}
 export async function addAcc(){if(guard())return;const r=await ask({title:'Nowe konto',fields:[{id:'n',label:'Nazwa'},{id:'g',label:'Rodzaj',type:'select',value:S.accTab,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:S.who,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:'PLN',options:CUR_OPTS}],ok:'Dodaj'});
@@ -268,7 +270,7 @@ export function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.re
   $('recApp').textContent=zl(app);$('recReal').textContent=zl(real);$('recN').textContent=n?`uzupełniono ${n} z ${r.length}`:'nic jeszcze nie wpisano';
   const el=$('recDiff');el.textContent=(d>0?'+':'')+zl(d);el.className='num '+(d>0?'t-inc':d<0?'t-exp':'');
   r.forEach(x=>{const c=$('rd_'+x.a.id);if(c){const dd=x.real-x.app;c.textContent=x.filled&&dd?(dd>0?'+':'')+money(dd,CUR(x.a)):'';c.className='rdiff '+(dd>0?'t-inc':'t-exp')}})}
-export async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(true).filter(x=>x.filled&&x.real!==x.app);
+export async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const all=recRead(true).filter(x=>x.filled),r=all.filter(x=>x.real!==x.app);markRecon(all.filter(x=>x.a.grp!='inv').map(x=>x.a.id));
   if(!r.length)return toast('Wszystko się zgadza – nic do zmiany');
   const ops=planRecon(r.map(x=>({id:x.a.id,d:x.real-x.app,inv:x.a.grp=='inv',cur:CUR(x.a)})));
   const lines=ops.map(o=>o.kind=='tr'?`⇄ ${accN(o.from)} → ${accN(o.to)}: ${am(o.amount,o.from)}`:o.kind=='val'?`📈 ${accN(o.acc)}: zmiana wartości ${o.amount>0?'+':''}${am(o.amount,o.acc)}`:`⚖️ ${accN(o.acc)}: wyrównanie ${o.amount>0?'+':''}${am(o.amount,o.acc)}`).join('\n');
@@ -306,7 +308,7 @@ export async function removeSavAcc(id){const a=S.cfg.accs.find(x=>x.id==id),tx=l
 /* ---------- backup ---------- */
 export async function exportJson(withPhotos){if(!S.cfg)return;let receipts;
   if(withPhotos===true){toast('Zbieram zdjęcia…');try{receipts={};(await getDocs(RCPT())).docs.forEach(d=>receipts[d.id]=d.data())}catch(e){err(e);return toast('Nie udało się pobrać zdjęć – spróbuj przy dobrym internecie','bad')}}
-  const data=JSON.stringify({format:'budzet-mw-2',exported:new Date().toISOString(),cfg:S.cfg,savTarget:S.savTarget,birth:S.hraw?.birth||{},tx:S.tx,plans:S.plans,inv:S.inv,goals:S.goals,slips:S.slips,hold:S.hold,debts:S.debts,...(receipts?{receipts}:{})},null,receipts?0:1);
+  const data=JSON.stringify({format:'budzet-mw-2',exported:new Date().toISOString(),cfg:S.cfg,savTarget:S.savTarget,birth:S.hraw?.birth||{},closeM:S.hraw?.closeM||{},reconM:S.hraw?.reconM||{},tx:S.tx,plans:S.plans,inv:S.inv,goals:S.goals,slips:S.slips,hold:S.hold,debts:S.debts,...(receipts?{receipts}:{})},null,receipts?0:1);
   const name=(receipts?'budzet-kopia-ze-zdjeciami-':'budzet-kopia-')+td()+'.json',blob=new Blob([data],{type:'application/json'});
   const file=typeof File=='function'?new File([blob],name,{type:'application/json'}):null;
   const mobile=matchMedia('(pointer:coarse)').matches;
@@ -367,7 +369,7 @@ export async function importFile(file){if(guard())return;let o;
   if(!await ask({title:'Wczytać kopię?',text:`Znaleziono ${n} transakcji.\n${isNew?'Konta, pozycje budżetu i opłaty stałe zostaną zastąpione tymi z kopii.':'Brakujące konta i pozycje zostaną dopisane.'} Transakcje o tym samym numerze zostaną nadpisane, reszta zostaje.`,ok:'Wczytaj'}))return;
   toast('Wczytywanie…');
   try{let ok;
-    if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];S.cfg.incs=S.cfg.incs||[];S.cfg.years=S.cfg.years||[];S.cfg.projs=S.cfg.projs||[];S.cfg.rems=S.cfg.rems||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();if(o.birth&&typeof o.birth=='object'&&Object.keys(o.birth).length)merge(H,{birth:o.birth});
+    if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];S.cfg.incs=S.cfg.incs||[];S.cfg.years=S.cfg.years||[];S.cfg.projs=S.cfg.projs||[];S.cfg.rems=S.cfg.rems||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();for(const k of ['birth','closeM','reconM'])if(o[k]&&typeof o[k]=='object'&&Object.keys(o[k]).length)merge(H,{[k]:o[k]});
       ok=await writeTxs(o.tx.filter(t=>isDate(t.date)).map(t=>{const{id,...b}=t;return[id||('t'+rid()),b]}));
       ok=(await writePlans(o.plans||{}))&&ok;
       for(const[id,it]of Object.entries(o.inv||{}))ok=(await putInv(id,it))&&ok;

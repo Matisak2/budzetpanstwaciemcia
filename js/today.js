@@ -117,6 +117,10 @@ export function pitSummaryP(cfg,tx,year,who,hraw){const L=tx.filter(t=>t.date.st
   const by={};L.forEach(t=>{(by[t.ulga]=by[t.ulga]||{sum:0,n:0}).sum+=t.amount;by[t.ulga].n++});
   const ikze=cfg.accs.filter(a=>a.grp=='inv'&&wrapOf(a)=='ikze'&&ownerOf(a)==who).map(a=>({a,paid:paidInYear(tx,a.id,year),lim:limitOf(a,year,hraw?.limits)})).filter(x=>x.paid>0);
   return{by,ikze,n:L.length}}
+/* 🗓️ zamknięcie miesiąca: in the first 10 days of a month the previous one waits to be closed (5 steps, shared by both phones) until done */
+export const CLOSE_STEPS=['bank','prev','casc','plan','goals'];
+export function closeDueP(hraw,tx,today){if(+today.slice(8)>10)return null;const ym=addMonths(today.slice(0,7),-1),c=hraw?.closeM?.[ym];
+  if(c?.done||hraw?.checkIgnore?.['close:'+ym]||!inPeriod(tx,ym).length)return null;return{ym,n:CLOSE_STEPS.filter(k=>c?.steps?.[k]).length}}
 /* everything that needs attention today */
 export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,hold,debts,market,backup,hraw}=D;if(!cfg)return[];
   const ym=today.slice(0,7),day=+today.slice(8),out=[],cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const accOf=id=>cfg.accs.find(a=>a.id==id);
@@ -173,6 +177,7 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   /* 🧾 the yearly PIT: from 1 March until „✓ Złożone” (each of you apart), deadline 30 April; a phone notification on 1 March, 1 and 20 April */
   if(mo==3||mo==4)for(const w of ['Mati','Wercia']){const key='pit:'+(+y-1)+':'+w;if(hraw?.checkIgnore?.[key])continue;
     out.push({key,icon:'🧾',text:`${w}: PIT za ${+y-1} r. – termin 30 kwietnia. Twój e-PIT jest już gotowy, a zestawienie ulg i IKZE masz w aplikacji.`,go:{a:'pit',y:String(+y-1)},label:'Zestawienie',k:mo==4&&day>=20?'bad':'pit',who:w,quiet:!((mo==3&&day==1)||(mo==4&&(day==1||day==20)))})}
+  {const cl=closeDueP(hraw,tx,today);if(cl)out.push({key:'close:'+cl.ym,icon:'🗓️',text:`Zamknięcie miesiąca: ${MN[+cl.ym.slice(5)-1].toLowerCase()}${cl.n?` – zrobione ${cl.n} z 5 kroków`:''}. Salda z bankiem, co było ponad plan, nadwyżka, plan i cele – ok. 10 minut.`,go:{a:'close'},label:cl.n?'Dokończ':'Zacznij',k:'close',who:null,quiet:day!=1})}
   if(checks){for(const r of recurringP(cfg,tx,today,hraw?.checkIgnore))out.push({key:r.key,icon:'📌',text:`„${r.name}” – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`,go:{a:'recFix',key:r.key},label:'Dodaj',k:'rec',who:null});
     out.push(...checksP(D,today))}
   return out}

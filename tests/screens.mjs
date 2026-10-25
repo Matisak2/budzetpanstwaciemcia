@@ -36,6 +36,7 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ['podpowiedz-notatki',"closeAll();openTx();setTimeout(()=>{const m=$('mn');m.focus();m.value='bi';m.dispatchEvent(new Event('input'))},200)"],
   ['dyskretny-budzet',"setHide(1);goTab('dash')"],['dyskretny-analiza',"goTab('ana');setAna('m')"],['dyskretny-majatek',"goTab('sav')"],['dyskretny-koniec',"setHide(0);goTab('dash')"],['nowy-wpis',"goTab('dash');openTx()"],['na-dzis',"closeAll();showToday()"],['pomoc',"closeAll();openHelp()"],
   ['urodziny',"closeAll();askBirth(true)"],
+  ['zamkniecie',"closeAll();openClose()"],['zamkniecie-krok',"closeStep('prev',1);reconOk(S.cfg.accs[0].id)"],
   ['stale-polacz',"closeAll();{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp'&&f.name=='Netflix')||S.cfg.fixed.find(f=>(f.kind||'exp')=='exp');window.__tw=f.id;S.tx=S.tx.map(t=>t.fixedId===f.id&&t.date.startsWith(S.ym)?{...t,deleted:true}:t).concat([{id:'ttw',type:'exp',amount:f.amount,date:S.ym+'-03',sub:f.sub,acc:f.acc,note:f.name,who:'Wercia',by:'Wercia',ts:1,deleted:false}]);goTab('fix');setFixSub('fix')}"],
   ['stale-polacz-pytanie',"toggleFixed(window.__tw)"],
   ['plan-oplaty',"closeAll();{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp'&&f.sub);S.plans={...S.plans,[S.ym]:{...(S.plans[S.ym]||{}),[f.sub]:Math.max(0,f.amount-5000)}};goTab('dash')}"],

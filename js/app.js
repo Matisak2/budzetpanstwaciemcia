@@ -18,6 +18,7 @@ import {addTerm,accById,instsOf,matH,openInst,closeInst,instPageH,editInst,addLo
 import {debtSum,setAccView,accSegH,debtsH,editDebt,payoffDebt,setDebtLeft,lentBack,moveLent,toPlanH,fillAvg,projectsH,editProj,openProj,closeProj,projPageH,remsH,editRem,doneRem,cascadeH,setCascade} from './debts.js';
 import {anaFull,setAnaMode,exportCsv,wrapped,anaMonth,anaYear} from './analysis.js';
 import {checkPush,enablePush,disablePush,shareDemo,demoCardH,pushCardH,todayItems,runGo,goFromHash,todayGo,ignoreCheck,addRecFixed,recH,closeToday,showToday,updToday,maybeToday,wireToday} from './todayui.js';
+import {openClose,closeClose,closeCardH,closeLinkH,closePageH,reconOk,closeStep,closePlan} from './close.js';
 
 wireSheet();wireToday();
 let seeding=false;
@@ -68,11 +69,13 @@ export function render(){
   const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+am(x.f.amount,x.f.acc)}</span><span class="when ${x.when=='late'&&!x.tw?'late':''}">${x.tw?'💡 jest podobny wpis – połącz':x.when=='inc'?'czeka na odhaczenie':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
 
   if(S.tab=='dash'&&S.proj)h+=projPageH();
+  else if(S.tab=='dash'&&S.close)h+=closePageH();
   else if(S.tab=='dash'){
     setTimeout(autoPlan,0);const AVG=avgActuals(S.cfg,tx,S.ym,3).avg,YS=yearSubs(S.cfg),YP=yearPlanOf(S.cfg,tx,S.ym).items;
     if(S.ym==td().slice(0,7))h+=greetH(S.cfg,S.tx);
     {const bad=todayItems().filter(x=>x.k=='bad');if(bad.length)h+=`<button class="urgent" onclick="showToday()">⏰ ${bad.length} ${plu(bad.length,'sprawa wymaga','sprawy wymagają','spraw wymaga')} uwagi – ${esc(bad[0].text.slice(0,48))}${bad[0].text.length>48?'…':''} ›</button>`}
     h+=alertH;
+    h+=closeCardH();
     h+=yearLineH();
     h+=backupH();
     h+=`<div class="kpis">
@@ -104,7 +107,7 @@ export function render(){
         (o?subs.map(s=>{const a=act[s.id]||0,p=pl[s.id]||0,ps=plS[s.id]||0,sfx=fxTxt(FX.sub[s.id]),yi=YP.filter(x=>x.it.sub==s.id);
           return`<div class="sub${status(c.type,p,a).k=='zero'&&!sfx?' dim':''}">${trioH(c.type,`<span class="n">${esc(s.name)}</span>`,p,a,`<input class="planin" value="${fmtIn(ps)}" placeholder="${AVG[s.id]&&!ps&&!YS.has(s.id)?fmtIn(Math.ceil(AVG[s.id]/1000)*1000):'0'}" inputmode="decimal" aria-label="Plan: ${esc(s.name)}" onchange="setPlan('${s.id}',this.value)">`,sfx)}${yi.length?`<div class="mini">📅 do planu doliczone: ${yi.map(x=>`${esc(x.it.name)} ${zl(x.amt)}`).join(' · ')} (wydatek roczny)</div>`:''}${gapOf[s.id]?`<div class="mini t-exp">📌 opłaty stałe w tej pozycji: ${zl(gapOf[s.id].fix)} – więcej niż plan</div>`:''}</div>`}).join('')+(hid?`<button class="submore" onclick="showEmpty('${c.id}')">＋ ${hid} ${plu(hid,'pusta pozycja','puste pozycje','pustych pozycji')} ›</button>`:BF=='all'&&S.showEmpty[c.id]&&c.subs.some(isE)?`<button class="submore" onclick="showEmpty('${c.id}')">− schowaj puste</button>`:''):'')+`</section>`}).join('');
     if(emptyCats.length)h+=`<div class="emptycats"><span class="mini">Puste w tym miesiącu:</span>${emptyCats.map(({c})=>`<button class="chip" onclick="showCat('${c.id}')">${catIcon(c)} ${esc(cleanCat(c.name).charAt(0)+cleanCat(c.name).slice(1).toLowerCase())}</button>`).join('')}</div>`;
-    h+=`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="copyPlan()">Skopiuj plan z poprzedniego miesiąca</button></div>`;
+    h+=`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="copyPlan()">Skopiuj plan z poprzedniego miesiąca</button>${closeLinkH()}</div>`;
     h+=projectsH()}
 
   else if(S.tab=='tx'){
@@ -179,7 +182,7 @@ export function render(){
       x+=goals.map(g=>{const p=g.pr,wd=Math.min(100,p.pct);
         return`<div class="goal"><div class="r1"><b>${p.done?'🎉 ':''}${esc(g.name)}</b><span class="pill ${p.done?'ok':'low'}">${Math.floor(p.pct)}%</span></div><div class="gbar"><i style="width:${wd.toFixed(1)}%"></i></div>
           <div class="r1 mini"><span><b class="num" style="color:var(--fg)">${zl0(p.saved)}</b> z ${zl0(g.target)}</span><span>${p.done?'Cel osiągnięty!':'brakuje '+zl0(p.left)}</span></div>
-          ${p.perMonth?`<div class="mini">Do ${MNG[+g.deadline.slice(5)-1]} ${g.deadline.slice(0,4)}: przydzielajcie ok. <b style="color:var(--fg)">${zl0(p.perMonth)}</b> miesięcznie (${p.months} mies.)</div>`:''}
+          ${p.perMonth?`<div class="mini">Do ${MNG[+g.deadline.slice(5,7)-1]} ${g.deadline.slice(0,4)}: przydzielajcie ok. <b style="color:var(--fg)">${zl0(p.perMonth)}</b> miesięcznie (${p.months} mies.)</div>`:''}
           <div class="btns" style="gap:6px"><button class="btn sm primary" onclick="allocGoal('${g.id}',1)">+ Przydziel</button>${p.saved>0?`<button class="btn sm" onclick="allocGoal('${g.id}',-1)">− Zabierz</button>`:''}<button class="btn sm" onclick="editGoal('${g.id}')">Edytuj</button></div></div>`}).join('');
       return x};
 
@@ -366,7 +369,7 @@ function findGo(g){const i=g.indexOf(':'),k=g.slice(0,i),id=g.slice(i+1);if(k=='
   if(k=='fix'){S.fixSub='fix';goTab('fix');return editFixed(id)}
   if(k=='acc'){const a=accById(id);return goTab(a&&(a.grp=='sav'||a.grp=='inv')?'sav':'acc')}
   if(k=='inst'){goTab('sav');return openInst(id)}}
-export const goTab=t=>{S.help=false;S.report=null;if(t=='maj')t=ls.get('mw_maj')=='acc'?'acc':'sav';if(t=='sav'||t=='acc')ls.set('mw_maj',t);S.tab=t;S.recon=false;S.slip=null;S.proj=null;S.instAcc=null;S.values=false;window.scrollTo(0,0);render()};
+export const goTab=t=>{S.help=false;S.report=null;if(t=='maj')t=ls.get('mw_maj')=='acc'?'acc':'sav';if(t=='sav'||t=='acc')ls.set('mw_maj',t);S.tab=t;S.recon=false;S.slip=null;S.proj=null;S.close=null;S.instAcc=null;S.values=false;window.scrollTo(0,0);render()};
 document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
 $('gearBtn').onclick=()=>goTab(S.tab=='set'?'dash':'set');
 $('addBtn').onclick=()=>openTx();
@@ -430,4 +433,4 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
 if(!DEMO&&'serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});navigator.serviceWorker.addEventListener('message',e=>{const u=e.data?.go;if(u){const g=goFromHash(new URL(u,location.href).hash);if(g)runGo(g)}})}
 window.addEventListener('hashchange',()=>{const g=goFromHash(location.hash);if(g&&S.cfg){window.history.replaceState(null,'',location.pathname+location.search);runGo(g)}});
 S.goPending=goFromHash(location.hash);if(S.goPending)window.history.replaceState(null,'',location.pathname+location.search);
-Object.assign(window,{askBirth,planToFixed,togF,subMenu,hideSub,fixPlan,addTerm,payoffDebt,restoreTx,setHide,openReport,closeReport,openHelp,closeHelp,helpFilter,shareDemo,showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,linkInc,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,exportJson,logout});
+Object.assign(window,{askBirth,planToFixed,togF,openClose,closeClose,reconOk,closeStep,closePlan,subMenu,hideSub,fixPlan,addTerm,payoffDebt,restoreTx,setHide,openReport,closeReport,openHelp,closeHelp,helpFilter,shareDemo,showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,linkInc,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,recon,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,exportJson,logout});
