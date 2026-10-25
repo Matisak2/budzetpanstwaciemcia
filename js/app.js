@@ -61,7 +61,7 @@ export function render(){
   const savAt=before=>S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)).reduce((a,c)=>a+balance(S.cfg,tx,c.id,before),0)+invAt(before);
   const savEnd=savAt(end),savDelta=savEnd-savAt(start);
   const trendH=d=>d>0?`<span class="trend up" title="Przybyło w tym miesiącu">▲ +${zl0(d)}</span>`:d<0?`<span class="trend down" title="Ubyło w tym miesiącu">▼ −${zl0(-d)}</span>`:'';
-  const pct=(a,p)=>p?' · '+Math.round(a/p*100)+'% planu':'';
+  const pct=(a,p)=>p?' · <span style="white-space:nowrap">'+Math.round(a/p*100)+'% planu</span>':'';
   let h='';
   const al=dueAlerts(S.cfg.fixed||[],tx,td());
   const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+am(x.f.amount,x.f.acc)}</span><span class="when ${x.when=='late'?'late':''}">${x.when=='inc'?'czeka na odhaczenie':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
@@ -132,7 +132,7 @@ export function render(){
       if(!fx.length)return x+`<div class="mini" style="padding:0 6px">${inc?'Dodaj np. pensje – co miesiąc odhaczysz, ile faktycznie wpłynęło, razem z wpłatami na PPK.':trf?'Np. 500 zł co miesiąc z konta bieżącego na oszczędności – odhaczasz, gdy przelew wyjdzie.':'Dodaj np. czynsz, prąd albo Spotify – co miesiąc odhaczysz je na liście.'}</div>`;
       const rows=fx.map(f=>({f,paid:fixedPaid(f.id,S.ym)})),done=rows.filter(r=>r.paid),left=rows.filter(r=>!r.paid);
       const sumDone=done.reduce((a,r)=>a+r.paid.amount,0),sumLeft=left.reduce((a,r)=>a+(r.f.vary?0:r.f.amount),0);
-      x+=`<div class="prog"><div class="r1"><b>${inc?'Wpłynęło':'Zapłacone'} ${done.length} z ${rows.length}</b><span class="num">${zl(sumDone)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:#86efac"></i></div><div class="mini">${done.length==rows.length?`<b class="t-inc">✓ ${inc?'wszystko wpłynęło':trf?'wszystko przelane':'wszystko zapłacone'}</b>`:`${inc?'Jeszcze oczekiwane: ok. ':'Zostało do zapłaty: '}<b class="num" style="color:var(--fg)">${zl(sumLeft)}</b>`}</div></div>`;
+      x+=`<div class="prog"><div class="r1"><b>${inc?'Wpłynęło':trf?'Przelane':'Zapłacone'} ${done.length} z ${rows.length}</b><span class="num">${zl(sumDone)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:#86efac"></i></div><div class="mini">${done.length==rows.length?`<b class="t-inc">✓ ${inc?'wszystko wpłynęło':trf?'wszystko przelane':'wszystko zapłacone'}</b>`:`${inc?'Jeszcze oczekiwane: ok. ':'Zostało do zapłaty: '}<b class="num" style="color:var(--fg)">${zl(sumLeft)}</b>`}</div></div>`;
       return x+`<div class="list">${rows.map(r=>row(r.f,r.paid)).join('')}</div>`};
     if(!all.length)h+=catsEmpty('Dodaj stałe przychody (np. pensje) i opłaty (np. czynsz, prąd, Spotify).<br>Co miesiąc odhaczysz je na liście, a wpisy same trafią do rejestru.',0,'bell');
     h+=block('inc')+block('exp')+fixYearH(all)+block('tr');

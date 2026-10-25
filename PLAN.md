@@ -199,7 +199,7 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 - [x] ✍️ Podpowiadanie notatki przy wpisywaniu (te same nazwy sklepów → lepsze „Gdzie wydajemy”)
 - [x] 📷 Przy gwarancji podpowiedź o zdjęciu paragonu; na liście gwarancji widać, co ma zdjęcie
 - [x] 🙈 Szybkie włączanie trybu dyskretnego – przytrzymanie nazwy miesiąca
-- [ ] 🔍 Świeży przegląd wszystkich ekranów i poprawki
+- [x] 🔍 Świeży przegląd wszystkich ekranów i poprawki (przyciski w kolorze telefonu, „Przelane”, pusta karta „My winni”, średnia przy „Zostało w roku”, „% planu” bez łamania)
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.

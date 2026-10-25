@@ -288,7 +288,7 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .btns{display:flex;flex-wrap:wrap;gap:8px}
 .btn{border-radius:12px;padding:11px 14px;font-weight:800;font-size:14px;text-align:center;background:#f1f5f9}
 .btn.primary{background:var(--a-btn);color:var(--a-ink)}
-.btn.dark{background:#dfe5ff;color:#3730a3}
+.btn.dark{background:var(--a-seg);color:var(--a-ink)}
 .btn.danger{background:#ffd5dc;color:#9f1239}
 .btn.sm{padding:8px 12px;font-size:13px;border-radius:10px;min-height:36px}
 .diag{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
@@ -384,7 +384,7 @@ details.more[open] summary{margin-bottom:4px}
 /* amount field with + / − for adding up a receipt */
 .fld>span.calc{position:relative;display:block;font-size:inherit;font-weight:inherit;color:var(--fg)}
 .calc input{padding-right:76px}
-.cop{position:absolute;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:9px;background:#eef2ff;color:#3730a3;font-weight:900;font-size:18px;line-height:1}
+.cop{position:absolute;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:9px;background:var(--a-seg);color:var(--a-ink);font-weight:900;font-size:18px;line-height:1}
 .cop[data-op="+"]{right:40px}.cop[data-op="-"]{right:6px}
 #maSum{min-height:0;font-weight:700;color:var(--a-ink)}
 
@@ -423,7 +423,7 @@ details.more[open] summary{margin-bottom:4px}
 .srow .pickbtn .pt b{font-size:13.5px}
 .srow input{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:9px 8px;text-align:right;font-weight:700}
 .srow .x{color:var(--exp);font-weight:900;font-size:20px;height:44px;border-radius:10px}
-#splitBtn{align-self:flex-start;background:none;color:#3730a3;padding-left:2px}
+#splitBtn{align-self:flex-start;background:none;color:var(--a-ink);padding-left:2px}
 
 /* refunds in the register */
 .tx .ref{font-size:12px;font-weight:700;color:var(--inc);margin-top:2px}

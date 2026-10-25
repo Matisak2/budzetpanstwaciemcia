@@ -155,7 +155,7 @@ export function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Obj
   let h=`<div class="kpis">
     <div class="kpi k-em"><div class="l">Przychody ${y}</div><div class="v num">${zl(Y.inc)}</div><div class="s">śr. ${zl0(avgInc)}/mies. ${deltaH(Y.inc,PY.inc,true)}</div></div>
     <div class="kpi k-ro"><div class="l">Wydatki ${y}</div><div class="v num">${zl(Y.exp)}</div><div class="s">śr. ${zl0(avgExp)}/mies. ${deltaH(Y.exp,PY.exp,false)}</div></div>
-    <div class="kpi k-sk"><div class="l">Zostało w roku</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,PY.inc-PY.exp,true)||'&nbsp;'}</div></div>
+    <div class="kpi k-sk"><div class="l">Zostało w roku</div><div class="v num">${zl(bal)}</div><div class="s">${nMon?`śr. ${zl0(bal/nMon)}/mies. `:''}${deltaH(bal,PY.inc-PY.exp,true)||(nMon?'':'&nbsp;')}</div></div>
     <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów w roku</div></div></div>
     ${hasPY?`<div class="mini" style="text-align:center">Strzałki porównują z rokiem ${+y-1}.</div>`:''}`+fxN+`<div class="g2"><button class="btn" onclick="exportCsv('${y}')">📥 Eksport do Excela</button><button class="btn primary" onclick="wrapped('${y}')">🎁 Money Wrapped</button></div>`;
   if(!Y.inc&&!Y.exp)return h+`<div class="empty">Brak danych za rok ${y}.</div>`;
