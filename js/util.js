@@ -3,7 +3,8 @@ export const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 export const MNG=['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
 export const MN=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
 /* numbers in Polish style, always grouped – also 4-digit ones („5 449,18”, like „14 109,18”; the browser alone writes „5449,18”) */
-export const fmtN=(x,d=2)=>{const s=(+x||0).toLocaleString('pl-PL',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false}),[i,f]=s.split(',');
+const NF={};/* one formatter per number of decimals – creating it on every amount was slow with many years of entries */
+export const fmtN=(x,d=2)=>{const s=(NF[d]||(NF[d]=new Intl.NumberFormat('pl-PL',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false}))).format(+x||0),[i,f]=s.split(',');
   return i.replace(/\B(?=(\d{3})+(?!\d))/g,'\u00a0')+(f!=null?','+f:'')};
 /* 🙈 discreet mode (⚙️ → Wygląd, this phone only): every amount shows as „•••” */
 export const priv={on:false};

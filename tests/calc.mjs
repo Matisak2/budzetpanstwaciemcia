@@ -77,6 +77,21 @@ const N=' ';
   eq('Stan pozycji – przekroczona',status('exp',10000,12000).k,'over');
 }
 
+/* ---------- ⚡ szybkie liczenie (zapamiętane wyniki) daje to samo co liczenie po kolei ---------- */
+{ let seed=7;const R=()=>{seed=(seed*1103515245+12345)%2147483648;return seed/2147483648},pick=L=>L[Math.floor(R()*L.length)];
+  const cfg={accs:['a','b','c','d'].map((id,i)=>({id,open:i*1000})),cats:[{id:'ci',type:'inc',subs:[{id:'p'}]},{id:'ce',type:'exp',subs:[{id:'x'},{id:'y'}]}]};
+  const tx=[];for(let i=0;i<3000;i++){const y=2020+Math.floor(R()*7),m=1+Math.floor(R()*12),d=1+Math.floor(R()*28),date=R()<0.01?undefined:`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const type=pick(['exp','exp','inc','tr','adj']),acc=pick(['a','b','c','d']),to=type=='tr'?pick(['a','b','c','d']):'';
+    tx.push({id:'t'+i,type,date,acc,to,amount:Math.floor(R()*50000)-(type=='adj'?20000:0),amount2:type=='tr'&&R()<0.2?Math.floor(R()*9000):undefined,sub:type=='exp'?pick(['x','y']):type=='inc'?'p':'',deleted:R()<0.05})}
+  const naiveBal=(id,before)=>{let b=cfg.accs.find(a=>a.id===id)?.open||0;for(const t of tx){if(t.date>=before)continue;if(t.acc===id){if(t.type=='inc'||t.type=='adj'||t.type=='invs')b+=t.amount;else b-=t.amount}if(t.type=='tr'&&t.to===id)b+=t.amount2??t.amount}return b};
+  let badB=0;for(const id of ['a','b','c','d','zz'])for(const before of ['2019-01-01','2021-06-15','2023-01-01','2024-07-31','9999-99-99'])if(balance(cfg,tx,id,before)!==naiveBal(id,before))badB++;
+  eq('Szybkie salda = liczone po kolei',badB,0);
+  const live=tx.filter(t=>!t.deleted&&/^\d{4}-\d\d-\d\d$/.test(t.date||''));let badA=0;
+  for(const pre of ['2021','2022-03','2026-12','2019']){const a=agg(cfg,live,pre),n=live.filter(t=>t.date.startsWith(pre)&&(t.type=='exp'||t.type=='inc'));
+    const inc=n.filter(t=>t.type=='inc').reduce((s,t)=>s+t.amount,0),exp=n.filter(t=>t.type=='exp').reduce((s,t)=>s+t.amount,0);if(a.inc!==inc||a.exp!==exp)badA++}
+  eq('Szybkie sumy miesiąca i roku = liczone po kolei',badA,0);
+}
+
 /* ---------- 📌 wykrywanie stałych opłat ---------- */
 { const cfg={accs:[{id:'a'}],cats:[{id:'c',type:'exp',subs:[{id:'s',name:'Chmura'}]}],fixed:[]};
   const tx=['2026-07-05','2026-08-05','2026-09-06','2026-10-05'].map((date,i)=>({type:'exp',amount:1199+i,date,acc:'a',sub:'s',note:'Chmura 200 GB'}));

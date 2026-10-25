@@ -1,19 +1,28 @@
 import {addDays,daysIn,isDate,p2,zl} from './util.js';
 export const cleanCat=n=>String(n||'').replace(/^\s*\d+\s*[.)]\s*/,'').trim();
 export const subsMap=cfg=>{const m={};cfg.cats.forEach(c=>c.subs.forEach(s=>m[s.id]={...s,cat:c}));return m};
-export const liveOf=tx=>tx.filter(t=>!t.deleted&&isDate(t.date));
+/* ⚡ speed with many years of entries: results that depend only on the list of entries are remembered for that list
+   (the app gets a new list on every change from Firestore, so a remembered result is never stale; nothing changes entries in place) */
+const LIVE=new WeakMap(),BYM=new WeakMap(),BAL=new WeakMap();
+export const liveOf=tx=>{let r=LIVE.get(tx);if(!r){r=tx.filter(t=>!t.deleted&&isDate(t.date));LIVE.set(tx,r)}return r};
+/* entries of a month ('YYYY-MM') or a year ('YYYY') without scanning everything */
+export function inPeriod(tx,prefix){if(prefix.length!=7&&prefix.length!=4)return tx.filter(t=>t.date&&t.date.startsWith(prefix));
+  let m=BYM.get(tx);if(!m){m=new Map();for(const t of tx){const k=(t.date||'').slice(0,7);let a=m.get(k);if(!a)m.set(k,a=[]);a.push(t)}BYM.set(tx,m)}
+  if(prefix.length==7)return m.get(prefix)||[];const out=[];for(let i=1;i<=12;i++){const a=m.get(prefix+'-'+String(i).padStart(2,'0'));if(a)for(const t of a)out.push(t)}return out}
 /* currency of every account (PLN when not set) */
 export const curMap=cfg=>{const m={};cfg.accs.forEach(a=>m[a.id]=a.cur||'PLN');return m};
-export function balance(cfg,tx,id,before){let b=cfg.accs.find(a=>a.id===id)?.open||0;
-  for(const t of tx){if(t.date>=before)continue;
-    if(t.acc===id){if(t.type=='inc'||t.type=='adj'||t.type=='invs')b+=t.amount;else b-=t.amount}
-    if(t.type=='tr'&&t.to===id)b+=t.amount2??t.amount}
-  return b}
+export function balance(cfg,tx,id,before){const open=cfg.accs.find(a=>a.id===id)?.open||0;
+  /* per account: its changes sorted by date with running sums – the balance before a date is one binary search */
+  let ix=BAL.get(tx);if(!ix){const per=new Map(),put=(a,d,v)=>{let L=per.get(a);if(!L)per.set(a,L=[]);L.push([d,v])};
+    for(const t of tx){const d=t.date??'';if(t.acc!=null)put(t.acc,d,t.type=='inc'||t.type=='adj'||t.type=='invs'?t.amount:-t.amount);if(t.type=='tr'&&t.to!=null)put(t.to,d,t.amount2??t.amount)}
+    ix=new Map();for(const[a,L]of per){L.sort((x,y)=>x[0]<y[0]?-1:x[0]>y[0]?1:0);const ds=L.map(x=>x[0]),cum=[0];for(const x of L)cum.push(cum[cum.length-1]+x[1]);ix.set(a,{ds,cum})}BAL.set(tx,ix)}
+  const e=ix.get(id);if(!e)return open;let lo=0,hi=e.ds.length;while(lo<hi){const mid=(lo+hi)>>1;if(e.ds[mid]<before)lo=mid+1;else hi=mid}
+  return open+e.cum[lo]}
 /* budget sums count złoty only – other currencies are summed apart (agg().fx) */
 /* projects outside the everyday budget (one-off trips, renovations) are not counted in plans and analyses */
 export const outProj=cfg=>new Set((cfg.projs||[]).filter(p=>p.inBudget===false).map(p=>p.id));
 export function actuals(cfg,tx,ym){const sm=subsMap(cfg),act={},cm=curMap(cfg),op=outProj(cfg);
-  tx.forEach(t=>{if(!t.date.startsWith(ym)||(cm[t.acc]||'PLN')!='PLN'||(t.proj&&op.has(t.proj)))return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
+  inPeriod(tx,ym).forEach(t=>{if(!t.date.startsWith(ym)||(cm[t.acc]||'PLN')!='PLN'||(t.proj&&op.has(t.proj)))return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
     act[t.sub]=(act[t.sub]||0)+(t.type==s.cat.type?t.amount:-t.amount)});return act}
 /* budget state of a position or category; an empty plan counts as 0 zł, so any spending without a plan is "poza planem"
    k: zero (nothing planned, nothing spent) · ok · near (≥85%) · full (exactly the plan) · over · low (income still missing) */
@@ -72,7 +81,7 @@ export function planRecon(diffs){// diffs: [{id,d,inv,cur}] – transfers only b
   return ops}
 export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outProj(cfg),r={inc:0,exp:0,cat:{},sub:{},who:{},acc:{},day:{},fixed:0,big:[],n:0,fx:{inc:{},exp:{},cat:{},sub:{}}};
   const add=(m,k,c,v)=>{const x=m[k]=m[k]||{};x[c]=(x[c]||0)+v};
-  for(const t of tx){if(!t.date.startsWith(prefix)||(t.proj&&op.has(t.proj)))continue;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))continue;
+  for(const t of inPeriod(tx,prefix)){if(!t.date.startsWith(prefix)||(t.proj&&op.has(t.proj)))continue;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))continue;
     const a=(t.type==s.cat.type?1:-1)*t.amount,c=cm[t.acc]||'PLN';
     if(c!='PLN'){const F=r.fx;if(s.cat.type=='inc')F.inc[c]=(F.inc[c]||0)+a;else{F.exp[c]=(F.exp[c]||0)+a;add(F.cat,s.cat.id,c,a);add(F.sub,s.id,c,a)}continue}
     if(s.cat.type=='inc'){r.inc+=a;continue}
@@ -82,7 +91,9 @@ export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outPr
     else if(t.refundOf){const w=t.who||'—';r.who[w]=(r.who[w]||0)-t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)-t.amount}}
   r.big.sort((a,b)=>b.amount-a.amount);r.big=r.big.slice(0,5);return r}
 /* average of each position over the previous n months that have any data (plan hint, "Wypełnij średnimi", anomalies) */
-export function avgActuals(cfg,tx,ym,n=3){const first=(tx.map(t=>t.date).sort()[0]||'9999').slice(0,7),sums={};let k=0;
+/* the first month with any entry (remembered per list; sorting all dates every time was slow) */
+const FIRST=new WeakMap();export const firstYm=tx=>{let f=FIRST.get(tx);if(f==null){let m='9999';for(const t of tx)if(t.date&&t.date<m)m=t.date;f=m.slice(0,7);FIRST.set(tx,f)}return f};
+export function avgActuals(cfg,tx,ym,n=3){const first=firstYm(tx),sums={};let k=0;
   for(let i=1;i<=n;i++){const[y,m]=ym.split('-').map(Number),d=new Date(Date.UTC(y,m-1-i,1)).toISOString().slice(0,7);if(d<first)break;k++;
     for(const[id,v]of Object.entries(actuals(cfg,tx,d)))sums[id]=(sums[id]||0)+v}
   const r={};if(k)for(const[id,v]of Object.entries(sums))if(v>0)r[id]=Math.round(v/k);return{avg:r,months:k}}
@@ -90,7 +101,7 @@ export function avgActuals(cfg,tx,ym,n=3){const first=(tx.map(t=>t.date).sort()[
 export function anomalies(cfg,tx,ym){const{avg,months}=avgActuals(cfg,tx,ym,3);if(months<2)return[];const act=actuals(cfg,tx,ym),sm=subsMap(cfg);
   return Object.entries(act).filter(([id,v])=>sm[id]?.cat.type=='exp'&&avg[id]&&v>=avg[id]*1.4&&v-avg[id]>=10000).map(([id,v])=>({sub:sm[id],v,avg:avg[id],pct:Math.round((v/avg[id]-1)*100)})).sort((a,b)=>(b.v-b.avg)-(a.v-a.avg))}
 /* seasonality (after a year of data): a month where a position costs at least 3× its usual month and 300 zł */
-export function seasonal(cfg,tx,ym){const first=(tx.map(t=>t.date).sort()[0]||'9999').slice(0,7),[y,m]=ym.split('-').map(Number),start=new Date(Date.UTC(y-1,m-1,1)).toISOString().slice(0,7);
+export function seasonal(cfg,tx,ym){const first=firstYm(tx),[y,m]=ym.split('-').map(Number),start=new Date(Date.UTC(y-1,m-1,1)).toISOString().slice(0,7);
   if(first>start)return[];const sm=subsMap(cfg),per={};
   for(let i=0;i<12;i++){const d=new Date(Date.UTC(y-1,m-1+i,1)).toISOString().slice(0,7);for(const[id,v]of Object.entries(actuals(cfg,tx,d)))if(v>0&&sm[id]?.cat.type=='exp')(per[id]=per[id]||{})[d]=v}
   const out=[];for(const[id,ms]of Object.entries(per)){const tot=Object.values(ms).reduce((a,v)=>a+v,0);

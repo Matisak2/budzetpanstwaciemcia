@@ -201,6 +201,14 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 - [x] 🙈 Szybkie włączanie trybu dyskretnego – przytrzymanie nazwy miesiąca
 - [x] 🔍 Świeży przegląd wszystkich ekranów i poprawki (przyciski w kolorze telefonu, „Przelane”, pusta karta „My winni”, średnia przy „Zostało w roku”, „% planu” bez łamania)
 
+## Etap N. Pewność i szybkość (uzgodnione 25.10.2026)
+- [x] 👯 Ostrzeżenie przed podwójnym wpisem (ta sama kwota, ±1 dzień, ta sama notatka / pozycja)
+- [x] 💾 Co miesiąc robot sprawdza, czy kopia z maila się wczytuje (wpisy, konta, salda – tylko liczby w dzienniku); przy każdej zmianie to samo na danych demo
+- [x] 🧾 Przypomnienie w styczniu o zasadach pensji na nowy rok (`RULES_YEAR` w `pay.js`)
+- [x] 🤖 Robot sprawdza też prawdziwą stronę startową (logowanie, pusty budżet) i powiązania między plikami
+- [x] ⚡ Szybkość przy wielu latach danych: zamiast wczytywać tylko 2 lata (zepsułoby salda i kopie) – zapamiętane obliczenia (salda, miesiące, lista wpisów); 18 000 wpisów: Ustawienia 471 → 45 ms, Analiza roku 273 → 72 ms, Budżet 81 → 12 ms
+- [ ] Kopia zapasowa także do Werci – na razie nie (decyzja Matiego)
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 
