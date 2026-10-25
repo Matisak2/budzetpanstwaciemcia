@@ -192,7 +192,7 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 - [x] 📷 Zdjęcie paragonu / gwarancji przy wpisie: zmniejszone w telefonie (~100 KB), w bazie Firebase w darmowym limicie, wczytywane dopiero po stuknięciu; licznik miejsca w ⚙️; „Pobierz kopię ze zdjęciami”; bez zdjęć w mailu z kopią
 
 ## Etap L. Porządek w kodzie
-- [ ] `js/app.js` podzielony na mniejsze pliki (bez zmian na ekranie), sprawdzony przez robota
+- [x] `js/app.js` podzielony na mniejsze pliki (bez zmian na ekranie), sprawdzony przez robota
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.

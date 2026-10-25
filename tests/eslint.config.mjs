@@ -6,7 +6,7 @@ const browser=Object.fromEntries(('window document navigator location history sc
   'AbortController MutationObserver ResizeObserver IntersectionObserver CustomEvent Event Notification PushManager ServiceWorkerRegistration caches self Intl').split(' ').map(k=>[k,'readonly']));
 const sw=Object.fromEntries('self caches clients fetch Response Request URL console Promise setTimeout clearTimeout AbortController location registration'.split(' ').map(k=>[k,'readonly']));
 export default [
-  {files:['js/**/*.js','demo/**/*.js'],languageOptions:{ecmaVersion:'latest',sourceType:'module',globals:browser},rules:{'no-undef':'error'}},
+  {files:['js/**/*.js','demo/**/*.js'],languageOptions:{ecmaVersion:'latest',sourceType:'module',globals:browser},rules:{'no-undef':'error','no-import-assign':'error','no-redeclare':'error'}},
   {files:['demo/demo.js'],languageOptions:{sourceType:'script'}},
   {files:['sw.js'],languageOptions:{ecmaVersion:'latest',sourceType:'script',globals:sw},rules:{'no-undef':'error'}},
 ];

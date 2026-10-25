@@ -12,6 +12,9 @@ const fails=[],warns=[];const fail=m=>{fails.push(m);console.log('❌ '+m)};
 const body=f=>{const s=fs.readFileSync(path.join(ROOT,f),'utf8').replaceAll('../','');const a=s.indexOf('<body');return s.slice(a,s.slice(a).search(/<script|<!-- demo/)+a)};
 if(body('index.html')!==body('demo/index.html'))fail('index.html i demo/index.html różnią się w treści strony (okienko transakcji trzeba zmieniać w obu)');
 
+/* every file of the app must be in the offline copy (sw.js SHELL), otherwise the app breaks without internet */
+{const sw=fs.readFileSync(path.join(ROOT,'sw.js'),'utf8');for(const f of fs.readdirSync(path.join(ROOT,'js')).filter(f=>f.endsWith('.js')))if(!sw.includes(`'./js/${f}'`))fail(`sw.js: brak js/${f} na liście SHELL (kopia offline)`)}
+
 /* 2. a tiny static server */
 const TYPES={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'};
 const srv=http.createServer((q,r)=>{let p=decodeURIComponent(q.url.split('?')[0]);if(p.endsWith('/'))p+='index.html';const f=path.join(ROOT,p);
