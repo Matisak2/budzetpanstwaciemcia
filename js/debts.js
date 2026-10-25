@@ -4,12 +4,12 @@ import {catsEmpty} from './art.js';
 import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
 import {addM,position,limitOf,paidInYear,wrapOf} from './inv.js';
-import {debtStateP,rataP,savedP,remStateP} from './today.js';
-import {avgActuals,actuals,carStats,balance,cleanCat,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
+import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
+import {avgActuals,actuals,carStats,balance,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
 import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0} from './util.js';
 import {S,toast,ask,isP,am,accOwner,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard} from './core.js';
 import {plu,calcAmt,P,openTx} from './sheet.js';
-import {fixedPaid,txRowH} from './actions.js';
+import {fixedPaid,isPod,txRowH} from './actions.js';
 import {gr,segL} from './salary.js';
 import {accById,pn,newYear} from './savings.js';
 import {accN,render} from './app.js';
@@ -186,20 +186,30 @@ export async function editRem(id){if(guard())return;const r0=id?rems().find(x=>x
 export async function doneRem(id){const r=rems().find(x=>x.id==id);if(!r)return;const st=remState(r);
   if(!+r.every&&!r.km){if(!await ask({title:'Zrobione: '+r.name,text:'To przypomnienie było jednorazowe – usunąć je?',ok:'Usuń'}))return;S.cfg.rems=rems().filter(x=>x!==r);render();delRemDb(r.id);return toast('Gotowe ✓')}
   if(r.next&&+r.every)r.next=addM(r.next<td()?td():r.next,+r.every);if(r.km)r.lastOdo=st.odo;render();saveRem(r);toast('Gotowe ✓'+(r.next?' – następny termin '+r.next.split('-').reverse().join('.'):''))}
-/* ---------- 💧 cascade of surpluses: only a proposal, per person – what is on the current accounts above a buffer (250 zł by default)
-   and the unpaid fixed payments can go to savings; never to PPK / OKI (you cannot pay into them yourself), never from cash, not above the IKE / IKZE limit ---------- */
+/* ---------- 💧 cascade of surpluses: only a proposal, per person – counted the day before the pay day (and in the closing window after it):
+   then the current accounts hold what is really left from the last salary. Surplus = balance − buffer (250 zł by default) − unpaid fixed payments
+   due before the pay day − the new salary when it already came (it is for the next month, not a surplus). Shared accounts: the earliest pay day
+   of the two of you, money transferred in since then is new money too. Never to PPK / OKI, never from cash, not above the IKE / IKZE limit. ---------- */
 const CASC_BUF=25000;
 export const cascTargets=o=>S.cfg.accs.filter(a=>!a.archived&&isP(a)&&accOwner(a)==o&&(a.grp=='sav'||(a.grp=='inv'&&!['ppk','oki'].includes(wrapOf(a)))));
-export function cascadeH(o){const cfgc=(S.hraw?.cascade||{})[o]||{},buf=cfgc.buf??CASC_BUF,tom=addDays(td(),1),tx=liveOf(S.tx),ym=td().slice(0,7),y=ym.slice(0,4);
-  const T=cascTargets(o),rank=a=>a.grp=='sav'?(/poduszk/i.test(a.name)?1:0):!wrapOf(a)?2:3,to=T.find(a=>a.id==cfgc.to)?.id||T.slice().sort((a,b)=>rank(a)-rank(b))[0]?.id;
+const dmyC=d=>d.split('-').reverse().join('.');
+/* the pay window of a person (shared accounts: of whoever is paid first) – only a real pay day, not the „first 10 days” of a month without income sources */
+export function cascWin(o,tx,today){const W=(o=='Wspólne'?['Mati','Wercia']:[o]).map(p=>closeWinP(S.cfg,tx,p,today)).filter(w=>w&&w.pay).sort((a,b)=>a.pay.localeCompare(b.pay));
+  if(W.length)return{win:W[0]};const nx=(o=='Wspólne'?['Mati','Wercia']:[o]).map(p=>nextCloseP(S.cfg,tx,p,today)).filter(Boolean).sort()[0]||null;return{next:nx}}
+export function cascSurplus(a,win,buf,tx,today){const tom=addDays(today,1),pm=win.pay.slice(0,7);
+  const unpaid=(S.cfg.fixed||[]).filter(f=>(f.kind||'exp')!='inc'&&f.acc==a.id&&fixedDate(f,pm)<=win.pay&&!fixedPaid(f.id,pm)).reduce((x,f)=>x+f.amount,0);
+  const fresh=tx.filter(t=>t.date<=today&&((t.acc===a.id&&t.date>=addDays(win.pay,-7)&&salaryTxP(S.cfg,t))||(t.type=='tr'&&t.to===a.id&&t.date>=win.start))).reduce((x,t)=>x+(t.type=='tr'?t.amount2??t.amount:t.amount),0);
+  return{sur:balance(S.cfg,tx,a.id,tom)-buf-unpaid-fresh,u:unpaid,fresh}}
+export function cascadeH(o){const cfgc=(S.hraw?.cascade||{})[o]||{},buf=cfgc.buf??CASC_BUF,today=td(),tx=liveOf(S.tx),y=today.slice(0,4);
+  const T=cascTargets(o),rank=a=>a.grp=='sav'?(isPod(a)?1:0):!wrapOf(a)?2:3,to=T.find(a=>a.id==cfgc.to)?.id||T.slice().sort((a,b)=>rank(a)-rank(b))[0]?.id;
   const src=S.cfg.accs.filter(a=>a.grp=='cur'&&!a.archived&&isP(a)&&accOwner(a)==o&&!/gotówk/i.test(a.name));if(!src.length||!to)return'';
   const ta=accById(to),w=wrapOf(ta),room=w=='ike'||w=='ikze'?Math.max(0,limitOf(ta,y,S.hraw?.limits)-paidInYear(tx,to,y)):Infinity;
-  const unpaid=a=>(S.cfg.fixed||[]).filter(f=>(f.kind||'exp')!='inc'&&f.acc==a.id&&!fixedPaid(f.id,ym)).reduce((x,f)=>x+f.amount,0);
-  let left=room;const L=src.map(a=>{const sur=Math.min(balance(S.cfg,tx,a.id,tom)-buf-unpaid(a),left);const x={a,sur,u:unpaid(a)};if(sur>=10000)left-=sur;return x}).filter(x=>x.sur>=10000);
-  const pl=planOf(S.cfg,S.plans,tx,ym),act=actuals(S.cfg,tx,ym),planLeft=S.cfg.cats.filter(c=>c.type=='exp').flatMap(c=>c.subs).reduce((a,s)=>a+Math.max(0,(pl[s.id]||0)-(act[s.id]||0)),0);
-  return`<section class="chart"><div class="ct"><b>💧 Kaskada nadwyżek</b><button class="btn sm" onclick="setCascade('${o}')">⚙️</button></div><div class="mini">Propozycja: to, co na kontach bieżących ponad zapas ${zl0(buf)} i niezapłacone opłaty stałe, możesz przelać na „${esc(accN(to))}”.${room<Infinity?` Limit ${w.toUpperCase()} na ${y}: zostało ${zl0(room)}.`:''}</div>
-    ${planLeft>0?`<div class="mini">📝 W planie do końca miesiąca zostało jeszcze <b>${zl0(planLeft)}</b> wydatków (całego domu) – zostawcie na to pieniądze.</div>`:''}
-    ${L.length?L.map(x=>`<div class="r1"><span>${esc(x.a.name)}${x.u?` <span class="mini">(po opłatach ${zl0(x.u)})</span>`:''}</span><button class="chip" onclick="openTx(null,{type:'tr',from:'${x.a.id}',to:'${to}',amount:${x.sur}})">→ ${zl(x.sur)}</button></div>`).join(''):`<div class="mini">${room<=0?`Limit ${w.toUpperCase()} na ten rok jest już wykorzystany – wybierz inne konto (⚙️).`:'Teraz nie ma nadwyżek do przelania.'}</div>`}</section>`}
+  const head=`<section class="chart"><div class="ct"><b>💧 Kaskada nadwyżek${o=='Wspólne'?' – wspólne':''}</b><button class="btn sm" aria-label="Ustawienia kaskady" onclick="setCascade('${o}')">⚙️</button></div>`;
+  const{win,next}=cascWin(o,tx,today);
+  if(!win)return head+`<div class="mini">${next?`Nadwyżkę policzę dzień przed wypłatą (<b style="color:var(--fg)">${dmyC(next)}</b>) – wtedy na kontach jest to, co naprawdę zostało z poprzedniej pensji. Teraz te pieniądze są jeszcze potrzebne na wydatki do wypłaty.`:`Nadwyżkę policzę dzień przed wypłatą – dodaj źródło dochodu w 📌 Stałe → 💼 Pensje (dzień wypłaty aplikacja nauczy się sama z pasków).`}</div></section>`;
+  let left=room;const L=src.map(a=>{const c=cascSurplus(a,win,buf,tx,today),sur=Math.min(c.sur,left);if(sur>=10000)left-=sur;return{a,...c,sur}}).filter(x=>x.sur>=10000);
+  return head+`<div class="mini">Propozycja ${win.pay>today?`przed wypłatą ${dmyC(win.pay)}`:`po wypłacie ${dmyC(win.pay)}`}: to, co zostało na kontach bieżących ponad zapas ${zl0(buf)} i opłaty stałe przed wypłatą, możesz przelać na „${esc(accN(to))}”.${room<Infinity?` Limit ${w.toUpperCase()} na ${y}: zostało ${zl0(room)}.`:''}</div>
+    ${L.length?L.map(x=>`<div class="r1"><span>${esc(x.a.name)}${x.u||x.fresh?` <span class="mini">(${[x.u?`po opłatach ${zl0(x.u)}`:'',x.fresh?`bez nowej pensji i wpłat ${zl0(x.fresh)}`:''].filter(Boolean).join(', ')})</span>`:''}</span><button class="chip" onclick="openTx(null,{type:'tr',from:'${x.a.id}',to:'${to}',amount:${x.sur}})">→ ${zl(x.sur)}</button></div>`).join(''):`<div class="mini">${room<=0?`Limit ${w.toUpperCase()} na ten rok jest już wykorzystany – wybierz inne konto (⚙️).`:'Teraz nie ma nadwyżek do przelania.'}</div>`}</section>`}
 export async function setCascade(o){if(guard())return;const c=(S.hraw?.cascade||{})[o]||{},T=cascTargets(o);
   const r=await ask({title:'Kaskada nadwyżek – '+o,text:'Na PPK i OKI nie można wpłacać samemu, więc ich tu nie ma.',fields:[{id:'b',label:'Zapas na każdym koncie bieżącym (zł)',type:'decimal',value:f2(c.buf??CASC_BUF)},{id:'t',label:'Przelewaj na',type:'select',value:T.some(a=>a.id==c.to)?c.to:'',options:[['','Pierwsze konto oszczędnościowe'],...T.map(a=>[a.id,a.name])]}]});
   if(!r)return;const v={buf:gr(r.b),to:r.t};S.hraw={...S.hraw,cascade:{...(S.hraw?.cascade||{}),[o]:v}};merge(H,{cascade:{[o]:v}});render()}

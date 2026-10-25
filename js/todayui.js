@@ -42,14 +42,15 @@ export const demoCardH=()=>`<div class="card"><h3>🧪 Wersja demonstracyjna</h3
 export const pushCardH=()=>`<div class="card"><h3>🔔 Powiadomienia</h3><div class="mini">${S.pushOk?'✓ Włączone na tym telefonie: rano ok. 7:30 „Na dziś” (gdy coś czeka), o 20:00 przypomnienie, gdy dziś nic nie wpisano. Okienka „Na dziś” nie wyskakują już same – dzwonek 🔔 zostaje.':S.pushLost?'⚠️ Powiadomienia na tym telefonie przestały działać (wyłączone w ustawieniach telefonu albo cofnięta zgoda). Do czasu ponownego włączenia okienka „Na dziś” pokazują się w aplikacji.':'Prawdziwe powiadomienia na telefon, także gdy aplikacja jest zamknięta. Każde z Was włącza je na swoim telefonie.'}</div>
   <div class="btns" style="gap:6px">${S.pushOk?'<button class="btn sm" onclick="disablePush()">Wyłącz</button>':`<button class="btn sm primary" onclick="enablePush()">${S.pushLost?'Włącz ponownie':'Włącz powiadomienia'}</button>`}</div></div>`;
 export const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw});
-export function todayItems(){if(!S.cfg)return[];return todayItemsP(todayD(),{today:td(),hour:new Date().getHours()})}
+/* 🗓️ the closing of the month is personal – each phone shows only its own person's */
+export function todayItems(){if(!S.cfg)return[];return todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}).filter(x=>x.k!='close'||x.who==S.who)}
 /* where a tap on an item (or on a notification) leads */
 export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='today')return showToday();if(a=='add')return openTx(null,{type:['exp','inc','tr'].includes(g.type)?g.type:'exp',...(g.amount?{amount:pg(g.amount)}:{}),...(g.note?{note:g.note}:{})});
   if(a=='pit'){S.fixSub='pay';S.payView='y';S.ym=(g.y||String(+td().slice(0,4)-1))+'-12';return goTab('fix')}if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);
   if(a=='pay'){S.fixSub='pay';return goTab('fix')}if(a=='year')return goYear();if(a=='rem'){S.fixSub='year';return goTab('fix')}
   if(a=='lent'||a=='owe'){S.accView=a;return goTab('acc')}if(a=='rata')return openTx(null,{type:'exp',debt:g.id});if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
-  if(a=='tr')return openTx(null,{type:'tr',to:g.to});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
+  if(a=='tr')return openTx(null,{type:'tr',to:g.to,...(+g.amount>0?{amount:+g.amount}:{})});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
   if(a=='close')return openClose();
@@ -57,12 +58,12 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
 export const goFromHash=h=>{const m=/go=([^&]+)(.*)/.exec(h||'');if(!m)return null;const g={a:decodeURIComponent(m[1])};new window.URLSearchParams(m[2].replace(/^&/,'')).forEach((v,k)=>g[k]=v);return g};
 export function todayGo(i){runGo((S.todayL||[])[i]?.go)}
 /* the second button of an item in „Na dziś” – by the kind of its key */
-const GHOST={rec:'Nie, dzięki',umowa:'Załatwione',rules:'Załatwione',yearpay:'Załatwione',najem:'✓ Zapłacone',pit:'✓ Złożone',pit28:'✓ Złożone',young:'Wiem',close:'Pomiń'};
+const GHOST={rec:'Nie, dzięki',umowa:'Załatwione',rules:'Załatwione',yearpay:'Załatwione',najem:'✓ Zapłacone',pit:'✓ Złożone',pit28:'✓ Złożone',young:'Wiem',close:'Pomiń',short:'Wiem'};
 export function ignoreCheck(key,stay){if(guard())return;S.hraw={...S.hraw,checkIgnore:{...(S.hraw?.checkIgnore||{}),[key]:true}};merge(H,{checkIgnore:{[key]:true}});if(stay)render();else showToday();toast(GHOST[key.split(':')[0]]&&key.split(':')[0]!='rec'?'Gotowe ✓':'Ukryte – nie pokażę tego więcej')}
 /* 📌 a payment that repeats every month – into 📌 Stałe with the form filled in */
 export const recList=()=>S.cfg?recurringP(S.cfg,liveOf(S.tx),td(),S.hraw?.checkIgnore):[];
-export function addRecFixed(key){const r=recList().find(x=>x.key==key);if(!r)return;S.fixSub='fix';goTab('fix');editFixed(null,'exp',{name:r.name.slice(0,1).toUpperCase()+r.name.slice(1),amount:r.amount,day:r.day,sub:r.sub,acc:r.acc})}
-export const recH=()=>recList().map(r=>`<div class="note">📌 „${esc(r.name)}” – ${money(r.amount,CUR(accById(r.acc)||{}))} co miesiąc od 3 miesięcy. Dodać do opłat stałych?<div class="btns" style="gap:6px;margin-top:6px"><button class="btn sm primary" onclick="addRecFixed('${esc(r.key)}')">Dodaj</button><button class="btn sm" onclick="ignoreCheck('${esc(r.key)}',1)">Nie, dzięki</button></div></div>`).join('');
+export function addRecFixed(key){const r=recList().find(x=>x.key==key);if(!r)return;S.fixSub='fix';goTab('fix');if(r.kind=='tr')return editFixed(null,'tr',{name:r.note?r.note.slice(0,1).toUpperCase()+r.note.slice(1):'Przelew '+r.name,amount:r.amount,day:r.day,acc:r.acc,to:r.to});editFixed(null,'exp',{name:r.name.slice(0,1).toUpperCase()+r.name.slice(1),amount:r.amount,day:r.day,sub:r.sub,acc:r.acc})}
+export const recH=()=>recList().map(r=>`<div class="note">${r.kind=='tr'?`🔁 Przelew ${esc(r.name)} – ${money(r.amount,CUR(accById(r.acc)||{}))} co miesiąc od 3 miesięcy. Dodać do stałych przelewów?`:`📌 „${esc(r.name)}” – ${money(r.amount,CUR(accById(r.acc)||{}))} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`}<div class="btns" style="gap:6px;margin-top:6px"><button class="btn sm primary" onclick="addRecFixed('${esc(r.key)}')">Dodaj</button><button class="btn sm" onclick="ignoreCheck('${esc(r.key)}',1)">Nie, dzięki</button></div></div>`).join('');
 export function closeToday(){$('dlg').hidden=true}
 export function showToday(){const L=todayItems(),d=$('dlg'),bad=L.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
   $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(L.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${L.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>

@@ -44,19 +44,36 @@
       ['aS','Oszczędności wspólne','sav','Wspólne',1200000],['aP','Poduszka bezpieczeństwa','sav','Wspólne',1800000],['aI',`IKE ${A}`,'inv','Mati',450300,'ike'],['aK',`PPK ${B}`,'inv','Wercia',622380,'ppk'],['aO','Obligacje','inv','Wspólne',1000000]];
     const accsM={};ACC.forEach(([id,name,grp,owner,open,wrap],o)=>{accsM[id]={name,grp,owner,open,o,...(wrap?{wrap}:{})}});const own=Object.fromEntries(ACC.map(a=>[a[0],a[3]]));
     const FIX=[['f1','Czynsz',185000,10,'Czynsz','aJ','exp'],['f2','Prąd',18000,15,'Prąd','aJ','exp'],['f3','Internet i telefon',8999,5,'Internet i telefon','aJ','exp'],['f4','Spotify',2999,12,'Spotify','aM','exp'],
-      ['f5','Netflix',4300,20,'Netflix','aW','exp'],['f6',`Pensja ${A}`,720000,10,`Pensja ${A}`,'aM','inc'],['f7',`Pensja ${B}`,680000,10,`Pensja ${B}`,'aW','inc']];
+      ['f5','Netflix',4300,20,'Netflix','aW','exp']];
+    /* 💼 salaries only from payslips (as in the real app): A on the 10th, B on the last day of the month (a weekend → the Friday before).
+       The figures are what js/pay.js „Podpowiedz z brutto” gives for 2026 (11 000 zł and 9 400 zł brutto, umowa o pracę; B with PPK 2% + 1,5% and a deduction) –
+       the robot checks that every payslip adds up (tests/screens.mjs). */
+    const INC={iM:{name:'Biuro projektowe',who:'Mati',kind:'uop',acc:'aM',sub:sid[`Pensja ${A}`],day:10,ppk:'',o:0},
+      iW:{name:'Agencja reklamowa',who:'Wercia',kind:'uop',acc:'aW',sub:sid[`Pensja ${B}`],day:30,ppk:'aK',ppkOwnPct:2,ppkEmpPct:1.5,deds:[{n:'Ubezpieczenie grupowe',a:6000,sub:sid['Inne wydatki']}],o:1}};
+    const SLIP={iM:{comp:[{n:'Wynagrodzenie zasadnicze',a:1100000,h:0}],zus:150810,health:85427,kup:25000,tax:80900,ppkOwn:0,ppkEmp:0,costs:0,ded:[],net:782863,base:924200},
+      iW:{comp:[{n:'Wynagrodzenie zasadnicze',a:940000,h:0}],zus:128874,health:73001,kup:25000,tax:66000,ppkOwn:18800,ppkEmp:14100,costs:0,ded:[{n:'Ubezpieczenie grupowe',a:6000,sub:sid['Inne wydatki']}],net:647325,base:800200}};
+    const payDay=(ym,last)=>{let d=new Date(+ym.slice(0,4),+ym.slice(5)-1,last?daysIn(ym):10);while(d.getDay()==0||d.getDay()==6)d.setDate(d.getDate()-1);return d.getDate()};
+    const ppkLots={};
     const fixedM={};FIX.forEach(([id,name,amount,day,s,acc,kind],o)=>{fixedM[id]={name,amount,day,sub:sid[s],acc,kind,o}});fixedM.f8={name:'Na oszczędności',amount:100000,day:11,sub:'',acc:'aJ',to:'aS',kind:'tr',o:8};
-    const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:{},yearM:{},projM:{},remM:{},invAcc:true,ikeAcc:true,wspAcc:true,ppkAcc:true,zwrotyRen:true,subAcc:true,savTarget:150000,demo:true,
+    const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:INC,yearM:{},projM:{},remM:{},invAcc:true,ikeAcc:true,wspAcc:true,ppkAcc:true,zwrotyRen:true,subAcc:true,savTarget:150000,demo:true,
       /* random shop / restaurant notes must not look like a fixed payment by chance (only „Bilet miesięczny” and „Chmura 200 GB” are meant to) */
       checkIgnore:Object.fromEntries(['Biedronka','Lidl','Żabka','Auchan','Warzywniak','Pizzeria','Sushi','Bistro','Pierogarnia','Kawiarnia','Pyszne','Glovo','Orlen','BP','Shell','Sklep zoologiczny','Drogeria','Kino','Sklep z modelami','Fryzjer','Apteka','Prezent urodzinowy','Sklep odzieżowy','Wizyta prywatna','Opłata za kartę'].map(n=>['rec:'+n.toLowerCase(),true]))}};
     const PLAN={'Zakupy spożywcze':140000,'Restauracje':40000,'Kawa i przekąski':15000,'Jedzenie z dowozem':12000,'Czynsz':185000,'Prąd':20000,'Internet i telefon':9000,'Środki czystości':8000,'Paliwo':50000,
       'Komunikacja miejska':11000,'Lekarz':10000,'Leki':6000,'Fryzjer i kosmetyki':10000,[`Ubrania ${A}`]:20000,[`Ubrania ${B}`]:25000,'Kino i koncerty':10000,'Hobby':10000,'Spotify':3000,'Netflix':4300,
-      'Chmura i aplikacje':1200,'Karma':25000,'Prezenty':15000,[`Pensja ${A}`]:720000,[`Pensja ${B}`]:680000};
+      'Chmura i aplikacje':1200,'Karma':25000,'Prezenty':15000,[`Pensja ${A}`]:780000,[`Pensja ${B}`]:650000};
     let k=0;for(let mi=-3;mi<=0;mi++){const ym=addMonths(ym0,mi),last=mi==0?+today.slice(8):daysIn(ym),tx={};
       const add=(day,o)=>{if(day>last)return;const date=`${ym}-${pad(day)}`,who=o.who||(own[o.acc]=='Wercia'?'Wercia':own[o.acc]=='Mati'?'Mati':pick(['Mati','Wercia']));
         tx['d'+(++k)]={type:'exp',to:'',note:'',...o,date,who,by:who,deleted:false,ts:new Date(date+'T12:00:00').getTime()+k}};
       FIX.forEach(([id,name,amount,day,s,acc,kind])=>add(day,{type:kind,amount:kind=='inc'?amount+r(-15000,25000):amount,sub:sid[s],acc,fixedId:id,note:name}));
       add(11,{type:'tr',amount:100000,sub:'',acc:'aJ',to:'aS',fixedId:'f8',note:'Na oszczędności'});
+      const slips={};for(const[id,src]of Object.entries(INC)){const day=payDay(ym,id=='iW'),sl=SLIP[id];if(day>last)continue;const date=`${ym}-${pad(day)}`,iid='d'+(k+1),ded=sl.ded.reduce((a,x)=>a+x.a,0);
+        add(day,{type:'inc',amount:sl.net+ded,sub:src.sub,acc:src.acc,note:'💼 '+src.name,slip:id,who:src.who});
+        for(const x of sl.ded)add(day,{type:'exp',amount:x.a,sub:x.sub,acc:src.acc,note:`potrącenie z pensji – ${src.name}: ${x.n}`,slipOf:iid,who:src.who});
+        if(sl.ppkOwn)add(day,{type:'inc',amount:sl.ppkOwn,sub:'',acc:src.ppk,note:'PPK – moja wpłata',ppk:'own',ppkOf:iid,who:src.who});
+        if(sl.ppkEmp){add(day,{type:'inc',amount:sl.ppkEmp,sub:'',acc:src.ppk,note:'PPK – wpłata pracodawcy',ppk:'emp',ppkOf:iid,who:src.who});ppkLots['l'+ym.replace('-','')]={date,kind:'buy',qty:Math.round((sl.ppkOwn+sl.ppkEmp)/101.2)/100,price:101.2,fx:1,fee:0}}
+        slips[id]={...sl,date,young:null,booked:iid,name:src.name,kind:src.kind,who:src.who,est:false,estNet:false,ts:new Date(date+'T12:00:00').getTime()}}
+      if(Object.keys(slips).length)st['households/main/slips/'+ym]={s:slips};
+      if(mi==-1)add(18,{type:'inc',amount:45000,sub:sid['Zwroty i inne'],acc:'aW',note:'Sprzedaż na Vinted'});
       add(11,{type:'tr',amount:300000,sub:'',acc:'aM',to:'aJ',note:'Na wspólne'});add(11,{type:'tr',amount:300000,sub:'',acc:'aW',to:'aJ',note:'Na wspólne'});
       for(let i=0;i<9;i++)add(r(1,28),{amount:r(4000,26000),sub:sid['Zakupy spożywcze'],acc:'aJ',note:pick(['Biedronka','Lidl','Żabka','Auchan','Warzywniak'])});
       for(let i=0;i<3;i++)add(r(1,28),{amount:r(6000,22000),sub:sid['Restauracje'],acc:pick(['aM','aW']),note:pick(['Pizzeria','Sushi','Bistro','Pierogarnia'])});
@@ -73,7 +90,7 @@
       st['households/main/months/'+ym]={tx};const pl={};for(const[s,v]of Object.entries(PLAN))pl[sid[s]]=v;st['households/main/plans/'+ym]=pl}
     const m3=addMonths(ym0,-3)+'-05',m14=addMonths(ym0,-14)+'-10';
     st['households/main/hold/h1']={acc:'aI',kind:'etf',name:'MSCI World',ticker:'IWDA.UK',cur:'USD',price:95,fxNow:3.95,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:12,price:95,fx:3.95,fee:0}},deleted:false};
-    st['households/main/hold/h2']={acc:'aK',kind:'tfi',name:'PPK inPZU 2040',fund:{id:'PZU56',path:'fundusze-ppk/PZU56/ppk-inpzu-2040',name:'PPK inPZU 2040'},cur:'PLN',price:101.2,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:61.5,price:101.2,fx:1,fee:0}},deleted:false};
+    st['households/main/hold/h2']={acc:'aK',kind:'tfi',name:'PPK inPZU 2040',fund:{id:'PZU56',path:'fundusze-ppk/PZU56/ppk-inpzu-2040',name:'PPK inPZU 2040'},cur:'PLN',price:101.2,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:61.5,price:101.2,fx:1,fee:0},...ppkLots},deleted:false};
     st['households/main/hold/h3']={acc:'aO',kind:'obl',name:'EDO 10-letnie',cur:'PLN',bond:{type:'EDO',first:5.6,margin:2},lots:{l1:{date:m14,kind:'buy',qty:100,price:100}},deleted:false};
     st['households/main/goals/g1']={name:'Wakacje',target:800000,alloc:250000,deadline:addMonths(ym0,8)+'-01',owner:'Wspólne'};
     st['households/main/market/rates']=marketFor(today);

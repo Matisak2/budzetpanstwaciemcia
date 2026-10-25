@@ -42,6 +42,9 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ['plan-oplaty',"closeAll();{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp'&&f.sub);S.plans={...S.plans,[S.ym]:{...(S.plans[S.ym]||{}),[f.sub]:Math.max(0,f.amount-5000)}};goTab('dash')}"],
   ['wpis-oplata-pytanie',"closeAll();{const f=S.cfg.fixed.find(x=>x.id==window.__tw);S.tx=S.tx.map(t=>t.id=='ttw'?{...t,deleted:true}:t);openTx();setTimeout(()=>{$('ma').value=String(f.amount/100).replace('.',',');$('ms').value=f.sub;$('shSave').click()},150)}"],
   ['pasek-mlodzi',"closeAll();{S.hraw={...S.hraw,birth:{Mati:'2001-05-12',Wercia:'2001-05-12'}};if(!S.cfg.incs.some(x=>x.id=='iy'))S.cfg.incs.push({id:'iy',name:'Szpital',who:S.who,kind:'uop',acc:S.cfg.accs[0].id,sub:'',day:10});goTab('fix');setFixSub('pay');openSlip('iy');setTimeout(()=>{document.querySelector('.slip [data-c=\"0\"][data-f=\"a\"]').value='8000';slipSuggest()},100)}"],
+  ['kaskada-osoba',"closeAll();goTab('sav');setSub('Mati')"],['nowy-staly-przelew',"closeAll();goTab('fix');setFixSub('fix');editFixed(null,'tr')"],
+  ['nie-starczy',"closeAll();{const a=S.cfg.accs.find(a=>a.grp=='cur'&&a.owner=='Wspólne')||S.cfg.accs.find(a=>a.grp=='cur');S.cfg.fixed=[...S.cfg.fixed,{id:'fbig',name:'Wielki rachunek',amount:9999900,day:28,acc:a.id,kind:'exp',sub:S.cfg.cats.find(c=>c.type=='exp').subs[0].id}];showToday()}"],
+  ['nie-starczy-przelew',"{const b=[...document.querySelectorAll('#dlg .titem')].find(x=>/zabraknie/.test(x.textContent));b&&b.querySelector('.chip').click()}"],
   ['urodziny-powitanie',"closeAll();S.slip=null;{const t=new Date().toISOString().slice(0,10);S.hraw={...S.hraw,birth:{Mati:'1995'+t.slice(4),Wercia:'1996'+t.slice(4)}};goTab('dash')}"]];
 const CASES=[{w:390,size:'0',role:'Wercia'},{w:360,size:'2',role:'Mati'},{w:320,size:'0',role:'Mati'},{w:390,size:'1',role:'Wercia'}];
 
@@ -76,6 +79,12 @@ for(const C of CASES){
     if(name=='gdzie-wydajemy'&&!await p.evaluate(()=>/Gdzie wydajemy/.test(document.getElementById('app').innerText)))fail(`${tag}: brak „Gdzie wydajemy” w Analizie`);
     if(name=='podpowiedz-notatki'&&!await p.evaluate(()=>!document.getElementById('mnSug').hidden&&document.querySelectorAll('#mnSug .chip').length>0))fail(`${tag}: brak podpowiedzi notatki`);
     if(name=='podpowiedz-notatki')await p.evaluate(()=>{document.getElementById('mn').blur();document.getElementById('sheet').hidden=true});
+    if(name=='na-dzis'&&await p.evaluate(()=>/nie zgadza się/.test(document.getElementById('dlg').innerText)))fail(`${tag}: demo – pasek pensji się nie zgadza (strażnik)`);
+    if(name=='pensje'&&!await p.evaluate(()=>/Biuro projektowe/.test(document.getElementById('app').innerText)&&/Agencja reklamowa/.test(document.getElementById('app').innerText)))fail(`${tag}: demo – brak pasków pensji`);
+    if(name=='kaskada-osoba'&&!await p.evaluate(()=>/Kaskada nadwyżek/.test(document.getElementById('app').innerText)&&/dzień przed wypłatą|wypłat/.test(document.getElementById('app').innerText)))fail(`${tag}: kaskada nie liczy do wypłaty`);
+    if(name=='nie-starczy'&&!await p.evaluate(()=>/zabraknie/.test(document.getElementById('dlg').innerText)))fail(`${tag}: „Na dziś” nie ostrzega, że nie starczy na rachunek`);
+    if(name=='nie-starczy-przelew'&&!await p.evaluate(()=>!document.getElementById('sheet').hidden&&document.querySelector('#mt [aria-pressed="true"]')?.dataset.v=='tr'&&$('ma').value!==''))fail(`${tag}: „Przelej” nie otwiera przelewu z kwotą`);
+    if(name=='nie-starczy-przelew')await p.evaluate(()=>{document.getElementById('sheet').hidden=true;S.cfg.fixed=S.cfg.fixed.filter(f=>f.id!='fbig')});
     if(name=='usuniete'&&!await p.evaluate(()=>/Ostatnio usunięte/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty „Ostatnio usunięte”`);
     await p.screenshot({path:path.join(OUT,`${tag}-${name}.png`),fullPage:true});
   }
@@ -96,7 +105,7 @@ for(const C of CASES){
   /* 📷 receipt photo: add (a generated picture), save, open again, remove – only in the first phone setting */
   if(C===CASES[0]){try{
     const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==','base64');
-    const id=await p.evaluate(()=>{closeAll();goTab('tx');const t=S.tx.find(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.split);openTx(t.id);return t.id});await p.waitForTimeout(300);
+    const id=await p.evaluate(()=>{closeAll();goTab('tx');const t=S.tx.find(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.split&&!t.slipOf);openTx(t.id);return t.id});await p.waitForTimeout(300);
     await p.setInputFiles('#mphIn',{name:'paragon.png',mimeType:'image/png',buffer:png});await p.waitForTimeout(800);
     if(await p.$$eval('#mph .phi img',x=>x.length)!=1)fail(`${tag}: zdjęcie paragonu nie pojawiło się w okienku`);
     await p.screenshot({path:path.join(OUT,`${tag}-zdjecie.png`)});
@@ -156,8 +165,11 @@ for(const C of CASES){
     if(t.inc!==715000||JSON.stringify(t.ded)!=='[15000]')fail(`${tag}: pasek z netto zaksięgował się źle (${JSON.stringify(t)})`);
     if(!await p.evaluate(()=>/spoza pasków/i.test(document.getElementById('app').innerText)))fail(`${tag}: brak „Przychody spoza pasków” w 💼 Pensje`);
     await p.screenshot({path:path.join(OUT,`${tag}-pensje-po-pasku.png`),fullPage:true});
-    /* the same pay twice: a source on the position of the demo „Pensja” already ticked in 📌 Stałe → a question before saving, „Nie zapisuj” books nothing */
-    const n0=await p.evaluate(()=>{const f=S.cfg.fixed.find(f=>f.kind=='inc');S.cfg.incs.push({...S.cfg.incs[0],id:'iT2',sub:f.sub,deds:[]});openSlip('iT2');return S.tx.length});await p.waitForTimeout(300);
+    /* the same pay twice: a source on the position of an old „Pensja” already ticked in 📌 Stałe → a question before saving, „Nie zapisuj” books nothing */
+    const n0=await p.evaluate(()=>{const sub=S.cfg.cats.find(c=>c.type=='inc').subs[0].id,acc=S.cfg.accs.find(a=>a.grp=='cur').id;
+      S.cfg.fixed=[...S.cfg.fixed,{id:'fOld',name:'Pensja (stara)',amount:500000,day:10,sub,acc,kind:'inc'}];
+      S.tx=[...S.tx,{id:'tOld',type:'inc',amount:500000,date:S.ym+'-01',sub,acc,fixedId:'fOld',note:'Pensja (stara)',who:'Mati',deleted:false,ts:1}];
+      S.cfg.incs.push({...S.cfg.incs[0],id:'iT2',sub,deds:[]});openSlip('iT2');return S.tx.length});await p.waitForTimeout(300);
     await p.evaluate(()=>{slipNetto()});await p.waitForTimeout(300);await p.fill('#f_n','5 000');await p.click('#dlgOk');await p.waitForTimeout(300);
     await p.evaluate(()=>{saveSlip()});await p.waitForTimeout(400);
     if(!await p.evaluate(()=>!document.getElementById('dlg').hidden&&/już jest w tym miesiącu/.test(document.getElementById('dlg').innerText)))fail(`${tag}: brak ostrzeżenia przed podwójną pensją`);

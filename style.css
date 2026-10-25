@@ -94,15 +94,13 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 /* register */
 .day{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:4px 4px 0}
 .list{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.tx{display:flex;align-items:flex-start;gap:10px;padding:12px 12px;border-top:1px solid var(--line);width:100%;text-align:left;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.tx{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--line);width:100%;text-align:left;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .tx:first-child{border-top:0}
 .tx .info{flex:1;min-width:0;font-size:13.5px}
-.tico{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:17px;background:var(--c,#eef2ff)}
+.tico{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:16px;background:var(--c,#eef2ff)}
 .tico.n{background:#eef2ff}
-.tcat{display:block;font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--c3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tx .info b{display:block;overflow-wrap:anywhere}
-.tx .meta{color:var(--muted);font-size:12.5px}
-.tx .note{font-size:12.5px;margin-top:2px;overflow-wrap:anywhere;background:none;border:0;padding:0;border-radius:0;color:var(--muted)}
+.tx .info b{display:block;font-size:14.5px;overflow-wrap:anywhere}
+.tx .meta{display:block;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tx .amt{text-align:right;font-size:15.5px}
 .t-inc{color:var(--inc)} .t-exp{color:var(--exp)} .t-tr{color:var(--tr)} .t-adj{color:var(--adj)} .t-inv{color:var(--inv)}
 .filters{display:flex;flex-direction:column;gap:8px}
@@ -641,4 +639,4 @@ body[data-size="2"] .bfilt button{font-size:12.5px;padding:9px 1px}
 .fbtn[aria-pressed="true"]{background:var(--a-seg);border-color:var(--a-line);color:var(--a-ink)}
 .day{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .dsum{text-transform:none;letter-spacing:0;font-size:13px;color:#be6b84;white-space:nowrap}
-.cstep .chip{white-space:nowrap}.cstep.done{opacity:.85}
+.cstep .chip{white-space:nowrap}.cstep.done{opacity:.85}.cstep .ct .pill{align-self:flex-start}

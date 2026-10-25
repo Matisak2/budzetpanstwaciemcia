@@ -35,11 +35,7 @@ export async function copyPlan(){if(guard())return;const[y,m]=S.ym.split('-').ma
   if(w(setDoc(doc(PLC(),S.ym),{...src})))toast('Skopiowano plan')}
 /* 🗓️ „sprawdzone z bankiem” – the date an account's balance was compared with the bank (zamknięcie miesiąca) */
 export function markRecon(ids){if(!ids.length)return;const v=td(),m=Object.fromEntries(ids.map(id=>[id,v]));S.hraw={...S.hraw,reconM:{...(S.hraw?.reconM||{}),...m}};merge(H,{reconM:m})}
-export async function recon(id){if(guard())return;const before=S.ym+'-32',cur=balance(S.cfg,liveOf(S.tx),id,before),a=S.cfg.accs.find(x=>x.id==id);
-  const r=await ask({title:'Wyrównaj saldo',text:`${a.name}\nW aplikacji na koniec miesiąca: ${money(cur,CUR(a))}`,fields:[{id:'v',label:`Rzeczywiste saldo (${curSym(CUR(a))})`,type:'decimal',value:f2(cur)}],ok:'Wyrównaj'});
-  if(!r||!r.v.trim())return;const d=pg(r.v)-cur;markRecon([id]);if(!d){render();return toast('Saldo się zgadza')}
-  const date=td().startsWith(S.ym)?td():S.ym+'-'+p2(daysIn(S.ym));
-  if(await putTx(S.ym,'t'+rid(),{type:'adj',amount:d,date,sub:'',acc:id,to:'',who:S.who,note:'Wyrównanie salda',deleted:false,ts:Date.now()}))toast('Dodano wyrównanie '+(d>0?'+':'')+money(d,CUR(a)))}
+/* ⚖️ balances are corrected only all at once (openRecon – 👛 Konta and the closing of the month), never one account by hand */
 export async function addAcc(){if(guard())return;const r=await ask({title:'Nowe konto',fields:[{id:'n',label:'Nazwa'},{id:'g',label:'Rodzaj',type:'select',value:S.accTab,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:S.who,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:'PLN',options:CUR_OPTS}],ok:'Dodaj'});
   if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner:r.w,open:0,...(r.c!='PLN'?{cur:r.c}:{})};S.cfg.accs.push(a);S.accTab=r.g;render();saveAcc(a)}
 export async function editAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id);
@@ -126,7 +122,7 @@ export function setWho(v){S.who=v;ls.set('mw_who',v);if(S.uid)merge(doc(collecti
 export const fixedPaid=(fid,ym)=>liveOf(S.tx).find(t=>t.fixedId===fid&&t.date.startsWith(ym));
 export async function editFixed(fid,kind,pre){if(guard())return;
   const f0=fid?S.cfg.fixed.find(x=>x.id==fid):null,f=f0||pre||null;kind=f0?(f0.kind||'exp'):(kind||'exp');const inc=kind=='inc';
-  if(kind=='tr')return editFixedTr(f0);
+  if(kind=='tr')return editFixedTr(f0,pre);
   const invAccs=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   const fields=[
     {id:'n',label:'Nazwa',value:f?.name||'',ph:inc?'np. Najem mieszkania':'np. Czynsz'},
@@ -152,10 +148,11 @@ export async function editFixed(fid,kind,pre){if(guard())return;
   if(inc){body.vary=r.v=='1';body.ppk=r.p||'';body.najem=r.nj||''}
   let tgt=f0;if(f0)Object.assign(f0,body);else{tgt=body;S.cfg.fixed.push(body)}
   render();saveFixed(tgt)}
-export async function editFixedTr(f){const savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv'||a.grp=='sub')&&!a.archived),svd=debtList('owe').filter(d=>d.saveAcc&&(debtState(d).left>0||d.id==f?.saveFor));
-  const r=await ask({title:f?'Stały przelew':'Nowy stały przelew na oszczędności',fields:[{id:'n',label:'Nazwa',value:f?.name||'',ph:'np. Oszczędności co miesiąc'},{id:'a',label:'Kwota (zł)',type:'decimal',value:f?f2(f.amount):''},
-    {id:'d',label:'Dzień miesiąca (1–31)',type:'int',value:f?.day||10},{id:'c',label:'Z konta',type:'select',value:f?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&accOwner(a)==S.who)?.id||'',options:accOpts()},
-    {id:'t',label:'Na konto',type:'select',value:f?.to||savs[0]?.id||'',options:savs.map(a=>[a.id,a.name])},
+/* 🔁 a fixed transfer: to savings, but also to the shared account, the other person's account or a sub-account (only transfers to savings count as „odłożone”) */
+export async function editFixedTr(f,pre){const p=f||pre||null,savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv'||a.grp=='sub')&&!a.archived),svd=debtList('owe').filter(d=>d.saveAcc&&(debtState(d).left>0||d.id==f?.saveFor));
+  const r=await ask({title:f?'Stały przelew':'Nowy stały przelew',text:f?'':'Na oszczędności, na konto wspólne, na konto drugiej osoby albo na subkonto. Jako „odłożone” liczą się tylko przelewy na oszczędności i inwestycje.',fields:[{id:'n',label:'Nazwa',value:p?.name||'',ph:'np. Oszczędności co miesiąc albo Na wspólne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:p?.amount?f2(p.amount):''},
+    {id:'d',label:'Dzień miesiąca (1–31)',type:'int',value:p?.day||10},{id:'c',label:'Z konta',type:'select',value:p?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&accOwner(a)==S.who)?.id||'',options:accOpts()},
+    {id:'t',label:'Na konto',type:'select',value:p?.to||savs[0]?.id||'',options:accOpts()},
     ...(svd.length||f?.saveFor?[{id:'sf',label:'💰 Odkładanie na spłatę pożyczki',type:'select',value:f?.saveFor||'',options:[['','— nie —'],...svd.map(d=>[d.id,`${d.name} (na „${accN(d.saveAcc)}”)`])]}]:[])],ok:f?'Zapisz':'Dodaj',alt:f?'Usuń przelew':null});
   if(!r)return;if(r=='alt'){S.cfg.fixed=S.cfg.fixed.filter(x=>x!==f);render();delFixedDb(f.id);return}
   const amount=gr(r.a),day=Math.round(pnum(r.d));if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(day<1||day>31)return toast('Dzień miesiąca musi być od 1 do 31','bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
@@ -225,7 +222,9 @@ export function invAccStats(cfg,tx,id,before){const a=cfg.accs.find(x=>x.id==id)
 /* ---------- savings goals as envelopes: money in savings + investment accounts is assigned to goals ---------- */
 export const goalAlloc=g=>g.alloc??g.saved??0;
 export const goalOwner=g=>g.owner||'Wspólne';
-export const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||(a.grp=='inv'&&!wrapOf(a)))&&isP(a)&&(!owner||accOwner(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
+/* 🛟 the safety cushion account („Poduszka…”) is not for goals – the same złoty cannot be the cushion and a holiday */
+export const isPod=a=>/poduszk/i.test(a?.name||'');
+export const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||(a.grp=='inv'&&!wrapOf(a)))&&!isPod(a)&&isP(a)&&(!owner||accOwner(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
 export function goalProgress(g,cfg,tx,today){const saved=goalAlloc(g);
   const pct=g.target?Math.max(0,saved/g.target*100):0,left=Math.max(0,g.target-saved);
   let months=null,perMonth=null;
@@ -263,7 +262,9 @@ export function setSub(k){S.sub=k;render()}
 export const recAccs=()=>{const o={cur:0,sub:1,sav:2},cur=(S.recScope||'cur')=='cur';return S.cfg.accs.filter(a=>!a.archived&&(cur?a.grp=='cur'||a.grp=='sub':a.grp=='sav')).slice().sort((a,b)=>o[a.grp]-o[b.grp])};
 export function setRecScope(k){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});S.recScope=k;render()}
 export function openRecon(scope){if(guard())return;S.recon=true;S.recVals={};S.recScope=scope||'cur';window.scrollTo(0,0);render()}
-export function closeRecon(){S.recon=false;render()}
+/* opened from the closing of the month (S.recBack = its month) → back there */
+const recDone=()=>{S.recon=false;if(S.recBack){S.tab='dash';S.close=S.recBack;S.recBack=null;window.scrollTo(0,0)}};
+export function closeRecon(){recDone();render()}
 export function recRead(all){const tx=liveOf(S.tx),tom=addDays(td(),1),list=all?S.cfg.accs.filter(a=>!a.archived&&a.grp!='inv'):recAccs();
   return list.map(a=>{const el=$('rv_'+a.id),app=balance(S.cfg,tx,a.id,tom),raw=(el?el.value:(S.recVals[a.id]||'')).trim();return{a,app,filled:raw!=='',real:raw===''?app:pg(raw)}})}
 export function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const r=recRead(),rp=r.filter(x=>isP(x.a)),app=rp.reduce((s,x)=>s+x.app,0),real=rp.reduce((s,x)=>s+x.real,0),n=r.filter(x=>x.filled).length,d=real-app;
@@ -271,7 +272,7 @@ export function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.re
   const el=$('recDiff');el.textContent=(d>0?'+':'')+zl(d);el.className='num '+(d>0?'t-inc':d<0?'t-exp':'');
   r.forEach(x=>{const c=$('rd_'+x.a.id);if(c){const dd=x.real-x.app;c.textContent=x.filled&&dd?(dd>0?'+':'')+money(dd,CUR(x.a)):'';c.className='rdiff '+(dd>0?'t-inc':'t-exp')}})}
 export async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const all=recRead(true).filter(x=>x.filled),r=all.filter(x=>x.real!==x.app);markRecon(all.filter(x=>x.a.grp!='inv').map(x=>x.a.id));
-  if(!r.length)return toast('Wszystko się zgadza – nic do zmiany');
+  if(!r.length){if(S.recBack){recDone();render()}return toast('Wszystko się zgadza – nic do zmiany')}
   const ops=planRecon(r.map(x=>({id:x.a.id,d:x.real-x.app,inv:x.a.grp=='inv',cur:CUR(x.a)})));
   const lines=ops.map(o=>o.kind=='tr'?`⇄ ${accN(o.from)} → ${accN(o.to)}: ${am(o.amount,o.from)}`:o.kind=='val'?`📈 ${accN(o.acc)}: zmiana wartości ${o.amount>0?'+':''}${am(o.amount,o.acc)}`:`⚖️ ${accN(o.acc)}: wyrównanie ${o.amount>0?'+':''}${am(o.amount,o.acc)}`).join('\n');
   const tr=ops.filter(o=>o.kind=='tr').length,adj=ops.filter(o=>o.kind=='adj').length;
@@ -280,7 +281,7 @@ export async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);
   for(const o of ops){const id='t'+rid();ids.push(id);
     const base={date,sub:'',who:S.who,deleted:false,ts:Date.now()};
     putTx(ym,id,o.kind=='tr'?{...base,type:'tr',amount:o.amount,acc:o.from,to:o.to,note:'Wyrównanie sald – przeniesienie'}:{...base,type:'adj',amount:o.amount,acc:o.acc,to:'',note:o.kind=='val'?'Zmiana wartości':'Wyrównanie salda',...(o.kind=='val'?{val:true}:{})})}
-  S.recon=false;render();
+  recDone();render();
   toast(`Zapisano ${ops.length} ${ops.length==1?'zmianę':ops.length<5?'zmiany':'zmian'}`,'',{label:'Cofnij',fn:()=>ids.forEach(id=>putTx(ym,id,{deleted:true}))})}
 /* savings / investment accounts managed from the Savings tab */
 export async function addSavAcc(owner){if(guard())return;
@@ -415,11 +416,12 @@ export function txMatches(t,sm,F,ym,AQ){
   const hay=[t.note,s?.name,s?cleanCat(s.cat.name):'',accN(t.acc),t.to?accN(t.to):'',t.who,t.date,t.date.split('-').reverse().join('.'),amt,amt.replace('.',','),amt.replace(/\.00$/,''),
     {exp:'wydatek',inc:'przychód',tr:'przelew',inv:'zakup inwestycja',invs:'sprzedaż inwestycja',adj:'wyrównanie'}[t.type],t.refundOf?'zwrot':'',t.split?'paragon':''].join(' ').toLowerCase();
   return q.split(/\s+/).every(w=>hay.includes(w.replace(',','.'))||hay.includes(w))}
+/* 🧾 a row of the register in 2 lines: the position, under it note · account · person (the category = the coloured icon) */
 export function txRowH(t,sm,rf={},cn={}){const M=v=>am(v,t.acc),k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'||k=='lend'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
   const cls=k=='invs'?'inv':k=='lend'?'tr':t.lendOf||t.debtIn?'tr':k,s=sm[t.sub],c=s&&(k=='exp'||k=='inc')?s.cat:null;
   const title=t.ppk||k=='lend'||t.lendOf||t.debtIn||t.payoff?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
   const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.payoff?'✅':t.roundOf?'🪙':k=='lend'||t.lendOf?'🔺':t.debtIn?'🔻':k=='tr'?'⇄':k=='adj'?(t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
-  return`<button class="tx" data-id="${t.id}" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}${t.rcpt?.length?' · 📷':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.payoff?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">${t.payoff?'nie liczy się w Budżecie – to oddanie pożyczki':'🔻 spłata: '+esc(S.debts[t.debt].name)}</div>`:''}${t.save&&k=='tr'?Object.entries(t.save).filter(([i,v])=>v&&S.debts[i]).map(([i,v])=>`<div class="coinl" style="color:#a16207">💰 ${v>0?'na spłatę':'z odłożonych'}: ${esc(S.debts[i].name)} ${M(Math.abs(v))}</div>`).join(''):''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
+  return`<button class="tx" data-id="${t.id}" onclick="openTx('${t.id}')">${ico}<span class="info"><b>${esc(title)}</b><span class="meta">${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.payoff?esc(t.note)+' · ':''}${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}${t.rcpt?.length?' · 📷':''}</span>${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">${t.payoff?'nie liczy się w Budżecie – to oddanie pożyczki':'🔻 spłata: '+esc(S.debts[t.debt].name)}</div>`:''}${t.save&&k=='tr'?Object.entries(t.save).filter(([i,v])=>v&&S.debts[i]).map(([i,v])=>`<div class="coinl" style="color:#a16207">💰 ${v>0?'na spłatę':'z odłożonych'}: ${esc(S.debts[i].name)} ${M(Math.abs(v))}</div>`).join(''):''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
 export function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q.trim());
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m',rf={};

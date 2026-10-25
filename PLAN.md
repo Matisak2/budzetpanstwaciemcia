@@ -270,6 +270,22 @@ Mati wybrał: punkty 1–4, Rejestr i ulgę dla młodych; wszystkie etapy po kol
 - [x] Jeden ekran z krokami: salda z bankiem (data ostatniego sprawdzenia, „✓ zgadza się” / „Wyrównaj”), co było ponad plan, nadwyżka (kaskada), plan na nowy miesiąc, cele
 - [x] Karta na Budżecie w pierwszych dniach miesiąca, w „Na dziś” i powiadomienie 1. dnia; odhaczone kroki wspólne dla obu telefonów
 
+# Część 6 – po trzeciej analizie przydatności (uzgodnione z Matim 25.10.2026)
+Mati wybrał: A1 (w nowej formie), A2, A3, B2, B3, B5, C1, C2, C4. Nie robimy: A4, B1, B4, B6, C3. Pensja z końca miesiąca zostaje w budżecie miesiąca wpływu (wersja 1 – do „Do budżetu: następny miesiąc” wrócimy, gdy będą znane dni wypłat).
+
+## Etap V. Zamknięcie przed wypłatą, prawdziwe nadwyżki, prostsze ekrany
+- [x] 🗓️ Zamknięcie miesiąca osobno dla Matiego i Werci: karta dzień przed najwcześniejszą wypłatą osoby (dzień uczony sam z pasków z ostatnich 3 miesięcy, „koniec miesiąca” rozpoznany, weekend → piątek; bez pasków – dzień ze źródła dochodu, bez źródła – od 1. dnia), do ok. 10 dni, „Pomiń”, powiadomienie rano tylko do tej osoby; wypłata od 20. → zamyka się bieżący miesiąc
+- [x] 🗓️ Kroki: salda (swoje + wspólne konta), nadwyżka (swoje konta), cele (swoje + wspólne) – osobno; „Co było ponad plan” i „Plan” – wspólne (odhaczenie przez jedno = u obojga); dawne odhaczenia przeniesione do osoby, która je zrobiła
+- [x] 💧 Kaskada liczy „do jutrzejszej wypłaty” (saldo − zapas − opłaty stałe przed wypłatą); pensja już wpisana nie jest nadwyżką; w inne dni „Nadwyżkę policzę dzień przed wypłatą”
+- [x] 🛟 Poduszka nie liczy się do puli celów; karta poduszki odejmuje pieniądze przydzielone do celów (A2)
+- [x] 📝 „Co było ponad plan”: propozycja planu = średnia z 3 miesięcy; gdy nie wyższa niż plan – „jednorazowo” (A3)
+- [x] 👥 Bez karty „Czyje oszczędności”; „Na kontach ›” otwiera Majątek → Konta (B2)
+- [x] ⚖️ Salda tylko wszystkie naraz: bez „Wyrównaj” i „Aktualizuj wartości” przy każdym koncie; w zamknięciu „✓ Zgadza się” + „Wyrównaj wszystkie salda naraz” (B3)
+- [x] 🧾 Rejestr w 2 linijkach: pozycja, pod nią notatka · konto · osoba (B5)
+- [x] 🔁 Stały przelew na dowolne konto (wspólne, drugiej osoby, subkonto) + podpowiedź powtarzających się przelewów (C2)
+- [x] ⚠️ „Nie starczy na rachunki”: prognoza salda kont bieżących do końca miesiąca (opłaty stałe, stałe przelewy, raty; wpływy przed terminem) w „Na dziś” z „Przelej” i w powiadomieniu (C1)
+- [x] 🧪 Demo z paskami pensji obu osób (4 miesiące, PPK, potrącenie, inny przychód, widok roku) (C4)
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

@@ -1,7 +1,7 @@
 /* 🔔 „Na dziś” and the tidiness guard – pure functions shared by the app and the GitHub automat (no DOM, no Firebase).
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
-import {MN,MNG,addDays,addMonths,money,zl} from './util.js';
+import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl} from './util.js';
 import {balance,carStats,dueAlerts,fixedDate,fixedTwin,inPeriod,subsMap,ownerOf,yearDueIn} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
@@ -104,6 +104,15 @@ export function recurringP(cfg,tx,today,ign={}){const ym=today.slice(0,7),months
     const L=w.map(i=>M[i][0]),a=L.map(t=>t.amount),last=L.at(-1);if(Math.min(...a)<=0||Math.max(...a)/Math.min(...a)>1.15)continue;
     if(fx.some(f=>normNote(f.name)==k||(f.sub==last.sub&&Math.abs(f.amount-last.amount)<=last.amount*0.15)))continue;
     out.push({key:'rec:'+k,name:last.note.trim(),amount:last.amount,sub:last.sub,acc:last.acc,day:+last.date.slice(8)})}
+  /* 🔁 the same for transfers: from the same account to the same account once a month, a similar amount, 3 months (e.g. the share for the shared account) */
+  const tby={},an=id=>cfg.accs.find(a=>a.id==id)?.name||'konto';
+  for(const t of months.flatMap(m=>inPeriod(tx,m))){if(t.type!='tr'||t.fixedId||t.roundOf||t.date>today||!t.acc||!t.to||/^Wyrównanie/.test(t.note||''))continue;const i=months.indexOf(t.date.slice(0,7));if(i<0)continue;
+    (tby[t.acc+'>'+t.to]=tby[t.acc+'>'+t.to]||[[],[],[],[]])[i].push(t)}
+  const ftr=(cfg.fixed||[]).filter(f=>f.kind=='tr');
+  for(const[k,M]of Object.entries(tby)){const key='rec:tr:'+k;if(ign[key])continue;const w=[[1,2,3],[0,1,2]].find(w=>w.every(i=>M[i].length==1));if(!w)continue;
+    const L=w.map(i=>M[i][0]),a=L.map(t=>t.amount),last=L.at(-1);if(Math.min(...a)<=0||Math.max(...a)/Math.min(...a)>1.15)continue;
+    if(ftr.some(f=>f.acc==last.acc&&f.to==last.to))continue;
+    out.push({key,kind:'tr',name:`${an(last.acc)} → ${an(last.to)}`,note:(last.note||'').trim(),amount:last.amount,acc:last.acc,to:last.to,day:+last.date.slice(8)})}
   return out}
 /* 🧾 tax reliefs a payment can be marked with – short explanations (a hint, not tax advice) */
 export const ULGI={
@@ -119,8 +128,57 @@ export function pitSummaryP(cfg,tx,year,who,hraw){const L=tx.filter(t=>t.date.st
   return{by,ikze,n:L.length}}
 /* 🗓️ zamknięcie miesiąca: in the first 10 days of a month the previous one waits to be closed (5 steps, shared by both phones) until done */
 export const CLOSE_STEPS=['bank','prev','casc','plan','goals'];
-export function closeDueP(hraw,tx,today){if(+today.slice(8)>10)return null;const ym=addMonths(today.slice(0,7),-1),c=hraw?.closeM?.[ym];
-  if(c?.done||hraw?.checkIgnore?.['close:'+ym]||!inPeriod(tx,ym).length)return null;return{ym,n:CLOSE_STEPS.filter(k=>c?.steps?.[k]).length}}
+/* 💼 pay days – learned from the salaries entered (paski), so nothing has to be set up.
+   A salary entry = an income from a payslip (slip = source id) or from the fixed income linked to the source (incM.fixed). */
+const isSal=(src,t)=>t.type=='inc'&&(t.slip===src.id||(!!src.fixed&&t.fixedId===src.fixed));
+export const salaryTxP=(cfg,t)=>(cfg?.incs||[]).some(s=>isSal(s,t));
+const isWknd=iso=>{const w=new Date(iso+'T12:00:00').getDay();return w==0||w==6};
+const firstSal=(tx,src,ym)=>{let d='';for(const t of inPeriod(tx,ym))if(isSal(src,t)&&(!d||t.date<d))d=t.date;return d};
+/* the usual day of one source from the 3 months before ym: „end” when it always came in the last 3 days of the month, otherwise the middle value
+   (a salary moved to Friday by a weekend does not change it); no salary yet → the day typed at the source; nothing → null */
+export function payPatternP(tx,src,ym){const D=[];for(let k=1;k<=3;k++){const m=addMonths(ym,-k),d=firstSal(tx,src,m);if(d)D.push({d:+d.slice(8),L:daysIn(m)})}
+  if(!D.length)return +src.day>0?{day:Math.min(31,+src.day)}:null;
+  if(D.every(x=>x.d>=x.L-2))return{end:true};const v=D.map(x=>x.d).sort((a,b)=>a-b);return{day:v[Math.floor(v.length/2)]}}
+/* the expected pay date of one source in ym: the real one when it already came, otherwise from the pattern (a weekend → the Friday before) */
+export function payDateP(tx,src,ym){const real=firstSal(tx,src,ym);if(real)return{date:real,real:true};const p=payPatternP(tx,src,ym);if(!p)return null;
+  let d=ym+'-'+p2(p.end?daysIn(ym):Math.min(p.day,daysIn(ym)));while(isWknd(d))d=addDays(d,-1);return{date:d,real:false}}
+/* a person's earliest pay day in ym (from all their income sources); null = no sources */
+export function paydayP(cfg,tx,who,ym){let best=null;for(const s of (cfg?.incs||[]).filter(s=>s.who==who)){const p=payDateP(tx,s,ym);if(p&&(!best||p.date<best.date))best={...p,src:s.id}}return best}
+/* ⚠️ „nie starczy na rachunki”: each current account walked day by day to the end of the month – unpaid fixed payments, fixed transfers and rates
+   in 📌 Stałe go out, money that comes in earlier goes in (a salary expected from its source – the amount of the last one, fixed incomes, fixed
+   transfers to this account). The first payment the balance would not cover → {acc, bal, date, name, amount, miss}. Only fixed things, not shopping. */
+export function shortP(cfg,tx,today){const ym=today.slice(0,7),tom=addDays(today,1),fx=cfg.fixed||[],incs=cfg.incs||[],out=[];
+  const paid=f=>inPeriod(tx,ym).some(t=>t.fixedId===f.id),when=d=>d<today?today:d,linked=new Set(incs.map(s=>s.fixed).filter(Boolean));
+  for(const a of cfg.accs.filter(a=>a.grp=='cur'&&!a.archived)){const ev=[];
+    for(const f of fx){if(paid(f))continue;const d=when(fixedDate(f,ym));
+      if((f.kind||'exp')!='inc'&&f.acc==a.id)ev.push({d,v:-f.amount,f});
+      else if(f.kind=='tr'&&f.to==a.id)ev.push({d,v:f.amount,f});
+      else if(f.kind=='inc'&&f.acc==a.id&&!linked.has(f.id)&&!f.vary)ev.push({d,v:f.amount,f})}
+    for(const s of incs.filter(s=>s.acc==a.id)){const p=payDateP(tx,s,ym);if(!p||p.real||p.date<today)continue;
+      const last=tx.filter(t=>isSal(s,t)&&t.acc==a.id).sort((x,y)=>y.date.localeCompare(x.date))[0];if(last)ev.push({d:p.date,v:last.amount})}
+    if(!ev.some(e=>e.v<0))continue;ev.sort((x,y)=>x.d.localeCompare(y.d)||y.v-x.v);
+    const bal0=balance(cfg,tx,a.id,tom);let b=bal0;for(const e of ev){b+=e.v;if(e.v<0&&b<0){out.push({acc:a.id,bal:bal0,date:e.d,name:e.f.name,amount:-e.v,miss:-b,fid:e.f.id});break}}}
+  return out}
+/* 🗓️ the closing window of a person: from the day before the pay day, for 10 days. The month closed: pay from the 20th → that month (the salary
+   is for the next one), earlier → the month before. No income source → the first 10 days of a month close the month before (as before). */
+export function closeWinP(cfg,tx,who,today){const cm=today.slice(0,7);let any=false;
+  for(const m of [addMonths(cm,-1),cm,addMonths(cm,1)]){const p=paydayP(cfg,tx,who,m);if(!p)continue;any=true;const start=addDays(p.date,-1),end=addDays(p.date,9);
+    if(today>=start&&today<=end)return{start,pay:p.date,real:p.real,ym:+p.date.slice(8)>=20?m:addMonths(m,-1)}}
+  if(!any&&+today.slice(8)<=10)return{start:cm+'-01',pay:null,ym:addMonths(cm,-1)};return null}
+/* the next day a closing (and the surplus) will be counted – for „Nadwyżkę policzę …” */
+export function nextCloseP(cfg,tx,who,today){const cm=today.slice(0,7);for(const m of [cm,addMonths(cm,1),addMonths(cm,2)]){const p=paydayP(cfg,tx,who,m);if(p&&addDays(p.date,-1)>today)return addDays(p.date,-1)}return null}
+/* the month to show when the closing is opened by hand: the one of the last window that started */
+export function closeYmP(cfg,tx,who,today){const w=closeWinP(cfg,tx,who,today);if(w)return w.ym;const cm=today.slice(0,7);
+  for(const m of [cm,addMonths(cm,-1)]){const p=paydayP(cfg,tx,who,m);if(p&&addDays(p.date,-1)<=today)return +p.date.slice(8)>=20?m:addMonths(m,-1)}return addMonths(cm,-1)}
+/* the state of a closing for one person: „Co było ponad plan” and „Plan” are shared (closeM[ym].steps), the rest is personal (closeM[ym].p[who].steps).
+   Steps ticked before the closings were split (closeM[ym].steps.bank… with „by”) count for the person who ticked them; a month closed then (done) – for both. */
+export const CLOSE_SHARED=['prev','plan'];
+export function closeStateP(hraw,ym,who){const c=hraw?.closeM?.[ym]||{},mine=c.p?.[who]||{},ms=mine.steps||{},steps={};
+  for(const k of CLOSE_STEPS)steps[k]=CLOSE_SHARED.includes(k)?(c.steps?.[k]||null):k in ms?ms[k]:(c.steps?.[k]?.by==who?c.steps[k]:null);
+  const n=CLOSE_STEPS.filter(k=>steps[k]).length;return{steps,n,done:c.done||mine.done||(n==CLOSE_STEPS.length?{by:who}:null)}}
+export function closeDueP(hraw,tx,today,cfg,who){const w=cfg&&who?closeWinP(cfg,tx,who,today):+today.slice(8)<=10?{start:today.slice(0,8)+'01',ym:addMonths(today.slice(0,7),-1)}:null;if(!w)return null;
+  const ym=w.ym,ig=hraw?.checkIgnore||{},st=who?closeStateP(hraw,ym,who):{n:CLOSE_STEPS.filter(k=>hraw?.closeM?.[ym]?.steps?.[k]).length,done:hraw?.closeM?.[ym]?.done};
+  if(st.done||ig['close:'+ym]||ig['close:'+ym+':'+who]||!inPeriod(tx,ym).length)return null;return{ym,n:st.n,start:w.start,pay:w.pay||null}}
 /* everything that needs attention today */
 export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,hold,debts,market,backup,hraw}=D;if(!cfg)return[];
   const ym=today.slice(0,7),day=+today.slice(8),out=[],cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const accOf=id=>cfg.accs.find(a=>a.id==id);
@@ -129,6 +187,10 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const x of dueAlerts(cfg.fixed||[],tx,today)){const tw=x.when!='inc'&&fixedTwin(cfg,tx,x.f,x.due.slice(0,7));
     if(tw){add('💡',`${x.f.name} – jest podobny wpis z ${dmy(tw.date)} (${money(tw.amount,cm[tw.acc])}). To ten rachunek? Odhacz, żeby je połączyć.`,{a:'fixed'},'Połącz','',person(ownerOf(accOf(x.f.acc))));continue}
     add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – czeka na odhaczenie`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(ownerOf(accOf(x.f.acc))));}
+  /* ⚠️ a fixed payment the account will not cover – a phone notification on the first day of the problem and the day before the payment */
+  {const yd=addDays(today,-1),before=new Set(shortP(cfg,tx.filter(t=>t.date<today),yd).map(x=>x.acc+':'+x.fid+':'+x.date.slice(0,7)));
+    for(const x of shortP(cfg,tx,today)){const a=accOf(x.acc),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+ym;if(hraw?.checkIgnore?.[key])continue;
+      out.push({key,icon:'⚠️',text:`${a.name}: ${money(x.bal,cm[x.acc])}, a ${n<=0?'dziś':n==1?'jutro':dmy(x.date)} „${x.name}” ${money(x.amount,cm[x.acc])} – zabraknie ${money(x.miss,cm[x.acc])}. Przelej wcześniej na to konto.`,go:{a:'tr',to:x.acc,amount:x.miss},label:'Przelej',k:n<=1?'bad':'short',who:person(ownerOf(a)),quiet:!(n==1||!before.has(x.acc+':'+x.fid+':'+x.date.slice(0,7)))})}}
   const live=new Set(tx.map(t=>t.id));
   for(const s of incs)if(day>=(s.day||10)){const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata zwykle do ${s.day||10}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}
   /* 🎓 the end of ulga dla młodych: from a month before the 26th birthday – later payslips are taxed; the drop estimated from the last payslip of each source */
@@ -177,7 +239,7 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   /* 🧾 the yearly PIT: from 1 March until „✓ Złożone” (each of you apart), deadline 30 April; a phone notification on 1 March, 1 and 20 April */
   if(mo==3||mo==4)for(const w of ['Mati','Wercia']){const key='pit:'+(+y-1)+':'+w;if(hraw?.checkIgnore?.[key])continue;
     out.push({key,icon:'🧾',text:`${w}: PIT za ${+y-1} r. – termin 30 kwietnia. Twój e-PIT jest już gotowy, a zestawienie ulg i IKZE masz w aplikacji.`,go:{a:'pit',y:String(+y-1)},label:'Zestawienie',k:mo==4&&day>=20?'bad':'pit',who:w,quiet:!((mo==3&&day==1)||(mo==4&&(day==1||day==20)))})}
-  {const cl=closeDueP(hraw,tx,today);if(cl)out.push({key:'close:'+cl.ym,icon:'🗓️',text:`Zamknięcie miesiąca: ${MN[+cl.ym.slice(5)-1].toLowerCase()}${cl.n?` – zrobione ${cl.n} z 5 kroków`:''}. Salda z bankiem, co było ponad plan, nadwyżka, plan i cele – ok. 10 minut.`,go:{a:'close'},label:cl.n?'Dokończ':'Zacznij',k:'close',who:null,quiet:day!=1})}
-  if(checks){for(const r of recurringP(cfg,tx,today,hraw?.checkIgnore))out.push({key:r.key,icon:'📌',text:`„${r.name}” – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`,go:{a:'recFix',key:r.key},label:'Dodaj',k:'rec',who:null});
+  for(const w of ['Mati','Wercia']){const cl=closeDueP(hraw,tx,today,cfg,w);if(cl)out.push({key:'close:'+cl.ym+':'+w,icon:'🗓️',text:`${w}: zamknięcie miesiąca – ${MN[+cl.ym.slice(5)-1].toLowerCase()}${cl.n?` (zrobione ${cl.n} z 5 kroków)`:''}${cl.pay&&cl.pay>today?`, przed wypłatą ${dmy(cl.pay)}`:''}. Salda z bankiem, co było ponad plan, nadwyżka, plan i cele – ok. 10 minut.`,go:{a:'close'},label:cl.n?'Dokończ':'Zacznij',k:'close',who:w,quiet:today!=cl.start})}
+  if(checks){for(const r of recurringP(cfg,tx,today,hraw?.checkIgnore))out.push({key:r.key,icon:r.kind=='tr'?'🔁':'📌',text:r.kind=='tr'?`Przelew ${r.name} – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do stałych przelewów?`:`„${r.name}” – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`,go:{a:'recFix',key:r.key},label:'Dodaj',k:'rec',who:null});
     out.push(...checksP(D,today))}
   return out}

@@ -2,7 +2,7 @@
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
-import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP,closeDueP} from '../js/today.js';
+import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 
@@ -79,7 +79,7 @@ const N=' ';
 }
 /* ---------- 🗓️ zamknięcie miesiąca ---------- */
 { const tx=[{id:'x',type:'exp',amount:100,date:'2026-09-12',sub:'s',acc:'a'}];
-  eq('Zamknięcie – 3 października czeka wrzesień',closeDueP({},tx,'2026-10-03'),{ym:'2026-09',n:0});
+  eq('Zamknięcie – 3 października czeka wrzesień',closeDueP({},tx,'2026-10-03'),{ym:'2026-09',n:0,start:'2026-10-01',pay:null});
   eq('Zamknięcie – kroki z obu telefonów',closeDueP({closeM:{'2026-09':{steps:{bank:{by:'Mati'},plan:{by:'Wercia'},prev:null}}}},tx,'2026-10-05').n,2);
   eq('Zamknięcie – po 10. dniu już nie',closeDueP({},tx,'2026-10-11'),null);
   eq('Zamknięcie – zrobione',closeDueP({closeM:{'2026-09':{done:{by:'Mati'}}}},tx,'2026-10-03'),null);
@@ -88,6 +88,73 @@ const N=' ';
   const D={cfg:{accs:[],cats:[],fixed:[],years:[]},tx,slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-01T12:00:00').getTime()},hraw:{}};
   const c1=todayItems(D,{today:'2026-10-01',checks:false}).find(x=>x.k=='close'),c3=todayItems(D,{today:'2026-10-03',checks:false}).find(x=>x.k=='close');
   eq('Na dziś – zamknięcie, powiadomienie 1. dnia',!!c1&&!c1.quiet&&c3.quiet,true);
+}
+/* ---------- 💼 dzień wypłaty z pasków → 🗓️ zamknięcie dzień przed wypłatą, osobno dla każdego ---------- */
+{ const inc=(id,date,src,amt=500000)=>({id,type:'inc',amount:amt,date,sub:'p',acc:'a',slip:src});
+  const cfg={accs:[{id:'a',grp:'cur',owner:'Mati'}],cats:[],fixed:[],years:[],incs:[{id:'sM',who:'Mati',kind:'uop',day:10},{id:'sW',who:'Wercia',kind:'uop',day:28}]};
+  /* Mati: 10. lipca (pt), 10. sierpnia (pn), 10. września (czw) → zwykle 10.; 10.10.2026 to sobota → piątek 9.10 */
+  const tx=[inc('m7','2026-07-10','sM'),inc('m8','2026-08-10','sM'),inc('m9','2026-09-10','sM'),{id:'e',type:'exp',amount:100,date:'2026-09-12',sub:'s',acc:'a'},{id:'e2',type:'exp',amount:100,date:'2026-10-02',sub:'s',acc:'a'},
+    /* Wercia: 31.07 (pt), 31.08 (pn), 30.09 (śr) – zawsze ostatni dzień → „koniec miesiąca”; 31.10.2026 to sobota → piątek 30.10 */
+    inc('w7','2026-07-31','sW'),inc('w8','2026-08-31','sW'),inc('w9','2026-09-30','sW')];
+  eq('Wypłata – Mati w październiku (sobota → piątek)',paydayP(cfg,tx,'Mati','2026-10').date,'2026-10-09');
+  eq('Wypłata – wzór Werci: koniec miesiąca',payPatternP(tx,cfg.incs[1],'2026-10'),{end:true});
+  eq('Wypłata – Wercia w październiku',paydayP(cfg,tx,'Wercia','2026-10').date,'2026-10-30');
+  eq('Wypłata – Wercia w listopadzie (30.11 to poniedziałek)',paydayP(cfg,tx,'Wercia','2026-11').date,'2026-11-30');
+  eq('Zamknięcie – Mati dzień przed wypłatą',closeDueP({},tx,'2026-10-08',cfg,'Mati'),{ym:'2026-09',n:0,start:'2026-10-08',pay:'2026-10-09'});
+  eq('Zamknięcie – Mati jeszcze nie 7.10',closeDueP({},tx,'2026-10-07',cfg,'Mati'),null);
+  eq('Zamknięcie – Mati ostatni dzień okna (9 dni po wypłacie)',closeDueP({},tx,'2026-10-18',cfg,'Mati')?.ym,'2026-09');
+  eq('Zamknięcie – Mati po oknie',closeDueP({},tx,'2026-10-19',cfg,'Mati'),null);
+  eq('Zamknięcie – Wercia 29.10 zamyka październik',closeDueP({},tx,'2026-10-29',cfg,'Wercia'),{ym:'2026-10',n:0,start:'2026-10-29',pay:'2026-10-30'});
+  eq('Zamknięcie – Wercia 3.11 dalej październik',closeDueP({},tx,'2026-11-03',cfg,'Wercia')?.ym,'2026-10');
+  eq('Zamknięcie – Wercia 9.10 jeszcze wrzesień (okno 29.09–9.10)',closeDueP({},tx,'2026-10-09',cfg,'Wercia')?.ym,'2026-09');
+  eq('Zamknięcie – Wercia nie 10.10',closeDueP({},tx,'2026-10-10',cfg,'Wercia'),null);
+  /* the salary came earlier than expected (7.10) → the real day counts */
+  const tx2=[...tx,inc('m10','2026-10-07','sM')];
+  eq('Wypłata – prawdziwy dzień, gdy już wpłynęła',paydayP(cfg,tx2,'Mati','2026-10'),{date:'2026-10-07',real:true,src:'sM'});
+  eq('Zamknięcie – okno od dnia przed prawdziwą wypłatą',closeDueP({},tx2,'2026-10-06',cfg,'Mati')?.start,'2026-10-06');
+  /* no payslip yet → the day typed at the source; no source → the first 10 days of a month */
+  eq('Wypłata – bez pasków dzień ze źródła',paydayP(cfg,[],'Mati','2026-11').date,'2026-11-10');
+  eq('Zamknięcie – bez źródła dochodu od 1. dnia',closeDueP({},tx,'2026-10-03',{...cfg,incs:[]},'Mati')?.ym,'2026-09');
+  eq('Następne liczenie nadwyżki – Mati',nextCloseP(cfg,tx,'Mati','2026-10-20'),'2026-11-09');
+  /* personal and shared steps; steps from before the split count for whoever ticked them */
+  const old={closeM:{'2026-09':{steps:{bank:{by:'Mati'},prev:{by:'Wercia'},casc:{by:'Wercia'}}}}};
+  eq('Zamknięcie – stare kroki: Mati (bank + wspólny „ponad plan”)',closeStateP(old,'2026-09','Mati').n,2);
+  eq('Zamknięcie – stare kroki: Wercia (nadwyżka + wspólny „ponad plan”)',closeStateP(old,'2026-09','Wercia').n,2);
+  const nw={closeM:{'2026-09':{steps:{bank:{by:'Mati'},plan:{by:'Mati'}},p:{Mati:{steps:{bank:null,goals:{by:'Mati'}}}}}}};
+  eq('Zamknięcie – cofnięty krok nie wraca ze starych',closeStateP(nw,'2026-09','Mati').steps.bank,null);
+  eq('Zamknięcie – wspólny plan liczy się Werci',closeStateP(nw,'2026-09','Wercia').n,1);
+  eq('Zamknięcie – dawniej zamknięty miesiąc zamknięty u obojga',!!closeStateP({closeM:{'2026-09':{done:{by:'Mati'}}}},'2026-09','Wercia').done,true);
+  eq('Zamknięcie – „Pomiń” jednej osoby',closeDueP({checkIgnore:{'close:2026-09:Mati':true}},tx,'2026-10-08',cfg,'Mati'),null);
+  const D={cfg,tx,slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-01T12:00:00').getTime()},hraw:{}};
+  const L=todayItems(D,{today:'2026-10-08',checks:false}).filter(x=>x.k=='close');
+  eq('Na dziś – 8.10 zamknięcie Matiego z powiadomieniem, Werci po cichu',L.map(x=>[x.who,x.quiet]),[['Mati',false],['Wercia',true]]);
+}
+/* ---------- ⚠️ nie starczy na rachunki (prognoza salda do końca miesiąca) ---------- */
+{ const accs=[{id:'w',grp:'cur',owner:'Wspólne',open:30000},{id:'m',grp:'cur',owner:'Mati',open:500000}],czynsz={id:'fc',name:'Czynsz',amount:185000,day:10,acc:'w',kind:'exp',sub:'s'};
+  /* 300 zł na wspólnym, czynsz 1 850 zł 10.11 → brakuje 1 550 zł */
+  eq('Nie starczy – czynsz',shortP({accs,fixed:[czynsz]},[],'2026-11-03'),[{acc:'w',bal:30000,date:'2026-11-10',name:'Czynsz',amount:185000,miss:155000,fid:'fc'}]);
+  /* stały przelew 3 000 zł z konta Matiego 5.11 → wystarczy; ten sam przelew dopiero 12.11 → dalej brakuje */
+  eq('Nie starczy – zrzutka przed czynszem',shortP({accs,fixed:[czynsz,{id:'fz',name:'Na wspólne',amount:300000,day:5,acc:'m',to:'w',kind:'tr'}]},[],'2026-11-03'),[]);
+  eq('Nie starczy – zrzutka po czynszu',shortP({accs,fixed:[czynsz,{id:'fz',name:'Na wspólne',amount:300000,day:12,acc:'m',to:'w',kind:'tr'}]},[],'2026-11-03')[0]?.miss,155000);
+  /* czynsz już odhaczony → nic */
+  eq('Nie starczy – zapłacone',shortP({accs,fixed:[czynsz]},[{id:'p',type:'exp',amount:185000,date:'2026-11-02',acc:'w',fixedId:'fc',sub:'s'}],'2026-11-03'),[]);
+  /* pensja na to konto zwykle 8. (8.11 to niedziela → piątek 6.11), ostatnia 2 000 zł → pokryje czynsz */
+  const sal=[{id:'s10',type:'inc',amount:200000,date:'2026-10-08',acc:'w',slip:'src'},{id:'e10',type:'exp',amount:200000,date:'2026-10-20',acc:'w',sub:'s'}];
+  eq('Nie starczy – pensja przyjdzie przed czynszem',shortP({accs,fixed:[czynsz],incs:[{id:'src',who:'Mati',acc:'w',day:8}]},sal,'2026-11-03'),[]);
+  const D={cfg:{accs,cats:[],fixed:[czynsz],years:[]},tx:[],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-11-01T12:00:00').getTime()},hraw:{}};
+  const it=d=>todayItems(D,{today:d,checks:false}).find(x=>x.icon=='⚠️');
+  eq('Na dziś – brak na czynsz, „Przelej” na brakującą kwotę',it('2026-11-03').go,{a:'tr',to:'w',amount:155000});
+  eq('Na dziś – brak dla obojga (konto wspólne)',it('2026-11-03').who,null);
+  eq('Na dziś – powiadomienie pierwszego dnia (1.11), potem cicho, znowu dzień przed',[it('2026-11-01').quiet,it('2026-11-03').quiet,it('2026-11-09').quiet],[false,true,false]);
+  eq('Na dziś – w dniu czynszu pilne',it('2026-11-10').k,'bad');
+}
+/* ---------- 🔁 powtarzający się przelew → stały przelew ---------- */
+{ const accs=[{id:'m',grp:'cur',name:'Konto Mati'},{id:'w',grp:'cur',name:'Konto wspólne'}],T=(id,d,a)=>({id,type:'tr',amount:a,date:d,acc:'m',to:'w',note:'na wspólne'});
+  const tx=[T('t8','2026-08-02',300000),T('t9','2026-09-02',300000),T('t10','2026-10-02',310000)];
+  const r=recurringP({accs,fixed:[]},tx,'2026-10-25').find(x=>x.kind=='tr');
+  eq('Stały przelew – podpowiedź',r&&[r.key,r.name,r.amount,r.day],['rec:tr:m>w','Konto Mati → Konto wspólne',310000,2]);
+  eq('Stały przelew – już jest w 📌 Stałe',recurringP({accs,fixed:[{id:'f',kind:'tr',acc:'m',to:'w',amount:300000,day:2}]},tx,'2026-10-25').filter(x=>x.kind=='tr'),[]);
+  eq('Stały przelew – „Nie, dzięki”',recurringP({accs,fixed:[]},tx,'2026-10-25',{'rec:tr:m>w':true}).filter(x=>x.kind=='tr'),[]);
 }
 /* ---------- 🎓 ulga dla młodych (do 26 lat, limit 85 528 zł) ---------- */
 { // 10 000 zł brutto w całości w limicie: ZUS 1 371 i zdrowotna 776,61 jak zwykle, podatku 0 → na konto 7 852,39 zł
