@@ -158,6 +158,41 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] Wymyślone dane z całego roku (pensje, zakupy, opłaty, konta, ETF, obligacje, kredyt, cele, auto); zmiany tylko w przeglądarce oglądającego, przycisk „Zacznij od nowa”; pasek „Wersja demonstracyjna – dane są wymyślone”
 - [x] Imiona Mati / Wercia wyciągnięte z kodu do ustawień (w Waszej aplikacji bez zmian)
 
+# Część 3 – po przeglądzie aplikacji (uzgodnione z Matim 25.10.2026)
+Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesiąca. Na później: nowe świąteczne sceny kotków (lampki, bombka, choinka, prezenty, Sylwester).
+
+## Etap G. Robot i zasady dostępu
+- [x] 🤖 Robot na GitHubie (`.github/workflows/test.yml`, `tests/`): po każdej zmianie eslint (brakujące importy), składnia, wersja demo w niewidocznej przeglądarce – wszystkie ekrany w 4 ustawieniach telefonu (320/360/390 px, A/A+/A++), błędy JavaScript, napisy poza ekranem, okienko transakcji takie samo w `index.html` i `demo/index.html`; zrzuty ekranów przy błędzie
+- [ ] Publikacja dopiero po zielonym sprawdzeniu – Mati przełącza raz: Settings → Pages → Source → „GitHub Actions”
+- [x] Kopia zasad dostępu Firebase w `firebase/` (bez adresów e-mail – repozytorium jest publiczne)
+
+## Etap H. Poprawki z przeglądu ekranów
+- [ ] Średnie „/mies.” w Analizie → Rok liczone tylko z miesięcy z wpisami
+- [ ] Tabela „Miesiąc po miesiącu” mieści się na wąskim telefonie z dużym tekstem
+- [ ] ⚙️ „Kto korzysta z tego telefonu?” – przyciski na całą szerokość
+- [ ] „+ Przelew” i filtr „▲ Przekroczone” w jednej linijce; pełna podpowiedź w szukaniu Rejestru
+- [ ] Kolor akcentu telefonu także w ramce pola i podpowiedziach okienka transakcji
+- [ ] Jedna ikonka 👛 dla „Konta”; jednakowe przyciski propozycji „Dodać do opłat stałych?”; „+ …” zawsze wielką literą
+- [ ] Kwoty od 1000 zł zawsze z odstępem („5 449,18 zł”)
+- [ ] Drobiazgi: „✓ wszystko wpłynęło”, napis o strzałkach tylko gdy są strzałki, jeden kolor pasków „z”, kotek przy pustych Pensjach, procent przy „Pozostałe”, napisy w „Przepływie pieniędzy” nie nachodzą na siebie, „✎ Limity” obok tytułu
+- [ ] Nowy wpis na telefonie bez historii – konto osoby telefonu
+- [ ] Oko Bailey na brązowej łacie widoczne przy uśmiechu
+
+## Etap I. Bezpieczeństwo i dyskrecja
+- [ ] 🗑️ ⚙️ „Ostatnio usunięte” – usunięte wpisy z przyciskiem „Przywróć”
+- [ ] 🙈 Tryb dyskretny – kwoty jako „•••” (stuknięcie w nagłówku / ⚙️)
+
+## Etap J. Umowy, koszty roczne, sklepy
+- [ ] „Umowa do…” przy opłacie stałej – przypomnienie 2 miesiące przed końcem (w „Na dziś” i w powiadomieniu)
+- [ ] 📌 Stałe: ile opłaty stałe kosztują rocznie (w tym subskrypcje)
+- [ ] 🏪 „Gdzie wydajemy” w Analizie – sklepy i miejsca z notatek (miesiąc i rok)
+
+## Etap K. Zdjęcia paragonów
+- [ ] 📷 Zdjęcie paragonu / gwarancji przy wpisie: zmniejszone w telefonie (~100 KB), w bazie Firebase w darmowym limicie, wczytywane dopiero po stuknięciu; licznik miejsca w ⚙️; „Pobierz kopię ze zdjęciami”; bez zdjęć w mailu z kopią
+
+## Etap L. Porządek w kodzie
+- [ ] `js/app.js` podzielony na mniejsze pliki (bez zmian na ekranie), sprawdzony przez robota
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

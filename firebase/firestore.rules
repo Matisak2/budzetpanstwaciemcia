@@ -1,0 +1,19 @@
+// 🔐 Zasady dostępu do bazy Firestore (projekt budzet-panstwa-ciemcia) – KOPIA do odtworzenia.
+// Prawdziwe zasady są ustawione w konsoli Firebase: Firestore Database → Rules. Ten plik niczego sam nie zmienia.
+// Adresy e-mail są celowo zastąpione napisami ADRES_MATIEGO / ADRES_WERCI, bo repozytorium jest publiczne.
+// Odtworzenie: skopiuj całość do konsoli (Rules), wpisz w miejsce napisów Wasze dwa adresy logowania, „Publish”.
+// Wszystko aplikacji (wpisy, plany, paski, instrumenty, zobowiązania, zdjęcia paragonów…) leży pod households/main.
+// Automat na GitHubie łączy się kluczem konta usługi (sekret FIREBASE_SA) – omija te zasady, więc nie trzeba go tu dopisywać.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner() {
+      return request.auth != null
+        && request.auth.token.email in ['ADRES_MATIEGO', 'ADRES_WERCI'];
+    }
+    match /households/main/{document=**} {
+      allow read, write: if owner();
+    }
+    // wszystko inne: brak dostępu (domyślnie)
+  }
+}

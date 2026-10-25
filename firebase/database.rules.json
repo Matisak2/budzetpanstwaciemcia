@@ -1,0 +1,4 @@
+{
+  "//": "Stara Realtime Database z pierwszej wersji aplikacji – nieużywana, zamknięta. Kopia zasad z konsoli Firebase (Realtime Database → Rules).",
+  "rules": { ".read": false, ".write": false }
+}
