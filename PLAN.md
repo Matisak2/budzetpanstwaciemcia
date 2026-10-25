@@ -189,7 +189,7 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 - [x] 🏪 „Gdzie wydajemy” w Analizie – sklepy i miejsca z notatek (miesiąc i rok)
 
 ## Etap K. Zdjęcia paragonów
-- [ ] 📷 Zdjęcie paragonu / gwarancji przy wpisie: zmniejszone w telefonie (~100 KB), w bazie Firebase w darmowym limicie, wczytywane dopiero po stuknięciu; licznik miejsca w ⚙️; „Pobierz kopię ze zdjęciami”; bez zdjęć w mailu z kopią
+- [x] 📷 Zdjęcie paragonu / gwarancji przy wpisie: zmniejszone w telefonie (~100 KB), w bazie Firebase w darmowym limicie, wczytywane dopiero po stuknięciu; licznik miejsca w ⚙️; „Pobierz kopię ze zdjęciami”; bez zdjęć w mailu z kopią
 
 ## Etap L. Porządek w kodzie
 - [ ] `js/app.js` podzielony na mniejsze pliki (bez zmian na ekranie), sprawdzony przez robota

@@ -65,6 +65,19 @@ for(const C of CASES){
     if(name=='usuniete'&&!await p.evaluate(()=>/Ostatnio usunięte/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty „Ostatnio usunięte”`);
     await p.screenshot({path:path.join(OUT,`${tag}-${name}.png`),fullPage:true});
   }
+  /* 📷 receipt photo: add (a generated picture), save, open again, remove – only in the first phone setting */
+  if(C===CASES[0]){try{
+    const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==','base64');
+    const id=await p.evaluate(()=>{closeAll();goTab('tx');const t=S.tx.find(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.split);openTx(t.id);return t.id});await p.waitForTimeout(300);
+    await p.setInputFiles('#mphIn',{name:'paragon.png',mimeType:'image/png',buffer:png});await p.waitForTimeout(800);
+    if(await p.$$eval('#mph .phi img',x=>x.length)!=1)fail(`${tag}: zdjęcie paragonu nie pojawiło się w okienku`);
+    await p.screenshot({path:path.join(OUT,`${tag}-zdjecie.png`)});
+    await p.click('#shSave');await p.waitForTimeout(600);
+    const r=await p.evaluate(id=>({rcpt:(S.tx.find(t=>t.id==id).rcpt||[]).length,meta:S.rcptMeta?.n||0}),id);if(r.rcpt!=1||r.meta!=1)fail(`${tag}: zdjęcie nie zapisało się przy wpisie (${JSON.stringify(r)})`);
+    await p.evaluate(id=>openTx(id),id);await p.waitForTimeout(700);if(await p.$$eval('#mph .phi img',x=>x.length)!=1)fail(`${tag}: zapisane zdjęcie nie wczytuje się po otwarciu wpisu`);
+    await p.click('#mph [data-phx]');await p.click('#shSave');await p.waitForTimeout(600);
+    if(await p.evaluate(()=>S.rcptMeta?.n||0))fail(`${tag}: po usunięciu zdjęcia licznik się nie zmniejszył`);
+  }catch(e){fail(`${tag}: test zdjęcia – ${e.message.split('\n')[0]}`)}}
   await ctx.close();
 }
 await browser.close();srv.close();

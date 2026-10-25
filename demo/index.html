@@ -78,7 +78,9 @@
   <label class="fld" id="mprojWrap" hidden><span>🏷️ Projekt</span><select id="mproj"></select></label>
   <div class="g2" id="mcarWrap" hidden><label class="fld"><span>⛽ Litry</span><input id="mlit" inputmode="decimal" placeholder="opcjonalnie" autocomplete="off"></label><label class="fld"><span>Licznik (km)</span><input id="modo" inputmode="numeric" placeholder="opcjonalnie" autocomplete="off"></label></div>
   <div class="fld" id="mulgaWrap" hidden><span>🧾 Ulga w PIT</span><select id="mulga"></select><small class="mini" id="mulgaHint" hidden></small></div>
-  <div class="xbtns"><button type="button" class="btn sm" id="fxBtn" hidden>🌍 Płatność w obcej walucie</button><button type="button" class="btn sm" id="mdebtBtn" hidden>🔻 Spłata zobowiązania</button><button type="button" class="btn sm" id="mprojBtn" hidden>🏷️ Projekt</button><button type="button" class="btn sm" id="mulgaBtn" hidden>🧾 Do ulgi w PIT</button></div>
+  <div class="fld" id="mphWrap" hidden><span>📷 Zdjęcia paragonu</span><div id="mph" class="phs"></div><small class="mini" id="mphHint"></small></div>
+  <input type="file" id="mphIn" accept="image/*" multiple hidden>
+  <div class="xbtns"><button type="button" class="btn sm" id="fxBtn" hidden>🌍 Płatność w obcej walucie</button><button type="button" class="btn sm" id="mdebtBtn" hidden>🔻 Spłata zobowiązania</button><button type="button" class="btn sm" id="mprojBtn" hidden>🏷️ Projekt</button><button type="button" class="btn sm" id="mulgaBtn" hidden>🧾 Do ulgi w PIT</button><button type="button" class="btn sm" id="mphBtn" hidden>📷 Zdjęcie paragonu</button></div>
   <div class="shfoot"><div class="g2"><button class="btn" id="shCancel">Anuluj</button><button class="btn primary" id="shSave">Zapisz</button></div><button class="btn sm" id="shNext">Zapisz i dodaj kolejny ›</button></div>
   <button class="btn sm" id="shRef" hidden style="align-self:center">↩️ Oznacz zwrot</button>
   <div class="mini" id="shWho" hidden style="text-align:center"></div>
@@ -91,6 +93,7 @@
   <div id="pkBody" class="pkbody"></div>
 </div></div>
 
+<div id="phv" class="ov phv" hidden><div class="phvin" role="dialog" aria-modal="true" aria-label="Zdjęcie paragonu"><img id="phvImg" alt="Zdjęcie paragonu"><div class="g2"><button class="btn" id="phvSave">💾 Zapisz w telefonie</button><button class="btn primary" id="phvClose">Zamknij</button></div></div></div>
 <div id="dlg" class="ov" hidden><div class="dlg" role="dialog" aria-modal="true" id="dlgBody"></div></div>
 <div id="toast" class="toast" hidden role="status"></div>
 <input type="file" id="fileIn" accept=".json,.gz,application/json,application/gzip" hidden>

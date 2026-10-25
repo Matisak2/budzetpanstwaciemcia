@@ -1,6 +1,6 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,setPersistence,browserLocalPersistence} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,onSnapshot,setDoc,deleteDoc,updateDoc,deleteField,waitForPendingWrites} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,onSnapshot,setDoc,deleteDoc,updateDoc,deleteField,waitForPendingWrites,getDoc,getDocs,increment} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {catIcon,catsEmpty} from './art.js';
 import {scene} from './cats.js';
 import {CELEBRATE,HELP,NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki,treatJoke} from './guide.js';
@@ -174,7 +174,7 @@ const refundsOf=id=>liveOf(S.tx).filter(x=>x.refundOf===id);
 const pickKind=()=>S.etype=='inc'&&!S.refEdit?'inc':'exp';
 
 function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==t));
-  if(S.cfg){updCoin();updFx();updDebt();updProj();updX();updSave()}
+  if(S.cfg){updCoin();updFx();updDebt();updProj();updX();updSave();renderPh()}
   $('msWrap').hidden=t=='tr';$('mtoWrap').hidden=t!='tr';$('mwWrap').hidden=t=='tr';$('mcLab').textContent=t=='tr'?'Z konta':'Konto';
   const s=S.cfg&&subsMap(S.cfg)[$('ms').value];if(s&&s.cat.type!=pickKind())setMs('');
   if(t=='tr'&&SP.length){SP=[];renderSplit()}updSplit()}
@@ -255,6 +255,34 @@ function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class="srow"
   $('splitRows').querySelectorAll('.pickbtn').forEach(b=>paintPick(b,SP[+b.dataset.i].sub));
   if(!SP.length&&!$('ms').value)$('msHint').textContent='';updSplit()}
 
+/* 📷 receipt photos: shrunk on the phone to a JPEG of at most ~150 KB, one document each in households/main/receipts
+   (never listened to as a whole – a photo is read only when its entry is opened); the entry keeps the ids in rcpt[];
+   meta/receipts counts photos and bytes for ⚙️. A deleted entry keeps its photos, so „Przywróć” brings them back too. */
+const RCPT=()=>collection(H,'receipts'),RMETA=()=>doc(H,'meta','receipts'),PH_MAX=3,PH_BYTES=180000;
+const kb=b=>b>=1e6?(b/1e6).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1000))+' KB';
+let PH=[];const phCache=new Map();
+async function shrinkPhoto(file){const url=URL.createObjectURL(file);
+  try{const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});let max=1800,q=.72,out='',c;
+    for(let k=0;k<8;k++){const sc=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*sc));c.height=Math.max(1,Math.round(img.naturalHeight*sc));
+      const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);out=c.toDataURL('image/jpeg',q);
+      if(out.length*.75<=PH_BYTES)break;if(q>.5)q-=.1;else max=Math.round(max*.8)}
+    return{data:out,size:Math.round(out.length*.75),w:c.width,h:c.height}}finally{URL.revokeObjectURL(url)}}
+async function phLoad(id){if(phCache.has(id))return phCache.get(id);try{const s=await getDoc(doc(RCPT(),id)),d=s.exists()?s.data():null;if(d)phCache.set(id,d);return d}catch(e){return null}}
+function renderPh(){if(!$('mph'))return;const tr=S.etype=='tr',L=tr?[]:PH.filter(p=>!p.removed);$('mphWrap').hidden=!L.length;$('mphBtn').hidden=tr||L.length>=PH_MAX;$('mphBtn').textContent=L.length?'📷 Kolejne zdjęcie':'📷 Zdjęcie paragonu';
+  $('mph').innerHTML=L.map(p=>`<span class="ph"><button type="button" class="phi" data-ph="${p.id}" aria-label="Pokaż zdjęcie">${p.data?`<img src="${p.data}" alt="">`:`<span class="mini">${p.missing?'brak':'…'}</span>`}</button><button type="button" class="x" data-phx="${p.id}" aria-label="Usuń zdjęcie">×</button></span>`).join('');
+  const nw=L.filter(p=>p.isNew).reduce((a,p)=>a+p.size,0);$('mphHint').textContent=nw?`zapiszę razem z wpisem (${kb(nw)})`:'stuknij zdjęcie, żeby je powiększyć';
+  L.filter(p=>!p.data&&!p.loading&&!p.missing).forEach(p=>{p.loading=true;phLoad(p.id).then(d=>{p.loading=false;if(d){p.data=d.data;p.size=d.size||0}else p.missing=true;renderPh()})})}
+const phMeterH=()=>{const n=Math.max(0,S.rcptMeta?.n||0),b=Math.max(0,S.rcptMeta?.bytes||0);if(!n)return'';
+  return`<div class="phm"><div class="r1"><b>📷 Zdjęcia paragonów</b><span class="mini">${n} ${plu(n,'zdjęcie','zdjęcia','zdjęć')} · ${kb(b)} z 1 GB</span></div><div class="bar"><i style="width:${Math.max(1,Math.min(100,b/1e7)).toFixed(1)}%;background:#86efac"></i></div>
+    <div class="mini">Darmowe miejsce w Firebase to 1 GB – starczy na kilka tysięcy zdjęć. Comiesięczny mail z kopią nie zawiera zdjęć (byłby za duży).</div><button class="btn sm" onclick="exportJson(true)">📷 Pobierz kopię ze zdjęciami</button></div>`};
+function openPhoto(data){$('phvImg').src=data;$('phv').hidden=false}
+async function savePhoto(){const src=$('phvImg').src;if(!src)return;const blob=await (await fetch(src)).blob(),name='paragon-'+td()+'.jpg',file=typeof File=='function'?new File([blob],name,{type:'image/jpeg'}):null;
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})&&matchMedia('(pointer:coarse)').matches){try{await navigator.share({files:[file]})}catch(e){}}else downloadBlob(blob,name)}
+/* writes the photo changes of an entry (new ones, removed ones) and updates the counter */
+function phCommit(txId,ym,keep,del){const nw=keep.filter(p=>p.isNew);if(!nw.length&&!del.length)return;
+  nw.forEach(p=>{phCache.set(p.id,{data:p.data,size:p.size});w(setDoc(doc(RCPT(),p.id),{tx:txId,ym,data:p.data,size:p.size,w:p.w,h:p.h,at:Date.now(),by:S.who}))});
+  del.forEach(p=>{phCache.delete(p.id);w(deleteDoc(doc(RCPT(),p.id)))});
+  const db=nw.reduce((a,p)=>a+p.size,0)-del.reduce((a,p)=>a+(p.size||0),0);merge(RMETA(),{bytes:increment(db),n:increment(nw.length-del.length)})}
 function openTx(id,pre){if(guard())return;
   const t=id?liveById(id):null;
   if(t&&(t.type=='lend'||t.lendOf||t.debtIn)){ask({title:t.note,text:`${accN(t.acc)}: ${am(t.amount,t.acc)} (${t.date.split('-').reverse().join('.')})\nTen wpis należy do ${t.debtIn?'zobowiązania':'należności'} w 👛 Konta.`,ok:'Pokaż',cancel:'Zamknij',alt:'Usuń wpis'}).then(r=>{if(r=='alt')delTx(id);else if(r){S.tab='acc';S.accView=t.debtIn?'owe':'lent';render()}});return}
@@ -266,7 +294,7 @@ function openTx(id,pre){if(guard())return;
   if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTen starszy wpis usuniesz w zakładce Oszczędności.`,ok:'Przejdź',cancel:'Zamknij'}).then(r=>{if(r){S.tab='sav';render()}});return}
   S.edit=t?id:null;S.refEdit=!!t?.refundOf;S.debtOpen=S.projOpen=false;S.autoSub=false;SP=[];
   const ao=accOpts().map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(a=>`<option value="${a[0]}">${esc(a[1])}</option>`).join('')}</optgroup>`).join('');$('mc').innerHTML=ao;$('mto').innerHTML=ao;
-  $('ms').value='';setType(t?t.type:(pre?.type||'exp'));
+  PH=(t?.rcpt||[]).map(id=>({id}));$('ms').value='';setType(t?t.type:(pre?.type||'exp'));
   $('mw').value=(t&&t.who)||S.who;
   $('ma').value=t?f2(t.amount):'';$('maSum').textContent='';
   $('md').value=t?t.date:(td().startsWith(S.ym)?td():S.ym+'-01');
@@ -289,7 +317,7 @@ function openTx(id,pre){if(guard())return;
   $('shRef').hidden=!(left>0);
   $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;$('shNext').hidden=!!t;
   $('sheet').hidden=false;if(!t)setTimeout(()=>$('ma').focus(),80)}
-const closeSheet=()=>{$('sheet').hidden=true;S.edit=null;S.refEdit=false;SP=[];closePick()};
+const closeSheet=()=>{$('sheet').hidden=true;S.edit=null;S.refEdit=false;SP=[];PH=[];$('phv').hidden=true;closePick()};
 async function saveTx(next){if(guard())return;
   const keep={acc:$('mc').value,date:$('md').value,who:$('mw').value,type:S.etype};
   const type=S.etype,amount=calcAmt($('ma').value),date=$('md').value;
@@ -326,8 +354,10 @@ async function saveTx(next){if(guard())return;
   if(old){for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];body.by=old.by||'';body.ts=old.ts||body.ts;body.eby=S.who;body.eAt=Date.now()}
   const g=parts.length?'g'+rid():'';if(g)body.split=g;
   const coin=!old&&type=='exp'&&S.coinOn&&S.coin;
+  const phKeep=type=='tr'?[]:PH.filter(p=>!p.removed),phDel=PH.filter(p=>!p.isNew&&(p.removed||type=='tr'));if(phKeep.length||old?.rcpt?.length)body.rcpt=phKeep.map(p=>p.id);
   closeSheet();
   const ym=date.slice(0,7),ok=await putTx(ym,id,body);
+  if(ok)phCommit(id,ym,phKeep,phDel);
   if(ok)for(const x of parts)putTx(ym,'t'+rid(),{...base,amount:x.amount,sub:x.sub,split:g});
   if(ok&&coin)putTx(ym,'t'+rid(),{type:'tr',amount:coin.v,date,sub:'',acc:coin.r.from,to:coin.r.to,who:base.who,note:'🪙 drobne',roundOf:id,deleted:false,ts:Date.now()});
   if(ok&&old&&old.date.slice(0,7)!=ym)await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
@@ -365,6 +395,12 @@ $('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]
 $('mproj').onchange=()=>updProj();
 $('mwar').onchange=()=>{if($('mwar').value=='date'&&!$('mward').value)$('mward').value=addM($('md').value||td(),24);updX()};
 $('mulga').onchange=()=>updX();$('mulgaBtn').onclick=()=>{S.ulgaOpen=true;updX()};
+$('mphBtn').onclick=()=>$('mphIn').click();
+$('mphIn').onchange=async e=>{const files=[...e.target.files];e.target.value='';const room=PH_MAX-PH.filter(p=>!p.removed).length;if(files.length>room)toast(`Najwyżej ${PH_MAX} zdjęcia przy jednym wpisie`);
+  for(const f of files.slice(0,room)){try{PH.push({id:'r'+rid(),...await shrinkPhoto(f),isNew:true})}catch(er){toast('Nie udało się wczytać zdjęcia','bad')}}renderPh()};
+$('mph').onclick=e=>{const x=e.target.closest('[data-phx]');if(x){const p=PH.find(p=>p.id==x.dataset.phx);if(p)p.removed=true;return renderPh()}
+  const b=e.target.closest('[data-ph]');if(b){const p=PH.find(p=>p.id==b.dataset.ph);if(p?.data)openPhoto(p.data)}};
+$('phvClose').onclick=()=>{$('phv').hidden=true};$('phvSave').onclick=()=>savePhoto();$('phv').onclick=e=>{if(e.target.id=='phv')$('phv').hidden=true};
 /* rarely needed: a liability and a project stay folded into small buttons at the bottom, unless the entry already has one */
 $('mdebtBtn').onclick=()=>{S.debtOpen=true;updDebt()};$('mdebt').onchange=()=>updDebtHint(true);$('mprojBtn').onclick=()=>{S.projOpen=true;updProj()};
 $('mulga').innerHTML='<option value="">— bez ulgi —</option>'+Object.entries(ULGI).map(([k,u])=>`<option value="${k}">${u.n}</option>`).join('');
@@ -647,9 +683,10 @@ async function removeSavAcc(id){const a=S.cfg.accs.find(x=>x.id==id),tx=liveOf(S
   render();toast(target?`Usunięto konto. ${money(Math.abs(bal),CUR(a))} → ${accN(target)}`:'Usunięto konto')}
 
 /* ---------- backup ---------- */
-async function exportJson(){if(!S.cfg)return;
-  const data=JSON.stringify({format:'budzet-mw-2',exported:new Date().toISOString(),cfg:S.cfg,savTarget:S.savTarget,tx:S.tx,plans:S.plans,inv:S.inv,goals:S.goals,slips:S.slips,hold:S.hold,debts:S.debts},null,1);
-  const name='budzet-kopia-'+td()+'.json',blob=new Blob([data],{type:'application/json'});
+async function exportJson(withPhotos){if(!S.cfg)return;let receipts;
+  if(withPhotos===true){toast('Zbieram zdjęcia…');try{receipts={};(await getDocs(RCPT())).docs.forEach(d=>receipts[d.id]=d.data())}catch(e){err(e);return toast('Nie udało się pobrać zdjęć – spróbuj przy dobrym internecie','bad')}}
+  const data=JSON.stringify({format:'budzet-mw-2',exported:new Date().toISOString(),cfg:S.cfg,savTarget:S.savTarget,tx:S.tx,plans:S.plans,inv:S.inv,goals:S.goals,slips:S.slips,hold:S.hold,debts:S.debts,...(receipts?{receipts}:{})},null,receipts?0:1);
+  const name=(receipts?'budzet-kopia-ze-zdjeciami-':'budzet-kopia-')+td()+'.json',blob=new Blob([data],{type:'application/json'});
   const file=typeof File=='function'?new File([blob],name,{type:'application/json'}):null;
   const mobile=matchMedia('(pointer:coarse)').matches;
   if(mobile&&file&&navigator.canShare&&navigator.canShare({files:[file]})){
@@ -716,7 +753,9 @@ async function importFile(file){if(guard())return;let o;
       for(const[id,g]of Object.entries(o.goals||{}))merge(doc(GOALS(),id),g);
       for(const[ym,sl]of Object.entries(o.slips||{}))merge(doc(SLIPS(),ym),{s:sl});
       for(const[id,x]of Object.entries(o.hold||{}))merge(doc(HOLD(),id),x);
-      for(const[id,x]of Object.entries(o.debts||{}))merge(doc(DEBTS(),id),x)}
+      for(const[id,x]of Object.entries(o.debts||{}))merge(doc(DEBTS(),id),x);
+      if(o.receipts&&typeof o.receipts=='object'){let n=0,b=0;for(const[id,r]of Object.entries(o.receipts)){if(!r?.data)continue;await setDoc(doc(RCPT(),id),r).catch(err);phCache.set(id,r)}
+        try{(await getDocs(RCPT())).docs.forEach(d=>{n++;b+=+d.data().size||0})}catch(e){}merge(RMETA(),{n,bytes:b})}}
     else{const sm={},am={};S.cfg.cats.forEach(c=>c.subs.forEach(s=>sm[s.name]=s.id));S.cfg.accs.forEach(a=>am[a.name]=a.id);
       o.categories.forEach(c=>{const bil=c.typ=='BILANS_KONTA'||c.typ=='BILANS_OSZCZ';(c.podkategorie||[]).forEach(nm=>{
         if(bil){if(!am[nm]){am[nm]='a'+rid();S.cfg.accs.push({id:am[nm],name:nm,grp:c.typ=='BILANS_KONTA'?'cur':'sav',open:0})}}
@@ -757,7 +796,7 @@ function txRowH(t,sm,rf={},cn={}){const M=v=>am(v,t.acc),k=t.type,sg=k=='inc'||k
   const cls=k=='invs'?'inv':k=='lend'?'tr':t.lendOf||t.debtIn?'tr':k,s=sm[t.sub],c=s&&(k=='exp'||k=='inc')?s.cat:null;
   const title=t.ppk||k=='lend'||t.lendOf||t.debtIn||t.payoff?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
   const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.payoff?'✅':t.roundOf?'🪙':k=='lend'||t.lendOf?'🔺':t.debtIn?'🔻':k=='tr'?'⇄':k=='adj'?(t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
-  return`<button class="tx" data-id="${t.id}" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.payoff?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">${t.payoff?'nie liczy się w Budżecie – to oddanie pożyczki':'🔻 spłata: '+esc(S.debts[t.debt].name)}</div>`:''}${t.save&&k=='tr'?Object.entries(t.save).filter(([i,v])=>v&&S.debts[i]).map(([i,v])=>`<div class="coinl" style="color:#a16207">💰 ${v>0?'na spłatę':'z odłożonych'}: ${esc(S.debts[i].name)} ${M(Math.abs(v))}</div>`).join(''):''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
+  return`<button class="tx" data-id="${t.id}" onclick="openTx('${t.id}')">${ico}<span class="info">${c?`<span class="tcat" style="${catColor(c)}">${esc(cleanCat(c.name))}</span>`:''}<b>${esc(title)}</b><span class="meta">${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}${t.rcpt?.length?' · 📷':''}</span>${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.payoff?`<div class="note">${esc(t.note)}</div>`:''}${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">${t.payoff?'nie liczy się w Budżecie – to oddanie pożyczki':'🔻 spłata: '+esc(S.debts[t.debt].name)}</div>`:''}${t.save&&k=='tr'?Object.entries(t.save).filter(([i,v])=>v&&S.debts[i]).map(([i,v])=>`<div class="coinl" style="color:#a16207">💰 ${v>0?'na spłatę':'z odłożonych'}: ${esc(S.debts[i].name)} ${M(Math.abs(v))}</div>`).join(''):''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
 function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q.trim());
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const filtered=F.q||F.type||F.who||F.acc||F.cat||F.scope!='m',rf={};
@@ -1840,7 +1879,7 @@ function render(){
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Konta</h3><button class="btn sm dark" onclick="addAcc()">+ Konto</button></div><div class="seg seg2 acctabs">${Object.entries(ACCTAB).map(([g,l])=>`<button aria-pressed="${S.accTab==g}" onclick="setAccTab('${g}')">${{cur:'💳',sub:'🗂️',sav:'🐷',inv:'📈'}[g]} ${l} (${S.cfg.accs.filter(a=>a.grp==g&&!a.archived).length})</button>`).join('')}</div>${(()=>{const list=S.cfg.accs.filter(a=>a.grp==S.accTab&&!a.archived);
       return list.length?list.map((a,i)=>`<div class="rowx"><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><span class="mini">${accOwner(a)}${isP(a)?'':' · '+CUR(a)} · saldo początkowe ${money(a.open,CUR(a))}</span></span><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveAcc('${a.id}',-1)"${i==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveAcc('${a.id}',1)"${i==list.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="editAcc('${a.id}')">Edytuj</button></span></div>`).join(''):`<div class="mini" style="padding:6px 0">Nie ma tu jeszcze kont – dodasz je przyciskiem „+ konto”.</div>`})()}<div class="mini">Strzałkami zmienisz kolejność – w tej kolejności konta pokazują się w całej aplikacji. Rodzaj konta zmienisz w „Edytuj”.</div></div>
     <div class="card"><div class="rowx" style="border:0;padding:0"><h3>Kategorie i pozycje budżetu</h3><button class="btn sm dark" onclick="addCat()">+ Kategoria</button></div><div class="mini">Stuknij nazwę kategorii albo pozycji, żeby ją zmienić. Strzałkami zmienisz kolejność.</div>${S.cfg.cats.map((c,ci)=>`<div class="rowx"><button class="catname" onclick="editCat(${ci})">${catIcon(c)} ${esc(catL(c))}&nbsp;✏️</button><span class="btns" style="gap:4px"><button class="btn sm" aria-label="W górę" onclick="moveCat(${ci},-1)"${ci==0?' disabled style="opacity:.3"':''}>↑</button><button class="btn sm" aria-label="W dół" onclick="moveCat(${ci},1)"${ci==S.cfg.cats.length-1?' disabled style="opacity:.3"':''}>↓</button><button class="btn sm" onclick="addSub(${ci})">+ Pozycja</button></span><div class="tags" style="width:100%">${c.subs.map((s,si)=>`<span class="tag"><button onclick="renSub(${ci},${si})">${esc(s.name)}</button><button class="x" aria-label="Usuń ${esc(s.name)}" onclick="delSub(${ci},${si})">×</button></span>`).join('')}</div></div>`).join('')}</div>
-    <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button>${DEMO?'':'<button class="btn" onclick="logout()">Wyloguj</button>'}</div><div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
+    <div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button>${DEMO?'':'<button class="btn" onclick="logout()">Wyloguj</button>'}</div>${phMeterH()}<div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`}
   if(priv.on)h=`<div class="demob hideb">🙈 Tryb dyskretny – kwoty są ukryte <button onclick="setHide(0)">Pokaż kwoty</button></div>`+h;
   if(DEMO)h=`<div class="demob">🧪 Wersja demonstracyjna · przykładowe dane, tylko w tej przeglądarce <button onclick="MW_DEMO.reset()">Zacznij od nowa</button></div>`+h;
   $('app').innerHTML=h;updToday();fitNums();
@@ -1977,6 +2016,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
     S.tx=all;syncLabel(s.metadata);render()},onErr));
   unsub.push(onSnapshot(PLC(),{includeMetadataChanges:true},s=>{const p={};s.docs.forEach(d=>p[d.id]={...d.data()});S.plans=p;S.plansSrv=!s.metadata.fromCache;render()},onErr));
   unsub.push(onSnapshot(META(),s=>{S.backup=s.exists()?s.data():null;render()},onErr));
+  unsub.push(onSnapshot(RMETA(),s=>{S.rcptMeta=s.exists()?s.data():null;if(S.tab=='set')render()},onErr));
   unsub.push(onSnapshot(MARKET(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.market=p;render()},onErr));
   unsub.push(onSnapshot(DEBTS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.debts=p;render()},onErr));
   unsub.push(onSnapshot(HOLD(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.hold=p;render()},onErr));
