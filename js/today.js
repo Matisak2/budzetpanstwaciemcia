@@ -2,10 +2,10 @@
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,addDays,addMonths,money,zl} from './util.js';
-import {balance,carStats,dueAlerts,fixedDate,inPeriod,subsMap} from './logic.js';
+import {balance,carStats,dueAlerts,fixedDate,inPeriod,subsMap,ownerOf} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS} from './inv.js';
 import {calcNet,RULES_YEAR} from './pay.js';
-export const ownerOf=a=>a?.owner||(/wercia|weronika/i.test(a?.name||'')?'Wercia':/mati/i.test(a?.name||'')?'Mati':'Wspólne');
+export {ownerOf};
 const person=o=>o=='Mati'||o=='Wercia'?o:null;
 const plu=(n,a,b,c)=>n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c;
 const dmy=d=>d.split('-').reverse().join('.');

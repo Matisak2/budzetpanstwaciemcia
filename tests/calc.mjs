@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems} from '../js/today.js';
-import {balance,actuals,agg,roundUp,status} from '../js/logic.js';
+import {balance,actuals,agg,roundUp,status,savFlow,savIds} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 
 let n=0,bad=0;
@@ -86,6 +86,25 @@ const N=' ';
   eq('Wydane na pozycji (zwrot zmniejsza)',actuals(cfg,tx,'2026-10').jed,15000);
   const A=agg(cfg,tx,'2026-10');eq('Budżet – przychody',A.inc,500000);eq('Budżet – wydatki tylko w zł',A.exp,15000);eq('Budżet – euro osobno',A.fx.exp.EUR,2000);
   eq('Budżet – kto wydał (po zwrocie)',A.who.Mati,15000);
+  // konto 'a' bez właściciela i bez imienia w nazwie = wspólne: 200 − 50 zwrotu = 150 zł z konta wspólnego
+  eq('Budżet – z czyjego konta (po zwrocie)',A.own['Wspólne'],15000);
+}
+/* ---------- 🐷 odłożone = wpłaty, nie zmiana kursów ---------- */
+{ const cfg={accs:[{id:'cur',grp:'cur',owner:'Mati',open:500000},{id:'sav',grp:'sav',owner:'Mati',open:0},{id:'ike',grp:'inv',owner:'Mati',wrap:'ike',open:0},
+    {id:'ppk',grp:'inv',owner:'Wercia',wrap:'ppk',open:0},{id:'eur',grp:'sav',owner:'Mati',cur:'EUR',open:0}],cats:[]};
+  const tx=[{type:'tr',amount:100000,date:'2026-10-02',acc:'cur',to:'sav'},          // +1 000 odłożone
+    {type:'tr',amount:30000,date:'2026-10-03',acc:'sav',to:'ike'},                   // przesunięcie między oszczędnościami: 0
+    {type:'adj',val:true,amount:50000,date:'2026-10-31',acc:'ike'},                   // kurs ETF +500: zysk, nie odłożone
+    {type:'adj',val:true,amount:-8000,date:'2026-10-31',acc:'ppk'},                   // PPK −80: strata
+    {type:'tr',amount:20000,date:'2026-10-20',acc:'sav',to:'cur'},                    // wypłata −200
+    {type:'inc',amount:15000,date:'2026-10-10',acc:'ppk',ppk:'own'},                  // PPK z pensji +150
+    {type:'tr',amount:43000,amount2:10000,date:'2026-10-05',acc:'cur',to:'eur'},     // na konto w euro – nie w złotych
+    {type:'tr',amount:7000,date:'2026-11-02',acc:'cur',to:'sav'}];                   // listopad – nie liczy się w październiku
+  const F=savFlow(cfg,tx,savIds(cfg),'2026-10');eq('Odłożone w miesiącu (bez kursów)',F.flow,95000);eq('Zmiana kursów osobno',F.gain,42000);
+  eq('Odłożone – rok',savFlow(cfg,tx,savIds(cfg),'2026').flow,102000);
+  eq('Odłożone – tylko Mati',savFlow(cfg,tx,savIds(cfg,'Mati'),'2026-10').flow,80000);eq('Odłożone – tylko Wercia (PPK)',savFlow(cfg,tx,savIds(cfg,'Wercia'),'2026-10').flow,15000);
+  // wartość na koniec października − na początku = odłożone + zmiana kursów (bez konta w euro)
+  const v=d=>savIds(cfg).reduce((a,id)=>a+balance(cfg,tx,id,d),0);eq('Odłożone + kursy = przyrost wartości',v('2026-11-01')-v('2026-10-01'),F.flow+F.gain);
   // drobne: 12,30 zł → do 15 zł = 2,70 zł × 2 = 5,40 zł; równe 15,00 zł z „pełnymi drobnymi” → 5 zł × 2
   eq('Drobne',roundUp(1230,{step:5,mult:2}),540);eq('Drobne – równa kwota',roundUp(1500,{step:5,mult:2,full:true}),1000);eq('Drobne – równa kwota bez pełnych',roundUp(1500,{step:5,mult:2}),0);
   eq('Stan pozycji – przekroczona',status('exp',10000,12000).k,'over');

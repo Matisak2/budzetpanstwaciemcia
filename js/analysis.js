@@ -2,9 +2,9 @@
 import {catsEmpty} from './art.js';
 import {scene} from './cats.js';
 import {isTreat,kotki} from './guide.js';
-import {P_OTHER,C_INC,C_EXP,C_SAV,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,hbarsH,legendH,lineSvg,pctS,whoH} from './charts.js';
-import {OWN_COL,catHue,catMark} from './data.js';
-import {anomalies,actuals,agg,balance,cleanCat,liveOf,subsMap} from './logic.js';
+import {P_OTHER,C_INC,C_EXP,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,gainSvg,hbarsH,legendH,lineSvg,pctS} from './charts.js';
+import {OWN,OWN_COL,catHue,catMark} from './data.js';
+import {anomalies,actuals,agg,balance,cleanCat,liveOf,subsMap,savFlow,savIds} from './logic.js';
 import {$,MN,MNG,addMonths,daysIn,esc,ls,p2,sleep,td,zl,zl0,money,fxTxt} from './util.js';
 import {S,catSlides,celebrate,toast,accCur,isP,accOwner,w} from './core.js';
 import {norm,plu} from './sheet.js';
@@ -26,15 +26,16 @@ export function monthSumH(cfg,tx,ym){const act=actuals(cfg,tx,ym),pl=S.plans[ym]
     ${over.length?`<div>▲ Przekroczone: <b>${over.length}</b> – ${esc(lst(over,x=>x.s.name+' +'+zl0(x.a-x.p)))}</div>`:''}
     ${less.length?`<div>💚 Wyraźnie mniej niż plan: ${esc(lst(less,x=>x.s.name+' −'+zl0(x.p-x.a)))}</div>`:''}
     ${out.length?`<div>⚠️ Poza planem: ${esc(lst(out,x=>x.s.name+' '+zl0(x.a)))}</div>`:''}</div></section>`}
-export function personsH(cfg,tx,ym){const sm=subsMap(cfg),per={Mati:{},Wercia:{}},tot={Mati:0,Wercia:0};
-  tx.filter(t=>t.date.startsWith(ym)&&t.type=='exp'&&(t.who=='Mati'||t.who=='Wercia')&&sm[t.sub]&&accCur(t.acc)=='PLN').forEach(t=>{const c=sm[t.sub].cat;per[t.who][c.id]=(per[t.who][c.id]||0)+t.amount;tot[t.who]+=t.amount});
-  if(!tot.Mati&&!tot.Wercia)return'';
-  const sav=o=>S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)&&accOwner(a)==o).reduce((x,a)=>x+balance(cfg,tx,a.id,ym+'-32')-balance(cfg,tx,a.id,ym+'-00'),0);
-  const cats=cfg.cats.filter(c=>c.type=='exp'&&(per.Mati[c.id]||per.Wercia[c.id])).sort((a,b)=>((per.Mati[b.id]||0)+(per.Wercia[b.id]||0))-((per.Mati[a.id]||0)+(per.Wercia[a.id]||0))).slice(0,7);
-  const mx=Math.max(1,...cats.flatMap(c=>[per.Mati[c.id]||0,per.Wercia[c.id]||0]));
-  return`<section class="chart"><div class="ct"><b>Mati ↔ Wercia</b><span class="mini">wydatki według osoby w polu „Kto”</span></div>
-    <div class="kpis" style="gap:8px"><div class="kpi k-sk"><div class="l">Mati</div><div class="v num">${zl0(tot.Mati)}</div><div class="s">odłożył ${zl0(sav('Mati'))}</div></div><div class="kpi k-ro" style="background:#fdeef5"><div class="l">Wercia 🌸</div><div class="v num">${zl0(tot.Wercia)}</div><div class="s">odłożyła ${zl0(sav('Wercia'))}</div></div></div>
-    ${cats.map(c=>`<div class="vs"><div class="mini"><b style="color:var(--fg)">${esc(cleanCat(c.name))}</b></div><div class="vsr"><span class="num">${zl0(per.Mati[c.id]||0)}</span><i style="width:${((per.Mati[c.id]||0)/mx*45).toFixed(1)}%;background:${OWN_COL.Mati}"></i><i style="width:${((per.Wercia[c.id]||0)/mx*45).toFixed(1)}%;background:${OWN_COL.Wercia}"></i><span class="num">${zl0(per.Wercia[c.id]||0)}</span></div></div>`).join('')}</section>`}
+/* 💑 Mati ↔ Wercia: spending by whose account it came from (a shared account = Wspólne; „Kto” is only who typed it) and what each put aside */
+export function personsH(cfg,tx,prefix){const sm=subsMap(cfg),per={},tot={};OWN.forEach(o=>{per[o]={};tot[o]=0});const ow={};cfg.accs.forEach(a=>ow[a.id]=accOwner(a));
+  tx.filter(t=>t.date.startsWith(prefix)&&(t.type=='exp'||(t.type=='inc'&&t.refundOf))&&sm[t.sub]?.cat.type=='exp'&&accCur(t.acc)=='PLN').forEach(t=>{const c=sm[t.sub].cat,o=ow[t.acc]||'Wspólne',v=t.type=='exp'?t.amount:-t.amount;per[o][c.id]=(per[o][c.id]||0)+v;tot[o]+=v});
+  if(!OWN.some(o=>tot[o]))return'';
+  const put=o=>savFlow(cfg,tx,savIds(cfg,o),prefix).flow,sum=c=>OWN.reduce((a,o)=>a+(per[o][c.id]||0),0);
+  const cats=cfg.cats.filter(c=>c.type=='exp'&&sum(c)>0).sort((a,b)=>sum(b)-sum(a)).slice(0,7),L={Mati:['Mati','odłożył'],Wercia:['Wercia 🌸','odłożyła'],'Wspólne':['Wspólne','odłożone']};
+  return`<section class="chart"><div class="ct"><b>Mati ↔ Wercia</b><span class="mini">wydatki według tego, czyje było konto (z konta wspólnego = Wspólne)</span></div>
+    <div class="kpis" style="gap:8px;grid-template-columns:repeat(3,minmax(0,1fr))">${OWN.map(o=>`<div class="kpi" style="background:${OWN_COL[o]}22"><div class="l">${L[o][0]}</div><div class="v num">${zl0(tot[o])}</div><div class="s">${L[o][1]} ${zl0(put(o))}</div></div>`).join('')}</div>
+    ${cats.map(c=>{const t=sum(c);return`<div class="vs"><div class="r1 mini"><b style="color:var(--fg)">${esc(cleanCat(c.name))}</b><b class="num" style="color:var(--fg)">${zl0(t)}</b></div><div class="stack">${OWN.filter(o=>(per[o][c.id]||0)>0).map(o=>`<i style="width:${(per[o][c.id]/t*100).toFixed(1)}%;background:${OWN_COL[o]}" data-tip="${esc(cleanCat(c.name))} – ${o}: ${zl(per[o][c.id])}"></i>`).join('')}</div></div>`}).join('')}
+    <div class="lg">${OWN.map(o=>`<span><i style="background:${OWN_COL[o]}"></i>${o}</span>`).join('')}</div><div class="tip mini">Dotknij paska, żeby zobaczyć kwotę.</div></section>`}
 export function sankeyH(cfg,tx,ym,A){const act=actuals(cfg,tx,ym),cats=Object.fromEntries(cfg.cats.map(c=>[c.id,c]));
   const inc=cfg.cats.filter(c=>c.type=='inc').flatMap(c=>c.subs).map(s=>({l:s.name,v:act[s.id]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
   if(!inc.length||!A.exp)return'';const L=inc.slice(0,4);const rest=inc.slice(4).reduce((a,x)=>a+x.v,0);if(rest>0)L.push({l:'Inne przychody',v:rest});L.forEach((x,i)=>x.c=['#6fd0a8','#86efac','#a7f3d0','#bbf7d0','#d1fae5'][i]);
@@ -69,14 +70,14 @@ export function wrapped(y){const tx=liveOf(S.tx),cfg=S.cfg,Y=agg(cfg,tx,y),sm=su
   const words={};tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&!t.payoff&&t.note).forEach(t=>{const w=t.note.trim().split(/\s+/)[0].toLowerCase();if(w.length>2)words[w]=(words[w]||0)+1});
   const fav=Object.entries(words).sort((a,b)=>b[1]-a[1])[0],ms=Array.from({length:12},(_,i)=>({i,a:agg(cfg,tx,y+'-'+p2(i+1))})).filter(x=>x.a.inc||x.a.exp),best=ms.length?ms.reduce((p,c)=>c.a.inc-c.a.exp>p.a.inc-p.a.exp?c:p):null;
   const treats=tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&isTreat(sm[t.sub]?.name)).reduce((a,t)=>a+t.amount,0),n=tx.filter(t=>t.date.startsWith(y)).length;
-  const sv=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)),sd=sv.reduce((x,a)=>x+balance(cfg,tx,a.id,y+'-12-32')-balance(cfg,tx,a.id,y+'-00'),0);
+  const sd=savFlow(cfg,tx,savIds(cfg),y).flow;
   const sl=[{scene:'duo',title:`🎁 Wasz rok ${y}`,text:`Bailey i Ivo przejrzeli wszystkie ${n} wpisów. Gotowi?`},
     {scene:'calc',title:'Pieniądze w liczbach',text:`Wpłynęło ${zl0(Y.inc)}, wydaliście ${zl0(Y.exp)}. ${Y.inc>Y.exp?`Zostało ${zl0(Y.inc-Y.exp)} – brawo!`:'Wydatki były większe niż przychody – w przyszłym roku damy radę.'}`},
     ...(top?[{scene:'lupa',title:'Najwięcej poszło na…',text:`${cleanCat(top.name)}: ${zl0(cats[0][1])} (${pctS(cats[0][1],Y.exp)} wszystkich wydatków).`}]:[]),
     ...(big?[{scene:'grumpy',title:'Największy pojedynczy wydatek',text:`${zl(big.amount)} – ${sm[big.sub]?.name||''}${big.note?` („${big.note}”)`:''}, ${big.date.split('-').reverse().join('.')}. Ivo do dziś nie może uwierzyć.`}]:[]),
     ...(fav?[{scene:'wink',title:'Wasze ulubione miejsce',text:`„${fav[0]}” – w notatkach ${fav[1]} razy.`}]:[]),
     ...(best?[{scene:'happy',title:'Najlepszy miesiąc',text:`${MN[best.i]}: zostało ${zl0(best.a.inc-best.a.exp)}.`}]:[]),
-    {scene:'coin',title:'Oszczędności',text:sd>0?`Na kontach oszczędnościowych i inwestycjach przybyło ${zl0(sd)}. Moneta do monety!`:'W tym roku oszczędności nie urosły – nowy rok, nowa skarbonka.'},
+    {scene:'coin',title:'Oszczędności',text:sd>0?`Na oszczędności i inwestycje odłożyliście ${zl0(sd)}. Moneta do monety!`:'W tym roku oszczędności nie urosły – nowy rok, nowa skarbonka.'},
     ...(treats?[{scene:'churu',title:'Smaczki 😺',text:`Na smaczki dla nas wydaliście ${zl0(treats)}. Uważamy, że to za mało, ale dziękujemy.`}]:[]),
     {scene:'celebrate',title:'Do zobaczenia w '+(+y+1)+'!',text:'Bailey pilnuje planu, Ivo pilnuje świętowania. Dobrego roku!'}];
   catSlides(sl,'Super!')}
@@ -97,13 +98,14 @@ export function shopsH(cfg,tx,pre,when){const sm=subsMap(cfg),G={};
 export function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntries(cfg.cats.map(c=>[c.id,c]));
   const A=agg(cfg,tx,ym),Pm=agg(cfg,tx,addMonths(ym,-1)),pl=S.plans[ym]||{};
   const pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,s)=>b+(pl[s.id]||0),0),0);
-  const bal=A.inc-A.exp,pbal=Pm.inc-Pm.exp,rate=A.inc?bal/A.inc*100:null,prate=Pm.inc?pbal/Pm.inc*100:null;
+  const bal=A.inc-A.exp,pbal=Pm.inc-Pm.exp,rate=A.inc?bal/A.inc*100:null;
+  const SV=savIds(cfg),put=savFlow(cfg,tx,SV,ym).flow,pput=savFlow(cfg,tx,SV,addMonths(ym,-1)).flow,prate=A.inc?put/A.inc*100:null,pprate=Pm.inc?pput/Pm.inc*100:null;
   const mName=MN[+ym.slice(5)-1].toLowerCase(),prevName=MN[+addMonths(ym,-1).slice(5)-1].toLowerCase();
   let h=`<div class="kpis">
     <div class="kpi k-em"><div class="l">Przychody</div><div class="v num">${zl(A.inc)}</div><div class="s">${deltaH(A.inc,Pm.inc,true)||'&nbsp;'}</div></div>
     <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(A.exp)}</div><div class="s">${deltaH(A.exp,Pm.exp,false)||'&nbsp;'}</div></div>
     <div class="kpi k-sk"><div class="l">Bilans miesiąca</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,pbal,true)||'&nbsp;'}</div></div>
-    <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów${prate!==null&&rate!==null?` · ${prevName}: ${prate.toFixed(0)}%`:''}</div></div></div>
+    <div class="kpi k-in"><div class="l">Odłożone</div><div class="v num">${prate===null?'—':prate.toFixed(0)+'%'}</div><div class="s">${zl0(put)} z przychodów${pprate!==null&&prate!==null?` · ${prevName}: ${pprate.toFixed(0)}%`:''}<br>zostaje z przychodów: ${rate===null?'—':rate.toFixed(0)+'%'}</div></div></div>
     ${Pm.inc||Pm.exp?`<div class="mini" style="text-align:center">Strzałki porównują z miesiącem: ${prevName}.</div>`:''}`+fxNote(A.fx);
   const cur=td().slice(0,7);
   if(ym==cur&&pexp>0&&A.exp>pexp)h+=`<div class="note bad">⚠️ Plan wydatków przekroczony o <b>${zl(A.exp-pexp)}</b>.</div>`;
@@ -133,7 +135,6 @@ export function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.f
   h+=chartBox('Wydatki dzień po dniu',`średnio ${zl0(avgDay)} dziennie · ${active} dni z wydatkami`,barsSvg(days.map((_,i)=>String(i+1)),[{name:'Wydatki',color:C_EXP,values:days}],{every:5,tipLabel:i=>(i+1)+' '+MNG[+ym.slice(5)-1]}));
   // who & accounts
   const wsum=Object.values(A.who).reduce((a,v)=>a+v,0);
-  h+=chartBox('Kto wydawał','suma wydatków według osoby',whoH(A.who,wsum));
   const accRows=Object.entries(A.acc).sort((a,b)=>b[1]-a[1]).map(([id,v])=>({l:accN(id),v,c:'#93c5fd'}));
   if(accRows.length)h+=chartBox('Z jakich kont','',hbarsH(accRows,wsum));
   // fixed vs variable
@@ -151,19 +152,20 @@ export function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Obj
   const elapsed=y<cur.slice(0,4)?12:y==cur.slice(0,4)?+cur.slice(5):0;
   /* averages count months from the first one with entries (a budget started in July must not be divided by 10 months) */
   const first=M.findIndex(a=>a.inc||a.exp),nMon=first<0?0:Math.max(1,elapsed-first);
-  const fxN=fxNote(Y.fx),bal=Y.inc-Y.exp,rate=Y.inc?bal/Y.inc*100:null,avgExp=nMon?Y.exp/nMon:0,avgInc=nMon?Y.inc/nMon:0,hasPY=!!(PY.inc||PY.exp);
+  const fxN=fxNote(Y.fx),bal=Y.inc-Y.exp,rate=Y.inc?bal/Y.inc*100:null,SV=savIds(cfg),yF=savFlow(cfg,tx,SV,y),prate=Y.inc?yF.flow/Y.inc*100:null,avgExp=nMon?Y.exp/nMon:0,avgInc=nMon?Y.inc/nMon:0,hasPY=!!(PY.inc||PY.exp);
   let h=`<div class="kpis">
     <div class="kpi k-em"><div class="l">Przychody ${y}</div><div class="v num">${zl(Y.inc)}</div><div class="s">śr. ${zl0(avgInc)}/mies. ${deltaH(Y.inc,PY.inc,true)}</div></div>
     <div class="kpi k-ro"><div class="l">Wydatki ${y}</div><div class="v num">${zl(Y.exp)}</div><div class="s">śr. ${zl0(avgExp)}/mies. ${deltaH(Y.exp,PY.exp,false)}</div></div>
     <div class="kpi k-sk"><div class="l">Zostało w roku</div><div class="v num">${zl(bal)}</div><div class="s">${nMon?`śr. ${zl0(bal/nMon)}/mies. `:''}${deltaH(bal,PY.inc-PY.exp,true)||(nMon?'':'&nbsp;')}</div></div>
-    <div class="kpi k-in"><div class="l">Odkładacie</div><div class="v num">${rate===null?'—':rate.toFixed(0)+'%'}</div><div class="s">przychodów w roku</div></div></div>
+    <div class="kpi k-in"><div class="l">Odłożone</div><div class="v num">${prate===null?'—':prate.toFixed(0)+'%'}</div><div class="s">${zl0(yF.flow)} z przychodów w roku<br>zostaje z przychodów: ${rate===null?'—':rate.toFixed(0)+'%'}</div></div></div>
     ${hasPY?`<div class="mini" style="text-align:center">Strzałki porównują z rokiem ${+y-1}.</div>`:''}`+fxN+`<div class="g2"><button class="btn" onclick="exportCsv('${y}')">📥 Eksport do Excela</button><button class="btn primary" onclick="wrapped('${y}')">🎁 Money Wrapped</button></div>`;
   if(!Y.inc&&!Y.exp)return h+`<div class="empty">Brak danych za rok ${y}.</div>`;
   const ml=['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
   h+=chartBox('Przychody i wydatki','miesiąc po miesiącu',barsSvg(ml,[{name:'Przychody',color:C_INC,values:M.map(a=>Math.max(0,a.inc))},{name:'Wydatki',color:C_EXP,values:M.map(a=>Math.max(0,a.exp))}],{tipLabel:i=>MN[i]}),legendH([{l:'Przychody',c:C_INC},{l:'Wydatki',c:C_EXP}]));
   if(!ctx.full){const cr=Object.entries(Y.cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([id,v])=>({l:cleanCat(cats[id]?.name),v,c:markOf(cats[id]),dot:markOf(cats[id])}));return h+(cr.length?chartBox('Kategorie w całym roku','',hbarsH(cr,Y.exp)):'')}
-  const sv=months.map((m,i)=>i<elapsed||y<cur.slice(0,4)?savAt(m+'-32'):null);
-  if(sv.some(v=>v!==null))h+=chartBox('Oszczędności','konta oszczędnościowe + wpłacone w inwestycje, na koniec miesiąca',lineSvg(ml,sv,C_SAV));
+  {const n=y<cur.slice(0,4)?12:elapsed,v0=savAt(y+'-01-01');let paid=v0;const pts=[{d:y+'-01-01',paid:v0,value:v0}];
+    for(let i=0;i<n;i++){const m=months[i];paid+=savFlow(cfg,tx,SV,m).flow;pts.push({d:m+'-'+p2(daysIn(m)),paid,value:savAt(m+'-32')})}
+    if(n&&pts.some(p=>p.value||p.paid))h+=chartBox('Oszczędności i inwestycje',`przerywana – stan z 1 stycznia + odłożone · fioletowa – wartość${yF.gain?` · różnica to zmiana kursów (${yF.gain>0?'+':'−'}${zl0(Math.abs(yF.gain))})`:''}`,gainSvg(pts))}
   h+=wealthH(y)+catGridH(cfg,M)+inflationH(cfg,tx,y);
   // months table
   h+=`<section class="chart"><div class="ct"><b>Miesiąc po miesiącu</b><span class="mini">kwoty w zł</span></div><div class="tw"><table class="tbl"><thead><tr><th><span class="mf">Miesiąc</span><span class="msh">Mies.</span></th><th>Przychody</th><th>Wydatki</th><th>Bilans</th></tr></thead><tbody>${M.map((a,i)=>a.inc||a.exp?`<tr><td><span class="mf">${MN[i]}</span><span class="msh">${MN[i].slice(0,3)}</span></td><td class="num">${n0(a.inc)}</td><td class="num">${n0(a.exp)}</td><td class="num ${a.inc-a.exp<0?'t-exp':'t-inc'}">${n0(a.inc-a.exp)}</td></tr>`:'').join('')}<tr class="tot"><td>Razem</td><td class="num">${n0(Y.inc)}</td><td class="num">${n0(Y.exp)}</td><td class="num">${n0(bal)}</td></tr></tbody></table></div></section>`;
@@ -179,6 +181,6 @@ export function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Obj
   if(catRows.length)h+=chartBox('Kategorie w całym roku','suma, udział i średnia miesięczna',hbarsH(catRows,Y.exp));
   h+=shopsH(cfg,tx,y,'w całym roku');
   const wsum=Object.values(Y.who).reduce((a,v)=>a+v,0);
-  h+=chartBox('Kto wydawał w roku','',whoH(Y.who,wsum));
+  h+=personsH(cfg,tx,y);
   if(Y.fixed)h+=`<div class="note">📌 Opłaty stałe w ${y}: <b>${zl(Y.fixed)}</b>, czyli ${pctS(Y.fixed,wsum)} wszystkich wydatków.</div>`;
   return h}

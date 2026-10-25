@@ -220,14 +220,14 @@ Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komend
 - [x] „Przychody stałe” na inne stałe przychody (np. najem mieszkania), nowe bez pól PPK
 
 ## Etap O. Prawdziwe liczby
-- [ ] „Odłożone” = tylko wpłaty na oszczędności i inwestycje (z PPK) minus wypłaty; zmiana kursów i wycen osobno („inwestycje zarobiły / straciły”) – Oszczędności (cel miesięczny, konfetti), Mati ↔ Wercia, mail miesięczny, podsumowanie roku, FIRE
-- [ ] Analiza: „Odkładacie %” → „Zostaje z przychodów” + prawdziwy procent odłożony
-- [ ] Budżet: wiersz „🐷 odłożone w tym miesiącu X z Y zł”
-- [ ] Analiza Roku: wykres oszczędności z liniami „wpłacone” i „wartość”
-- [ ] Jedna karta poduszki: tylko konta oszczędnościowe (bez IKE, IKZE, PPK, OKI)
-- [ ] Cele-koperty: „do przydzielenia” bez IKE, IKZE, PPK, OKI (przydzielone kwoty zostają)
-- [ ] FIRE: tempo odkładania z prawdziwych wpłat
-- [ ] Mati ↔ Wercia według właściciela konta (Mati / Wercia / Wspólne); bez zdublowanej karty „Kto wydawał”
+- [x] „Odłożone” = tylko wpłaty na oszczędności i inwestycje (z PPK) minus wypłaty; zmiana kursów i wycen osobno („inwestycje zarobiły / straciły”) – Oszczędności (cel miesięczny, konfetti), Mati ↔ Wercia, mail miesięczny, podsumowanie roku, FIRE
+- [x] Analiza: „Odkładacie %” → „Zostaje z przychodów” + prawdziwy procent odłożony
+- [x] Budżet: wiersz „🐷 odłożone w tym miesiącu X z Y zł”
+- [x] Analiza Roku: wykres oszczędności z liniami „wpłacone” i „wartość”
+- [x] Jedna karta poduszki: tylko konta oszczędnościowe (bez IKE, IKZE, PPK, OKI)
+- [x] Cele-koperty: „do przydzielenia” bez IKE, IKZE, PPK, OKI (przydzielone kwoty zostają)
+- [x] FIRE: tempo odkładania z prawdziwych wpłat
+- [x] Mati ↔ Wercia według właściciela konta (Mati / Wercia / Wspólne); bez zdublowanej karty „Kto wydawał”
 
 ## Etap P. Planowanie
 - [ ] Wydatki roczne same w planie miesiąca płatności (nie kopiują się na kolejny miesiąc)

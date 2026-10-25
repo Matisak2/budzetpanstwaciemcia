@@ -40,10 +40,6 @@ export const chartBox=(title,sub,body,legend='')=>`<section class="chart"><div c
 export const legendH=items=>`<div class="lg">${items.map(i=>`<span><i style="background:${i.c}"></i>${esc(i.l)}</span>`).join('')}</div>`;
 export function hbarsH(rows,total){const mx=Math.max(1,...rows.map(r=>r.v));
   return`<div class="hbl">${rows.map(r=>`<div class="hr" data-tip="${esc(r.l)}: ${zl(r.v)}${total?' ('+pctS(r.v,total)+')':''}"><div class="r1"><span class="hl">${r.dot?`<i style="background:${r.dot}"></i>`:''}${esc(r.l)}</span><span class="num">${zl(r.v)}${total?`<em> ${pctS(r.v,total)}</em>`:''}</span></div><div class="hbar"><i style="width:${(r.v/mx*100).toFixed(1)}%;background:${r.c||'#334155'}"></i></div>${r.note?`<div class="mini">${r.note}</div>`:''}</div>`).join('')}</div>`}
-export function whoH(who,total){const names=['Mati','Wercia','—'],cols={Mati:'#7fb0ec',Wercia:'#f0a3c3','—':P_OTHER};
-  const rows=names.filter(n=>who[n]).map(n=>({n,v:who[n]}));if(!rows.length)return'<div class="mini">Brak wydatków.</div>';
-  return`<div class="stack">${rows.map(r=>`<i style="width:${(r.v/total*100).toFixed(2)}%;background:${cols[r.n]}" data-tip="${r.n=='—'?'Nieprzypisane':r.n}: ${zl(r.v)} (${pctS(r.v,total)})"></i>`).join('')}</div>
-    <div class="lg" style="margin-top:8px">${rows.map(r=>`<span><i style="background:${cols[r.n]}"></i>${r.n=='—'?'Nieprzypisane':r.n}: <b class="num">${zl(r.v)}</b> (${pctS(r.v,total)})</span>`).join('')}</div>`}
 /* "paid in vs value": paid as steps, value as a line, the gap green (gain) or pink (loss); pts=[{d,paid,value}] sorted by date */
 export function gainSvg(pts,{h=190,money=zl}={}){if(!pts.length)return'';
   const W=340,PL=46,PR=10,PT=12,PB=22,ch=h-PT-PB,t=d=>new Date(d+'T12:00:00').getTime();

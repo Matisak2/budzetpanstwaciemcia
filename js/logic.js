@@ -18,6 +18,18 @@ export function balance(cfg,tx,id,before){const open=cfg.accs.find(a=>a.id===id)
     ix=new Map();for(const[a,L]of per){L.sort((x,y)=>x[0]<y[0]?-1:x[0]>y[0]?1:0);const ds=L.map(x=>x[0]),cum=[0];for(const x of L)cum.push(cum[cum.length-1]+x[1]);ix.set(a,{ds,cum})}BAL.set(tx,ix)}
   const e=ix.get(id);if(!e)return open;let lo=0,hi=e.ds.length;while(lo<hi){const mid=(lo+hi)>>1;if(e.ds[mid]<before)lo=mid+1;else hi=mid}
   return open+e.cum[lo]}
+/* whose an account is: Mati / Wercia / Wspólne (older accounts without owner – by the name) */
+export const ownerOf=a=>a?.owner||(/wercia|weronika/i.test(a?.name||'')?'Wercia':/mati/i.test(a?.name||'')?'Mati':'Wspólne');
+/* 🐷 savings and investment accounts in złoty (also archived ones – money moved out of them still counts), of one owner or all */
+export const savIds=(cfg,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&(!a.cur||a.cur=='PLN')&&(!owner||ownerOf(a)==owner)).map(a=>a.id);
+/* 🐷 what was really put aside in a month ('YYYY-MM') or a year ('YYYY'): money moved into these accounts minus money taken out
+   (transfers, PPK, income booked on them, spending from them); a transfer between two of them cancels out.
+   Value changes of investments (adj val – prices, valuations, the automat) are NOT put aside – they come back apart as gain. */
+export function savFlow(cfg,tx,ids,prefix){const S=new Set(ids);let flow=0,gain=0;
+  for(const t of inPeriod(tx,prefix)){if(!t.date.startsWith(prefix))continue;let v=0;
+    if(S.has(t.acc))v+=t.type=='inc'||t.type=='adj'||t.type=='invs'?t.amount:-t.amount;if(t.type=='tr'&&S.has(t.to))v+=t.amount2??t.amount;
+    if(t.type=='adj'&&t.val)gain+=v;else flow+=v}
+  return{flow,gain}}
 /* budget sums count złoty only – other currencies are summed apart (agg().fx) */
 /* projects outside the everyday budget (one-off trips, renovations) are not counted in plans and analyses */
 export const outProj=cfg=>new Set((cfg.projs||[]).filter(p=>p.inBudget===false).map(p=>p.id));
@@ -79,16 +91,18 @@ export function planRecon(diffs){// diffs: [{id,d,inv,cur}] – transfers only b
     pos.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:x.d})});neg.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:-x.d})})}
   diffs.filter(x=>x.inv&&x.d).forEach(x=>ops.push({kind:'val',acc:x.id,amount:x.d}));
   return ops}
-export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outProj(cfg),r={inc:0,exp:0,cat:{},sub:{},who:{},acc:{},day:{},fixed:0,big:[],n:0,fx:{inc:{},exp:{},cat:{},sub:{}}};
+export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outProj(cfg),r={inc:0,exp:0,cat:{},sub:{},who:{},own:{},acc:{},day:{},fixed:0,big:[],n:0,fx:{inc:{},exp:{},cat:{},sub:{}}};
+  /* own: spending by whose account it came from (Mati / Wercia / Wspólne) – „who” is only who typed it */
+  const ow={};cfg.accs.forEach(a=>ow[a.id]=ownerOf(a));
   const add=(m,k,c,v)=>{const x=m[k]=m[k]||{};x[c]=(x[c]||0)+v};
   for(const t of inPeriod(tx,prefix)){if(!t.date.startsWith(prefix)||(t.proj&&op.has(t.proj)))continue;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))continue;
     const a=(t.type==s.cat.type?1:-1)*t.amount,c=cm[t.acc]||'PLN';
     if(c!='PLN'){const F=r.fx;if(s.cat.type=='inc')F.inc[c]=(F.inc[c]||0)+a;else{F.exp[c]=(F.exp[c]||0)+a;add(F.cat,s.cat.id,c,a);add(F.sub,s.id,c,a)}continue}
     if(s.cat.type=='inc'){r.inc+=a;continue}
     r.exp+=a;r.cat[s.cat.id]=(r.cat[s.cat.id]||0)+a;r.sub[s.id]=(r.sub[s.id]||0)+a;
-    if(t.type=='exp'){r.n++;const w=t.who||'—';r.who[w]=(r.who[w]||0)+t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)+t.amount;
+    if(t.type=='exp'){r.n++;const w=t.who||'—',o=ow[t.acc]||'Wspólne';r.who[w]=(r.who[w]||0)+t.amount;r.own[o]=(r.own[o]||0)+t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)+t.amount;
       const d=+t.date.slice(8);r.day[d]=(r.day[d]||0)+t.amount;if(t.fixedId)r.fixed+=t.amount;r.big.push(t)}
-    else if(t.refundOf){const w=t.who||'—';r.who[w]=(r.who[w]||0)-t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)-t.amount}}
+    else if(t.refundOf){const w=t.who||'—',o=ow[t.acc]||'Wspólne';r.who[w]=(r.who[w]||0)-t.amount;r.own[o]=(r.own[o]||0)-t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)-t.amount}}
   r.big.sort((a,b)=>b.amount-a.amount);r.big=r.big.slice(0,5);return r}
 /* average of each position over the previous n months that have any data (plan hint, "Wypełnij średnimi", anomalies) */
 /* the first month with any entry (remembered per list; sorting all dates every time was slow) */

@@ -3,7 +3,7 @@ import {doc,collection,setDoc,deleteDoc,updateDoc,deleteField,getDocs} from "htt
 import {catIcon,catsEmpty} from './art.js';
 import {CELEBRATE} from './guide.js';
 import {HUES,catHue,freeHue} from './data.js';
-import {position} from './inv.js';
+import {position,wrapOf} from './inv.js';
 import {ULGI} from './today.js';
 import {suggest} from './pay.js';
 import {balance,buildIcs,cleanCat,fixedDate,liveOf,planRecon,subsMap} from './logic.js';
@@ -202,7 +202,7 @@ export async function updateValue(id){if(guard())return;const a=S.cfg.accs.find(
 /* ---------- savings goals as envelopes: money in savings + investment accounts is assigned to goals ---------- */
 export const goalAlloc=g=>g.alloc??g.saved??0;
 export const goalOwner=g=>g.owner||'Wspólne';
-export const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&isP(a)&&(!owner||accOwner(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
+export const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||(a.grp=='inv'&&!wrapOf(a)))&&isP(a)&&(!owner||accOwner(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
 export function goalProgress(g,cfg,tx,today){const saved=goalAlloc(g);
   const pct=g.target?Math.max(0,saved/g.target*100):0,left=Math.max(0,g.target-saved);
   let months=null,perMonth=null;
@@ -232,7 +232,7 @@ export async function allocGoal(gid,dir){if(guard())return;const g=S.goals[gid],
   const nv=have+dir*v;merge(doc(GOALS(),gid),{alloc:nv,saved:nv});
   if(dir>0&&nv>=g.target&&have<g.target){setTimeout(()=>celebrate(CELEBRATE.goal(S.who,g.name)),150);return}
   toast(`${dir>0?'Przydzielono':'Zabrano'} ${zl(v)}`,'',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),{alloc:have,saved:have})})}
-export async function setSavTarget(){if(guard())return;const r=await ask({title:'Ile chcecie odkładać co miesiąc?',text:'Liczy się wszystko, co przybyło na kontach oszczędnościowych i inwestycjach w danym miesiącu. Wpisz 0, żeby wyłączyć.',fields:[{id:'v',label:'Kwota miesięcznie (zł)',type:'decimal',value:S.savTarget?f2(S.savTarget):'',ph:'np. 2000'}]});
+export async function setSavTarget(){if(guard())return;const r=await ask({title:'Ile chcecie odkładać co miesiąc?',text:'Liczą się wpłaty na konta oszczędnościowe i inwestycyjne (także PPK) minus wypłaty z nich. Zmiana kursów inwestycji się nie liczy. Wpisz 0, żeby wyłączyć.',fields:[{id:'v',label:'Kwota miesięcznie (zł)',type:'decimal',value:S.savTarget?f2(S.savTarget):'',ph:'np. 2000'}]});
   if(!r)return;merge(H,{savTarget:Math.max(0,pg(r.v))});toast('Zapisano cel miesięczny')}
 export function setSub(k){S.sub=k;render()}
 /* bulk reconcile screen in the Accounts tab */
