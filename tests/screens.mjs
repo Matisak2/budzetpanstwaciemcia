@@ -75,6 +75,16 @@ for(const C of CASES){
   if(C===CASES[0]){await p.evaluate(()=>closeAll());const box=await p.locator('.mlab').boundingBox();
     for(const want of [true,false]){await p.mouse.move(box.x+box.width/2,box.y+box.height/2);await p.mouse.down();await p.waitForTimeout(800);await p.mouse.up();await p.waitForTimeout(300);
       if(await p.evaluate(()=>document.body.classList.contains('hidev'))!==want)fail(`${tag}: przytrzymanie nazwy miesiąca nie ${want?'włącza':'wyłącza'} trybu dyskretnego`)}}
+  /* 👯 the same receipt typed twice: a question before saving, „Nie zapisuj” keeps everything as it was */
+  if(C===CASES[0]){try{await p.evaluate(()=>closeAll());
+    const n0=await p.evaluate(()=>{const t=S.tx.find(t=>!t.deleted&&t.type=='exp'&&t.note&&!t.fixedId&&!t.split);openTx();
+      $('ma').value=String(t.amount/100).replace('.',',');$('md').value=t.date;$('mn').value=t.note;$('ms').value=t.sub;return S.tx.length});
+    await p.waitForTimeout(200);await p.click('#shSave');await p.waitForTimeout(400);
+    if(!await p.evaluate(()=>!document.getElementById('dlg').hidden&&/Taki wpis już jest/.test(document.getElementById('dlg').innerText)))fail(`${tag}: brak ostrzeżenia przed podwójnym wpisem`);
+    else{await p.click('#dlg button:has-text("Nie zapisuj")');await p.waitForTimeout(400);
+      if(await p.evaluate(()=>S.tx.length)!==n0||await p.evaluate(()=>document.getElementById('sheet').hidden))fail(`${tag}: „Nie zapisuj” nie zostawia okienka bez zmian`)}
+    await p.evaluate(()=>closeAll());
+  }catch(e){fail(`${tag}: test podwójnego wpisu – ${e.message.split('\n')[0]}`)}}
   /* 📷 receipt photo: add (a generated picture), save, open again, remove – only in the first phone setting */
   if(C===CASES[0]){try{
     const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==','base64');

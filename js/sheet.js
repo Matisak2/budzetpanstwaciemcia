@@ -179,6 +179,12 @@ export function openTx(id,pre){if(guard())return;
   $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;$('shNext').hidden=!!t;
   $('sheet').hidden=false;if(!t)setTimeout(()=>$('ma').focus(),80)}
 export const closeSheet=()=>{$('sheet').hidden=true;S.edit=null;S.refEdit=false;SP=[];PH=[];$('phv').hidden=true;closePick()};
+/* 👯 the same entry already there? (both of you typing the same receipt): same kind and amount, a day apart at most,
+   and the same note, position or – for a transfer – the same two accounts */
+function dupOf(type,amount,date,note,sub,acc,to){const n=norm(stripFx(note)),lo=addDays(date,-1),hi=addDays(date,1),sm=subsMap(S.cfg);
+  const t=liveOf(S.tx).find(t=>t.type==type&&t.amount==amount&&t.date>=lo&&t.date<=hi&&!t.roundOf&&(type=='tr'?t.acc==acc&&t.to==to:(n&&norm(stripFx(t.note))==n)||(sub&&t.sub==sub)));
+  if(!t)return null;const who=t.by||t.who,V=w=>w=='Wercia'?'dodała':'dodał';
+  return{t,label:`${t.note?stripFx(t.note):sm[t.sub]?.name||'Przelew'} · ${am(t.amount,t.acc)} · ${t.date.split('-').reverse().join('.')}${who?` · ${V(who)} ${who}`:''}`}}
 export async function saveTx(next){if(guard())return;
   const keep={acc:$('mc').value,date:$('md').value,who:$('mw').value,type:S.etype};
   const type=S.etype,amount=calcAmt($('ma').value),date=$('md').value;
@@ -199,6 +205,8 @@ export async function saveTx(next){if(guard())return;
   if(parts.some(x=>x.amount<=0))return toast('Podaj kwotę w każdym wierszu paragonu','bad');
   const main=amount-parts.reduce((a,x)=>a+x.amount,0);
   if(main<=0)return toast('Pozycje paragonu przekraczają jego kwotę','bad');
+  if(!S.edit){const d=dupOf(type,amount,date,$('mn').value,type=='tr'?'':$('ms').value,$('mc').value,$('mto').value);
+    if(d&&!await ask({title:'Taki wpis już jest',text:`${d.label}\n\nCzy to ten sam zakup? Jeśli tak, nie zapisuj go drugi raz.`,ok:'Zapisz mimo to',cancel:'Nie zapisuj'}))return}
   ls.set('mw_acc_'+S.who,$('mc').value);
   const old=S.edit?liveById(S.edit):null,id=old?old.id:'t'+rid();
   const base={type,date,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?S.who:$('mw').value,note:[stripFx($('mn').value.trim()),auto].filter(Boolean).join(' · '),deleted:false,ts:Date.now()};
