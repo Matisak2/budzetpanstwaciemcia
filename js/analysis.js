@@ -4,7 +4,7 @@ import {scene} from './cats.js';
 import {isTreat,kotki} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,gainSvg,hbarsH,legendH,lineSvg,pctS} from './charts.js';
 import {OWN,OWN_COL,catHue,catMark} from './data.js';
-import {anomalies,actuals,agg,balance,cleanCat,liveOf,subsMap,savFlow,savIds,planOf,yearSubs} from './logic.js';
+import {anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs} from './logic.js';
 import {$,MN,MNG,addMonths,daysIn,esc,ls,p2,sleep,td,zl,zl0,money,fxTxt} from './util.js';
 import {S,catSlides,celebrate,toast,accCur,isP,accOwner,w} from './core.js';
 import {norm,plu} from './sheet.js';
@@ -19,12 +19,12 @@ export function setAnaMode(k){ls.set('mw_anam',k);render()}
 export function monthSumH(cfg,tx,ym){const act=actuals(cfg,tx,ym),pl=planOf(cfg,S.plans,tx,ym),L=cfg.cats.filter(c=>c.type=='exp').flatMap(c=>c.subs.map(s=>({s,p:pl[s.id]||0,a:act[s.id]||0}))).filter(x=>x.p||x.a);
   if(!L.length)return'';const fit=L.filter(x=>x.p&&x.a<=x.p),over=L.filter(x=>x.p&&x.a>x.p).sort((a,b)=>(b.a-b.p)-(a.a-a.p)),less=fit.filter(x=>x.a<=x.p*0.8).sort((a,b)=>(b.p-b.a)-(a.p-a.a)),out=L.filter(x=>!x.p&&x.a>0).sort((a,b)=>b.a-a.a);
   const saved=fit.reduce((a,x)=>a+x.p-x.a,0),lst=(X,f)=>X.slice(0,4).map(f).join(', ');
-  const good=!over.length&&!out.length,who=good?'Ivo':'Bailey';
+  const good=!over.length&&!out.length,who=good?'Ivo':'Bailey',live=ym==td().slice(0,7),left=daysIn(ym)-(+td().slice(8));
   return`<section class="chart msum"><div class="ct"><b>Podsumowanie miesiąca</b><span class="mini">${MN[+ym.slice(5)-1]} ${ym.slice(0,4)}</span></div>
-    ${kotki.mode=='off'?'':`<div class="msk">${scene(good?'ivoHappy':'lupa','kot sm')}<span class="mini"><b>${who}:</b> ${good?'Wszystko w planie! Należy się smaczek 😺':over.length?`${over.length} ${plu(over.length,'pozycja przekroczyła','pozycje przekroczyły','pozycji przekroczyło')} plan. Zerknijmy razem, co się stało.`:'Kilka wydatków było poza planem – warto je dopisać do planu.'}</span></div>`}
-    <div class="facts"><div>✅ Zmieściło się: <b>${fit.length}</b> ${plu(fit.length,'pozycja','pozycje','pozycji')}${saved?` · zostało ${zl0(saved)}`:''}</div>
+    ${kotki.mode=='off'?'':`<div class="msk">${scene(good?'ivoHappy':'lupa','kot sm')}<span class="mini"><b>${who}:</b> ${good?(live?`Na razie wszystko w planie 👍 Do końca miesiąca ${left} ${plu(left,'dzień','dni','dni')}.`:'Wszystko w planie! Należy się smaczek 😺'):over.length?`${over.length} ${plu(over.length,'pozycja przekroczyła','pozycje przekroczyły','pozycji przekroczyło')} plan. Zerknijmy razem, co się stało.`:'Kilka wydatków było poza planem – warto je dopisać do planu.'}</span></div>`}
+    <div class="facts">${live?`<div>⏳ Miesiąc jeszcze trwa – „zmieściło się” policzę po jego końcu. W planie zostało ${zl0(saved)}.</div>`:`<div>✅ Zmieściło się: <b>${fit.length}</b> ${plu(fit.length,'pozycja','pozycje','pozycji')}${saved?` · zostało ${zl0(saved)}`:''}</div>`}
     ${over.length?`<div>▲ Przekroczone: <b>${over.length}</b> – ${esc(lst(over,x=>x.s.name+' +'+zl0(x.a-x.p)))}</div>`:''}
-    ${less.length?`<div>💚 Wyraźnie mniej niż plan: ${esc(lst(less,x=>x.s.name+' −'+zl0(x.p-x.a)))}</div>`:''}
+    ${less.length&&!live?`<div>💚 Wyraźnie mniej niż plan: ${esc(lst(less,x=>x.s.name+' −'+zl0(x.p-x.a)))}</div>`:''}
     ${out.length?`<div>⚠️ Poza planem: ${esc(lst(out,x=>x.s.name+' '+zl0(x.a)))}</div>`:''}</div></section>`}
 /* 💑 Mati ↔ Wercia: spending by whose account it came from (a shared account = Wspólne; „Kto” is only who typed it) and what each put aside */
 export function personsH(cfg,tx,prefix){const sm=subsMap(cfg),per={},tot={};OWN.forEach(o=>{per[o]={};tot[o]=0});const ow={};cfg.accs.forEach(a=>ow[a.id]=accOwner(a));
@@ -96,17 +96,19 @@ export function shopsH(cfg,tx,pre,when){const sm=subsMap(cfg),G={};
   const rest=L.slice(8).reduce((a,g)=>a+g.v,0);if(rest>0)rows.push({l:`Inne miejsca (${L.length-8})`,v:rest,c:P_OTHER,dot:P_OTHER});
   return chartBox('🏪 Gdzie wydajemy','sklepy i miejsca z notatek '+when+' (bez opłat stałych)',hbarsH(rows,tot))}
 export function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntries(cfg.cats.map(c=>[c.id,c]));
-  const A=agg(cfg,tx,ym),Pm=agg(cfg,tx,addMonths(ym,-1)),pl=planOf(cfg,S.plans,tx,ym);
+  /* ⏳ the month still lasts: compare with the previous month up to the same day (not with the whole month) */
+  const live=ym==td().slice(0,7),pym=addMonths(ym,-1),upTo=Math.min(+td().slice(8),daysIn(pym)),ptx=live?upToDay(tx,pym,upTo):tx;
+  const A=agg(cfg,tx,ym),Pm=agg(cfg,ptx,pym),pl=planOf(cfg,S.plans,tx,ym);
   const pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,s)=>b+(pl[s.id]||0),0),0);
   const bal=A.inc-A.exp,pbal=Pm.inc-Pm.exp,rate=A.inc?bal/A.inc*100:null;
-  const SV=savIds(cfg),put=savFlow(cfg,tx,SV,ym).flow,pput=savFlow(cfg,tx,SV,addMonths(ym,-1)).flow,prate=A.inc?put/A.inc*100:null,pprate=Pm.inc?pput/Pm.inc*100:null;
+  const SV=savIds(cfg),put=savFlow(cfg,tx,SV,ym).flow,pput=savFlow(cfg,ptx,SV,pym).flow,prate=A.inc?put/A.inc*100:null,pprate=Pm.inc?pput/Pm.inc*100:null;
   const mName=MN[+ym.slice(5)-1].toLowerCase(),prevName=MN[+addMonths(ym,-1).slice(5)-1].toLowerCase();
   let h=`<div class="kpis">
     <div class="kpi k-em"><div class="l">Przychody</div><div class="v num">${zl(A.inc)}</div><div class="s">${deltaH(A.inc,Pm.inc,true)||'&nbsp;'}</div></div>
     <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(A.exp)}</div><div class="s">${deltaH(A.exp,Pm.exp,false)||'&nbsp;'}</div></div>
     <div class="kpi k-sk"><div class="l">Bilans miesiąca</div><div class="v num">${zl(bal)}</div><div class="s">${deltaH(bal,pbal,true)||'&nbsp;'}</div></div>
     <div class="kpi k-in"><div class="l">Odłożone</div><div class="v num">${prate===null?'—':prate.toFixed(0)+'%'}</div><div class="s">${zl0(put)} z przychodów${pprate!==null&&prate!==null?` · ${prevName}: ${pprate.toFixed(0)}%`:''}<br>zostaje z przychodów: ${rate===null?'—':rate.toFixed(0)+'%'}</div></div></div>
-    ${Pm.inc||Pm.exp?`<div class="mini" style="text-align:center">Strzałki porównują z miesiącem: ${prevName}.</div>`:''}`+fxNote(A.fx);
+    ${Pm.inc||Pm.exp?`<div class="mini" style="text-align:center">${live?`⏳ Miesiąc jeszcze trwa – strzałki porównują z: ${prevName} do ${upTo}. dnia.`:`Strzałki porównują z miesiącem: ${prevName}.`}</div>`:''}`+fxNote(A.fx);
   const cur=td().slice(0,7);
   if(ym==cur&&pexp>0&&A.exp>pexp)h+=`<div class="note bad">⚠️ Plan wydatków przekroczony o <b>${zl(A.exp-pexp)}</b>.</div>`;
   h+=monthSumH(cfg,tx,ym);
@@ -126,7 +128,7 @@ export function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.f
   // changes vs previous month
   const ch=cfg.cats.filter(c=>c.type=='exp').map(c=>({l:cleanCat(c.name),d:(A.cat[c.id]||0)-(Pm.cat[c.id]||0)})).filter(x=>Math.abs(x.d)>=100);
   const ups=ch.filter(x=>x.d>0).sort((a,b)=>b.d-a.d).slice(0,3),downs=ch.filter(x=>x.d<0).sort((a,b)=>a.d-b.d).slice(0,3);
-  if(ups.length||downs.length)h+=`<section class="chart"><div class="ct"><b>Co się zmieniło</b><span class="mini">w porównaniu z: ${prevName}</span></div><div class="chg">
+  if(ups.length||downs.length)h+=`<section class="chart"><div class="ct"><b>Co się zmieniło</b><span class="mini">w porównaniu z: ${prevName}${live?` do ${upTo}. dnia`:''}</span></div><div class="chg">
     <div><div class="mini" style="font-weight:800">Więcej niż ostatnio</div>${ups.map(x=>`<div class="r1"><span>${esc(x.l)}</span><b class="t-exp num">+${zl0(x.d)}</b></div>`).join('')||'<div class="mini">—</div>'}</div>
     <div><div class="mini" style="font-weight:800">Mniej niż ostatnio</div>${downs.map(x=>`<div class="r1"><span>${esc(x.l)}</span><b class="t-inc num">−${zl0(-x.d)}</b></div>`).join('')||'<div class="mini">—</div>'}</div></div></section>`;
   // daily spending

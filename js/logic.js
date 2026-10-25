@@ -9,6 +9,8 @@ export const liveOf=tx=>{let r=LIVE.get(tx);if(!r){r=tx.filter(t=>!t.deleted&&is
 export function inPeriod(tx,prefix){if(prefix.length!=7&&prefix.length!=4)return tx.filter(t=>t.date&&t.date.startsWith(prefix));
   let m=BYM.get(tx);if(!m){m=new Map();for(const t of tx){const k=(t.date||'').slice(0,7);let a=m.get(k);if(!a)m.set(k,a=[]);a.push(t)}BYM.set(tx,m)}
   if(prefix.length==7)return m.get(prefix)||[];const out=[];for(let i=1;i<=12;i++){const a=m.get(prefix+'-'+String(i).padStart(2,'0'));if(a)for(const t of a)out.push(t)}return out}
+/* ⏳ entries of a month up to a day (the previous month „do tego samego dnia” while the current one still lasts) */
+export const upToDay=(tx,ym,day)=>inPeriod(tx,ym).filter(t=>t.date&&+t.date.slice(8)<=day);
 /* currency of every account (PLN when not set) */
 export const curMap=cfg=>{const m={};cfg.accs.forEach(a=>m[a.id]=a.cur||'PLN');return m};
 export function balance(cfg,tx,id,before){const open=cfg.accs.find(a=>a.id===id)?.open||0;

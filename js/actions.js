@@ -434,9 +434,12 @@ export function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQu
   const days={};lv.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));
   const yr=F.scope!='m';
   h+=Object.entries(days).slice(0,400).map(([d,ts])=>{const dd=new Date(d+'T12:00:00').toLocaleDateString('pl-PL',yr?{weekday:'short',day:'numeric',month:'long',year:'numeric'}:{weekday:'long',day:'numeric',month:'long'});
-    return`<div class="day">${esc(dd)}</div><div class="list">${ts.map(t=>txRowH(t,sm,rf,cn)).join('')}</div>`}).join('');
+    /* the day's spending (refunds subtract, a full payoff of a loan is not spending) – in each currency */
+    const E={};ts.forEach(t=>{const c=accCur(t.acc),v=t.type=='exp'&&!t.payoff?t.amount:t.refundOf?-t.amount:0;if(v)E[c]=(E[c]||0)+v});const es=((E.PLN?zl(E.PLN):'')+fxPlus({...E,PLN:0})).replace(/^ \+ /,'');
+    return`<div class="day"><span>${esc(dd)}</span>${es&&Object.values(E).some(v=>v>0)?`<span class="dsum num">−${es}</span>`:''}</div><div class="list">${ts.map(t=>txRowH(t,sm,rf,cn)).join('')}</div>`}).join('');
   return h}
 export let qT=null;
 export function setQ(v){S.f.q=v;clearTimeout(qT);qT=setTimeout(()=>{const el=$('txlist');if(el)el.innerHTML=txListH()},150)}
 export function setF(k,v){S.f[k]=v;if(document.activeElement?.id=='fq')document.activeElement.blur();render()}
+export function togF(){S.fOpen=!S.fShown;render()}
 export function clearF(){S.f={q:'',type:'',who:'',acc:'',cat:'',scope:'m'};if(document.activeElement?.id=='fq')document.activeElement.blur();render()}

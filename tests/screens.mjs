@@ -26,7 +26,7 @@ const exe=['/opt/pw-browsers/chromium'].find(p=>fs.existsSync(p));
 const browser=await chromium.launch(exe?{executablePath:exe}:{});
 
 /* every screen: [name, code run in the page] */
-const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['stale',"goTab('fix');setFixSub('fix')"],['pensje',"setFixSub('pay')"],['pit',"setPayView&&setPayView('year')"],
+const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-filtry',"togF()"],['stale',"goTab('fix');setFixSub('fix')"],['pensje',"setFixSub('pay')"],['pit',"setPayView&&setPayView('year')"],
   ['roczne',"setFixSub('year')"],['przypomnienia',"setFixSub('rem')"],['oszczednosci',"goTab('sav')"],['konta',"goTab('acc');setAccView('acc')"],['my-winni',"setAccView('owe')"],
   ['nam-winni',"setAccView('lent')"],['analiza',"goTab('ana');setAna('m');setAnaMode('full')"],['analiza-podst',"setAnaMode('basic')"],['analiza-rok',"setAnaMode('full');setAna('y')"],
   ['ustawienia',"S.setOpen={bud:1,tel:1,bez:1,auto:1,pom:1};goTab('set')"],

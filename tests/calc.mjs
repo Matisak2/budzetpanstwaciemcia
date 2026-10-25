@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP} from '../js/today.js';
-import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap} from '../js/logic.js';
+import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 
 let n=0,bad=0;
@@ -71,6 +71,11 @@ const N=' ';
   // „Na dziś”: Czynsz po terminie, ale jest podobny wpis → propozycja połączenia zamiast „po terminie”
   const D={cfg:{...cfg,years:[]},tx:[{id:'t5',...E('czy',185000,'2026-10-03','czynsz')}],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-20T12:00:00').getTime()},hraw:{}};
   const it=todayItems(D,{today:'2026-10-20',checks:false});eq('Na dziś – połącz zamiast po terminie',it.some(x=>x.icon=='💡'&&x.text.startsWith('Czynsz'))&&!it.some(x=>x.text.startsWith('Czynsz')&&x.k=='bad'),true);
+}
+/* ---------- ⏳ trwający miesiąc: poprzedni miesiąc do tego samego dnia ---------- */
+{ const cfg={accs:[{id:'a',grp:'cur'}],cats:[{id:'c',type:'exp',name:'Dom',subs:[{id:'s',name:'Jedzenie'}]}]},E=(d,a)=>({id:d,type:'exp',sub:'s',acc:'a',amount:a,date:d});
+  const tx=[E('2026-09-03',10000),E('2026-09-25',20000),E('2026-09-26',40000),E('2026-10-02',5000)];
+  eq('Wrzesień do 25. dnia',agg(cfg,upToDay(tx,'2026-09',25),'2026-09').exp,30000);eq('Cały wrzesień',agg(cfg,tx,'2026-09').exp,70000);
 }
 /* ---------- 🎓 ulga dla młodych (do 26 lat, limit 85 528 zł) ---------- */
 { // 10 000 zł brutto w całości w limicie: ZUS 1 371 i zdrowotna 776,61 jak zwykle, podatku 0 → na konto 7 852,39 zł

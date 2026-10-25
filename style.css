@@ -635,3 +635,9 @@ body[data-size="2"] .bfilt button{font-size:12.5px;padding:9px 1px}
 .sgrp>summary span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.sgrp>summary b{font-size:16px}.sgrp>summary small{color:var(--muted);font-size:13px}
 .sgrp>summary i{font-style:normal;font-size:20px;color:var(--muted);transition:transform .2s}.sgrp[open]>summary i{transform:rotate(90deg)}
 .sgrp>.sgb{display:flex;flex-direction:column;gap:12px;padding:0 10px 12px}.sgrp>.sgb>.card{box-shadow:none;background:var(--surface-2)}
+/* 🧾 Rejestr: the period + one „Filtry” button; the day's spending next to the date */
+.filters .frow.ftop{grid-template-columns:1fr auto}.filters .frow.ftop select:last-child:nth-child(odd){grid-column:auto}
+.fbtn{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:6px 14px;font-weight:700;white-space:nowrap}
+.fbtn[aria-pressed="true"]{background:var(--a-seg);border-color:var(--a-line);color:var(--a-ink)}
+.day{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.dsum{text-transform:none;letter-spacing:0;font-size:13px;color:#be6b84;white-space:nowrap}

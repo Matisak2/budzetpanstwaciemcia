@@ -262,9 +262,9 @@ Mati wybrał: punkty 1–4, Rejestr i ulgę dla młodych; wszystkie etapy po kol
 - [x] Budżet: uwaga, gdy plan pozycji jest niższy niż jej opłaty stałe, z przyciskiem do poprawy
 
 ## Etap T. Analiza trwającego miesiąca i Rejestr
-- [ ] W trwającym miesiącu porównanie z poprzednim miesiącem do tego samego dnia („miesiąc jeszcze trwa”)
-- [ ] „Zmieściło się” i „wyraźnie mniej niż plan” dopiero po końcu miesiąca
-- [ ] Rejestr: filtry schowane pod jednym przyciskiem „Filtry”, suma wydatków przy każdym dniu
+- [x] W trwającym miesiącu porównanie z poprzednim miesiącem do tego samego dnia („miesiąc jeszcze trwa”)
+- [x] „Zmieściło się” i „wyraźnie mniej niż plan” dopiero po końcu miesiąca
+- [x] Rejestr: filtry schowane pod jednym przyciskiem „Filtry”, suma wydatków przy każdym dniu
 
 ## Etap U. Zamknięcie miesiąca
 - [ ] Jeden ekran z krokami: salda z bankiem (data ostatniego sprawdzenia, „✓ zgadza się” / „Wyrównaj”), co było ponad plan, nadwyżka (kaskada), plan na nowy miesiąc, cele
