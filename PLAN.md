@@ -209,6 +209,43 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 - [x] ⚡ Szybkość przy wielu latach danych: zamiast wczytywać tylko 2 lata (zepsułoby salda i kopie) – zapamiętane obliczenia (salda, miesiące, lista wpisów); 18 000 wpisów: Ustawienia 471 → 45 ms, Analiza roku 273 → 72 ms, Budżet 81 → 12 ms
 - [ ] Kopia zapasowa także do Werci – na razie nie (decyzja Matiego)
 
+# Część 4 – po analizie przydatności (uzgodnione z Matim 25.10.2026)
+Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komendę Matiego, dane nigdy nie znikają. Kolejność: Q → O → P → R (pensje gotowe przed pierwszą listopadową wypłatą).
+
+## Etap Q. Pensje i przychody
+- [ ] Pasek z kwoty netto: „Podpowiedz z netto” – kwota na konto → orientacyjnie brutto, ZUS, zdrowotna, podatek, PPK (PPK do odhaczenia); oznaczone jako szacunek
+- [ ] Potrącenia z pensji: przy zakładaniu źródła pytanie „Czy coś jest potrącane od razu?” (ubezpieczenie grupowe, karta sportowa, związki, kasa zapomogowa…) z pozycją budżetu; co miesiąc wpisują się same z poprzedniego miesiąca; w trybie „z netto” liczone od netto + potrącenia
+- [ ] „+ Inny przychód” w 💼 Pensje (sprzedaż rzeczy, premia poza paskiem, zwrot PIT) i lista innych przychodów miesiąca pod pensjami
+- [ ] Pensje tylko z paska: obecne przychody stałe zostają bez zmian; po założeniu źródła dochodu (listopad) aplikacja proponuje zamianę starej „Pensji…” na pasek (historia zostaje)
+- [ ] „Przychody stałe” na inne stałe przychody (np. najem mieszkania), nowe bez pól PPK
+
+## Etap O. Prawdziwe liczby
+- [ ] „Odłożone” = tylko wpłaty na oszczędności i inwestycje (z PPK) minus wypłaty; zmiana kursów i wycen osobno („inwestycje zarobiły / straciły”) – Oszczędności (cel miesięczny, konfetti), Mati ↔ Wercia, mail miesięczny, podsumowanie roku, FIRE
+- [ ] Analiza: „Odkładacie %” → „Zostaje z przychodów” + prawdziwy procent odłożony
+- [ ] Budżet: wiersz „🐷 odłożone w tym miesiącu X z Y zł”
+- [ ] Analiza Roku: wykres oszczędności z liniami „wpłacone” i „wartość”
+- [ ] Jedna karta poduszki: tylko konta oszczędnościowe (bez IKE, IKZE, PPK, OKI)
+- [ ] Cele-koperty: „do przydzielenia” bez IKE, IKZE, PPK, OKI (przydzielone kwoty zostają)
+- [ ] FIRE: tempo odkładania z prawdziwych wpłat
+- [ ] Mati ↔ Wercia według właściciela konta (Mati / Wercia / Wspólne); bez zdublowanej karty „Kto wydawał”
+
+## Etap P. Planowanie
+- [ ] Wydatki roczne same w planie miesiąca płatności (nie kopiują się na kolejny miesiąc)
+- [ ] Analiza Roku → „Plan a rzeczywistość”: pozycje często ponad plan + „Popraw plan od następnego miesiąca”
+- [ ] Ukrywanie pozycji i całych kategorii (⚙️ → Kategorie: Zmień nazwę / 🙈 Ukryj / Usuń; ukryte w szarej linijce z ↺); ukryta pozycja z wpisem w danym miesiącu i tak widoczna w Budżecie
+- [ ] Usuwanie tylko pustych pozycji; z wpisami – ukrycie; „Połącz z inną” jako rzadka opcja, przenosi też wydatki roczne, źródła dochodu i zobowiązania; jednorazowe sprawdzenie danych
+
+## Etap R. Roczne i terminy, porządki
+- [ ] Jedna zakładka „📅 Roczne i terminy” zamiast Roczne + Przyp.: kwota opcjonalna (z kwotą – odkładanie na subkonto, bez – samo przypomnienie), opcjonalnie „co X km”, przypomnienie zawsze ok. 14 dni przed terminem (także przy pełnej kopercie), gotowe szablony (OC, ubezpieczenie mieszkania, przegląd, opony, serwis, szczepienie i odrobaczanie kotów), lista 🛡️ gwarancji na dole; obecne przypomnienia przeniesione automatycznie
+- [ ] Podatek od najmu: przy przychodzie stałym z najmu przypomnienie o ryczałcie do 20. (co miesiąc / co kwartał – do wyboru)
+- [ ] PIT: 1 marca „Czas na PIT” z zestawieniem ulg i IKZE osobno dla Matiego i Werci, powtórka 1 i 20 kwietnia do „✓ Złożone” (każde osobno), termin 30 kwietnia
+- [ ] Kaskada nadwyżek: zapas 250 zł na każdym koncie bieżącym (do zmiany) + niezapłacone opłaty stałe, informacja o planie do końca miesiąca, nigdy na PPK / OKI ani z gotówki, pilnuje limitów IKE i IKZE
+- [ ] Usunięcie „Dodaj opłaty do kalendarza”
+- [ ] Wartość inwestycji: automat + jeden ekran „📈 Aktualizuj wartości” (bez przycisków przy kontach i bez inwestycji w „Wyrównaj wszystkie salda”)
+- [ ] Usunięcie starego modułu inwestycji i filtra „Inwestycje” w Rejestrze (u Matiego i Werci pusty)
+- [ ] ⚙️ Ustawienia w grupach: Ten telefon / Budżet / Bezpieczeństwo / Automaty / Pomoc
+- [ ] Przewodnik „Która koperta do czego” (Cel / Roczne / odkładanie na spłatę / Projekt) + podpowiedź przy zakładaniu
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 
