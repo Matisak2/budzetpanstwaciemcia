@@ -213,11 +213,11 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 Zasady jak dotąd: każdy etap osobno, kopia przed etapem, start tylko na komendę Matiego, dane nigdy nie znikają. Kolejność: Q → O → P → R (pensje gotowe przed pierwszą listopadową wypłatą).
 
 ## Etap Q. Pensje i przychody
-- [ ] Pasek z kwoty netto: „Podpowiedz z netto” – kwota na konto → orientacyjnie brutto, ZUS, zdrowotna, podatek, PPK (PPK do odhaczenia); oznaczone jako szacunek
-- [ ] Potrącenia z pensji: przy zakładaniu źródła pytanie „Czy coś jest potrącane od razu?” (ubezpieczenie grupowe, karta sportowa, związki, kasa zapomogowa…) z pozycją budżetu; co miesiąc wpisują się same z poprzedniego miesiąca; w trybie „z netto” liczone od netto + potrącenia
-- [ ] „+ Inny przychód” w 💼 Pensje (sprzedaż rzeczy, premia poza paskiem, zwrot PIT) i lista innych przychodów miesiąca pod pensjami
-- [ ] Pensje tylko z paska: obecne przychody stałe zostają bez zmian; po założeniu źródła dochodu (listopad) aplikacja proponuje zamianę starej „Pensji…” na pasek (historia zostaje)
-- [ ] „Przychody stałe” na inne stałe przychody (np. najem mieszkania), nowe bez pól PPK
+- [x] Pasek z kwoty netto: „Podpowiedz z netto” – kwota na konto → orientacyjnie brutto, ZUS, zdrowotna, podatek, PPK (PPK do odhaczenia); oznaczone jako szacunek
+- [x] Potrącenia z pensji: przy zakładaniu źródła pytanie „Czy coś jest potrącane od razu?” (ubezpieczenie grupowe, karta sportowa, związki, kasa zapomogowa…) z pozycją budżetu; co miesiąc wpisują się same z poprzedniego miesiąca; w trybie „z netto” liczone od netto + potrącenia
+- [x] „+ Inny przychód” w 💼 Pensje (sprzedaż rzeczy, premia poza paskiem, zwrot PIT) i lista innych przychodów miesiąca pod pensjami
+- [x] Pensje tylko z paska: obecne przychody stałe zostają bez zmian; po założeniu źródła dochodu (listopad) aplikacja proponuje połączenie starej „Pensji…” ze źródłem (odhaczenie otwiera pasek, historia zostaje); ostrzeżenie, gdy ta sama pensja miałaby wejść dwa razy
+- [x] „Przychody stałe” na inne stałe przychody (np. najem mieszkania), nowe bez pól PPK
 
 ## Etap O. Prawdziwe liczby
 - [ ] „Odłożone” = tylko wpłaty na oszczędności i inwestycje (z PPK) minus wypłaty; zmiana kursów i wycen osobno („inwestycje zarobiły / straciły”) – Oszczędności (cel miesięczny, konfetti), Mati ↔ Wercia, mail miesięczny, podsumowanie roku, FIRE

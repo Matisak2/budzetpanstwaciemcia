@@ -98,6 +98,30 @@ for(const C of CASES){
     await p.click('#mph [data-phx]');await p.click('#shSave');await p.waitForTimeout(600);
     if(await p.evaluate(()=>S.rcptMeta?.n||0))fail(`${tag}: po usunięciu zdjęcia licznik się nie zmniejszył`);
   }catch(e){fail(`${tag}: test zdjęcia – ${e.message.split('\n')[0]}`)}}
+  /* 💼 payslip from the net amount: a test income source with a deduction (Multisport 150 zł) – the deduction is in the new payslip by itself,
+     „Podpowiedz z netto” 7 000 zł gives a payslip that adds up, saving books 7 150 zł income + 150 zł expense; „Przychody spoza pasków” is shown */
+  if(C===CASES[0]){try{
+    /* a position no fixed income uses (the demo pay from 📌 Stałe would rightly trigger „Ta pensja już jest w tym miesiącu?”) */
+    await p.evaluate(()=>{closeAll();const used=new Set(S.cfg.fixed.map(f=>f.sub)),inc=S.cfg.cats.filter(c=>c.type=='inc').flatMap(c=>c.subs).find(x=>!used.has(x.id)).id,exp=S.cfg.cats.find(c=>c.type=='exp').subs[0].id;
+      S.cfg.incs=[{id:'iT',name:'Szpital (test)',who:'Mati',kind:'uop',acc:S.cfg.accs.find(a=>a.grp=='cur').id,sub:inc,day:10,ppk:'',fixed:'',deds:[{n:'Multisport',a:15000,sub:exp}]}];
+      goTab('fix');setFixSub('pay');openSlip('iT')});await p.waitForTimeout(300);
+    if(await p.evaluate(()=>S.slip?.d.ded?.[0]?.n)!=='Multisport')fail(`${tag}: potrącenie ze źródła dochodu nie wpisało się samo do nowego paska`);
+    await p.evaluate(()=>{slipNetto()});await p.waitForTimeout(300);await p.fill('#f_n','7 000,00');await p.click('#dlgOk');await p.waitForTimeout(400);
+    const s=await p.evaluate(()=>({net:S.slip.d.net,b:S.slip.d.comp[0]?.a||0,chk:document.getElementById('slChk')?.innerText||''}));
+    if(s.net!==700000||!(s.b>900000)||!/zgadza/.test(s.chk))fail(`${tag}: pasek z netto się nie zgadza (${JSON.stringify(s)})`);
+    await p.screenshot({path:path.join(OUT,`${tag}-pasek-netto.png`),fullPage:true});
+    await p.evaluate(()=>{saveSlip()});await p.waitForTimeout(800);
+    const t=await p.evaluate(()=>{const i=S.tx.find(t=>!t.deleted&&t.slip=='iT');return{inc:i?.amount,ded:i?S.tx.filter(t=>!t.deleted&&t.slipOf==i.id).map(t=>t.amount):[]}});
+    if(t.inc!==715000||JSON.stringify(t.ded)!=='[15000]')fail(`${tag}: pasek z netto zaksięgował się źle (${JSON.stringify(t)})`);
+    if(!await p.evaluate(()=>/spoza pasków/i.test(document.getElementById('app').innerText)))fail(`${tag}: brak „Przychody spoza pasków” w 💼 Pensje`);
+    await p.screenshot({path:path.join(OUT,`${tag}-pensje-po-pasku.png`),fullPage:true});
+    /* the same pay twice: a source on the position of the demo „Pensja” already ticked in 📌 Stałe → a question before saving, „Nie zapisuj” books nothing */
+    const n0=await p.evaluate(()=>{const f=S.cfg.fixed.find(f=>f.kind=='inc');S.cfg.incs.push({...S.cfg.incs[0],id:'iT2',sub:f.sub,deds:[]});openSlip('iT2');return S.tx.length});await p.waitForTimeout(300);
+    await p.evaluate(()=>{slipNetto()});await p.waitForTimeout(300);await p.fill('#f_n','5 000');await p.click('#dlgOk');await p.waitForTimeout(300);
+    await p.evaluate(()=>{saveSlip()});await p.waitForTimeout(400);
+    if(!await p.evaluate(()=>!document.getElementById('dlg').hidden&&/już jest w tym miesiącu/.test(document.getElementById('dlg').innerText)))fail(`${tag}: brak ostrzeżenia przed podwójną pensją`);
+    else{await p.click('#dlg button:has-text("Nie zapisuj")');await p.waitForTimeout(400);if(await p.evaluate(()=>S.tx.length)!==n0)fail(`${tag}: „Nie zapisuj” mimo to zapisało pensję`)}
+  }catch(e){fail(`${tag}: test paska z netto – ${e.message.split('\n')[0]}`)}}
   await ctx.close();
 }
 /* 3. the real start page (index.html, not the demo): Firebase replaced by small stand-ins with no data –

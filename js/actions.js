@@ -96,7 +96,7 @@ export async function editFixed(fid,kind,pre){if(guard())return;
   if(kind=='tr')return editFixedTr(f0);
   const invAccs=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   const fields=[
-    {id:'n',label:'Nazwa',value:f?.name||'',ph:inc?'np. Pensja Mati':'np. Czynsz'},
+    {id:'n',label:'Nazwa',value:f?.name||'',ph:inc?'np. Najem mieszkania':'np. Czynsz'},
     {id:'a',label:inc?'Przybliżona kwota (zł)':'Kwota (zł)',type:'decimal',value:f?f2(f.amount):'',ph:'0,00'},
     {id:'d',label:inc?'Zwykle wpływa do dnia (1–31)':'Termin – dzień miesiąca (1–31)',type:'int',value:f?.day||10},
     {id:'s',label:'Pozycja budżetu',type:'select',value:f?.sub||'',options:[['','— wybierz —'],...subOpts(kind)]},
@@ -104,8 +104,9 @@ export async function editFixed(fid,kind,pre){if(guard())return;
   if(!inc)fields.push({id:'u',label:'📄 Umowa do (opcjonalnie) – przypomnę 2 miesiące wcześniej',type:'date',value:f?.until||''});
   if(!inc&&debtList('owe').length)fields.push({id:'db',label:'🔻 Spłata zobowiązania',type:'select',value:f?.debt||'',options:[['','— nie —'],...debtList('owe').map(d=>[d.id,d.name])]});
   if(inc){fields.push({id:'v',label:'Kwota co miesiąc',type:'select',value:f?.vary?'1':'0',options:[['0','Podpowiadaj ostatnią kwotę'],['1','Zawsze inna – wpisuję od zera']]});
-    fields.push({id:'p',label:'Wpłaty PPK przy tej pensji',type:'select',value:f?.ppk||'',options:[['','Bez PPK'],...invAccs.map(a=>[a.id,a.name])]})}
-  const r=await ask({title:f0?(inc?'Edytuj przychód stały':'Edytuj opłatę stałą'):(inc?'Nowy przychód stały':'Nowa opłata stała'),fields,ok:f0?'Zapisz':'Dodaj',alt:f0?(inc?'Usuń przychód':'Usuń opłatę'):null});
+    if(f0?.ppk)fields.push({id:'p',label:'Wpłaty PPK przy tej pensji',type:'select',value:f?.ppk||'',options:[['','Bez PPK'],...invAccs.map(a=>[a.id,a.name])]})}
+  const lsrc=inc&&f0?incs().find(x=>x.fixed==f0.id):null;
+  const r=await ask({title:f0?(inc?'Edytuj przychód stały':'Edytuj opłatę stałą'):(inc?'Nowy przychód stały':'Nowa opłata stała'),text:inc?(lsrc?`Połączony ze źródłem dochodu „${lsrc.name}” – odhaczenie otwiera pasek (💼 Pensje).`:'Np. najem mieszkania albo świadczenie. Pensje wpisujesz w 💼 Pensje – z paska albo z samej kwoty netto.'):'',fields,ok:f0?'Zapisz':'Dodaj',alt:f0?(inc?'Usuń przychód':'Usuń opłatę'):null});
   if(!r)return;
   if(r=='alt'){if(!await ask({title:inc?'Usunąć przychód stały?':'Usunąć opłatę stałą?',text:f.name+'\nWpisy już zapisane w rejestrze zostaną.',ok:'Usuń',danger:true}))return;S.cfg.fixed=S.cfg.fixed.filter(x=>x.id!=fid);render();delFixedDb(fid);return}
   const amount=pg(r.a),day=Math.round(pnum(r.d));
@@ -150,6 +151,8 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
       const exps=S.cfg.fixed.filter(x=>(x.kind||'exp')=='exp'),all=exps.every(x=>x.id==f.id||fixedPaid(x.id,S.ym));
       if(all&&exps.length>1)celebrate(CELEBRATE.allPaid(S.who));else toast('Zapłacono: '+f.name+' ✓')}
     return}
+  {const sl=liveOf(S.tx).find(t=>t.type=='inc'&&t.slip&&t.sub==f.sub&&t.date.startsWith(S.ym));
+   if(sl&&!await ask({title:'Ta pensja już jest w tym miesiącu?',text:`Jest już wpływ z paska „${sl.note}” ${zl(sl.amount)}.\nJeśli to ta sama wypłata, nie odhaczaj jej drugi raz – policzyłaby się podwójnie. Najlepiej połącz ten przychód stały ze źródłem dochodu (💼 Pensje).`,ok:'Odhacz mimo to',cancel:'Nie odhaczaj'}))return}
   // income: suggest last month's actual amount; PPK contributions from the payslip
   const last=lastOf(f,t=>t.fixedId===f.id),lastOwn=f.ppk?lastOf(f,t=>t.ppk=='own'&&t.acc===f.ppk&&t.fixedRef===f.id):null,lastEmp=f.ppk?lastOf(f,t=>t.ppk=='emp'&&t.acc===f.ppk&&t.fixedRef===f.id):null;
   const sug=f.vary?'':f2(last?last.amount:f.amount);

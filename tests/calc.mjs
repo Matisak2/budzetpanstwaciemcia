@@ -1,6 +1,6 @@
 /* 🤖 Robot: czy obliczenia pieniędzy dalej dają dobre wyniki. Oczekiwane liczby policzone niezależnie (ręcznie / kalkulatorem), nie skopiowane z kodu.
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
-import {suggest,calcNet,totals} from '../js/pay.js';
+import {suggest,calcNet,totals,fromNet} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status} from '../js/logic.js';
@@ -26,6 +26,20 @@ const N=' ';
   eq('Dzieło 1 000 – podatek',suggest({kind:'dzielo'},{comp:[{a:100000}]}).tax,9600);
   // JDG liniowy: faktury 20 000, koszty 2 000, ZUS 1 600 → dochód 16 400, zdrowotna 4,9% = 803,60, podstawa 15 596, podatek 19% = 2 963,24 → 2 963
   const j=suggest({kind:'b2b',taxf:'liniowy',zusAmt:160000},{comp:[{a:2000000}],costs:200000});eq('JDG liniowy – zdrowotna',j.health,80360);eq('JDG liniowy – podatek',j.tax,296300);
+  // „Podpowiedz z netto”: 7 147,39 zł na konto → z powrotem ok. 10 000 zł brutto, a rachunek paska zgadza się co do grosza
+  {const back=(s,net,ded=0,ytd)=>{const r=fromNet(s,net,ded,ytd);return{b:r.b,net:calcNet(s,{comp:[{a:r.b}],...r,ded:[{a:ded}]})}};
+    let r=back(src,714739);eq('Z netto – rachunek się zgadza',r.net,714739);eq('Z netto – brutto ok. 10 000 zł',Math.abs(r.b-1000000)<=2,true);
+    // to samo, ale 147,39 zł potrąceń (np. Multisport) poszło od razu z pensji – na konto wpłynęło 7 000 zł
+    r=back(src,700000,14739);eq('Z netto z potrąceniami – rachunek',r.net,700000);eq('Z netto z potrąceniami – brutto',Math.abs(r.b-1000000)<=2,true);
+    // z PPK (2% moje): 10 000 zł brutto daje na konto 10 000 − składki, podatek i 200 zł PPK
+    const sp={kind:'uop',ppk:true},np=calcNet(sp,{comp:[{a:1000000}],...suggest(sp,{comp:[{a:1000000}]})});
+    r=back(sp,np);eq('Z netto z PPK – rachunek',r.net,np);eq('Z netto z PPK – brutto',Math.abs(r.b-1000000)<=2,true);
+    // powyżej progu 32% i przy zleceniu też trafia
+    r=back(src,500000,0,{brutto:0,base:11900000});eq('Z netto po progu 32% – rachunek',r.net,500000);
+    const sz={kind:'zlec'};r=back(sz,312345);eq('Z netto – zlecenie',r.net,312345);
+    eq('Z netto – JDG nie liczy',fromNet({kind:'b2b'},100000),null);
+    // wiele kwot z rzędu: każda daje dokładnie tę kwotę netto (albo różnicę najwyżej 1 zł przy rzadkim skoku zaokrąglenia podatku)
+    let worst=0;for(let x=300000;x<=1500000;x+=12347){const q=back(src,x);worst=Math.max(worst,Math.abs(q.net-x))}eq('Z netto – 100 kwot, różnica najwyżej 1 zł',worst<=100,true)}
   eq('Suma pasków',totals([{comp:[{a:100}],net:80},{comp:[{a:50}],net:40}]).net,120);
 }
 

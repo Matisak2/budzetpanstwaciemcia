@@ -36,6 +36,16 @@ export function suggest(src,sl,ytd={brutto:0,base:0}){const b=brutto(sl),o={};
     else if(src.taxf=='ryczalt'){o.health=src.healthAmt||0;o.base=Math.max(0,r0(b-zus-Math.round(o.health/2)));o.tax=r0(Math.round(o.base*(+src.ryczRate||12)/100))}
     else{o.health=pct(inc,9);o.base=r0(inc);o.tax=progressive(o.base,ytd.base,30000)}}
   return o}
+/* „Podpowiedz z netto”: from the amount that came to the account (plus the deductions taken from the pay) back to brutto, then the same estimate as from brutto.
+   Employee contracts only (JDG: the invoice is what comes in). Net grows by at most a grosz per grosz of brutto (rounding can only slow it down),
+   so a brutto that gives it exactly is always near; the tax is rounded to full złoty, so a few brutto amounts can give the same net –
+   the lowest one around is taken (a rare rounding step can skip the target – then the nearest). */
+export function fromNet(src,net,ded=0,ytd={brutto:0,base:0}){if(src.kind=='b2b')return null;const target=net+ded;if(!(target>0))return null;
+  const f=b=>{const o=suggest(src,{comp:[{a:b}]},ytd);return b-o.zus-o.health-o.tax-o.ppkOwn};
+  let lo=0,hi=target;while(f(hi)<target){hi*=2;if(hi>1e11)return null}
+  while(hi-lo>1){const mid=Math.floor((lo+hi)/2);if(f(mid)<target)lo=mid;else hi=mid}
+  let b=0,best=null;for(let x=Math.max(1,hi-3000);x<=hi+3000;x++){const d=Math.abs(f(x)-target);if(!d){b=x;break}if(!best||d<best.d)best={x,d}}if(!b)b=best.x;
+  return{b,...suggest(src,{comp:[{a:b}]},ytd)}}
 /* totals of many payslips (a month of all sources, or a year of one source) */
 export function totals(list){const t={brutto:0,net:0,zus:0,health:0,tax:0,kup:0,ppkOwn:0,ppkEmp:0,ded:0,hours:0,n:0};
   for(const s of list){t.n++;t.brutto+=brutto(s);t.net+=s.net||0;t.zus+=s.zus||0;t.health+=s.health||0;t.tax+=s.tax||0;t.kup+=s.kup||0;
