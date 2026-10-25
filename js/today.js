@@ -4,7 +4,7 @@
 import {MN,addDays,addMonths,money,zl} from './util.js';
 import {balance,carStats,dueAlerts,fixedDate,subsMap} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS} from './inv.js';
-import {calcNet} from './pay.js';
+import {calcNet,RULES_YEAR} from './pay.js';
 export const ownerOf=a=>a?.owner||(/wercia|weronika/i.test(a?.name||'')?'Wercia':/mati/i.test(a?.name||'')?'Mati':'Wspólne');
 const person=o=>o=='Mati'||o=='Wercia'?o:null;
 const plu=(n,a,b,c)=>n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c;
@@ -138,6 +138,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const f of cfg.fixed||[]){if(!f.until||f.kind=='inc')continue;const key='umowa:'+f.id+':'+f.until;if(hraw?.checkIgnore?.[key])continue;const n=dd(today,f.until);if(n>61||n<-31)continue;
     out.push({key,icon:'📄',text:n>=0?`„${f.name}” – umowa kończy się ${n?'za '+n+' '+plu(n,'dzień','dni','dni'):'dziś'} (${dmy(f.until)}). Dobry moment, żeby porównać oferty albo negocjować cenę.`:`„${f.name}” – umowa skończyła się ${dmy(f.until)}. Nowa umowa? Wpisz jej koniec w opłacie stałej.`,
       go:{a:'fixEdit',id:f.id},label:'Zobacz',k:'umowa',who:person(ownerOf(accOf(f.acc))),quiet:!(n>=59||n==30||n==7||n==0)})}
+  /* 🧾 a new year: the payslip rules (ZUS limit, tax thresholds – the „Podpowiedz z brutto” estimate) are from an earlier year – ask for an update (January–February) */
+  if(mo<=2&&+y>RULES_YEAR&&(cfg.incs||[]).length){const key='rules:'+y;if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🧾',text:`Nowy rok ${y}: zasady pensji w aplikacji (limit ZUS, progi podatku, „Podpowiedz z brutto”) są jeszcze z ${RULES_YEAR}. Poproś Claude o aktualizację na ${y}.`,go:{a:'pay'},label:'Pensje',k:'rules',who:'Mati',quiet:mo>1||+today.slice(8)>3})}
   if(mo==1)for(const w of ['Mati','Wercia']){const p=pitSummaryP(cfg,tx,String(+y-1),w,hraw);if(p.n||p.ikze.length)add('🧾',`${w}: zestawienie ulg do PIT za ${+y-1} jest gotowe.`,{a:'pit',y:String(+y-1)},'Pokaż','',w)}
   if(checks){for(const r of recurringP(cfg,tx,today,hraw?.checkIgnore))out.push({key:r.key,icon:'📌',text:`„${r.name}” – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`,go:{a:'recFix',key:r.key},label:'Dodaj',k:'rec',who:null});
     out.push(...checksP(D,today))}

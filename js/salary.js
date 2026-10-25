@@ -4,7 +4,7 @@ import {catsEmpty} from './art.js';
 import {C_INC,barsSvg,chartBox} from './charts.js';
 import {position} from './inv.js';
 import {ULGI,pitSummaryP} from './today.js';
-import {KINDS,TAXF,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
+import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,onHand,reserve,suggest,totals,ytdOf} from './pay.js';
 import {liveOf,subsMap} from './logic.js';
 import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0} from './util.js';
 import {S,toast,ask,accCur,am,accOwner,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard} from './core.js';
@@ -161,7 +161,7 @@ export function slipH(){const {id,ym,d}=S.slip,src=incById(id);if(!src){S.slip=n
   const inp=(k,label,hint)=>`<label class="srow2"><span>${label}${hint?`<small>${hint}</small>`:''}</span><input class="planin" data-k="${k}" value="${V(d[k])}" placeholder="0,00" inputmode="decimal" autocomplete="off"></label>`;
   const sopt=sel=>subOpts('exp').map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(([v,l])=>`<option value="${v}"${v==sel?' selected':''}>${esc(l)}</option>`).join('')}</optgroup>`).join('');
   let h=`<div class="slip" oninput="slipCalc()" onchange="slipCalc()"><div class="sl-h"><b>💼 ${esc(src.name)}</b><span class="mini">${KINDS[src.kind]} · ${src.who} · wypłata: ${MN[+ym.slice(5)-1].toLowerCase()} ${ym.slice(0,4)}</span></div>
-    <div class="btns" style="gap:6px"><button class="chip" onclick="slipCopy()">⧉ Skopiuj z poprzedniego miesiąca</button><button class="chip" onclick="slipSuggest()">🧮 Podpowiedz z brutto</button></div>
+    <div class="btns" style="gap:6px"><button class="chip" onclick="slipCopy()">⧉ Skopiuj z poprzedniego miesiąca</button><button class="chip" onclick="slipSuggest()">🧮 Podpowiedz z brutto</button></div><div class="mini">Podpowiedź liczy według zasad ${RULES_YEAR} r. – zawsze sprawdź z paskiem.</div>
     ${d.est?'<div class="note">🧮 To <b>szacunek</b> wyliczony z brutto. Sprawdź i popraw kwoty według paska z wypłaty.</div>':''}
     <div class="sl-sec">${b2b?'FAKTURY':'SKŁADNIKI (BRUTTO)'}</div>
     ${d.comp.map((c,i)=>`<div class="sl-row"><input data-c="${i}" data-f="n" value="${esc(c.n||'')}" placeholder="${b2b?'np. Faktura za październik':'np. Dyżury'}" aria-label="Nazwa składnika" autocomplete="off"><input class="planin" data-c="${i}" data-f="a" value="${V(c.a)}" placeholder="0,00" inputmode="decimal" aria-label="Kwota" autocomplete="off">${b2b?'':`<input class="planin hrs" data-c="${i}" data-f="h" value="${c.h?String(c.h).replace('.',','):''}" placeholder="godz." inputmode="decimal" aria-label="Godziny (opcjonalnie)" autocomplete="off">`}<button type="button" class="x" onclick="slipRow('comp',${i})" aria-label="Usuń składnik">×</button></div>`).join('')}

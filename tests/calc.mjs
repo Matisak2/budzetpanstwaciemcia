@@ -2,7 +2,7 @@
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
-import {debtStateP,rataP,recurringP,savedP} from '../js/today.js';
+import {debtStateP,rataP,recurringP,savedP,todayItems} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 
@@ -82,6 +82,13 @@ const N=' ';
   const tx=['2026-07-05','2026-08-05','2026-09-06','2026-10-05'].map((date,i)=>({type:'exp',amount:1199+i,date,acc:'a',sub:'s',note:'Chmura 200 GB'}));
   eq('Podpowiedź stałej opłaty',recurringP(cfg,tx,'2026-10-20').map(r=>r.name),['Chmura 200 GB']);
   eq('Podpowiedź – „Nie, dzięki”',recurringP(cfg,tx,'2026-10-20',{'rec:chmura gb':true}).length,0);
+}
+
+/* ---------- 🧾 nowy rok: przypomnienie o zasadach pensji ---------- */
+{ const D=h=>({cfg:{accs:[],cats:[],fixed:[],incs:[{id:'i',who:'Mati',kind:'uop'}]},tx:[],slips:{},hold:{},debts:{},market:{},backup:{at:Date.now()},hraw:h||{}});
+  const has=(d,today)=>todayItems(d,{today,checks:false}).some(x=>x.k=='rules');
+  eq('Zasady pensji – styczeń 2027 przypomina',has(D(),'2027-01-05'),true);eq('Zasady pensji – w roku zasad nie przypomina',has(D(),'2026-01-05'),false);
+  eq('Zasady pensji – „Załatwione” chowa',has(D({checkIgnore:{'rules:2027':true}}),'2027-01-05'),false);eq('Zasady pensji – w marcu już nie',has(D(),'2027-03-05'),false);
 }
 
 /* ---------- 🔢 wpisywanie i pokazywanie kwot ---------- */

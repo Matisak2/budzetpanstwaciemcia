@@ -3,6 +3,8 @@ export const KINDS={uop:'Umowa o pracę',zlec:'Umowa zlecenie',dzielo:'Umowa o d
 export const TAXF={skala:'Skala podatkowa (12% / 32%)',liniowy:'Podatek liniowy (19%)',ryczalt:'Ryczałt'};
 /* 2026: limit of the pension + disability contributions (30 × forecast average salary) and the 32% tax threshold */
 export const ZUS_LIMIT=28260000,TAX_THR=12000000;
+/* the year these rules are for – in January of a later year „Na dziś” asks Mati to have them updated (then change RULES_YEAR and tests/calc.mjs) */
+export const RULES_YEAR=2026;
 const r0=x=>Math.round(x/100)*100; // tax advances are rounded to full złoty
 const pct=(x,p)=>Math.round(x*p/100);
 export const brutto=sl=>(sl.comp||[]).reduce((a,c)=>a+(c.a||0),0);
