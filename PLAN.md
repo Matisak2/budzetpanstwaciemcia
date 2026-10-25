@@ -196,9 +196,9 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 
 ## Etap M. Ulepszenia po części 3 (uzgodnione 25.10.2026)
 - [x] 🤖 Robot liczy na przykładach (`tests/calc.mjs`): pensje, obligacje i Belka, raty, salda, budżet, drobne, zapis kwot
-- [ ] ✍️ Podpowiadanie notatki przy wpisywaniu (te same nazwy sklepów → lepsze „Gdzie wydajemy”)
-- [ ] 📷 Przy gwarancji podpowiedź o zdjęciu paragonu; na liście gwarancji widać, co ma zdjęcie
-- [ ] 🙈 Szybkie włączanie trybu dyskretnego – przytrzymanie nazwy miesiąca
+- [x] ✍️ Podpowiadanie notatki przy wpisywaniu (te same nazwy sklepów → lepsze „Gdzie wydajemy”)
+- [x] 📷 Przy gwarancji podpowiedź o zdjęciu paragonu; na liście gwarancji widać, co ma zdjęcie
+- [x] 🙈 Szybkie włączanie trybu dyskretnego – przytrzymanie nazwy miesiąca
 - [ ] 🔍 Świeży przegląd wszystkich ekranów i poprawki
 
 ## Rezygnujemy

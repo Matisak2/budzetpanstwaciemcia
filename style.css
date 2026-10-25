@@ -618,3 +618,10 @@ body[data-size="2"] .bfilt button{font-size:12.5px;padding:9px 1px}
 .phvin img{width:100%;max-height:calc(100vh - 140px);object-fit:contain;border-radius:14px;background:#fff}
 .phm{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:6px}
 .phm .btn.sm{align-self:flex-start}
+/* ✍️ note suggestions under the note field; 📷 link in the warranty field */
+.nsug{display:flex;gap:6px;flex-wrap:wrap;margin-top:-4px}
+.nsug .chip{margin-top:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lnk{color:var(--a-ink);font-weight:800;text-decoration:underline;text-underline-offset:3px;padding:0;background:none}
+#mwarPh{display:block;margin-top:6px}
+/* holding the month name switches the discreet mode – no text selection / callout on iPhone */
+.mlab{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}

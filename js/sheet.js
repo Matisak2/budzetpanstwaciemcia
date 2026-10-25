@@ -6,7 +6,7 @@ import {CURS,catHue,pastel} from './data.js';
 import {addM,position} from './inv.js';
 import {ULGI,savedP,saveSplitP} from './today.js';
 import {cleanCat,liveOf,roundUp,subsMap} from './logic.js';
-import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym} from './util.js';
+import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays} from './util.js';
 import {S,toast,ask,accCur,am,fxRate,stripFx,accOwner,accOpts,H,DEBTS,w,merge,putTx,liveById,guard} from './core.js';
 import {exportJson,downloadBlob} from './actions.js';
 import {incById,openSlip} from './salary.js';
@@ -34,6 +34,7 @@ export const ruleOf=acc=>(S.cfg.round||[]).find(r=>r.from==acc&&S.cfg.accs.some(
 /* 🛡️ warranty (asked from 300 zł) and 🧾 tax relief in the sheet */
 export function updX(){if(!S.cfg)return;const exp=S.etype=='exp'&&!S.refEdit,amt=calcAmt($('ma').value);
   $('mwarWrap').hidden=!(exp&&(amt>=30000||$('mwar').value));$('mward').hidden=$('mwar').value!='date';
+  $('mwarPh').hidden=!$('mwar').value||PH.some(p=>!p.removed);
   $('mulgaWrap').hidden=!(exp&&(S.ulgaOpen||$('mulga').value));$('mulgaBtn').hidden=!exp||!$('mulgaWrap').hidden;
   const u=ULGI[$('mulga').value];$('mulgaHint').textContent=u?u.d:'';$('mulgaHint').hidden=!u}
 export function updCoin(){const b=$('rnd'),r=S.etype=='exp'&&!S.edit&&ruleOf($('mc').value),d=$('md').value,amt=calcAmt($('ma').value);
@@ -75,7 +76,16 @@ export function recentSubs(kind,n){const sm=subsMap(S.cfg),seen=new Map();
     .forEach((t,i)=>{const x=seen.get(t.sub)||{n:0,i};x.n++;seen.set(t.sub,x)});
   return[...seen].sort((a,b)=>b[1].n-a[1].n||a[1].i-b[1].i).slice(0,n).map(([id])=>sm[id])}
 /* the position usually chosen with this note: the same note first, then the same first word */
-export function noteSub(note,kind){const k=norm(note);if(k.length<2)return null;const w=k.split(/\s+/)[0],sm=subsMap(S.cfg),ex={},fw={};
+export /* ✍️ note suggestions: notes used in the last year for this kind of entry, most used first – one tap fills the note
+   (the same shop name every time also makes „🏪 Gdzie wydajemy” more exact) */
+function noteSugs(q,kind){const k=norm(q),since=addDays(td(),-365),G={};
+  for(const t of liveOf(S.tx)){if(t.type!=kind||t.date<since||t.fixedId||t.roundOf||t.slip||t.slipOf||t.ppk)continue;const raw=stripFx(t.note).trim();if(raw.length<2||/^[🪙↩]/u.test(raw))continue;
+    const n=norm(raw),g=G[n]||(G[n]={c:0,last:'',names:{}});g.c++;if(t.date>g.last)g.last=t.date;g.names[raw]=(g.names[raw]||0)+1}
+  return Object.entries(G).filter(([n])=>n!=k&&(!k||n.startsWith(k)||n.split(/\s+/).some(w=>w.startsWith(k))))
+    .sort((a,b)=>b[1].c-a[1].c||b[1].last.localeCompare(a[1].last)).slice(0,4).map(([,g])=>Object.entries(g.names).sort((a,b)=>b[1]-a[1])[0][0])}
+function renderNoteSug(){const box=$('mnSug');if(!box)return;const on=document.activeElement===$('mn')&&S.etype!='tr'&&!S.refEdit,L=on?noteSugs($('mn').value,S.etype):[];
+  box.hidden=!L.length;box.innerHTML=L.map(n=>`<button type="button" class="chip" data-note="${esc(n)}">${esc(n)}</button>`).join('')}
+function noteSub(note,kind){const k=norm(note);if(k.length<2)return null;const w=k.split(/\s+/)[0],sm=subsMap(S.cfg),ex={},fw={};
   for(const t of liveOf(S.tx)){if(!t.note||!sm[t.sub]||sm[t.sub].cat.type!=kind||t.refundOf)continue;const n=norm(t.note);
     if(n==k)ex[t.sub]=(ex[t.sub]||0)+1;else if(w.length>=3&&n.split(/\s+/)[0]==w)fw[t.sub]=(fw[t.sub]||0)+1}
   for(const m of[ex,fw]){const e=Object.entries(m).sort((a,b)=>b[1]-a[1]),tot=e.reduce((a,x)=>a+x[1],0);if(e.length&&e[0][1]/tot>=.6)return sm[e[0][0]]}
@@ -119,7 +129,7 @@ export async function shrinkPhoto(file){const url=URL.createObjectURL(file);
       if(out.length*.75<=PH_BYTES)break;if(q>.5)q-=.1;else max=Math.round(max*.8)}
     return{data:out,size:Math.round(out.length*.75),w:c.width,h:c.height}}finally{URL.revokeObjectURL(url)}}
 export async function phLoad(id){if(phCache.has(id))return phCache.get(id);try{const s=await getDoc(doc(RCPT(),id)),d=s.exists()?s.data():null;if(d)phCache.set(id,d);return d}catch(e){return null}}
-export function renderPh(){if(!$('mph'))return;const tr=S.etype=='tr',L=tr?[]:PH.filter(p=>!p.removed);$('mphWrap').hidden=!L.length;$('mphBtn').hidden=tr||L.length>=PH_MAX;$('mphBtn').textContent=L.length?'📷 Kolejne zdjęcie':'📷 Zdjęcie paragonu';
+export function renderPh(){if(!$('mph'))return;if($('mwarPh'))$('mwarPh').hidden=!$('mwar').value||PH.some(p=>!p.removed);const tr=S.etype=='tr',L=tr?[]:PH.filter(p=>!p.removed);$('mphWrap').hidden=!L.length;$('mphBtn').hidden=tr||L.length>=PH_MAX;$('mphBtn').textContent=L.length?'📷 Kolejne zdjęcie':'📷 Zdjęcie paragonu';
   $('mph').innerHTML=L.map(p=>`<span class="ph"><button type="button" class="phi" data-ph="${p.id}" aria-label="Pokaż zdjęcie">${p.data?`<img src="${p.data}" alt="">`:`<span class="mini">${p.missing?'brak':'…'}</span>`}</button><button type="button" class="x" data-phx="${p.id}" aria-label="Usuń zdjęcie">×</button></span>`).join('');
   const nw=L.filter(p=>p.isNew).reduce((a,p)=>a+p.size,0);$('mphHint').textContent=nw?`zapiszę razem z wpisem (${kb(nw)})`:'stuknij zdjęcie, żeby je powiększyć';
   L.filter(p=>!p.data&&!p.loading&&!p.missing).forEach(p=>{p.loading=true;phLoad(p.id).then(d=>{p.loading=false;if(d){p.data=d.data;p.size=d.size||0}else p.missing=true;renderPh()})})}
@@ -233,6 +243,10 @@ export async function markRefund(id){const t=liveById(id);if(!t)return;const don
     toast('Zapisano zwrot '+zl(amt),'',{label:'Cofnij',fn:()=>putTx(rym,tid,{deleted:true})})}
 /* event wiring of this part – app.js calls it once at start (it used to run while app.js was loading) */
 export function wireSheet(){
+$('mn').addEventListener('input',renderNoteSug);$('mn').addEventListener('focus',renderNoteSug);$('mn').addEventListener('blur',()=>setTimeout(renderNoteSug,150));
+$('mnSug').addEventListener('pointerdown',e=>e.preventDefault());
+$('mnSug').onclick=e=>{const b=e.target.closest('[data-note]');if(!b)return;$('mn').value=b.dataset.note;$('mn').dispatchEvent(new window.Event('input'));$('mn').blur();$('mnSug').hidden=true};
+$('mwarPhBtn').onclick=()=>$('mphIn').click();
 
 $('msBtn').onclick=()=>openPick($('ms').value,sid=>{S.autoSub=false;setMs(sid)});
 $('pkBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;

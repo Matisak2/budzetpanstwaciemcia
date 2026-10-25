@@ -275,7 +275,11 @@ function autoPlan(){const ym=S.ym,cur=td().slice(0,7);
   toast(`Plan na ${MN[+ym.slice(5)-1].toLowerCase()} skopiowany z: ${MN[+prev.slice(5)-1].toLowerCase()}`)}
 
 /* ---------- wiring ---------- */
-$('findBtn').onclick=openFind;$('prevM').onclick=()=>mv(-1);$('nextM').onclick=()=>mv(1);
+$('findBtn').onclick=openFind;
+/* 🙈 hold the month name for ~0,6 s: discreet mode on / off (a quick way besides ⚙️ → Wygląd) */
+{let t=null;const m=document.querySelector('.mlab'),stop=()=>{clearTimeout(t);t=null};
+  m.addEventListener('pointerdown',()=>{stop();t=setTimeout(()=>{t=null;if(!S.cfg)return;if(navigator.vibrate)navigator.vibrate(15);setHide(!priv.on)},600)});
+  ['pointerup','pointerleave','pointercancel'].forEach(k=>m.addEventListener(k,stop));m.addEventListener('contextmenu',e=>e.preventDefault())}$('prevM').onclick=()=>mv(-1);$('nextM').onclick=()=>mv(1);
 function mv(d){if(S.tab=='ana'&&S.ana=='y')d*=12;S.swipe=Math.sign(d);S.ym=addMonths(S.ym,d);render()}
 /* ✋ hold an entry in the Register: duplicate, refund, delete */
 function txMenu(id){const t=liveById(id);if(!t)return;const d=$('dlg'),sm=subsMap(S.cfg);
