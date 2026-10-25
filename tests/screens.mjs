@@ -28,6 +28,8 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['stale',"go
   ['nam-winni',"setAccView('lent')"],['analiza',"goTab('ana');setAna('m');setAnaMode('full')"],['analiza-podst',"setAnaMode('basic')"],['analiza-rok',"setAnaMode('full');setAna('y')"],
   ['ustawienia',"goTab('set')"],
   ['usuniete',"{const L=S.tx.filter(t=>!t.deleted&&t.type=='exp').slice(0,3);L.forEach((t,i)=>{t.deleted=true;t.dAt=Date.now()-i*1000;t.dby='Mati'});goTab('dash');goTab('set')}"],
+  ['umowa-stale',"{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp');f.until=new Date(Date.now()+40*864e5).toISOString().slice(0,10);window.__umowa=f.id;goTab('fix');setFixSub('fix')}"],
+  ['umowa-na-dzis',"closeAll();showToday()"],['umowa-edycja',"closeAll();editFixed(window.__umowa)"],['gdzie-wydajemy',"closeAll();goTab('ana');setAnaMode('full');setAna('m')"],
   ['dyskretny-budzet',"setHide(1);goTab('dash')"],['dyskretny-analiza',"goTab('ana');setAna('m')"],['dyskretny-majatek',"goTab('sav')"],['dyskretny-koniec',"setHide(0);goTab('dash')"],['nowy-wpis',"goTab('dash');openTx()"],['na-dzis',"closeAll();showToday()"],['pomoc',"closeAll();openHelp()"]];
 const CASES=[{w:390,size:'0',role:'Wercia'},{w:360,size:'2',role:'Mati'},{w:320,size:'0',role:'Mati'},{w:390,size:'1',role:'Wercia'}];
 
@@ -44,7 +46,8 @@ for(const C of CASES){
   await p.waitForFunction(()=>window.goTab&&document.querySelector('#app .kpis,#app .card'),null,{timeout:20000}).catch(()=>fail(`${tag}: aplikacja się nie wczytała`));
   await p.evaluate(()=>{window.closeAll=()=>{document.querySelectorAll('.ov').forEach(o=>o.hidden=true)}});
   for(const [name,code] of SCREENS){
-    try{await p.evaluate(code)}catch(e){fail(`${tag}: ekran „${name}” – ${e.message.split('\n')[0]}`);continue}
+    /* run without waiting: a dialog (ask) returns a promise that settles only when someone closes it */
+    try{await p.evaluate(c=>{(0,eval)(c)},code)}catch(e){fail(`${tag}: ekran „${name}” – ${e.message.split('\n')[0]}`);continue}
     await p.waitForTimeout(350);
     const bad=await p.evaluate(()=>{const W=document.documentElement.clientWidth,out=[];
       if(document.documentElement.scrollWidth>W+1)out.push(`cała strona szersza niż ekran (${document.documentElement.scrollWidth} > ${W})`);
@@ -57,6 +60,8 @@ for(const C of CASES){
     bad.forEach(m=>fail(`${tag}: ekran „${name}” – ${m}`));
     if(/^dyskretny-(budzet|analiza|majatek)/.test(name)){const leak=await p.evaluate(()=>(document.getElementById('app').innerText.match(/\d[\d\u00a0 ]*(,\d+)?\s?(zł|€|\$|£|tys\.)/g)||[]).slice(0,5));
       if(leak.length)fail(`${tag}: tryb dyskretny – widać kwoty: ${leak.join(' | ')}`)}
+    if(name=='umowa-na-dzis'&&!await p.evaluate(()=>/umowa kończy się/.test(document.body.innerText)))fail(`${tag}: „Na dziś” nie przypomina o końcu umowy`);
+    if(name=='gdzie-wydajemy'&&!await p.evaluate(()=>/Gdzie wydajemy/.test(document.getElementById('app').innerText)))fail(`${tag}: brak „Gdzie wydajemy” w Analizie`);
     if(name=='usuniete'&&!await p.evaluate(()=>/Ostatnio usunięte/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty „Ostatnio usunięte”`);
     await p.screenshot({path:path.join(OUT,`${tag}-${name}.png`),fullPage:true});
   }

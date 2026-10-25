@@ -133,6 +133,11 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   if(tx.length){const days=backup?Math.floor((new Date(today+'T12:00:00')-backup.at)/864e5):null;if(!backup||days>=30)add('💾',backup?`Ostatnia kopia danych: ${days} dni temu.`:'Nie zrobiliście jeszcze kopii danych.',{a:'backup'},'Kopia')}
   for(const t of tx){if(!t.war||t.type!='exp'||t.war<today)continue;const n=dd(today,t.war);
     if(n<=30)add('🛡️',`Gwarancja kończy się ${n?'za '+n+' '+plu(n,'dzień','dni','dni'):'dziś'}: ${t.note||subsMap(cfg)[t.sub]?.name||'zakup'} (${dmy(t.war)}). Coś nie działa? To ostatni moment na reklamację.`,{a:'tx',id:t.id},'Zobacz','',person(t.who))}
+  /* 📄 contract end of a fixed payment (internet, phone, insurance…): from 2 months before the end until a month after.
+     In „Na dziś” every day until „Załatwione”; a phone notification only on a few days (quiet on the rest). */
+  for(const f of cfg.fixed||[]){if(!f.until||f.kind=='inc')continue;const key='umowa:'+f.id+':'+f.until;if(hraw?.checkIgnore?.[key])continue;const n=dd(today,f.until);if(n>61||n<-31)continue;
+    out.push({key,icon:'📄',text:n>=0?`„${f.name}” – umowa kończy się ${n?'za '+n+' '+plu(n,'dzień','dni','dni'):'dziś'} (${dmy(f.until)}). Dobry moment, żeby porównać oferty albo negocjować cenę.`:`„${f.name}” – umowa skończyła się ${dmy(f.until)}. Nowa umowa? Wpisz jej koniec w opłacie stałej.`,
+      go:{a:'fixEdit',id:f.id},label:'Zobacz',k:'umowa',who:person(ownerOf(accOf(f.acc))),quiet:!(n>=59||n==30||n==7||n==0)})}
   if(mo==1)for(const w of ['Mati','Wercia']){const p=pitSummaryP(cfg,tx,String(+y-1),w,hraw);if(p.n||p.ikze.length)add('🧾',`${w}: zestawienie ulg do PIT za ${+y-1} jest gotowe.`,{a:'pit',y:String(+y-1)},'Pokaż','',w)}
   if(checks){for(const r of recurringP(cfg,tx,today,hraw?.checkIgnore))out.push({key:r.key,icon:'📌',text:`„${r.name}” – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`,go:{a:'recFix',key:r.key},label:'Dodaj',k:'rec',who:null});
     out.push(...checksP(D,today))}

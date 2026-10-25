@@ -469,6 +469,7 @@ async function editFixed(fid,kind,pre){if(guard())return;
     {id:'d',label:inc?'Zwykle wpływa do dnia (1–31)':'Termin – dzień miesiąca (1–31)',type:'int',value:f?.day||10},
     {id:'s',label:'Pozycja budżetu',type:'select',value:f?.sub||'',options:[['','— wybierz —'],...subOpts(kind)]},
     {id:'c',label:inc?'Wpływa na konto':'Płacone z konta',type:'select',value:f?.acc||S.cfg.accs.find(a=>a.grp=='cur')?.id,options:accOpts()}];
+  if(!inc)fields.push({id:'u',label:'📄 Umowa do (opcjonalnie) – przypomnę 2 miesiące wcześniej',type:'date',value:f?.until||''});
   if(!inc&&debtList('owe').length)fields.push({id:'db',label:'🔻 Spłata zobowiązania',type:'select',value:f?.debt||'',options:[['','— nie —'],...debtList('owe').map(d=>[d.id,d.name])]});
   if(inc){fields.push({id:'v',label:'Kwota co miesiąc',type:'select',value:f?.vary?'1':'0',options:[['0','Podpowiadaj ostatnią kwotę'],['1','Zawsze inna – wpisuję od zera']]});
     fields.push({id:'p',label:'Wpłaty PPK przy tej pensji',type:'select',value:f?.ppk||'',options:[['','Bez PPK'],...invAccs.map(a=>[a.id,a.name])]})}
@@ -480,7 +481,7 @@ async function editFixed(fid,kind,pre){if(guard())return;
   if(amount<=0&&!(inc&&r.v=='1'))return toast('Podaj kwotę większą od zera','bad');
   if(day<1||day>31)return toast('Dzień miesiąca musi być od 1 do 31','bad');
   if(!r.s)return toast('Wybierz pozycję budżetu','bad');
-  const body={id:f0?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:r.s,acc:r.c,kind};if(!inc)body.debt=r.db||'';
+  const body={id:f0?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:r.s,acc:r.c,kind};if(!inc){body.debt=r.db||'';body.until=isDate(r.u)?r.u:''}
   if(inc){body.vary=r.v=='1';body.ppk=r.p||''}
   let tgt=f0;if(f0)Object.assign(f0,body);else{tgt=body;S.cfg.fixed.push(body)}
   render();saveFixed(tgt)}
@@ -829,6 +830,11 @@ function pitH(y){const tx=liveOf(S.tx);
       ${rows.length?rows.map(([k,v])=>{const u=ULGI[k]||ULGI.inne,cap=u.lim&&v.sum>u.lim;return`<div class="r1"><span>${esc(u.n)} <button class="ib" onclick="ulgaInfo('${k}')" aria-label="Co to jest">ⓘ</button><span class="mini"> ${v.n} ${plu(v.n,'wpis','wpisy','wpisów')}</span></span><b class="num">${zl(cap?u.lim:v.sum)}</b></div>${cap?`<div class="mini">wydano ${zl(v.sum)}, odliczyć można najwyżej ${zl0(u.lim)}</div>`:''}`}).join(''):'<div class="mini">Brak wydatków oznaczonych „🧾 do ulgi” – oznaczysz je w okienku wydatku.</div>'}
       ${p.ikze.map(x=>`<div class="r1"><span>IKZE – wpłaty (${esc(x.a.name)})</span><b class="num">${zl(Math.min(x.paid,x.lim))}</b></div>`).join('')}
       <div class="mini">Do zeznania potrzebne będą faktury i potwierdzenia. Ulgi niezależne od wydatków (np. na dzieci, 1,5% dla OPP) sprawdzicie w objaśnieniach do PIT.</div></section>`}).join('')}
+/* 📆 what the fixed payments cost in a year (złoty accounts only), subscriptions separately, plus yearly expenses */
+function fixYearH(all){const sm=subsMap(S.cfg),ex=all.filter(f=>(f.kind||'exp')=='exp'&&accCur(f.acc)=='PLN');if(!ex.length)return'';
+  const m=ex.reduce((a,f)=>a+(+f.amount||0),0),isSub=f=>/subskryp|abonament|aplikacj|streaming/i.test(sm[f.sub]?.cat?.name||''),subs=ex.filter(isSub),ms=subs.reduce((a,f)=>a+(+f.amount||0),0);
+  const yr=(S.cfg.years||[]).reduce((a,it)=>a+(+it.amount||0)*12/Math.max(1,+it.every||12),0);
+  return`<div class="card yfix"><div class="r1"><b>📆 Opłaty stałe w roku</b><b class="num">${zl0(m*12)}</b></div><div class="mini">czyli ok. ${zl0(m)} co miesiąc${subs.length?` · w tym subskrypcje ${zl0(ms*12)} rocznie (${subs.map(f=>esc(f.name)).join(', ')})`:''}${yr?` · do tego wydatki roczne ok. ${zl0(yr)}`:''}.</div>${subs.length?`<div class="mini">Raz na jakiś czas warto sprawdzić, czy wszystkich subskrypcji nadal używacie.</div>`:''}</div>`}
 /* 🗑️ recently deleted (60 days): a deleted entry is only marked deleted:true, so it can always come back.
    Entries deleted together with their parent (PPK, refunds, interest, paystub deductions) come back with it; paystub entries replaced by a re-saved paystub are not listed. */
 const DEL_DAYS=60,parOf=t=>t.ppkOf||t.refundOf||t.payOf||t.slipOf;
@@ -1474,7 +1480,7 @@ function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='lent'||a=='owe'){S.accView=a;return goTab('acc')}if(a=='rata')return openTx(null,{type:'exp',debt:g.id});if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
   if(a=='tr')return openTx(null,{type:'tr',to:g.to});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
-  if(a=='recFix')return addRecFixed(g.key);
+  if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
   if(a=='tx'){const t=liveById(g.id);if(t){S.ym=t.date.slice(0,7);openTx(g.id)}}}
 const goFromHash=h=>{const m=/go=([^&]+)(.*)/.exec(h||'');if(!m)return null;const g={a:decodeURIComponent(m[1])};new window.URLSearchParams(m[2].replace(/^&/,'')).forEach((v,k)=>g[k]=v);return g};
 function todayGo(i){runGo((S.todayL||[])[i]?.go)}
@@ -1486,7 +1492,7 @@ const recH=()=>recList().map(r=>`<div class="note">📌 „${esc(r.name)}” –
 function closeToday(){$('dlg').hidden=true}
 function showToday(){const L=todayItems(),d=$('dlg'),bad=L.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
   $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(L.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${L.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>
-    ${L.length?`<div class="today">${L.map((x,i)=>`<div class="titem ${x.k}"><span class="ti">${x.icon}</span><span class="tt">${esc(x.text)}${x.k=='check'?'<small>🧹 strażnik porządku</small>':''}</span><span class="tb"><button class="chip" onclick="todayGo(${i})">${esc(x.label)}</button>${x.key?`<button class="chip ghost" onclick="ignoreCheck('${esc(x.key)}')">${x.k=='rec'?'Nie, dzięki':'To nie błąd'}</button>`:''}</span></div>`).join('')}</div>`:''}
+    ${L.length?`<div class="today">${L.map((x,i)=>`<div class="titem ${x.k}"><span class="ti">${x.icon}</span><span class="tt">${esc(x.text)}${x.k=='check'?'<small>🧹 strażnik porządku</small>':''}</span><span class="tb"><button class="chip" onclick="todayGo(${i})">${esc(x.label)}</button>${x.key?`<button class="chip ghost" onclick="ignoreCheck('${esc(x.key)}')">${x.k=='rec'?'Nie, dzięki':x.k=='umowa'?'Załatwione':'To nie błąd'}</button>`:''}</span></div>`).join('')}</div>`:''}
     <div class="g2" style="grid-template-columns:1fr"><button class="btn primary" id="tdOk">Zamknij</button></div>`;
   d.hidden=false;$('tdOk').onclick=closeToday;d.onclick=e=>{if(e.target===d)closeToday()};updToday()}
 function updToday(){const n=todayItems().length,b=$('todayBtn');if(!b)return;b.dataset.n=n||'';b.setAttribute('aria-label',n?`Na dziś: ${n}`:'Na dziś')}
@@ -1500,6 +1506,14 @@ const markOf=c=>c?catMark(catHue(c,S.cfg.cats.indexOf(c))):P_OTHER;
 
 /* spending and income in other currencies – not converted, so shown beside the charts */
 const fxNote=F=>{const e=fxTxt(F.exp),i=fxTxt(F.inc);return e||i?`<div class="note">🌍 W innych walutach (poza wykresami): ${e?`wydatki <b>${esc(e)}</b>`:''}${e&&i?' · ':''}${i?`przychody <b>${esc(i)}</b>`:''}</div>`:''};
+/* 🏪 where the money goes: shops and places from the notes (Biedronka, Lidl, Glovo…), złoty expenses without fixed payments; colour = category used most there */
+function shopsH(cfg,tx,pre,when){const sm=subsMap(cfg),G={};
+  for(const t of tx){if(t.type!='exp'||!t.date.startsWith(pre)||t.fixedId||t.debt||t.payoff||accCur(t.acc)!='PLN')continue;const raw=String(t.note||'').replace(/💱.*$/,'').trim();if(raw.length<2||/^[🪙↩]/u.test(raw))continue;
+    const k=norm(raw).replace(/[.,!?;:"'„”()]/g,'').replace(/\s+/g,' ');if(!k)continue;const g=G[k]||(G[k]={v:0,n:0,names:{},subs:{}});g.v+=t.amount;g.n++;g.names[raw]=(g.names[raw]||0)+1;g.subs[t.sub]=(g.subs[t.sub]||0)+t.amount}
+  const L=Object.values(G).filter(g=>g.v>0).sort((a,b)=>b.v-a.v);if(L.length<2)return'';const tot=L.reduce((a,g)=>a+g.v,0),top=(o)=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0][0];
+  const rows=L.slice(0,8).map(g=>{const c=markOf(sm[top(g.subs)]?.cat);return{l:top(g.names),v:g.v,c,dot:c,note:g.n>1?`${g.n} razy · średnio ${zl0(g.v/g.n)}`:'1 raz'}});
+  const rest=L.slice(8).reduce((a,g)=>a+g.v,0);if(rest>0)rows.push({l:`Inne miejsca (${L.length-8})`,v:rest,c:P_OTHER,dot:P_OTHER});
+  return chartBox('🏪 Gdzie wydajemy','sklepy i miejsca z notatek '+when+' (bez opłat stałych)',hbarsH(rows,tot))}
 function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntries(cfg.cats.map(c=>[c.id,c]));
   const A=agg(cfg,tx,ym),Pm=agg(cfg,tx,addMonths(ym,-1)),pl=S.plans[ym]||{};
   const pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,s)=>b+(pl[s.id]||0),0),0);
@@ -1546,6 +1560,7 @@ function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.fromEntr
   if(A.fixed)h+=`<section class="chart"><div class="ct"><b>Opłaty stałe a reszta</b></div><div class="stack"><i style="width:${(A.fixed/wsum*100).toFixed(1)}%;background:#b4a8f0" data-tip="Opłaty stałe: ${zl(A.fixed)}"></i><i style="width:${((wsum-A.fixed)/wsum*100).toFixed(1)}%;background:${P_OTHER}" data-tip="Pozostałe wydatki: ${zl(wsum-A.fixed)}"></i></div>
     <div class="lg" style="margin-top:8px"><span><i style="background:#b4a8f0"></i>📌 Opłaty stałe: <b class="num">${zl(A.fixed)}</b> (${pctS(A.fixed,wsum)})</span><span><i style="background:${P_OTHER}"></i>Pozostałe: <b class="num">${zl(wsum-A.fixed)}</b> (${pctS(wsum-A.fixed,wsum)})</span></div></section>`;
   // biggest
+  h+=shopsH(cfg,tx,ym,'w tym miesiącu');
   if(A.big.length)h+=`<section class="chart"><div class="ct"><b>Największe pojedyncze wydatki</b></div><div class="list" style="border:0">${A.big.map(t=>txRowH(t,sm)).join('')}</div></section>`;
   return h}
 
@@ -1582,6 +1597,7 @@ function anaYear(ctx){const{cfg,tx,ym,savAt}=ctx,y=ym.slice(0,4),cats=Object.fro
   // categories in the year
   const catRows=Object.entries(Y.cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([id,v])=>({l:cleanCat(cats[id]?.name),v,c:markOf(cats[id]),dot:markOf(cats[id]),note:`średnio ${zl0(nMon?v/nMon:v)} / mies.`}));
   if(catRows.length)h+=chartBox('Kategorie w całym roku','suma, udział i średnia miesięczna',hbarsH(catRows,Y.exp));
+  h+=shopsH(cfg,tx,y,'w całym roku');
   const wsum=Object.values(Y.who).reduce((a,v)=>a+v,0);
   h+=chartBox('Kto wydawał w roku','',whoH(Y.who,wsum));
   if(Y.fixed)h+=`<div class="note">📌 Opłaty stałe w ${y}: <b>${zl(Y.fixed)}</b>, czyli ${pctS(Y.fixed,wsum)} wszystkich wydatków.</div>`;
@@ -1691,7 +1707,7 @@ function render(){
     const isCur=td().startsWith(S.ym),today=+td().slice(8),all=(S.cfg.fixed||[]).slice().sort((a,b)=>(+a.day)-(+b.day)||a.name.localeCompare(b.name,'pl'));
     const row=(f,paid)=>{const inc=f.kind=='inc',late=!paid&&isCur&&today>Math.min(+f.day,daysIn(S.ym));
       const ppk=paid&&inc?liveOf(S.tx).filter(t=>t.ppkOf===paid.id):[];
-      return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?(inc?'wpłynęło ':'zapłacono ')+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc))+(ppk.length?' · PPK '+zl0(ppk.reduce((a,t)=>a+t.amount,0)):''):(late?`<span class="late">${inc?'czeka na odhaczenie':'po terminie'}</span> · `:'')+(inc?'zwykle do ':'termin do ')+f.day+'. · '+esc(accN(f.acc))+(f.kind=='tr'?' → '+esc(accN(f.to)):'')+(inc&&f.ppk?' · z PPK':'')}</span></button><span class="num ${inc?'t-inc':''}">${paid?am(paid.amount,paid.acc):inc&&f.vary?'—':(inc?'~':'')+am(f.amount,f.acc)}</span></div>`};
+      return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?(inc?'wpłynęło ':'zapłacono ')+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc))+(ppk.length?' · PPK '+zl0(ppk.reduce((a,t)=>a+t.amount,0)):''):(late?`<span class="late">${inc?'czeka na odhaczenie':'po terminie'}</span> · `:'')+(inc?'zwykle do ':'termin do ')+f.day+'. · '+esc(accN(f.acc))+(f.kind=='tr'?' → '+esc(accN(f.to)):'')+(inc&&f.ppk?' · z PPK':'')}${f.until&&!inc?` · <span class="${f.until<addDays(td(),62)?'late':''}">📄 umowa do ${f.until.split('-').reverse().join('.')}</span>`:''}</span></button><span class="num ${inc?'t-inc':''}">${paid?am(paid.amount,paid.acc):inc&&f.vary?'—':(inc?'~':'')+am(f.amount,f.acc)}</span></div>`};
     const block=(kind)=>{const fx=all.filter(f=>(f.kind||'exp')==kind),inc=kind=='inc',trf=kind=='tr';
       let x=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">${inc?'📥 Przychody stałe':trf?'🐷 Stałe przelewy na oszczędności':'📤 Opłaty stałe'}</span><button class="btn sm dark" onclick="editFixed(null,'${kind}')">+ ${inc?'Przychód':trf?'Przelew':'Opłata'}</button></div>`;
       if(!fx.length)return x+`<div class="mini" style="padding:0 6px">${inc?'Dodaj np. pensje – co miesiąc odhaczysz, ile faktycznie wpłynęło, razem z wpłatami na PPK.':trf?'Np. 500 zł co miesiąc z konta bieżącego na oszczędności – odhaczasz, gdy przelew wyjdzie.':'Dodaj np. czynsz, prąd albo Spotify – co miesiąc odhaczysz je na liście.'}</div>`;
@@ -1700,7 +1716,7 @@ function render(){
       x+=`<div class="prog"><div class="r1"><b>${inc?'Wpłynęło':'Zapłacone'} ${done.length} z ${rows.length}</b><span class="num">${zl(sumDone)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:#86efac"></i></div><div class="mini">${done.length==rows.length?`<b class="t-inc">✓ ${inc?'wszystko wpłynęło':trf?'wszystko przelane':'wszystko zapłacone'}</b>`:`${inc?'Jeszcze oczekiwane: ok. ':'Zostało do zapłaty: '}<b class="num" style="color:var(--fg)">${zl(sumLeft)}</b>`}</div></div>`;
       return x+`<div class="list">${rows.map(r=>row(r.f,r.paid)).join('')}</div>`};
     if(!all.length)h+=catsEmpty('Dodaj stałe przychody (np. pensje) i opłaty (np. czynsz, prąd, Spotify).<br>Co miesiąc odhaczysz je na liście, a wpisy same trafią do rejestru.',0,'bell');
-    h+=block('inc')+block('exp')+block('tr');
+    h+=block('inc')+block('exp')+fixYearH(all)+block('tr');
     h+=`<div class="mini" style="text-align:center">Stuknij kwadracik, żeby odhaczyć. Stuknij nazwę, żeby zmienić.</div>${all.some(f=>(f.kind||'exp')=='exp')?`<div class="card"><h3>📅 Przypomnienia w telefonie</h3><div class="mini">Dodaj opłaty do kalendarza telefonu. Dzień przed terminem o 18:00 dostaniesz powiadomienie, nawet gdy aplikacja jest zamknięta.</div><button class="btn primary" onclick="calendarExport()">Dodaj opłaty do kalendarza</button></div>`:''}`}
 
   else if(S.tab=='sav'){

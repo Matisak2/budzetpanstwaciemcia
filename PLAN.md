@@ -184,9 +184,9 @@ Zasady jak dotąd. Mati wybrał: wszystko poniżej. Odrzucone: notatka do miesi�
 - [x] 🚫 Bez przybliżania podwójnym stuknięciem (prośba Matiego): `*{touch-action:manipulation}` + w `app.js` drugie szybkie stuknięcie zatrzymane, przycisk dostaje kliknięcie; dwa palce dalej przybliżają
 
 ## Etap J. Umowy, koszty roczne, sklepy
-- [ ] „Umowa do…” przy opłacie stałej – przypomnienie 2 miesiące przed końcem (w „Na dziś” i w powiadomieniu)
-- [ ] 📌 Stałe: ile opłaty stałe kosztują rocznie (w tym subskrypcje)
-- [ ] 🏪 „Gdzie wydajemy” w Analizie – sklepy i miejsca z notatek (miesiąc i rok)
+- [x] „Umowa do…” przy opłacie stałej – przypomnienie 2 miesiące przed końcem (w „Na dziś” i w powiadomieniu)
+- [x] 📌 Stałe: ile opłaty stałe kosztują rocznie (w tym subskrypcje)
+- [x] 🏪 „Gdzie wydajemy” w Analizie – sklepy i miejsca z notatek (miesiąc i rok)
 
 ## Etap K. Zdjęcia paragonów
 - [ ] 📷 Zdjęcie paragonu / gwarancji przy wpisie: zmniejszone w telefonie (~100 KB), w bazie Firebase w darmowym limicie, wczytywane dopiero po stuknięciu; licznik miejsca w ⚙️; „Pobierz kopię ze zdjęciami”; bez zdjęć w mailu z kopią

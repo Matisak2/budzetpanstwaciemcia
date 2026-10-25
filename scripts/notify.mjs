@@ -18,7 +18,7 @@ const msgFor=who=>{
   if(slot=='test')return{title:'🔔 Próba powiadomień',body:'Działa! Bailey i Ivo będą przypominać rano i wieczorem. 🐾',url:'./#go=today',tag:'test'};
   if(slot=='e'){const any=D.tx.some(t=>t.date==today&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val));
     return any?null:{title:'✍️ Wpiszcie dzisiejsze wydatki',body:'Dziś nic jeszcze nie ma w budżecie. Wystarczy minuta 🐾',url:'./#go=add',tag:'evening'}}
-  const L=todayItems(D,{today,hour:8,checks:weekday=='Mon'}).filter(x=>x.go?.a!='add'&&(!x.who||x.who==who));if(!L.length)return null;
+  const L=todayItems(D,{today,hour:8,checks:weekday=='Mon'}).filter(x=>x.go?.a!='add'&&!x.quiet&&(!x.who||x.who==who));if(!L.length)return null;
   const bad=L.filter(x=>x.k=='bad'),first=[...bad,...L.filter(x=>x.k!='bad')].slice(0,3);
   return{title:`🔔 Na dziś${L.length>1?` (${L.length})`:''}${bad.length?' – coś po terminie':''}`,body:first.map(x=>x.icon+' '+x.text).join('\n')+(L.length>3?`\n+${L.length-3} więcej`:''),url:'./#go=today',tag:'today'}};
 let sent=0,gone=0;
