@@ -157,7 +157,9 @@ export function openTx(id,pre){if(guard())return;
   if(t&&t.ppk){ask({title:t.note,text:`${accN(t.acc)}: ${zl(t.amount)} (${t.date.split('-').reverse().join('.')})\nTa wpłata jest powiązana z pensją. Żeby ją zmienić, odznacz i odhacz pensję ponownie w 📌 Stałe.`,ok:'Usuń wpłatę',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTen starszy wpis usuniesz w zakładce Oszczędności.`,ok:'Przejdź',cancel:'Zamknij'}).then(r=>{if(r){S.tab='sav';render()}});return}
   S.edit=t?id:null;S.refEdit=!!t?.refundOf;S.debtOpen=S.projOpen=false;S.autoSub=false;SP=[];
-  const ao=accOpts().map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(a=>`<option value="${a[0]}">${esc(a[1])}</option>`).join('')}</optgroup>`).join('');$('mc').innerHTML=ao;$('mto').innerHTML=ao;
+  /* an entry of an account in the archive keeps showing it (with a note), instead of an empty field */
+  const arch=S.cfg.accs.filter(a=>a.archived&&t&&(a.id===t.acc||a.id===t.to)),og=[...accOpts(),...(arch.length?[{group:'🗄️ Archiwum',items:arch.map(a=>[a.id,a.name+' (archiwum)'])}]:[])];
+  const ao=og.map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(a=>`<option value="${a[0]}">${esc(a[1])}</option>`).join('')}</optgroup>`).join('');$('mc').innerHTML=ao;$('mto').innerHTML=ao;
   PH=(t?.rcpt||[]).map(id=>({id}));$('ms').value='';setType(t?t.type:(pre?.type||'exp'));
   $('mw').value=(t&&t.who)||S.who;
   $('ma').value=t?f2(t.amount):'';$('maSum').textContent='';
@@ -194,6 +196,7 @@ export async function saveTx(next){if(guard())return;
   if(amount<=0)return toast('Podaj kwotę większą od zera','bad');
   if(!isDate(date))return toast('Wybierz datę','bad');
   if(type!='tr'&&!$('ms').value)return toast('Wybierz pozycję budżetu','bad');
+  if(!$('mc').value||(type=='tr'&&!$('mto').value))return toast('Wybierz konto','bad');
   if(type=='tr'&&$('mc').value==$('mto').value)return toast('Wybierz dwa różne konta','bad');
   const cA=accCur($('mc').value),cB=type=='tr'?accCur($('mto').value):cA,two=cA!=cB,amount2=two?calcAmt($('ma2').value):0;
   if(two&&amount2<=0)return toast(`Podaj, ile wpłynie na drugie konto (${curSym(cB)})`,'bad');
@@ -229,6 +232,9 @@ export async function saveTx(next){if(guard())return;
   const debt=type=='exp'&&!$('mdebtWrap').hidden?$('mdebt').value:'';if(debt)body.debt=debt;else if(old?.debt)body.debt='';
   if(debt&&S.debts[debt]&&!subsMap(S.cfg)[S.debts[debt].sub]&&body.sub)merge(doc(DEBTS(),debt),{sub:body.sub});
   if(old){for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];body.by=old.by||'';body.ts=old.ts||body.ts;body.eby=S.who;body.eAt=Date.now()}
+  /* moved to another month = a new document there: it takes every other field of the entry (yearly expense, 🪙 drobne, payoff and its interest, slip, PPK, loans…) – in the same month the old fields stay anyway */
+  if(old&&old.date.slice(0,7)!=date.slice(0,7)){const{id:_i,deleted:_d,moved:_m,dby:_b,dAt:_a,...rest}=old;for(const[k,v]of Object.entries(rest))if(!(k in body))body[k]=v;
+    body.moved=false} // moved there and back: the old document of this month still says „moved” – without this, deleting it later hid it from 🗑️ Ostatnio usunięte
   const g=parts.length?'g'+rid():'';if(g)body.split=g;Object.assign(body,link);
   const coin=!old&&type=='exp'&&S.coinOn&&S.coin;
   const phKeep=type=='tr'?[]:PH.filter(p=>!p.removed),phDel=PH.filter(p=>!p.isNew&&(p.removed||type=='tr'));if(phKeep.length||old?.rcpt?.length)body.rcpt=phKeep.map(p=>p.id);

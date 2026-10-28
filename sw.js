@@ -1,11 +1,15 @@
-/* Budżet M&W – service worker: the app opens without internet.
-   App files (index.html, style.css, js/*): network first (so updates arrive together), cached copy when offline.
-   Firebase SDK (versioned URLs) and fonts: cache first. Firestore/Auth traffic is never touched. */
-const CACHE = 'budzet-mw-v58';
+/* Budżet M&W – service worker: the app opens without internet, and an update never mixes old and new files.
+   App files (SHELL): always the complete set of one version from this cache. A new version = a new CACHE name: the browser installs
+   the new worker, which downloads the WHOLE set first (one failed file = the install fails and the old version simply stays);
+   only then it takes over, and the page reloads itself (js/app.js, controllerchange). That is why CACHE must go up with every change
+   (the robot checks it – tests/cache.mjs). Other own files: network first. Firebase SDK (versioned URLs) and fonts: cache first.
+   Firestore/Auth traffic is never touched. */
+const CACHE = 'budzet-mw-v59';
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const SHELL = ['./', './index.html', './style.css', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png',
   './js/app.js', './js/util.js', './js/data.js', './js/art.js', './js/logic.js', './js/charts.js', './js/cats.js', './js/guide.js', './js/pay.js', './js/inv.js', './js/today.js', './js/report.js', './js/close.js',
   './js/core.js', './js/sheet.js', './js/actions.js', './js/salary.js', './js/savings.js', './js/debts.js', './js/analysis.js', './js/todayui.js'];
+const SHELL_URLS = new Set(SHELL.map(u => new URL(u, self.location.href).pathname));
 const SDK_FILES = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => SDK + f);
 
 self.addEventListener('install', e => {
@@ -24,7 +28,15 @@ self.addEventListener('activate', e => {
   })());
 });
 
-/* same-origin files: the page itself is stored under ./index.html so any start URL opens offline */
+/* the files of this version: from the cache (the page itself is stored under ./index.html, so any start URL works);
+   missing from the cache (e.g. it was cleared) – from the network */
+async function shellFirst(req, key) {
+  const c = await caches.open(CACHE);
+  const hit = await c.match(key, { ignoreSearch: true }) || (key === './index.html' && await c.match('./'));
+  return hit || networkFirst(req, key);
+}
+
+/* other same-origin files */
 async function networkFirst(req, key) {
   const c = await caches.open(CACHE);
   try {
@@ -54,9 +66,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin === location.origin && url.pathname.includes('/demo/')) return; // the demo is never cached (it must not replace the real app offline)
   if (req.mode === 'navigate' || (url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname))) {
-    e.respondWith(networkFirst(req, './index.html'));
+    e.respondWith(shellFirst(req, './index.html'));
   } else if (url.origin === location.origin) {
-    e.respondWith(networkFirst(req, req));
+    e.respondWith(SHELL_URLS.has(url.pathname) ? shellFirst(req, req) : networkFirst(req, req));
   } else if (url.href.startsWith(SDK) || url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(cacheFirst(req));
   }

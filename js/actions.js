@@ -6,7 +6,7 @@ import {HUES,catHue,freeHue} from './data.js';
 import {position,wrapOf} from './inv.js';
 import {ULGI} from './today.js';
 import {suggest} from './pay.js';
-import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf} from './logic.js';
+import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS} from './logic.js';
 import {$,MN,addDays,addMonths,clone,daysIn,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv} from './util.js';
 import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOwner,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,INV,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,delFixedDb,putTx,putInv,liveById,guard} from './core.js';
 import {plu,catColor,P,RCPT,RMETA,phCache,openTx} from './sheet.js';
@@ -309,7 +309,7 @@ export async function removeSavAcc(id){const a=S.cfg.accs.find(x=>x.id==id),tx=l
 /* ---------- backup ---------- */
 export async function exportJson(withPhotos){if(!S.cfg)return;let receipts;
   if(withPhotos===true){toast('Zbieram zdjęcia…');try{receipts={};(await getDocs(RCPT())).docs.forEach(d=>receipts[d.id]=d.data())}catch(e){err(e);return toast('Nie udało się pobrać zdjęć – spróbuj przy dobrym internecie','bad')}}
-  const data=JSON.stringify({format:'budzet-mw-2',exported:new Date().toISOString(),cfg:S.cfg,savTarget:S.savTarget,birth:S.hraw?.birth||{},closeM:S.hraw?.closeM||{},reconM:S.hraw?.reconM||{},tx:S.tx,plans:S.plans,inv:S.inv,goals:S.goals,slips:S.slips,hold:S.hold,debts:S.debts,...(receipts?{receipts}:{})},null,receipts?0:1);
+  const data=JSON.stringify(backupDoc(S,new Date(),receipts?{receipts}:{}),null,receipts?0:1);
   const name=(receipts?'budzet-kopia-ze-zdjeciami-':'budzet-kopia-')+td()+'.json',blob=new Blob([data],{type:'application/json'});
   const file=typeof File=='function'?new File([blob],name,{type:'application/json'}):null;
   const mobile=matchMedia('(pointer:coarse)').matches;
@@ -370,7 +370,7 @@ export async function importFile(file){if(guard())return;let o;
   if(!await ask({title:'Wczytać kopię?',text:`Znaleziono ${n} transakcji.\n${isNew?'Konta, pozycje budżetu i opłaty stałe zostaną zastąpione tymi z kopii.':'Brakujące konta i pozycje zostaną dopisane.'} Transakcje o tym samym numerze zostaną nadpisane, reszta zostaje.`,ok:'Wczytaj'}))return;
   toast('Wczytywanie…');
   try{let ok;
-    if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];S.cfg.incs=S.cfg.incs||[];S.cfg.years=S.cfg.years||[];S.cfg.projs=S.cfg.projs||[];S.cfg.rems=S.cfg.rems||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();for(const k of ['birth','closeM','reconM'])if(o[k]&&typeof o[k]=='object'&&Object.keys(o[k]).length)merge(H,{[k]:o[k]});
+    if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];S.cfg.incs=S.cfg.incs||[];S.cfg.years=S.cfg.years||[];S.cfg.projs=S.cfg.projs||[];S.cfg.rems=S.cfg.rems||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();for(const k of BACKUP_KEYS){const v=o[k];if(typeof v=='string'?v:v&&typeof v=='object'&&Object.keys(v).length){S.hraw={...S.hraw,[k]:typeof v=='object'?{...(S.hraw?.[k]||{}),...v}:v};merge(H,{[k]:v})}}
       ok=await writeTxs(o.tx.filter(t=>isDate(t.date)).map(t=>{const{id,...b}=t;return[id||('t'+rid()),b]}));
       ok=(await writePlans(o.plans||{}))&&ok;
       for(const[id,it]of Object.entries(o.inv||{}))ok=(await putInv(id,it))&&ok;

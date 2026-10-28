@@ -1,5 +1,5 @@
 /* 🤖 Robot: czy kopia zapasowa naprawdę się wczytuje. Otwiera czystą wersję demo (bez przykładowych danych), wczytuje kopię
-   przez ⚙️ → „Wczytaj kopię” i porównuje z plikiem: wpisy (id i kwoty), konta, pozycje, plany, paski, zobowiązania, instrumenty, cele i salda wszystkich kont.
+   przez ⚙️ → „Wczytaj kopię” i porównuje z plikiem: wpisy (id i kwoty), konta, pozycje, plany, paski, zobowiązania, instrumenty, cele, salda wszystkich kont i ustawienia zapisane obok (ukryte podpowiedzi, kaskada, subkonto kopert, inflacja, limity, urodziny, zamknięcia, daty sald).
    Wypisuje tylko liczby (dziennik GitHuba jest publiczny).
    node tests/restore.mjs plik.json[.gz]   – sprawdza ten plik (automat po comiesięcznej kopii, .github/workflows/mail.yml)
    node tests/restore.mjs --demo           – robi kopię z przykładowych danych demo i ją sprawdza (robot przy każdej zmianie) */
@@ -24,7 +24,11 @@ const page=async(clean)=>{const ctx=await browser.newContext({viewport:{width:39
 
 let file=process.argv[2];
 if(!file||file=='--demo'){const{ctx,p}=await page(false);
-  const b=await p.evaluate(()=>({format:'budzet-mw-2',exported:new Date().toISOString(),cfg:S.cfg,savTarget:S.savTarget,tx:S.tx,plans:S.plans,inv:S.inv,goals:S.goals,slips:S.slips,hold:S.hold,debts:S.debts}));
+  /* settings kept beside the maps (hidden hints, cascade, yearly subaccount, inflation, limits, birthdays, month closing, bank checks) – made up here, so the test sees them come back */
+  const b=await p.evaluate(async()=>{const{backupDoc}=await import('/js/logic.js');const a=S.cfg.accs.find(a=>a.grp=='sav')||S.cfg.accs[0];
+    S.hraw={...S.hraw,checkIgnore:{'rec:Netflix':true,'pit:2026:Mati':true},cascade:{Mati:{buf:30000,to:a.id}},yearAcc:a.id,macro:{infl:4.2,inflAt:'2026-10-01'},limits:{2026:{ike:2804000,ikze:1121600,ikzeB:1682400}},limitsSeen:{2026:'x'},
+      birth:{Mati:'1995-05-12',Wercia:'1996-07-01'},closeM:{'2026-09':{steps:{plan:{by:'Mati',at:1}}}},reconM:{[a.id]:'2026-10-01'}};
+    return backupDoc(S)});
   file=path.join(OUT,'demo-kopia.json');fs.writeFileSync(file,JSON.stringify(b));await ctx.close()}
 let raw=fs.readFileSync(file);if(raw[0]==0x1f&&raw[1]==0x8b)raw=zlib.gunzipSync(raw);const B=JSON.parse(raw.toString('utf8'));
 
@@ -40,11 +44,15 @@ const R=await p.evaluate(async B=>{const{balance}=await import('/js/logic.js');c
   const n=o=>Object.keys(o||{}).length,live=o=>Object.values(o||{}).filter(x=>!x.deleted).length,subs=c=>c.cats.reduce((a,k)=>a+k.subs.length,0);
   const bTx=bt.map(t=>({...t}));let bal=0;for(const a of B.cfg.accs)if(balance(B.cfg,bTx,a.id,'9999-99-99')!==balance(S.cfg,S.tx,a.id,'9999-99-99'))bal++;
   return{tx:bt.length,txApp:S.tx.length,miss,diff,acc:[B.cfg.accs.length,S.cfg.accs.length],subs:[subs(B.cfg),subs(S.cfg)],fixed:[(B.cfg.fixed||[]).length,(S.cfg.fixed||[]).length],
-    plans:[n(B.plans),n(S.plans)],slips:[n(B.slips),n(S.slips)],debts:[live(B.debts),live(S.debts)],hold:[live(B.hold),live(S.hold)],goals:[n(B.goals),n(S.goals)],bal,accN:B.cfg.accs.length}},B);
+    plans:[n(B.plans),n(S.plans)],slips:[n(B.slips),n(S.slips)],debts:[live(B.debts),live(S.debts)],hold:[live(B.hold),live(S.hold)],goals:[n(B.goals),n(S.goals)],bal,accN:B.cfg.accs.length,
+    /* settings beside the maps: every one in the file must come back (old files without them – nothing to compare) */
+    set:['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen'].filter(k=>{const v=B[k];if(!v||(typeof v=='object'&&!Object.keys(v).length))return false;
+      const x=S.hraw?.[k];return typeof v=='object'?Object.keys(v).some(i=>JSON.stringify(v[i])!==JSON.stringify(x?.[i])):v!==x}),
+    setN:['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen'].filter(k=>B[k]&&(typeof B[k]!='object'||Object.keys(B[k]).length)).length}},B);
 await ctx.close();await browser.close();srv.close();
 
 const pairs=['acc','subs','fixed','plans','slips','debts','hold','goals'].filter(k=>R[k][0]!==R[k][1]);
-const ok=!R.miss&&!R.diff&&R.txApp===R.tx&&!pairs.length&&!R.bal&&!jsErr;
-console.log(`${ok?'✅':'❌'} Kopia: wpisy ${R.txApp} z ${R.tx}${R.miss?`, brakuje ${R.miss}`:''}${R.diff?`, różni się ${R.diff}`:''} · salda ${R.accN-R.bal} z ${R.accN} kont zgodne · konta ${R.acc[1]}/${R.acc[0]} · pozycje ${R.subs[1]}/${R.subs[0]} · plany ${R.plans[1]}/${R.plans[0]} · paski ${R.slips[1]}/${R.slips[0]} · zobowiązania ${R.debts[1]}/${R.debts[0]} · instrumenty ${R.hold[1]}/${R.hold[0]} · cele ${R.goals[1]}/${R.goals[0]}${jsErr?` · błędy JavaScript: ${jsErr}`:''}`);
-if(pairs.length)console.log('❌ Nie zgadza się: '+pairs.join(', '));
+const ok=!R.miss&&!R.diff&&R.txApp===R.tx&&!pairs.length&&!R.bal&&!R.set.length&&!jsErr;
+console.log(`${ok?'✅':'❌'} Kopia: wpisy ${R.txApp} z ${R.tx}${R.miss?`, brakuje ${R.miss}`:''}${R.diff?`, różni się ${R.diff}`:''} · salda ${R.accN-R.bal} z ${R.accN} kont zgodne · konta ${R.acc[1]}/${R.acc[0]} · pozycje ${R.subs[1]}/${R.subs[0]} · plany ${R.plans[1]}/${R.plans[0]} · paski ${R.slips[1]}/${R.slips[0]} · zobowiązania ${R.debts[1]}/${R.debts[0]} · instrumenty ${R.hold[1]}/${R.hold[0]} · cele ${R.goals[1]}/${R.goals[0]} · ustawienia ${R.setN-R.set.length}/${R.setN}${jsErr?` · błędy JavaScript: ${jsErr}`:''}`);
+if(pairs.length||R.set.length)console.log('❌ Nie zgadza się: '+[...pairs,...R.set].join(', '));
 process.exit(ok?0:1);

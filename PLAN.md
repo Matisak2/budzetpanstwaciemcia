@@ -293,13 +293,13 @@ Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). N
 - [x] 🔍 🔔 ⚙️ w jednej linii i tej samej wielkości (dzwonek miał styl listy „Na dziś” – ta sama nazwa klasy); robot sprawdza położenie ikon
 
 ## Etap X2. Naprawy i pełna kopia
-- [ ] Jedna funkcja kopii dla ⚙️ i maila: kaskada, ukryte podpowiedzi (`checkIgnore`), subkonto kopert (`yearAcc`), inflacja (`macro`), limity IKE/IKZE, urodziny, zamknięcia, daty sald; wczytanie przywraca wszystko
-- [ ] Wydatki roczne co kwartał / co miesiąc: kolejny termin po zapłacie
-- [ ] Wpis z konta w archiwum: konto widoczne z dopiskiem, bez zapisu bez konta
-- [ ] Zmiana daty na inny miesiąc zachowuje powiązania (roczne, drobne, odsetki spłaty)
-- [ ] „Ostatnio usunięte”: wpis przeniesiony tam i z powrotem
-- [ ] Bezpieczna aktualizacja (komplet plików przed przełączeniem)
-- [ ] Testy robota
+- [x] Jedna funkcja kopii dla ⚙️ i maila: kaskada, ukryte podpowiedzi (`checkIgnore`), subkonto kopert (`yearAcc`), inflacja (`macro`), limity IKE/IKZE, urodziny, zamknięcia, daty sald; wczytanie przywraca wszystko
+- [x] Wydatki roczne co kwartał / co miesiąc: kolejny termin po zapłacie
+- [x] Wpis z konta w archiwum: konto widoczne z dopiskiem, bez zapisu bez konta
+- [x] Zmiana daty na inny miesiąc zachowuje powiązania (roczne, drobne, odsetki spłaty)
+- [x] „Ostatnio usunięte”: wpis przeniesiony tam i z powrotem
+- [x] Bezpieczna aktualizacja (komplet plików przed przełączeniem)
+- [x] Testy robota
 
 ## Etap X3. Kotki
 - [ ] Wyraźniejsze dymki (konkret z kwotą, potem żart)

@@ -1,10 +1,9 @@
 // E-mails of Budżet M&W: the backup file (same format as ⚙️ „Pobierz kopię”) and a pastel summary of a month. Pure functions – easy to test.
 import {MN,zl,zl0,addMonths} from '../js/util.js';
-import {actuals,agg,subsMap,cleanCat,savFlow,savIds,planOf} from '../js/logic.js';
+import {actuals,agg,subsMap,cleanCat,savFlow,savIds,planOf,backupDoc as backupOf} from '../js/logic.js';
 export const APP='https://matisak2.github.io/budzetpanstwaciemcia/';
 /* the full backup – the app reads it back with ⚙️ „Wczytaj kopię” */
-export function backupDoc(D,now=new Date()){return{format:'budzet-mw-2',exported:now.toISOString(),auto:true,cfg:D.cfg,savTarget:D.hraw?.savTarget||0,tx:D.txAll,plans:D.plans,inv:D.inv,goals:D.goals,
-  slips:Object.fromEntries(Object.entries(D.slips||{})),hold:D.hold,debts:D.debts}}
+export function backupDoc(D,now=new Date()){return backupOf({...D,tx:D.txAll},now,{auto:true})}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 /* numbers of one month (ym) for the summary */
 export function monthStats(D,ym){const{cfg,tx}=D,A=agg(cfg,tx,ym),act=actuals(cfg,tx,ym),pl=planOf(cfg,D.plans,tx,ym),sm=subsMap(cfg);

@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -32,6 +34,8 @@ jobs:
         run: npx eslint -c tests/eslint.config.mjs js/ demo/ sw.js
       - name: Składnia plików
         run: for f in js/*.js demo/*.js sw.js scripts/*.mjs tests/*.mjs; do node --check "$f" || exit 1; done
+      - name: Nowy numer wersji przy zmianie plików (sw.js CACHE)
+        run: node tests/cache.mjs "${{ github.event.before || github.event.pull_request.base.sha }}"
       - name: Powiązania między plikami (import / export)
         run: node tests/imports.mjs
       - name: Obliczenia pieniędzy (pensje, obligacje, raty, salda)

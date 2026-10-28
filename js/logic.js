@@ -54,13 +54,15 @@ export function status(type,plan,act){
   return{k:'ok',txt:r+'%',pct,msg:`zostało ${zl(plan-act)}`}}
 /* 📅 yearly expenses in the plan: the month an item is due (or paid) adds its amount to the plan of its position – computed, never stored,
    so copying a plan to the next month never carries it on. Due: every 12 / 6 / 4 / 3 / 2 / 1 months counted from its month; every 24 months from
-   the last payment (before the first one – its month every year). Paid in this month (📅 „Zapłacone”) – the amount paid; paid up to 3 months early – not again. */
+   the last payment (before the first one – its month every year). Paid in this month (📅 „Zapłacone”) – the amount paid; paid up to 3 months early – not again
+   (less for short periods: every 3 months – up to 2 months early, every month – only in that month, so the previous payment is never taken for this one). */
+const earlyN=it=>Math.min(3,Math.max(1,+it.every||12)-1);
 const ymN=ym=>+ym.slice(0,4)*12+(+ym.slice(5,7))-1;
 export function yearDueIn(it,ym){const e=Math.max(1,+it.every||12),m=+ym.slice(5,7)-1,m0=(+it.month||1)-1;
   if(12%e==0)return((m-m0)%e+e)%e==0;if(it.last){const d=ymN(ym)-ymN(it.last);return d>=0&&d%e==0}return m==m0}
 export function yearPlanOf(cfg,tx,ym){const sub={},items=[];
   for(const it of cfg.years||[]){if(!it.sub||!(+it.amount>0))continue;const paid=inPeriod(tx,ym).filter(t=>t.yearId===it.id&&t.type=='exp'&&!t.deleted).reduce((a,t)=>a+t.amount,0);
-    let amt=0;if(paid)amt=paid;else if(yearDueIn(it,ym)){const early=[1,2,3].some(k=>{const p=new Date(Date.UTC(+ym.slice(0,4),+ym.slice(5,7)-1-k,1)).toISOString().slice(0,7);return inPeriod(tx,p).some(t=>t.yearId===it.id&&t.type=='exp'&&!t.deleted)});if(!early)amt=+it.amount}
+    let amt=0;if(paid)amt=paid;else if(yearDueIn(it,ym)){const early=[1,2,3].slice(0,earlyN(it)).some(k=>{const p=new Date(Date.UTC(+ym.slice(0,4),+ym.slice(5,7)-1-k,1)).toISOString().slice(0,7);return inPeriod(tx,p).some(t=>t.yearId===it.id&&t.type=='exp'&&!t.deleted)});if(!early)amt=+it.amount}
     if(amt){sub[it.sub]=(sub[it.sub]||0)+amt;items.push({it,amt})}}
   return{sub,items}}
 /* the plan of a month as used everywhere: what you typed + yearly expenses due that month */
@@ -84,10 +86,11 @@ export function fixedTwin(cfg,tx,f,ym){if((f.kind||'exp')!='exp')return null;
   return L.sort((a,b)=>Math.abs(a.amount-f.amount)-Math.abs(b.amount-f.amount))[0]||null}
 /* 📅 the due month of a yearly expense closest to ym (±2 months; null when none) – the payment of that date */
 export function yearDueNear(it,ym){let best=null;for(const k of [0,-1,1,-2,2]){const m=new Date(Date.UTC(+ym.slice(0,4),+ym.slice(5,7)-1+k,1)).toISOString().slice(0,7);if(yearDueIn(it,m)){best=m;break}}return best}
-/* a typed expense → the yearly expense it probably pays: the same position, amount within 25%, due within 2 months and not paid yet */
+/* a typed expense → the yearly expense it probably pays: the same position, amount within 25%, due within 2 months and not paid yet
+   (paid = a payment from up to 3 months before the due month – less for items paid every 3 / 2 months / every month) */
 export function yearMatch(cfg,tx,t){if(t.type!='exp'||!isDate(t.date))return null;const ym=t.date.slice(0,7);
   return(cfg.years||[]).find(it=>it.sub&&it.sub==t.sub&&+it.amount>0&&near(t.amount,+it.amount,.25)&&(()=>{const m=yearDueNear(it,ym);if(!m)return false;
-    const from=new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7)-4,1)).toISOString().slice(0,10);return!tx.some(x=>x.yearId===it.id&&!x.deleted&&x.type=='exp'&&x.date>=from)})())||null}
+    const from=new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7)-1-earlyN(it),1)).toISOString().slice(0,10);return!tx.some(x=>x.yearId===it.id&&!x.deleted&&x.type=='exp'&&x.date>=from)})())||null}
 /* positions whose fixed payments cost more than their plan (pl = the plan as used everywhere) */
 export function fixedPlanGap(cfg,pl){const by={};for(const f of cfg.fixed||[])if((f.kind||'exp')=='exp'&&f.sub&&+f.amount>0)by[f.sub]=(by[f.sub]||0)+(+f.amount);
   const sm=subsMap(cfg);return Object.entries(by).filter(([id,v])=>sm[id]&&v>(pl[id]||0)).map(([id,v])=>({sub:sm[id],fix:v,plan:pl[id]||0}))}
@@ -149,3 +152,10 @@ export function carStats(cfg,tx,pid,odo0=0){const sm=subsMap(cfg),L=tx.filter(t=
   const km=odos.length>1?Math.max(...odos)-Math.min(...odos):0,lit=L.filter(t=>t.lit>0),litSum=lit.reduce((a,t)=>a+t.lit,0),litCost=lit.reduce((a,t)=>a+t.amount,0);
   const after=fills.length>1?fills.slice(1).filter(t=>t.lit>0).reduce((a,t)=>a+t.lit,0):0,span=fills.length>1?fills.at(-1).odo-fills[0].odo:0;
   return{cost,byCat,km,odo:odos.length?Math.max(...odos):odo0,l100:span>0&&after>0?after/span*100:null,litre:litSum>0?litCost/litSum:null,perKm:km>0?cost/km:null,n:L.length}}
+/* 💾 the backup file – one function for ⚙️ „Pobierz kopię” and the monthly e-mail (scripts/mail-lib.mjs), so the two never differ.
+   BACKUP_KEYS = settings kept in households/main next to the maps of cfg; „Wczytaj kopię” puts them back */
+export const BACKUP_KEYS=['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen'];
+export function backupDoc(D,now=new Date(),extra={}){const h=D.hraw||{};
+  return{format:'budzet-mw-2',exported:now.toISOString(),cfg:D.cfg,savTarget:D.savTarget??h.savTarget??0,
+    ...Object.fromEntries(BACKUP_KEYS.map(k=>[k,h[k]??(k=='yearAcc'?'':{})])),
+    tx:D.tx,plans:D.plans,inv:D.inv||{},goals:D.goals,slips:D.slips,hold:D.hold,debts:D.debts,...extra}}

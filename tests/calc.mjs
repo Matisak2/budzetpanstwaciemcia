@@ -66,6 +66,16 @@ const N=' ';
   eq('OC już zapłacone',yearMatch(cfg,[{id:'p',...E('oc',120000,'2026-10-20'),yearId:'y1'}],E('oc',118000,'2026-10-28')),null);
   eq('Termin najbliższy zapłacie – wcześniej',yearDueNear(cfg.years[0],'2026-10'),'2026-11');eq('Termin najbliższy zapłacie – po terminie',yearDueNear(cfg.years[0],'2026-12'),'2026-11');
   eq('Co miesiąc – ten miesiąc',yearDueNear({month:1,every:1},'2026-07'),'2026-07');
+  // co kwartał (styczeń, kwiecień, lipiec, październik) 300 zł: zapłacone w lipcu → w październiku znowu w planie i znowu „To ta opłata?”
+  {const q={id:'yq',name:'Ubezpieczenie',amount:30000,month:1,every:3,sub:'oc'},cq={...cfg,years:[q]},pd=[{id:'pq',...E('oc',30000,'2026-07-10'),yearId:'yq'}];
+   eq('Co kwartał – po zapłacie w lipcu październik w planie',planOf(cq,{},pd,'2026-10').oc,30000);
+   eq('Co kwartał – zapłacone 1 miesiąc wcześniej (wrzesień) → październik już nie',planOf(cq,{},[{...pd[0],date:'2026-09-28'}],'2026-10').oc,undefined);
+   eq('Co kwartał – nowy wpis w październiku → pyta',yearMatch(cq,pd,E('oc',30000,'2026-10-08'))?.id,'yq');
+   const m={id:'ym',name:'Abonament',amount:5000,month:1,every:1,sub:'oc'},cm={...cfg,years:[m]},pm=[{id:'pm',...E('oc',5000,'2026-09-10'),yearId:'ym'}];
+   eq('Co miesiąc – zapłacone we wrześniu → październik w planie',planOf(cm,{},pm,'2026-10').oc,5000);
+   eq('Co miesiąc – nowy wpis w październiku → pyta',yearMatch(cm,pm,E('oc',5000,'2026-10-08'))?.id,'ym');
+   eq('Co miesiąc – już zapłacone w październiku → nie pyta',yearMatch(cm,[{...pm[0],date:'2026-10-02'}],E('oc',5000,'2026-10-08')),null);
+   eq('Co rok – zapłacone 2 miesiące wcześniej → nie drugi raz',planOf(cfg,{},[{id:'p2',...E('oc',120000,'2026-09-15'),yearId:'y1'}],'2026-11').oc,undefined)}
   // plan niższy niż opłaty stałe: Czynsz plan 1 800 < 1 850; Netflix plan 43 = opłata → bez uwagi
   const g=fixedPlanGap(cfg,{czy:180000,net:4300,pr:20000,jed:100000});eq('Plan < opłaty stałe',g.map(x=>[x.sub.id,x.fix,x.plan]),[['czy',185000,180000]]);
   // „Na dziś”: Czynsz po terminie, ale jest podobny wpis → propozycja połączenia zamiast „po terminie”

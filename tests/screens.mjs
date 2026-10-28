@@ -106,6 +106,21 @@ for(const C of CASES){
       if(await p.evaluate(()=>S.tx.length)!==n0||await p.evaluate(()=>document.getElementById('sheet').hidden))fail(`${tag}: „Nie zapisuj” nie zostawia okienka bez zmian`)}
     await p.evaluate(()=>closeAll());
   }catch(e){fail(`${tag}: test podwójnego wpisu – ${e.message.split('\n')[0]}`)}}
+  /* 🔁 an entry moved to the previous month and back keeps its links, and after deleting it is in 🗑️ Ostatnio usunięte; an archived account shows in the sheet */
+  if(C===CASES[0]){try{await p.evaluate(()=>closeAll());
+    const id=await p.evaluate(async()=>{const{putTx}=await import('/js/core.js');const t=S.tx.find(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.split&&!t.slipOf&&!t.yearId&&t.date.startsWith(S.ym));putTx(S.ym,t.id,{yearId:'yX'});return t.id});await p.waitForTimeout(300);
+    const move=async d=>{await p.evaluate(([id,d])=>{openTx(id);$('md').value=d},[id,d]);await p.waitForTimeout(200);await p.click('#shSave');await p.waitForTimeout(500)};
+    const d0=await p.evaluate(id=>S.tx.find(t=>t.id===id&&!t.deleted).date,id),prev=await p.evaluate(d=>addMonths(d.slice(0,7),-1)+'-10',d0).catch(()=>null);
+    if(prev){await move(prev);await move(d0)}
+    const live=await p.evaluate(id=>S.tx.filter(t=>t.id===id&&!t.deleted),id);
+    if(live.length!==1||live[0].yearId!=='yX')fail(`${tag}: wpis przeniesiony do innego miesiąca i z powrotem zgubił powiązanie (${JSON.stringify(live.map(t=>[t.date,t.yearId]))})`);
+    await p.evaluate(async id=>{const{delTx}=await import('/js/sheet.js');delTx(id)},id);await p.waitForTimeout(500);
+    if(!await p.evaluate(async id=>{const{deletedList}=await import('/js/salary.js');return deletedList().some(t=>t.id===id)},id))fail(`${tag}: wpisu przeniesionego tam i z powrotem nie ma w „Ostatnio usunięte”`);
+    await p.evaluate(id=>restoreTx(id),id);await p.waitForTimeout(500);
+    if(await p.evaluate(id=>S.tx.filter(t=>t.id===id&&!t.deleted).length,id)!==1)fail(`${tag}: „Przywróć” nie przywrócił przeniesionego wpisu`);
+    const arch=await p.evaluate(async()=>{const{closeSheet}=await import('/js/sheet.js');const a=S.cfg.accs.find(a=>a.grp=='cur');const t=S.tx.find(t=>!t.deleted&&t.type=='exp'&&t.acc==a.id&&!t.slipOf&&!t.fixedId);a.archived=true;openTx(t.id);const o=$('mc').selectedOptions[0]?.textContent||'';a.archived=false;closeSheet();return o});
+    if(!/archiwum/.test(arch))fail(`${tag}: wpis z konta w archiwum nie pokazuje konta (jest „${arch}”)`);
+  }catch(e){fail(`${tag}: test przeniesienia wpisu – ${e.message.split('\n')[0]}`)}}
   /* 📷 receipt photo: add (a generated picture), save, open again, remove – only in the first phone setting */
   if(C===CASES[0]){try{
     const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==','base64');

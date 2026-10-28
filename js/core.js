@@ -173,7 +173,8 @@ export const saveRound=r=>merge(H,{roundM:{[r.id]:strip(r,S.cfg.round.indexOf(r)
 export const delRoundDb=id=>w(updateDoc(H,{['roundM.'+id]:deleteField()}));
 export const delFixedDb=id=>w(updateDoc(H,{['fixedM.'+id]:deleteField()}));
 /* every write remembers whose phone it came from (shown in the entry and in ⚙️ „Ostatnie zmiany”) */
-export const putTx=(ym,id,body)=>{if(body.deleted===true&&!body.moved)body={...body,dby:S.who,dAt:Date.now()};else if(body.type&&!('by' in body))body={...body,by:S.who};return merge(doc(MC(),ym),{tx:{[id]:body}})};
+/* a real deletion also clears „moved” – an entry once moved out of this month and back still had it, and 🗑️ Ostatnio usunięte did not show it */
+export const putTx=(ym,id,body)=>{if(body.deleted===true&&!body.moved)body={...body,moved:false,dby:S.who,dAt:Date.now()};else if(body.type&&!('by' in body))body={...body,by:S.who};return merge(doc(MC(),ym),{tx:{[id]:body}})};
 export const putInv=(id,body)=>merge(doc(INV(),id),body);
 export const liveById=id=>S.tx.find(t=>t.id===id&&!t.deleted);
 export const guard=()=>{if(!S.cfg){toast('Budżet jeszcze się wczytuje');return true}return false};
