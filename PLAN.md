@@ -286,6 +286,38 @@ Mati wybrał: A1 (w nowej formie), A2, A3, B2, B3, B5, C1, C2, C4. Nie robimy: A
 - [x] ⚠️ „Nie starczy na rachunki”: prognoza salda kont bieżących do końca miesiąca (opłaty stałe, stałe przelewy, raty; wpływy przed terminem) w „Na dziś” z „Przelej” i w powiadomieniu (C1)
 - [x] 🧪 Demo z paskami pensji obu osób (4 miesiące, PPK, potrącenie, inny przychód, widok roku) (C4)
 
+# Część 7 – po przeglądzie kodu i pomysłach Matiego (uzgodnione 28.10.2026)
+Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). Nie robimy: ekranu „Gdzie odkładamy”, usuwania importu kopii z pierwszej wersji, przepisywania stylu kodu.
+
+## Etap X1. Nagłówek
+- [x] 🔍 🔔 ⚙️ w jednej linii i tej samej wielkości (dzwonek miał styl listy „Na dziś” – ta sama nazwa klasy); robot sprawdza położenie ikon
+
+## Etap X2. Naprawy i pełna kopia
+- [ ] Jedna funkcja kopii dla ⚙️ i maila: kaskada, ukryte podpowiedzi (`checkIgnore`), subkonto kopert (`yearAcc`), inflacja (`macro`), limity IKE/IKZE, urodziny, zamknięcia, daty sald; wczytanie przywraca wszystko
+- [ ] Wydatki roczne co kwartał / co miesiąc: kolejny termin po zapłacie
+- [ ] Wpis z konta w archiwum: konto widoczne z dopiskiem, bez zapisu bez konta
+- [ ] Zmiana daty na inny miesiąc zachowuje powiązania (roczne, drobne, odsetki spłaty)
+- [ ] „Ostatnio usunięte”: wpis przeniesiony tam i z powrotem
+- [ ] Bezpieczna aktualizacja (komplet plików przed przełączeniem)
+- [ ] Testy robota
+
+## Etap X3. Kotki
+- [ ] Wyraźniejsze dymki (konkret z kwotą, potem żart)
+- [ ] „Rozumiem, kociaki 🐾” przy uwagach → ciekawostka dnia
+- [ ] 366 ciekawostek (sprawdzonych), jedna na dzień roku, 29 lutego – nr 366
+- [ ] W święta i urodziny życzenia zamiast ciekawostki
+
+## Etap X4. Oprocentowanie kont
+- [ ] Oprocentowanie, promocja (do kiedy, limit), dopisywanie odsetek, podatek (bank / sam – PIT-38 / bez) przy koncie; historia stawek
+- [ ] Odsetki liczone dzień po dniu od salda; karta w „Na dziś” z kwotą; odsetki = zysk, nie „odłożone”
+- [ ] Przypomnienie o końcu promocji; prognoza w Oszczędnościach
+
+## Etap X5. Porządki w kodzie
+- [ ] Nieużywane importy, martwy kod, wspólne pomocniki, ekran starego modułu inwestycji, zbędne migracje, krótsze notatki
+
+## Etap X6. Szybkość
+- [ ] Mniej przerysowań ekranu przy zapisie
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

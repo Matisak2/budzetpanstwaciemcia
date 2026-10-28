@@ -88,6 +88,10 @@ for(const C of CASES){
     if(name=='usuniete'&&!await p.evaluate(()=>/Ostatnio usunięte/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty „Ostatnio usunięte”`);
     await p.screenshot({path:path.join(OUT,`${tag}-${name}.png`),fullPage:true});
   }
+  /* 🔍 🔔 ⚙️ in the header: icons in one line and the same size */
+  {const ic=await p.evaluate(()=>['findBtn','todayBtn','gearBtn'].map(id=>{const e=document.getElementById(id),r=document.createRange();r.selectNodeContents(e);const t=r.getBoundingClientRect(),o=e.getBoundingClientRect();return{id,dy:t.top+t.height/2-(o.top+o.height/2),fs:parseFloat(getComputedStyle(e).fontSize)}}));
+    for(const x of ic)if(Math.abs(x.dy)>2)fail(`${tag}: ikonka ${x.id} w nagłówku nie jest na środku (przesunięta o ${Math.round(x.dy)} px)`);
+    if(new Set(ic.map(x=>x.fs)).size>1)fail(`${tag}: ikonki w nagłówku mają różne rozmiary (${ic.map(x=>x.fs).join(', ')})`)}
   /* 🙈 holding the month name switches the discreet mode on and off */
   if(C===CASES[0]){await p.evaluate(()=>closeAll());const box=await p.locator('.mlab').boundingBox();
     for(const want of [true,false]){await p.mouse.move(box.x+box.width/2,box.y+box.height/2);await p.mouse.down();await p.waitForTimeout(800);await p.mouse.up();await p.waitForTimeout(300);
