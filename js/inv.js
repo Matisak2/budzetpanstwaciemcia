@@ -1,5 +1,5 @@
 /* 📈 savings & investments: instruments, treasury bonds, deposits, IKE/IKZE/OKI limits, yearly expenses, FIRE. Amounts in grosze. */
-import {addMonths} from './util.js';
+import {addDays,addMonths,zl0} from './util.js';
 export const IKINDS={etf:'ETF',tfi:'Fundusz TFI / PPK',akcje:'Akcje',obl:'Obligacje skarbowe',zloto:'Złoto',krypto:'Krypto',lokata:'Lokata'};
 export const IICON={etf:'📊',tfi:'🧺',akcje:'📈',obl:'🏛️',zloto:'🥇',krypto:'🪙',lokata:'🏦'};
 /* retail treasury bonds: months to maturity, how later periods are indexed, capitalisation; rates are typed from the purchase confirmation */
@@ -102,3 +102,29 @@ export function flowSeries(cfg,tx,ids){const S=new Set(ids);let paid=0,value=0;c
     value+=v;if(t.type!='adj')paid+=v;else if(!t.val)paid+=v;
     if(pts.length&&pts.at(-1).d==t.date){pts.at(-1).paid=paid;pts.at(-1).value=value}else pts.push({d:t.date,paid,value})}
   return pts}
+/* 💰 interest on a savings account / subaccount / current account: a.int = {rates:{'YYYY-MM-DD':% a year (from that day)}, promo?:%, promoTo?:'YYYY-MM-DD',
+   promoMax?:grosze (the promo rate only up to this amount, the rest at the normal rate; 0 = no limit), cap:'m'|'q'|'y' (when the bank adds it), tax:'bank'|'self'|'none'}.
+   Counted day by day from the balance at the end of each day (like banks: balance × rate ÷ 365); the bank's own rounding may differ by a few grosze.
+   Booked as adj val:true,int:true (intP = the last month of the period) – a gain, not money put aside (savFlow). */
+export const INT_TAX={bank:'Pobiera bank (19%)',self:'Rozliczam sam – PIT-38 (bank zagraniczny)',none:'Bez podatku (IKE, IKZE, OKI)'};
+export const INT_CAP={m:'co miesiąc',q:'co kwartał',y:'raz w roku'};
+export const intOf=a=>{const I=a?.int;return I&&(Object.values(I.rates||{}).some(v=>+v>0)||+I.promo>0)?I:null};
+export const intTax=a=>a.int?.tax||(taxFree(a)?'none':'bank');
+/* the normal rate on a day (the latest change on or before it) */
+export function intRate(I,day){let k='',r=0;for(const[d,v]of Object.entries(I.rates||{}))if(d<=day&&d>=k){k=d;r=+v||0}return r}
+export const intPromo=(I,day)=>+I.promo>0&&(!I.promoTo||day<=I.promoTo);
+/* the period a month belongs to: {from,to,key} – key = its last month */
+export function intPeriod(I,ym){const y=+ym.slice(0,4),m=+ym.slice(5,7),n=I.cap=='q'?3:I.cap=='y'?12:1,end=Math.ceil(m/n)*n,start=end-n+1,p=x=>String(x).padStart(2,'0');
+  const key=y+'-'+p(end),last=new Date(Date.UTC(y,end,0)).getUTCDate();return{from:y+'-'+p(start)+'-01',to:key+'-'+p(last),key}}
+/* interest from the day `from` to the day `to` (both included): gross, tax 19% (bank), what lands on the account (book: the bank's net, or gross when settled alone) */
+export function intCalc(cfg,tx,a,from,to,bal){const I=intOf(a);if(!I||to<from)return{gross:0,tax:0,net:0,book:0};let g=0;
+  for(let d=from;d<=to;d=addDays(d,1)){const b=bal(cfg,tx,a.id,addDays(d,1));if(b<=0)continue;const base=intRate(I,d);
+    if(intPromo(I,d)){const pa=+I.promoMax>0?Math.min(b,+I.promoMax):b;g+=pa*(+I.promo)+(b-pa)*base}else g+=b*base}
+  const gross=Math.round(g/100/365),mode=intTax(a),tax=mode=='none'?0:Math.round(gross*BELKA/100);
+  return{gross,tax,net:gross-(mode=='bank'?tax:0),book:mode=='bank'?gross-tax:gross}}
+/* about how much a month now (from today's balance and today's rate, after the bank's tax) */
+export function intMonthly(a,b,day){const I=intOf(a);if(!I||b<=0)return 0;const base=intRate(I,day),pa=intPromo(I,day)?(+I.promoMax>0?Math.min(b,+I.promoMax):b):0;
+  const gross=(pa*(+I.promo||0)+(b-pa)*base)/100/12;return Math.round(intTax(a)=='bank'?gross*(1-BELKA/100):gross)}
+/* the rate shown next to an account: „3,5%” or „🎁 7% do 31.01 (potem 3,5%)” */
+export function intLabel(I,day){const base=intRate(I,day),f=v=>String(+(+v).toFixed(2)).replace('.',',')+'%';
+  return intPromo(I,day)?`🎁 ${f(I.promo)}${I.promoTo?' do '+I.promoTo.slice(8)+'.'+I.promoTo.slice(5,7):''}${+I.promoMax>0?' (limit '+zl0(I.promoMax)+')':''}${base?', potem '+f(base):''}`:f(base)}

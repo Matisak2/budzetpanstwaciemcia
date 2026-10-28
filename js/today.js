@@ -3,7 +3,7 @@
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl} from './util.js';
 import {balance,carStats,dueAlerts,fixedDate,fixedTwin,inPeriod,subsMap,ownerOf,yearDueIn} from './logic.js';
-import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS} from './inv.js';
+import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 export {ownerOf};
 const person=o=>o=='Mati'||o=='Wercia'?o:null;
@@ -229,6 +229,16 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   /* 📅 a yearly expense to pay: about 14 days before its date, also when the envelope is full; „Załatwione” = paid some other way */
   for(const it of cfg.years||[]){const p=yearPayP(it,tx,today);if(!p)continue;const key='yearpay:'+it.id+':'+p.m;if(hraw?.checkIgnore?.[key])continue;const fill=ys?.list.find(x=>x.it.id==it.id)?.fill;
     out.push({key,icon:'📅',text:`${it.name} – ${zl(it.amount)} ${p.n<0?'po terminie ('+dmy(p.due)+')':p.n?'do zapłaty za '+p.n+' '+plu(p.n,'dzień','dni','dni')+' ('+dmy(p.due)+')':'do zapłaty dziś'}${fill!=null&&fill<it.amount?` · w kopercie ${zl(fill)}`:''}.`,go:{a:'year'},label:'Zapłać',k:p.n<0?'bad':'year',who:null,quiet:!(p.n==14||p.n==3||p.n==0||p.n==-1)})}
+  /* 💰 interest of an account: on the last day of its period and 10 days after – the estimate ready to book; 🎁 a promotion ends in 14 days; 🧾 interest without the bank's tax → PIT-38 */
+  for(const a of cfg.accs){const I=intOf(a);if(!I||a.archived)continue;const P=intPeriod(I,ym),Pp=intPeriod(I,addMonths(P.from.slice(0,7),-1)),Q=today>=P.to?P:dd(Pp.to,today)<=10?Pp:null;
+    if(Q&&!tx.some(t=>t.intP===Q.key&&t.acc===a.id)){const key='int:'+a.id+':'+Q.key;if(!hraw?.checkIgnore?.[key]){const c=intCalc(cfg,tx,a,Q.from,Q.to,balance);
+      if(c.book>0){const per=I.cap=='q'?'za kwartał '+[0,1,2].map(k=>MN[+Q.from.slice(5,7)-1+k].slice(0,3).toLowerCase()).join('–'):I.cap=='y'?'za rok '+Q.key.slice(0,4):'za '+MN[+Q.key.slice(5)-1].toLowerCase();
+        out.push({key,icon:'💰',text:`${a.name}: bank dopisał odsetki ${per}? Szacuję ${money(c.book,cm[a.id])}${intTax(a)=='self'?' (bez podatku – rozliczysz go w PIT-38)':intTax(a)=='bank'?' po podatku':''}.`,go:{a:'int',acc:a.id,key:Q.key},label:'Wpisz',k:'int',who:person(ownerOf(a)),quiet:today!==addDays(Q.to,1)})}}}
+    if(+I.promo>0&&I.promoTo){const n=dd(today,I.promoTo),key='promo:'+a.id+':'+I.promoTo;if(n>=0&&n<=14&&!hraw?.checkIgnore?.[key]){const b=intRate(I,addDays(I.promoTo,1));
+      out.push({key,icon:'🎁',text:`Promocja na „${a.name}” (${String(I.promo).replace('.',',')}%) kończy się ${n?'za '+n+' '+plu(n,'dzień','dni','dni')+' ('+dmy(I.promoTo)+')':'dziś'} – potem ${String(b).replace('.',',')}%. Zostaw albo przenieś pieniądze.`,go:{a:'accInt',id:a.id},label:'Zobacz',k:'promo',who:person(ownerOf(a)),quiet:!(n==14||n==3)})}}}
+  if(today.slice(5)>='03-01'&&today.slice(5)<='04-30'){const y=String(+today.slice(0,4)-1);for(const w of ['Mati','Wercia']){const key='pit38:'+y+':'+w;if(hraw?.checkIgnore?.[key])continue;
+    const L=tx.filter(t=>t.int&&t.date.startsWith(y)&&(()=>{const a=accOf(t.acc);return a&&intTax(a)=='self'&&ownerOf(a)==w})()),s=L.reduce((x,t)=>x+t.amount,0);
+    if(s>0)out.push({key,icon:'🧾',text:`${w}: do PIT-38 za ${y} – odsetki bez pobranego podatku ${zl(s)}, podatek 19% ≈ ${zl(Math.round(s*0.19/100)*100)}.`,go:{a:'sav'},label:'Zobacz',k:'pit38',who:w,quiet:!(today.slice(5)=='03-01'||today.slice(5)=='04-20')})}}
   /* 🏠 rent (a fixed income marked „najem”): the flat-rate tax (ryczałt 8,5% up to 100 000 zł a year) by the 20th after the month or the quarter; PIT-28 by the end of February */
   for(const f of (cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'))){const q=f.najem=='q',mo0=+ym.slice(5);if(q&&![1,4,7,10].includes(mo0))continue;if(day>25)continue;
     const per=q?[3,2,1].map(k=>addMonths(ym,-k)):[addMonths(ym,-1)],got=per.reduce((a,m)=>a+inPeriod(tx,m).filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((b,t)=>b+t.amount,0),0);if(!got)continue;

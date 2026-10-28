@@ -45,6 +45,7 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ['kaskada-osoba',"closeAll();goTab('sav');setSub('Mati')"],['nowy-staly-przelew',"closeAll();goTab('fix');setFixSub('fix');editFixed(null,'tr')"],
   ['nie-starczy',"closeAll();{const a=S.cfg.accs.find(a=>a.grp=='cur'&&a.owner=='Wspólne')||S.cfg.accs.find(a=>a.grp=='cur');S.cfg.fixed=[...S.cfg.fixed,{id:'fbig',name:'Wielki rachunek',amount:9999900,day:28,acc:a.id,kind:'exp',sub:S.cfg.cats.find(c=>c.type=='exp').subs[0].id}];showToday()}"],
   ['nie-starczy-przelew',"{const b=[...document.querySelectorAll('#dlg .titem')].find(x=>/zabraknie/.test(x.textContent));b&&b.querySelector('.chip').click()}"],
+  ['oprocentowanie',"closeAll();goTab('sav');setSub('all')"],['oprocentowanie-edycja',"editInt(S.cfg.accs.find(a=>a.int).id)"],['odsetki-wpis',"closeAll();{const d=new Date(S.ym+'-15');d.setMonth(d.getMonth()-1);bookInt(S.cfg.accs.find(a=>a.int).id,d.toISOString().slice(0,7))}"],
   ['urodziny-powitanie',"closeAll();S.slip=null;{const t=new Date().toISOString().slice(0,10);S.hraw={...S.hraw,birth:{Mati:'1995'+t.slice(4),Wercia:'1996'+t.slice(4)}};goTab('dash')}"]];
 const CASES=[{w:390,size:'0',role:'Wercia'},{w:360,size:'2',role:'Mati'},{w:320,size:'0',role:'Mati'},{w:390,size:'1',role:'Wercia'}];
 
@@ -85,6 +86,8 @@ for(const C of CASES){
     if(name=='nie-starczy'&&!await p.evaluate(()=>/zabraknie/.test(document.getElementById('dlg').innerText)))fail(`${tag}: „Na dziś” nie ostrzega, że nie starczy na rachunek`);
     if(name=='nie-starczy-przelew'&&!await p.evaluate(()=>!document.getElementById('sheet').hidden&&document.querySelector('#mt [aria-pressed="true"]')?.dataset.v=='tr'&&$('ma').value!==''))fail(`${tag}: „Przelej” nie otwiera przelewu z kwotą`);
     if(name=='nie-starczy-przelew')await p.evaluate(()=>{document.getElementById('sheet').hidden=true;S.cfg.fixed=S.cfg.fixed.filter(f=>f.id!='fbig')});
+    if(name=='oprocentowanie'&&!await p.evaluate(()=>/Odsetki z kont/.test(document.getElementById('app').innerText)&&/🎁 6%/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty odsetek albo oprocentowania przy koncie`);
+    if(name=='odsetki-wpis'&&!await p.evaluate(()=>!document.getElementById('dlg').hidden&&/Odsetki/.test(document.getElementById('dlg').innerText)&&+$('f_a').value.replace(',','.')>0))fail(`${tag}: okienko odsetek bez szacunku`);
     if(name=='usuniete'&&!await p.evaluate(()=>/Ostatnio usunięte/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty „Ostatnio usunięte”`);
     await p.screenshot({path:path.join(OUT,`${tag}-${name}.png`),fullPage:true});
   }

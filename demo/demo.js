@@ -42,7 +42,9 @@
     const catsM={},sid={};CATS.forEach(([name,type,icon,subs],i)=>{const subsM={};subs.forEach((s,j)=>{subsM[`c${i}s${j}`]={name:s,o:j};sid[s]=`c${i}s${j}`});catsM['c'+i]={name,type,icon,hue:HUES[i],o:i,subsM}});
     const ACC=[['aM',`Konto ${A}`,'cur','Mati',420000],['aW',`Konto ${B}`,'cur','Wercia',380000],['aJ','Konto wspólne','cur','Wspólne',150000],['aG','Gotówka','cur','Wspólne',30000],
       ['aS','Oszczędności wspólne','sav','Wspólne',1200000],['aP','Poduszka bezpieczeństwa','sav','Wspólne',1800000],['aI',`IKE ${A}`,'inv','Mati',450300,'ike'],['aK',`PPK ${B}`,'inv','Wercia',622380,'ppk'],['aO','Obligacje','inv','Wspólne',1000000]];
-    const accsM={};ACC.forEach(([id,name,grp,owner,open,wrap],o)=>{accsM[id]={name,grp,owner,open,o,...(wrap?{wrap}:{})}});const own=Object.fromEntries(ACC.map(a=>[a[0],a[3]]));
+    const accsM={};ACC.forEach(([id,name,grp,owner,open,wrap],o)=>{accsM[id]={name,grp,owner,open,o,...(wrap?{wrap}:{})}});
+    /* 💰 the shared savings account has interest: 4,5%, a 6% promotion up to 10 000 zł ending in 12 days */
+    {const iso=d=>d.toISOString().slice(0,10),n=new Date();accsM.aS.int={rates:{[iso(new Date(Date.UTC(n.getFullYear(),n.getMonth()-4,1)))]:4.5},promo:6,promoTo:iso(new Date(Date.now()+12*864e5)),promoMax:1000000,cap:'m',tax:'bank'}}const own=Object.fromEntries(ACC.map(a=>[a[0],a[3]]));
     const FIX=[['f1','Czynsz',185000,10,'Czynsz','aJ','exp'],['f2','Prąd',18000,15,'Prąd','aJ','exp'],['f3','Internet i telefon',8999,5,'Internet i telefon','aJ','exp'],['f4','Spotify',2999,12,'Spotify','aM','exp'],
       ['f5','Netflix',4300,20,'Netflix','aW','exp']];
     /* 💼 salaries only from payslips (as in the real app): A on the 10th, B on the last day of the month (a weekend → the Friday before).

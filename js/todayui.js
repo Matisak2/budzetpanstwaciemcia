@@ -7,10 +7,10 @@ import {liveOf} from './logic.js';
 import {$,esc,ls,pg,sleep,td,money} from './util.js';
 import {DEMO,S,toast,err,ask,CUR,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
-import {editFixed,goFixed,exportJson} from './actions.js';
+import {editFixed,goFixed,exportJson,editInt} from './actions.js';
 import {openSlip} from './salary.js';
 import {openClose} from './close.js';
-import {accById,openInst,editLimits,goYear} from './savings.js';
+import {accById,openInst,editLimits,goYear,bookInt} from './savings.js';
 import {render,goTab} from './app.js';
 
 /* ---------- 🔔 „Na dziś”: everything that needs attention, only inside the app (no calendar, no card) ---------- */
@@ -54,11 +54,12 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
   if(a=='close')return openClose();
+  if(a=='int')return bookInt(g.acc,g.key);if(a=='accInt')return editInt(g.id);
   if(a=='tx'){const t=liveById(g.id);if(t){S.ym=t.date.slice(0,7);openTx(g.id)}}}
 export const goFromHash=h=>{const m=/go=([^&]+)(.*)/.exec(h||'');if(!m)return null;const g={a:decodeURIComponent(m[1])};new window.URLSearchParams(m[2].replace(/^&/,'')).forEach((v,k)=>g[k]=v);return g};
 export function todayGo(i){runGo((S.todayL||[])[i]?.go)}
 /* the second button of an item in „Na dziś” – by the kind of its key */
-const GHOST={rec:'Nie, dzięki',umowa:'Załatwione',rules:'Załatwione',yearpay:'Załatwione',najem:'✓ Zapłacone',pit:'✓ Złożone',pit28:'✓ Złożone',young:'Wiem',close:'Pomiń',short:'Wiem'};
+const GHOST={rec:'Nie, dzięki',umowa:'Załatwione',rules:'Załatwione',yearpay:'Załatwione',najem:'✓ Zapłacone',pit:'✓ Złożone',pit28:'✓ Złożone',young:'Wiem',close:'Pomiń',short:'Wiem',int:'Pomiń',promo:'Wiem',pit38:'✓ Rozliczone'};
 export function ignoreCheck(key,stay){if(guard())return;S.hraw={...S.hraw,checkIgnore:{...(S.hraw?.checkIgnore||{}),[key]:true}};merge(H,{checkIgnore:{[key]:true}});if(stay)render();else showToday();toast(GHOST[key.split(':')[0]]&&key.split(':')[0]!='rec'?'Gotowe ✓':'Ukryte – nie pokażę tego więcej')}
 /* 📌 a payment that repeats every month – into 📌 Stałe with the form filled in */
 export const recList=()=>S.cfg?recurringP(S.cfg,liveOf(S.tx),td(),S.hraw?.checkIgnore):[];

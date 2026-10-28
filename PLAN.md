@@ -308,9 +308,9 @@ Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). N
 - [x] W święta i urodziny życzenia zamiast ciekawostki
 
 ## Etap X4. Oprocentowanie kont
-- [ ] Oprocentowanie, promocja (do kiedy, limit), dopisywanie odsetek, podatek (bank / sam – PIT-38 / bez) przy koncie; historia stawek
-- [ ] Odsetki liczone dzień po dniu od salda; karta w „Na dziś” z kwotą; odsetki = zysk, nie „odłożone”
-- [ ] Przypomnienie o końcu promocji; prognoza w Oszczędnościach
+- [x] Oprocentowanie, promocja (do kiedy, limit), dopisywanie odsetek, podatek (bank / sam – PIT-38 / bez) przy koncie; historia stawek
+- [x] Odsetki liczone dzień po dniu od salda; karta w „Na dziś” z kwotą; odsetki = zysk, nie „odłożone”
+- [x] Przypomnienie o końcu promocji; prognoza w Oszczędnościach
 
 ## Etap X5. Porządki w kodzie
 - [ ] Nieużywane importy, martwy kod, wspólne pomocniki, ekran starego modułu inwestycji, zbędne migracje, krótsze notatki

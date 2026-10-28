@@ -3,7 +3,7 @@ import {doc,collection,setDoc,deleteDoc,updateDoc,deleteField,getDocs} from "htt
 import {catIcon,catsEmpty} from './art.js';
 import {CELEBRATE} from './guide.js';
 import {HUES,catHue,freeHue} from './data.js';
-import {position,wrapOf} from './inv.js';
+import {position,wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
 import {ULGI} from './today.js';
 import {suggest} from './pay.js';
 import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS} from './logic.js';
@@ -46,6 +46,17 @@ export async function editAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x
   if(r.c!=CUR(a)&&used&&!await ask({title:'Zmienić walutę konta?',text:`${a.name}: ${CUR(a)} → ${r.c}\nKwoty nie zostaną przeliczone – zmieni się tylko waluta, w której są pokazane wszystkie wpisy tego konta.`,ok:'Zmień walutę'}))return;
   if(r.n.trim())a.name=r.n.trim();a.owner=r.w;a.open=pg(r.o);if(r.c!=CUR(a))a.cur=r.c;if(r.x!=null)setWrap(a,r.x);
   if(r.g!=a.grp){a.grp=r.g;S.accTab=r.g;toEndOfKind(a);toast('Konto przeniesione do: '+ACCTAB[r.g])}else saveAcc(a);render()}
+/* 💰 interest of a savings account / subaccount / current account (inv.js intCalc): the rate history keeps old months counted at their old rate */
+export async function editInt(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id);if(!a)return;const I=a.int||{},today=td(),now=intRate(I,today),f=v=>v?String(v).replace('.',','):'';
+  const r=await ask({title:'💰 Oprocentowanie: '+a.name,text:'Aplikacja policzy odsetki dzień po dniu od salda konta i w dniu dopisania przypomni w „Na dziś” z gotową kwotą. Puste oprocentowanie = bez odsetek.',
+    fields:[{id:'r',label:'Oprocentowanie (% w skali roku)',type:'decimal',value:f(now),ph:'np. 3,5'},{id:'d',label:'Od kiedy obowiązuje (zmiana stawki)',type:'date',value:Object.keys(I.rates||{}).length?today:(firstUse(a.id)||today)},
+      {id:'p',label:'Promocja (% w skali roku, opcjonalnie)',type:'decimal',value:f(I.promo),ph:'np. 7'},{id:'pt',label:'Promocja do (data)',type:'date',value:I.promoTo||''},{id:'pm',label:'Promocja tylko do kwoty (zł, puste = bez limitu)',type:'decimal',value:I.promoMax?f2(I.promoMax):''},
+      {id:'c',label:'Bank dopisuje odsetki',type:'select',value:I.cap||'m',options:Object.entries(INT_CAP)},{id:'t',label:'Podatek Belki',type:'select',value:intTax(a),options:Object.entries(INT_TAX)}],ok:'Zapisz'});
+  if(!r)return;const rate=pnum(r.r)||0,promo=pnum(r.p)||0,rates={...(I.rates||{})};
+  if(rate!==intRate({rates},isDate(r.d)?r.d:today))rates[isDate(r.d)?r.d:today]=rate;
+  a.int={rates,promo,promoTo:promo&&isDate(r.pt)?r.pt:'',promoMax:promo?pg(r.pm||'0'):0,cap:r.c,tax:r.t};saveAcc(a);render();
+  toast(intOf(a)?'Zapisano oprocentowanie 💰':'Konto bez oprocentowania')}
+const firstUse=id=>liveOf(S.tx).filter(t=>t.acc===id||t.to===id).map(t=>t.date).sort()[0]||'';
 export async function addSub(ci){if(guard())return;const r=await ask({title:'Nowa pozycja',text:catL(S.cfg.cats[ci]),fields:[{id:'n',label:'Nazwa'}],ok:'Dodaj'});
   if(!r||!r.n.trim())return;const c=S.cfg.cats[ci],s={id:'s'+rid(),name:r.n.trim()};c.subs.push(s);render();saveSub(c,s)}
 export async function renSub(ci,si){if(guard())return;const s=S.cfg.cats[ci].subs[si];const r=await ask({title:'Zmień nazwę',fields:[{id:'n',label:'Nazwa',value:s.name}]});
@@ -419,8 +430,8 @@ export function txMatches(t,sm,F,ym,AQ){
 /* 🧾 a row of the register in 2 lines: the position, under it note · account · person (the category = the coloured icon) */
 export function txRowH(t,sm,rf={},cn={}){const M=v=>am(v,t.acc),k=t.type,sg=k=='inc'||k=='invs'?'+':k=='exp'||k=='inv'||k=='lend'?'−':k=='adj'?(t.amount>=0?'+':'−'):'';
   const cls=k=='invs'?'inv':k=='lend'?'tr':t.lendOf||t.debtIn?'tr':k,s=sm[t.sub],c=s&&(k=='exp'||k=='inc')?s.cat:null;
-  const title=t.ppk||k=='lend'||t.lendOf||t.debtIn||t.payoff?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
-  const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.payoff?'✅':t.roundOf?'🪙':k=='lend'||t.lendOf?'🔺':t.debtIn?'🔻':k=='tr'?'⇄':k=='adj'?(t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
+  const title=t.ppk||k=='lend'||t.lendOf||t.debtIn||t.payoff?t.note:k=='tr'?accN(t.acc)+' → '+accN(t.to):k=='adj'?(t.int?'💰 Odsetki':t.val?'Zmiana wartości inwestycji':'Wyrównanie salda'):k=='inv'?'Zakup: '+t.note:k=='invs'?'Sprzedaż: '+t.note:t.refundOf?'↩️ Zwrot · '+(s?.name||''):(t.fixedId?'📌 ':'')+(s?.name||'Bez pozycji');
+  const ico=c?`<span class="tico" style="${catColor(c)}">${catIcon(c)}</span>`:`<span class="tico n">${t.ppk?'🏦':t.payoff?'✅':t.roundOf?'🪙':k=='lend'||t.lendOf?'🔺':t.debtIn?'🔻':k=='tr'?'⇄':k=='adj'?(t.int?'💰':t.val?'📈':'⚖️'):k=='inv'?'📈':k=='invs'?'📉':'💠'}</span>`;
   return`<button class="tx" data-id="${t.id}" onclick="openTx('${t.id}')">${ico}<span class="info"><b>${esc(title)}</b><span class="meta">${t.note&&k!='adj'&&k!='inv'&&k!='invs'&&k!='lend'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.payoff?esc(t.note)+' · ':''}${k=='tr'?'Przelew'+(t.amount2?' · wpłynęło '+am(t.amount2,t.to):''):esc(accN(t.acc))}${t.who?' · '+esc(t.who):''}${t.split?' · ✂️ paragon':''}${t.rcpt?.length?' · 📷':''}</span>${t.debt&&S.debts[t.debt]?`<div class="coinl" style="color:#9f1239">${t.payoff?'nie liczy się w Budżecie – to oddanie pożyczki':'🔻 spłata: '+esc(S.debts[t.debt].name)}</div>`:''}${t.save&&k=='tr'?Object.entries(t.save).filter(([i,v])=>v&&S.debts[i]).map(([i,v])=>`<div class="coinl" style="color:#a16207">💰 ${v>0?'na spłatę':'z odłożonych'}: ${esc(S.debts[i].name)} ${M(Math.abs(v))}</div>`).join(''):''}${t.war?`<div class="coinl" style="color:${t.war<td()?'#94a3b8':'#0e7490'}">🛡️ gwarancja do ${t.war.split('-').reverse().join('.')}</div>`:''}${t.ulga&&ULGI[t.ulga]?`<div class="coinl" style="color:#6d28d9">🧾 ${ULGI[t.ulga].n}</div>`:''}${rf[t.id]?`<div class="ref">↩️ zwrócono ${M(rf[t.id])} z ${M(t.amount)}</div>`:''}${cn[t.id]?`<div class="coinl">🪙 drobne +${M(cn[t.id].amount)} → ${esc(accN(cn[t.id].to))}</div>`:''}</span><span class="amt num t-${cls}">${sg}${M(Math.abs(t.amount))}</span></button>`}
 export function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQuery(F.q.trim());
   const l=tx.filter(t=>txMatches(t,sm,F,S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));

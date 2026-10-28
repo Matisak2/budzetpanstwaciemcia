@@ -3,7 +3,7 @@ import {doc,updateDoc,deleteField} from "https://www.gstatic.com/firebasejs/10.1
 import {catsEmpty} from './art.js';
 import {kotki} from './guide.js';
 import {gainSvg} from './charts.js';
-import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue} from './inv.js';
+import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue,intOf,intPeriod,intCalc,intTax,intMonthly,intLabel} from './inv.js';
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
 import {seasonal,agg,balance,liveOf,carStats,yearDueNear} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym} from './util.js';
@@ -268,4 +268,22 @@ export async function payYear(id){if(guard())return;const it=years().find(x=>x.i
   const r=await ask({title:'Zapłacone: '+it.name,fields:[{id:'a',label:'Kwota (zł)',type:'decimal',value:f2(it.amount)},{id:'d',label:'Data',type:'date',value:td()},{id:'c',label:'Z konta',type:'select',value:yearAccId()||'',options:accOpts()}],ok:'Zapisz'});
   if(!r)return;const amt=gr(r.a);if(amt<=0||!isDate(r.d))return toast('Podaj kwotę i datę','bad');
   if(await putTx(r.d.slice(0,7),'t'+rid(),{type:'exp',amount:amt,date:r.d,sub:it.sub,acc:r.c,to:'',who:S.who,note:'📅 '+it.name,yearId:id,deleted:false,ts:Date.now()})){
-    const due=markYearPaid(it,r.d);toast('Zapłacone: '+it.name+' ✓ – kolejny termin: '+MN[+yearDue(it,due).slice(5)-1].toLowerCase())}}
+    const due=markYearPaid(it,r.d);toast('Zapłacone: '+it.name+' ✓ – kolejny termin: '+MN[+yearDue(it,due).slice(5)-1].toLowerCase())}}/* 💰 interest: book what the bank added (the estimate filled in – correct it from the statement); one id per account and period, so two phones never book it twice */
+export async function bookInt(accId,key){if(guard())return;const a=accById(accId);const I=a&&intOf(a);if(!I)return;const P=intPeriod(I,key),tx=liveOf(S.tx);
+  const c=intCalc(S.cfg,tx,a,P.from,P.to,balance),self=intTax(a)=='self',id='in'+key.replace('-','')+accId;
+  const r=await ask({title:'💰 Odsetki: '+a.name,text:`Szacunek za ${P.from.split('-').reverse().join('.')}–${P.to.split('-').reverse().join('.')}: ${money(c.book,CUR(a))}${self?' (bez podatku – podatek 19% ≈ '+money(c.tax,CUR(a))+' rozliczysz w PIT-38)':intTax(a)=='bank'?` (przed podatkiem ${money(c.gross,CUR(a))}, podatek ${money(c.tax,CUR(a))})`:''}.\nJeśli w banku jest inna kwota, popraw ją.`,
+    fields:[{id:'a',label:`Kwota z banku (${curSym(CUR(a))})`,type:'decimal',value:f2(c.book)},{id:'d',label:'Data',type:'date',value:P.to<=td()?P.to:td()}],ok:'Zapisz odsetki'});
+  if(!r)return;const v=Math.round((pnum(r.a)||0)*100),d=isDate(r.d)?r.d:td();if(v<=0)return toast('Podaj kwotę odsetek','bad');
+  if(await putTx(d.slice(0,7),id,{type:'adj',val:true,int:true,intP:key,amount:v,date:d,sub:'',acc:a.id,to:'',who:accOwner(a)=='Wspólne'?S.who:accOwner(a),note:'💰 odsetki '+key,deleted:false,ts:Date.now()}))toast('Zapisano odsetki: '+money(v,CUR(a))+' 💰')}
+/* the line under an account: its rate and about how much a month */
+export function intMini(a,tx){const I=intOf(a);if(!I)return'';const b=balance(S.cfg,tx,a.id,addDays(td(),1)),m=intMonthly(a,b,td());
+  return`<div class="mini">💰 ${esc(intLabel(I,td()))}${m>0?` · ok. ${money(m,CUR(a))}/mies.${intTax(a)=='bank'?' na rękę':''}`:''}</div>`}
+/* Oszczędności: interest of the year – booked and about how much more a month */
+export function intCardH(owner){const tx=liveOf(S.tx),y=td().slice(0,4),L=S.cfg.accs.filter(a=>!a.archived&&intOf(a)&&(!owner||accOwner(a)==owner));
+  const cand=S.cfg.accs.filter(a=>!a.archived&&(a.grp=='sav'||a.grp=='sub')&&!intOf(a)&&(!owner||accOwner(a)==owner));
+  if(!L.length)return cand.length?`<div class="note">💰 Konta oszczędnościowe mają oprocentowanie? Wpisz je przyciskiem „💰 Oprocentowanie” przy koncie, a policzę odsetki i przypomnę o nich.</div>`:'';
+  const got=a=>tx.filter(t=>t.int&&t.acc===a.id&&t.date.startsWith(y)).reduce((x,t)=>x+t.amount,0),sum=L.filter(isP).reduce((x,a)=>x+got(a),0),mon=L.filter(isP).reduce((x,a)=>x+intMonthly(a,balance(S.cfg,tx,a.id,addDays(td(),1)),td()),0);
+  return`<section class="chart"><div class="ct"><b>💰 Odsetki z kont ${y}</b><span class="mini">wpisane w tym roku · szacunek miesięczny z dzisiejszego salda</span></div>
+    <div class="kpis" style="gap:8px"><div class="kpi k-em"><div class="l">Wpisane w ${y}</div><div class="v num">${zl(sum)}</div></div><div class="kpi k-sk"><div class="l">Ok. miesięcznie</div><div class="v num">${zl(mon)}</div><div class="s">do końca roku ok. ${zl0(mon*(12-+td().slice(5,7))+sum)}</div></div></div>
+    ${L.map(a=>`<div class="r1"><span><b>${esc(a.name)}</b>${intMini(a,tx)}</span><button class="btn sm" onclick="editInt('${a.id}')">Zmień</button></div>`).join('')}
+    <div class="mini">Odsetki to zysk – nie liczą się do „odłożonych”, tak jak zmiana kursów inwestycji.</div></section>`}

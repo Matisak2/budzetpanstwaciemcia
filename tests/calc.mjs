@@ -1,7 +1,7 @@
 /* 🤖 Robot: czy obliczenia pieniędzy dalej dają dobre wyniki. Oczekiwane liczby policzone niezależnie (ręcznie / kalkulatorem), nie skopiowane z kodu.
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
-import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
+import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
@@ -83,6 +83,29 @@ const N=' ';
   // „Na dziś”: Czynsz po terminie, ale jest podobny wpis → propozycja połączenia zamiast „po terminie”
   const D={cfg:{...cfg,years:[]},tx:[{id:'t5',...E('czy',185000,'2026-10-03','czynsz')}],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-20T12:00:00').getTime()},hraw:{}};
   const it=todayItems(D,{today:'2026-10-20',checks:false});eq('Na dziś – połącz zamiast po terminie',it.some(x=>x.icon=='💡'&&x.text.startsWith('Czynsz'))&&!it.some(x=>x.text.startsWith('Czynsz')&&x.k=='bad'),true);
+}
+/* ---------- 💰 odsetki na koncie oszczędnościowym (dzień po dniu, saldo × stawka ÷ 365, Belka 19%) ---------- */
+{ const A=(id,int,x={})=>({id,name:'Konto '+id,grp:'sav',open:0,int,...x}),T=(d,v,to='s')=>({id:'t'+d+v,type:'tr',acc:'x',to,amount:v,date:d,sub:''});
+  // 6%: 100 zł od 1., +100 zł 6. dnia, +100 zł 21. dnia kwietnia → 6 500 zł·dni × 6% ÷ 365 = 1,07 zł; podatek 0,20 zł; na konto 0,87 zł
+  const a=A('s',{rates:{'2026-01-01':6},cap:'m'}),tx=[T('2026-04-01',10000),T('2026-04-06',10000),T('2026-04-21',10000)];
+  eq('Odsetki – trzy wpłaty w miesiącu',intCalc({accs:[a]},tx,a,'2026-04-01','2026-04-30',balance),{gross:107,tax:20,net:87,book:87});
+  // promocja 7% do 50 000 zł, reszta 3%; 60 000 zł przez 30 dni: 287,67 + 24,66 = 312,33 zł; podatek 59,34 zł
+  const b=A('p',{rates:{'2026-01-01':3},promo:7,promoTo:'2026-12-31',promoMax:5000000,cap:'m'},{open:6000000});
+  eq('Odsetki – promocja z limitem kwoty',intCalc({accs:[b]},[],b,'2026-04-01','2026-04-30',balance),{gross:31233,tax:5934,net:25299,book:25299});
+  // zmiana stawki 16 kwietnia z 4% na 2%, 10 000 zł: 16,44 + 8,22 = 24,66 zł; rozliczane samemu → na konto całość, podatek 4,69 zł do PIT-38
+  const c=A('c',{rates:{'2026-01-01':4,'2026-04-16':2},cap:'m',tax:'self'},{open:1000000});
+  eq('Odsetki – zmiana stawki w połowie miesiąca, podatek w PIT-38',intCalc({accs:[c]},[],c,'2026-04-01','2026-04-30',balance),{gross:2466,tax:469,net:2466,book:2466});
+  const k=A('k',{rates:{'2026-01-01':4},cap:'m'},{open:1000000,name:'IKE obligacje'});
+  eq('Odsetki – IKE bez podatku',intCalc({accs:[k]},[],k,'2026-04-01','2026-04-30',balance).tax,0);
+  eq('Okres kwartalny',intPeriod({cap:'q'},'2026-08'),{from:'2026-07-01',to:'2026-09-30',key:'2026-09'});
+  eq('Szacunek miesięczny: 20 000 zł na 6% po podatku ≈ 81 zł',intMonthly(A('m',{rates:{'2026-01-01':6}}),2000000,'2026-10-28'),8100);
+  const cfgI={accs:[a,{...b,id:'p2',int:{...b.int,promoTo:'2026-11-10'}}],cats:[],fixed:[],years:[],incs:[],round:[],projs:[],rems:[]},DI=today=>({cfg:cfgI,tx:[T('2026-09-01',100000)],slips:{},hold:{},debts:{},market:{},backup:{at:new Date(today+'T12:00:00').getTime()},hraw:{}});
+  const ti=today=>todayItems(DI(today),{today,checks:false});
+  eq('Na dziś: odsetki w ostatnim dniu miesiąca',ti('2026-10-31').some(x=>x.k=='int'&&x.go.acc=='s'&&x.go.key=='2026-10'),true);
+  eq('Na dziś: odsetki jeszcze 5 dni później, po 12 dniach już nie',[ti('2026-11-05').some(x=>x.k=='int'&&x.go.key=='2026-10'),ti('2026-11-12').some(x=>x.k=='int'&&x.go.key=='2026-10')],[true,false]);
+  eq('Na dziś: wpisane odsetki → bez przypomnienia',todayItems({...DI('2026-10-31'),tx:[T('2026-09-01',100000),{id:'i',type:'adj',val:true,int:true,intP:'2026-10',acc:'s',amount:500,date:'2026-10-31'}]},{today:'2026-10-31',checks:false}).some(x=>x.k=='int'&&x.go.acc=='s'),false);
+  eq('Na dziś: koniec promocji za 10 dni',ti('2026-10-31').some(x=>x.k=='promo'&&/za 10 dni/.test(x.text)),true);
+  eq('Odsetki to zysk, nie „odłożone”',savFlow({accs:[a]},[{id:'i',type:'adj',val:true,int:true,acc:'s',amount:500,date:'2026-10-31'}],['s'],'2026-10'),{flow:0,gain:500});
 }
 /* ---------- 🐾 kotki: uwaga → „Rozumiem, kociaki” → ciekawostka dnia ---------- */
 { eq('366 ciekawostek, każda inna',[FACTS.length,new Set(FACTS).size],[366,366]);
