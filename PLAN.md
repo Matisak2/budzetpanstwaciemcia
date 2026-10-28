@@ -302,10 +302,10 @@ Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). N
 - [x] Testy robota
 
 ## Etap X3. Kotki
-- [ ] Wyraźniejsze dymki (konkret z kwotą, potem żart)
-- [ ] „Rozumiem, kociaki 🐾” przy uwagach → ciekawostka dnia
-- [ ] 366 ciekawostek (sprawdzonych), jedna na dzień roku, 29 lutego – nr 366
-- [ ] W święta i urodziny życzenia zamiast ciekawostki
+- [x] Wyraźniejsze dymki (konkret z kwotą, potem żart)
+- [x] „Rozumiem, kociaki 🐾” przy uwagach → ciekawostka dnia
+- [x] 366 ciekawostek (sprawdzonych), jedna na dzień roku, 29 lutego – nr 366
+- [x] W święta i urodziny życzenia zamiast ciekawostki
 
 ## Etap X4. Oprocentowanie kont
 - [ ] Oprocentowanie, promocja (do kiedy, limit), dopisywanie odsetek, podatek (bank / sam – PIT-38 / bez) przy koncie; historia stawek

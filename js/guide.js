@@ -2,6 +2,7 @@
    Bailey – calm guardian of savings (bills, plan, safety cushion, deadlines). Ivo – cheerful foodie and party cat (goals, coins, celebrations).
    {n} in a text = the name of the person using this phone. */
 import {zl0} from './util.js';
+import {factOfDay} from './facts.js';
 
 /* how many cats on this phone: lots (pictures + jokes), few (pictures, only useful messages), off (no pictures) */
 export const kotki={mode:'lots'};
@@ -102,34 +103,47 @@ function special(c){const d=md(c.today),y=+c.today.slice(0,4);
   for(const w of ['Mati','Wercia'])if(w!=c.name&&bday(w))return{who:B,scene:'celebrate',bday:true,text:`Dziś urodziny ${w=='Wercia'?'Werci':'Matiego'}! 🎂 Ivo pilnuje tortu, ja – niespodzianki. Pamiętasz o życzeniach, {n}? 💝`};
   if(d=='10-13')return{who:B,scene:'birthdayB',arg:String(y-2025),text:`Dziś moje urodziny – kończę ${y-2025}! 🎂 {n}, w prezencie poproszę churu i drzemkę na kocu.`};
   if(d=='03-16')return{who:I,scene:'birthdayI',arg:String(y-2026),text:`Dziś moje urodziny – mam ${y-2026}! 🎉 Bailey obiecała, że nie zje mojego tortu. Zobaczymy.`};
-  if(d>='12-24'&&d<='12-26')return{who:B,scene:'christmas',text:'Wesołych Świąt, {n}! 🎄 Niech pod choinką będzie dużo ciepła i ani jednego zbędnego paragonu.'};
+  if(d=='12-24')return{who:B,scene:'christmas',text:'Dziś Wigilia! 🎄 Wesołych Świąt, {n} – dużo ciepła, spokoju i ani jednego zbędnego paragonu. Ivo czeka na pierwszą gwiazdkę (i na rybkę).'};
+  if(d=='12-25'||d=='12-26')return{who:B,scene:'christmas',text:`Dziś ${d=='12-25'?'pierwszy':'drugi'} dzień Świąt Bożego Narodzenia 🎄 Wesołych Świąt, {n}! Odpoczywamy – budżet poczeka.`};
+  if(d=='12-06')return{who:I,scene:'christmas',text:'Dziś Mikołajki! 🎅 Sprawdziłem buty – w moich był smaczek. Wiem, kto go tam włożył, {n} 😸'};
+  if(d=='11-11')return{who:B,scene:'autumn',text:'Dziś Narodowe Święto Niepodległości 🇵🇱 Spokojnego, wolnego dnia, {n}!'};
+  if(d=='05-03')return{who:B,scene:'spring',text:'Dziś Święto Konstytucji 3 Maja 🇵🇱 Majówka to dobry czas na odpoczynek – i na zerknięcie, czy wyjazd mieści się w planie.'};
+  if(d=='06-01')return{who:I,scene:'summer',text:'Dziś Dzień Dziecka! 🎈 W każdym z nas siedzi trochę dziecka – we mnie całe. Należy się lody, {n}.'};
   if(d=='12-31')return{who:I,scene:'celebrate',text:'Ostatni dzień roku! Bailey robi podsumowanie, a ja szukam czapeczki na sylwestra 🎆'};
-  if(d=='01-01')return{who:B,scene:'celebrate',text:'Szczęśliwego Nowego Roku, {n}! Nowy rok, nowy plan – zaczynamy razem ✨'};
+  if(d=='01-01')return{who:B,scene:'celebrate',text:'Dziś Nowy Rok! Szczęśliwego Nowego Roku, {n} – nowy rok, nowy plan, zaczynamy razem ✨'};
   if(d=='02-14')return{who:I,scene:'valentine',text:'Walentynki! 💕 Pozycja „Prezenty dla drugiej połówki” czeka. My dostajemy mruczenie gratis.'};
   if(d=='02-17')return{who:I,scene:'happy',text:'Dziś Dzień Kota! 🐱 Uprzejmie przypominamy o smaczkach. To tradycja, nie my ją wymyśliliśmy.'};
   if(d=='03-08')return c.name=='Wercia'?{who:B,scene:'spring',text:'Wercia, wszystkiego najlepszego z okazji Dnia Kobiet! 💐 Od Bailey, Ivo i całego budżetu.'}:{who:I,scene:'spring',text:'Mati, dziś Dzień Kobiet. Kwiaty dla Werci to wydatek, który zawsze się zwraca 💐'};
-  if(d=='10-31')return{who:I,scene:'halloween',text:'Halloween! 🎃 Najstraszniejsze są tylko nieodhaczone rachunki. Na szczęście mamy 📌 Stałe.'};
+  if(d=='10-31')return{who:I,scene:'halloween',text:'Dziś Halloween 🎃 i Światowy Dzień Oszczędzania 🐷 Najstraszniejsze są tylko nieodhaczone rachunki – na szczęście mamy 📌 Stałe.'};
   const e=easter(y);if(d==e)return{who:B,scene:'spring',text:'Wesołych Świąt Wielkanocnych, {n}! 🐣 Ivo szuka pisanek pod kanapą.'};
   return null}
 
-/* the message on the Budget screen: special day > something needs attention > useful news > everyday line (rotates twice a day) */
+/* the message on the Budget screen: special day > something needs attention > useful news > everyday line / 🐾 fact of the day.
+   A warning (late bill, plan exceeded, close to the limit, old backup) has a key k – „Rozumiem, kociaki” hides it for the rest of the day
+   on this phone (c.ok = hidden keys; the key changes with the situation, e.g. another late bill) and the fact of the day comes instead.
+   **text** = bold (the concrete thing first, the joke after it). */
 export function greeting(c){const sp=special(c);if(sp)return{...sp,text:fill(sp.text,c)};
   const doy=Math.floor((new Date(c.today+'T12:00:00')-new Date(c.today.slice(0,4)+'-01-01T12:00:00'))/864e5),slot=doy*2+(c.hour<12?0:1),pick=a=>a[slot%a.length];
-  const urgent=[],info=[];
-  if(c.late.length)urgent.push([B,'bell',c.late.length==1?`{n}, opłata „${c.late[0]}” jest już po terminie. Zajrzyj do 📌 Stałe – odhaczenie zajmie chwilę.`:`{n}, ${c.late.length} opłaty są po terminie. Zajrzyj do 📌 Stałe, razem szybko to ogarniemy.`]);
-  if(c.plan>0&&c.left<0)urgent.push([I,'grumpy',`Hmpf. Plan wydatków przekroczony o ${zl0(-c.left)}. Jestem oburzony… ale wierzę, że w przyszłym miesiącu pójdzie lepiej 💪`]);
+  const ok=c.ok||new Set(),ym=c.today.slice(0,7),urgent=[],info=[];let hid=0;
+  const add=(L,k,x)=>{if(k&&ok.has(k)){hid++;return}L.push(k?[...x,k]:x)};
+  if(c.late.length)add(urgent,'late:'+ym+':'+c.late.join('|'),[B,'bell',c.late.length==1?`**Po terminie: „${c.late[0]}”.** Zajrzyj do 📌 Stałe, {n} – odhaczenie zajmie chwilę.`:`**${c.late.length} opłaty po terminie:** ${c.late.map(x=>`„${x}”`).join(', ')}. Zajrzyj do 📌 Stałe – razem szybko to ogarniemy.`]);
+  if(c.plan>0&&c.left<0)add(urgent,'over:'+ym,[I,'grumpy',`**Plan wydatków przekroczony o ${zl0(-c.left)}.** Hmpf, jestem oburzony… ale wierzę, że w przyszłym miesiącu pójdzie lepiej 💪`]);
   if(urgent.length)return mk(pick(urgent),c);
-  if(c.soon.length)info.push([B,'bell',c.soon.length==1?`W ciągu kilku dni termin opłaty „${c.soon[0]}”. Przypominam z dzwoneczkiem 🔔`:`W ciągu kilku dni terminy ${c.soon.length} opłat stałych – zerknij do 📌`]);
-  if(c.plan>0&&c.left>=0)info.push(c.left<c.plan*.15?[B,'lupa',`Do końca miesiąca ${c.dl} ${c.dl==1?'dzień':'dni'}, a w budżecie zostało ${zl0(c.left)}. Ostrożnie, {n} – jesteśmy blisko limitu.`]:[B,'',`Do końca miesiąca ${c.dl} ${c.dl==1?'dzień':'dni'} – w budżecie zostało jeszcze ${zl0(c.left)} 💚`]);
-  if(c.jdg)info.push([B,'calc','Do 20. dnia miesiąca: ZUS, zdrowotna i podatek z JDG. Kalkulator już grzeje łapki 🧮']);
-  if(c.coins>0)info.push([I,'coin',`Z drobnych w tym miesiącu odłożyło się już ${zl0(c.coins)} 🪙 Moneta do monety, {n}!`]);
-  if(c.saved>0)info.push([I,'coin',`W tym miesiącu odłożyliście już ${zl0(c.saved)} 🐷 Brawo! Ja odłożyłem jedną monetę. Też się liczy.`]);
-  if(c.goal&&c.goal.pct>0)info.push([I,'envelope',`Cel „${c.goal.name}” jest już w ${Math.floor(c.goal.pct)}%. Coraz bliżej! ✨`]);
-  if(c.backupDays>=30)info.push([B,'',`Ostatnia kopia danych była ${c.backupDays} dni temu. Zrobisz nową? Ja zawsze mam zapasowy koc.`]);
-  if(c.treats>0)info.push([I,'churu',`W tym miesiącu na nasze smaczki poszło ${zl0(c.treats)}. Uważamy, że to rozsądna kwota. Bardzo rozsądna 😼`]);
+  if(c.soon.length)info.push([B,'bell',c.soon.length==1?`**Za kilka dni termin: „${c.soon[0]}”.** Przypominam z dzwoneczkiem 🔔`:`**Za kilka dni ${c.soon.length} terminy opłat stałych.** Zerknij do 📌 Stałe 🔔`]);
+  if(c.plan>0&&c.left>=0){if(c.left<c.plan*.15)add(info,'near:'+ym,[B,'lupa',`**Zostało ${zl0(c.left)} na ${c.dl} ${c.dl==1?'dzień':'dni'}.** Ostrożnie, {n} – jesteśmy blisko limitu.`]);
+    else info.push([B,'',`**W budżecie zostało ${zl0(c.left)}** na ${c.dl} ${c.dl==1?'dzień':'dni'} do końca miesiąca 💚`])}
+  if(c.jdg)info.push([B,'calc','**Do 20. dnia miesiąca: ZUS, zdrowotna i podatek z JDG.** Kalkulator już grzeje łapki 🧮']);
+  if(c.coins>0)info.push([I,'coin',`**Z drobnych odłożyło się już ${zl0(c.coins)}** w tym miesiącu 🪙 Moneta do monety, {n}!`]);
+  if(c.saved>0)info.push([I,'coin',`**W tym miesiącu odłożyliście już ${zl0(c.saved)}** 🐷 Brawo! Ja odłożyłem jedną monetę. Też się liczy.`]);
+  if(c.goal&&c.goal.pct>0)info.push([I,'envelope',`**Cel „${c.goal.name}” jest już w ${Math.floor(c.goal.pct)}%.** Coraz bliżej! ✨`]);
+  if(c.backupDays>=30)add(info,'backup:'+ym,[B,'',`**Ostatnia kopia danych: ${c.backupDays} dni temu.** Zrobisz nową? Ja zawsze mam zapasowy koc.`]);
+  if(c.treats>0)info.push([I,'churu',`**Na nasze smaczki w tym miesiącu: ${zl0(c.treats)}.** Uważamy, że to rozsądna kwota. Bardzo rozsądna 😼`]);
+  const alerts=info.filter(x=>x[3]);if(alerts.length)return mk(pick(alerts),c);
+  /* after „Rozumiem, kociaki” and every afternoon: the fact of the day (the same on both phones) */
+  if(hid||slot%2)return factMsg(c);
   if(kotki.mode!='lots'||!GENERAL.length)return info.length?mk(pick(info),c):mk([B,'',`Wszystko spokojnie, {n}. Miłego dnia 💛`],c);
-  return mk(info.length&&slot%2==0?pick(info):pick(GENERAL),c)}
-const mk=([who,scene,text],c)=>({who,scene:scene||seasonScene(c.today),text:fill(text,c)});
+  return mk(info.length&&doy%2==0?pick(info):pick(GENERAL),c)}
+export function factMsg(c){const f=factOfDay(c.today);return{who:f.n%2?B:I,scene:f.n%2?'lupa':seasonScene(c.today),fact:true,text:'**🐾 Ciekawostka dnia:** '+f.text}}const mk=([who,scene,text,k],c)=>({who,scene:scene||seasonScene(c.today),text:fill(text,c),...(k?{k}:{})});
 
 /* short messages for celebrations */
 export const CELEBRATE={
@@ -151,6 +165,7 @@ export const TOUR=n=>[
 ];
 /* what changed – shown once per phone after an update; the newest entry first */
 export const NEWS=[
+  {v:39,title:'Ciekawostki od kotków 🐾',scene:'lupa',items:['🐾 Gdy kotki ostrzegają (opłata po terminie, przekroczony plan, blisko limitu), pod dymkiem jest „Rozumiem, kociaki”. Uwaga znika do jutra na tym telefonie – chyba że coś się zmieni, np. dojdzie kolejna opłata po terminie.','📚 Zamiast uwagi – ciekawostka dnia o budżecie, oszczędzaniu i inwestowaniu. Jest ich 366, na każdy dzień roku inna (29 lutego – specjalna), na obu telefonach ta sama. Po południu kotki pokazują ją same.','🎄 W święta i urodziny – życzenia i nazwa dnia (doszły m.in. Wigilia, Mikołajki, 11 Listopada, 3 Maja, Dzień Dziecka i Dzień Oszczędzania).','💬 Dymki są wyraźniejsze: najpierw konkret z kwotą (pogrubiony), potem żart.']},
   {v:38,title:'Pewniejsza kopia i poprawki 🛠️',scene:'lupa',items:['💾 Kopia (z ⚙️ i z maila) zapisuje teraz wszystko: także ustawienia kaskady, schowane podpowiedzi, subkonto kopert rocznych, wpisaną inflację, limity IKE/IKZE, urodziny i zamknięcia miesięcy. Po wczytaniu aplikacja wraca dokładnie do stanu z kopii.','📅 Wydatki „co kwartał” i „co miesiąc” po zapłacie znowu wchodzą do planu w kolejnym terminie, a wpis przez ＋ podpowie „To ta opłata?”.','🔁 Wpis przeniesiony na inny miesiąc zachowuje wszystkie powiązania, a po usunięciu zawsze jest w „Ostatnio usunięte”. Wpis z konta w archiwum pokazuje to konto.','🔄 Nowa wersja aplikacji pobiera się w tle w całości i dopiero wtedy się włącza – słaby internet niczego nie popsuje. 🔍 🔔 ⚙️ stoją równo.']},
   {v:37,title:'Zamknięcie przed wypłatą 💧',scene:'lupa',items:['🗓️ Każde z Was ma własne zamknięcie miesiąca – dzień przed swoją wypłatą. Dzień wypłaty aplikacja zna sama z wpisanych pasków (koniec miesiąca, weekend → piątek). „Co było ponad plan” i „Plan” są wspólne.','💧 Kaskada liczy nadwyżkę dzień przed wypłatą – wtedy na koncie jest to, co naprawdę zostało. W środku miesiąca nie proponuje przelewu pieniędzy na zakupy, a nowej pensji nigdy nie liczy jako nadwyżki.','⚠️ Nowe w „Na dziś”: „nie starczy na rachunki” – gdy na koncie zabraknie na opłatę stałą przed terminem, z przyciskiem „Przelej”.','🔁 Stały przelew może iść też na konto wspólne albo do drugiej osoby. Powtarzający się przelew sam podpowiem.','🛟 Poduszka nie jest już pulą na cele. 📝 Plan po zamknięciu – ze średniej z 3 miesięcy. 🧾 Rejestr w dwóch linijkach. ⚖️ Salda wyrównujecie wszystkie naraz.']},
   {v:36,title:'Zamknięcie miesiąca 🗓️',scene:'lupa',items:['🗓️ W pierwszych dniach miesiąca na Budżecie i w „Na dziś” czeka „Zamknij wrzesień” – 5 kroków, ok. 10 minut: salda z bankiem, co było ponad plan, nadwyżka, plan na nowy miesiąc i cele.','🏦 Przy każdym koncie widać, kiedy ostatnio sprawdzaliście saldo z bankiem. „✓” – zgadza się, „⚖️” – wpisz saldo z banku.','👫 Kroki możecie podzielić – odhaczone widać na obu telefonach. 1. dnia miesiąca przypomnę powiadomieniem. Zawsze możecie zajrzeć: przycisk na dole Budżetu.']},
@@ -264,6 +279,7 @@ export const HELP=[
   {i:'🙈',t:'Tryb dyskretny',s:'kwoty jako „•••”',w:'Gdy pokazujecie komuś telefon albo otwieracie aplikację przy ludziach: wszystkie kwoty zamieniają się w „•••”. Procenty, paski i wykresy zostają. Dotyczy tylko tego telefonu.',h:['⚙️ → „🎨 Wygląd” → „🙈 Ukryte”.','Szybciej: przytrzymaj nazwę miesiąca w nagłówku (ok. pół sekundy) – włącza i wyłącza.','Na górze każdego ekranu jest wtedy pasek „Pokaż kwoty”.'],v:26},
   {i:'🚫',t:'Bez przybliżania',s:'podwójne stuknięcie',w:'Podwójne stuknięcie nie przybliża już ekranu (przyciski działają normalnie, także szybkie „+ +”). Przybliżyć można dwoma palcami.',h:['Nic nie trzeba ustawiać – działa samo.'],v:23},
   {i:'🎂',t:'Urodziny',s:'życzenia od Bailey i Ivo',w:'W dniu Waszych urodzin kotki składają życzenia na Budżecie (z konfetti) i rano w powiadomieniu, a drugiej osobie przypominają o życzeniach.',h:['Datę urodzenia zapisujesz raz – kotki pytają o nią przy starcie aplikacji.','Zmiana: ⚙️ → „Ten telefon” → „Kto korzysta z tego telefonu?” → 🎂 Zmień.'],v:33},
+  {i:'📚',t:'Ciekawostka dnia',s:'„Rozumiem, kociaki”',w:'Pod uwagą kotków (opłata po terminie, przekroczony plan, blisko limitu) jest przycisk „Rozumiem, kociaki 🐾”. Uwaga znika do jutra na tym telefonie, a w jej miejscu pojawia się ciekawostka dnia o budżecie, oszczędzaniu lub inwestowaniu – 366 różnych, jedna na każdy dzień roku, na obu telefonach ta sama. Po południu kotki pokazują ją same. W święta i urodziny są życzenia.',h:['Budżet → dymek kotków → „Rozumiem, kociaki 🐾”.','Gdy sytuacja się zmieni (np. kolejna opłata po terminie), uwaga wróci.'],v:39},
   {i:'🐾',t:'Bailey i Ivo',s:'dużo, mało albo wcale',w:'Kotki podpowiadają, świętują i żartują. Możesz zostawić tylko ważne komunikaty albo je wyłączyć.',h:['⚙️ → „🐾 Bailey i Ivo” → Dużo / Mało / Wyłączone.','„Pokaż pierwsze kroki” – krótka wycieczka po aplikacji.']},
   {i:'💾',t:'Kopia danych',s:'plik z całym budżetem',w:'Plik z wszystkimi danymi – na wszelki wypadek: wpisy, konta, plany, paski, cele, a także ustawienia (kaskada, schowane podpowiedzi, koperty roczne, inflacja, limity, urodziny, zamknięcia miesięcy). Kopia z maila zawiera to samo. Tym samym przyciskiem wczytasz kopię lub listę transakcji.',h:['⚙️ → „Pobierz kopię” i zapisz plik w Plikach / na Dysku.','„Wczytaj kopię” przyjmuje plik .json i .json.gz z maila.'],v:38},
   {i:'🧪',t:'Wersja demonstracyjna',s:'pokaż komuś aplikację',w:'Osobna wersja z przykładowymi danymi – bez Waszych danych i bez logowania. Każdy gość ma swoją kopię w swojej przeglądarce.',h:['⚙️ → „🧪 Pokaż komuś aplikację” → „📤 Wyślij link”.'],v:18}]}];

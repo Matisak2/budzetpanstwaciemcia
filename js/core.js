@@ -45,10 +45,14 @@ export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=t
   const late=unpaid.filter(f=>fixedDate(f,ym)<today).map(f=>f.name),soon=unpaid.filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)}).map(f=>f.name);
   const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({name:g.name,pct:goalAlloc(g)/g.target*100})).sort((a,b)=>b.pct-a.pct)[0]||null;
   const act=actuals(cfg,tx,ym),treats=cfg.cats.reduce((a,c)=>a+c.subs.filter(x=>isTreat(x.name)).reduce((b,x)=>b+Math.max(0,act[x.id]||0),0),0);
-  const g=greeting({jdg:(cfg.incs||[]).some(s=>s.kind=='b2b')&&+today.slice(8)>=14&&+today.slice(8)<=20,coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats,births:S.hraw?.birth||{}});
+  const okL=(()=>{try{const o=JSON.parse(ls.get('mw_ok')||'{}');return o.d==today?o.k||[]:[]}catch(e){return[]}})();
+  const g=greeting({ok:new Set(okL),jdg:(cfg.incs||[]).some(s=>s.kind=='b2b')&&+today.slice(8)>=14&&+today.slice(8)<=20,coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats,births:S.hraw?.birth||{}});
   if((g.scene.startsWith('birthday')||g.bday)&&kotki.mode!='off'&&!ls.get('mw_bd_'+today)){ls.set('mw_bd_'+today,'1');setTimeout(confetti,400)}
   const pic=kotki.mode=='off'?'':`<div class="gcats${WIDE.has(g.scene)?' w':''}">${scene(g.scene,'kot',g.arg)}</div>`;
-  return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${kotki.mode=='off'?'':`<em class="who">${g.who}:</em> `}${esc(g.text)}</span></div>${pic}</section>`}
+  const txt=esc(g.text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>'),okB=g.k?`<button class="chip gok" data-k="${esc(g.k)}" onclick="okCats(this.dataset.k)">Rozumiem, kociaki 🐾</button>`:'';
+  return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${kotki.mode=='off'?'':`<em class="who">${g.who}:</em> `}${txt}</span>${okB}</div>${pic}</section>`}
+/* „Rozumiem, kociaki 🐾”: this warning hides until tomorrow on this phone, the fact of the day comes instead */
+export function okCats(k){const today=td();let o={};try{o=JSON.parse(ls.get('mw_ok')||'{}')}catch(e){}const L=o.d==today?o.k||[]:[];ls.set('mw_ok',JSON.stringify({d:today,k:[...new Set([...L,k])]}));render()}
 /* Bailey & Ivo slides: first steps, "Co nowego", celebrations */
 export function catSlides(slides,done='Gotowe'){return new Promise(res=>{const d=$('dlg');let i=0;
   const fin=()=>{d.hidden=true;d.onclick=null;d.onkeydown=null;res()};

@@ -4,11 +4,11 @@
    only then it takes over, and the page reloads itself (js/app.js, controllerchange). That is why CACHE must go up with every change
    (the robot checks it – tests/cache.mjs). Other own files: network first. Firebase SDK (versioned URLs) and fonts: cache first.
    Firestore/Auth traffic is never touched. */
-const CACHE = 'budzet-mw-v59';
+const CACHE = 'budzet-mw-v60';
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const SHELL = ['./', './index.html', './style.css', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png',
   './js/app.js', './js/util.js', './js/data.js', './js/art.js', './js/logic.js', './js/charts.js', './js/cats.js', './js/guide.js', './js/pay.js', './js/inv.js', './js/today.js', './js/report.js', './js/close.js',
-  './js/core.js', './js/sheet.js', './js/actions.js', './js/salary.js', './js/savings.js', './js/debts.js', './js/analysis.js', './js/todayui.js'];
+  './js/core.js', './js/sheet.js', './js/actions.js', './js/salary.js', './js/savings.js', './js/debts.js', './js/analysis.js', './js/todayui.js', './js/facts.js'];
 const SHELL_URLS = new Set(SHELL.map(u => new URL(u, self.location.href).pathname));
 const SDK_FILES = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => SDK + f);
 

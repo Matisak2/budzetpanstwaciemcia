@@ -106,6 +106,13 @@ for(const C of CASES){
       if(await p.evaluate(()=>S.tx.length)!==n0||await p.evaluate(()=>document.getElementById('sheet').hidden))fail(`${tag}: „Nie zapisuj” nie zostawia okienka bez zmian`)}
     await p.evaluate(()=>closeAll());
   }catch(e){fail(`${tag}: test podwójnego wpisu – ${e.message.split('\n')[0]}`)}}
+  /* 🐾 a cats' warning (plan exceeded) → „Rozumiem, kociaki” → the fact of the day (on a holiday the cats send wishes instead – nothing to check then) */
+  if(C===CASES[0]){try{await p.evaluate(()=>{closeAll();window.__pl=S.plans;const pl={};S.cfg.cats.filter(c=>c.type=='exp').forEach(c=>c.subs.forEach(x=>pl[x.id]=100));S.plans={...S.plans,[S.ym]:pl};goTab('dash')});await p.waitForTimeout(300);
+    let n=0;while(n<6&&await p.$('.greet .gok')){await p.click('.greet .gok');await p.waitForTimeout(300);n++}
+    if(n&&!await p.evaluate(()=>/Ciekawostka dnia/.test(document.querySelector('.greet').innerText)))fail(`${tag}: po „Rozumiem, kociaki” nie ma ciekawostki dnia`);
+    if(!n&&!await p.evaluate(()=>/Dziś|urodzin|Świąt|Nowego Roku|Walentynki|Halloween/.test(document.querySelector('.greet')?.innerText||'')))fail(`${tag}: przekroczony plan, a kotki nie mają przycisku „Rozumiem, kociaki”`);
+    await p.evaluate(()=>{localStorage.removeItem('demo_mw_ok');S.plans=window.__pl;render()});
+  }catch(e){fail(`${tag}: test „Rozumiem, kociaki” – ${e.message.split('\n')[0]}`)}}
   /* 🔁 an entry moved to the previous month and back keeps its links, and after deleting it is in 🗑️ Ostatnio usunięte; an archived account shows in the sheet */
   if(C===CASES[0]){try{await p.evaluate(()=>closeAll());
     const id=await p.evaluate(async()=>{const{putTx}=await import('/js/core.js');const t=S.tx.find(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.split&&!t.slipOf&&!t.yearId&&t.date.startsWith(S.ym));putTx(S.ym,t.id,{yearId:'yX'});return t.id});await p.waitForTimeout(300);

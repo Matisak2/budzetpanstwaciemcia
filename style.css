@@ -239,7 +239,10 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .greet{display:flex;align-items:center;gap:8px;border-radius:16px;padding:14px 12px 10px 16px;background:linear-gradient(135deg,var(--g1),var(--g2) 55%,var(--g3));border:1px solid var(--g-line);overflow:hidden}
 .greet .gtxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .greet b{font-size:18px;font-weight:900;color:var(--g-t)}
-.greet span{font-size:13.5px;color:var(--g-s);line-height:1.35}
+.greet span{font-size:14.5px;color:var(--g-t);line-height:1.4}
+/* the concrete thing in a cats' message is bold (the title above stays the only big text) */
+.greet span b{font-size:inherit;font-weight:800;color:var(--g-t)}
+.greet .gok{align-self:flex-start;margin-top:4px;background:rgb(255 255 255 / .7);border:1px solid var(--g-line);color:var(--g-t);font-weight:800}
 .greet .gcats svg{width:96px;height:auto;display:block}
 .cico{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:9px;background:rgb(255 255 255 / .7);margin-right:7px;font-size:14px;vertical-align:middle}
 .ecats svg{width:170px;height:auto;display:block;margin:0 auto 10px;opacity:.95}

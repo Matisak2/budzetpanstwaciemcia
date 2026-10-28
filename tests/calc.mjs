@@ -5,6 +5,8 @@ import {bondYears,instValue,limitOf,fireMonths} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
+import {greeting} from '../js/guide.js';
+import {factOfDay,FACTS} from '../js/facts.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -81,6 +83,17 @@ const N=' ';
   // „Na dziś”: Czynsz po terminie, ale jest podobny wpis → propozycja połączenia zamiast „po terminie”
   const D={cfg:{...cfg,years:[]},tx:[{id:'t5',...E('czy',185000,'2026-10-03','czynsz')}],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-20T12:00:00').getTime()},hraw:{}};
   const it=todayItems(D,{today:'2026-10-20',checks:false});eq('Na dziś – połącz zamiast po terminie',it.some(x=>x.icon=='💡'&&x.text.startsWith('Czynsz'))&&!it.some(x=>x.text.startsWith('Czynsz')&&x.k=='bad'),true);
+}
+/* ---------- 🐾 kotki: uwaga → „Rozumiem, kociaki” → ciekawostka dnia ---------- */
+{ eq('366 ciekawostek, każda inna',[FACTS.length,new Set(FACTS).size],[366,366]);
+  eq('Ciekawostka: 1 stycznia, 31 grudnia, 29 lutego, 1 marca w roku przestępnym',['2026-01-01','2026-12-31','2028-02-29','2028-03-01','2026-03-01'].map(d=>factOfDay(d).n),[1,365,366,60,60]);
+  const c={name:'Mati',today:'2026-10-20',hour:9,late:['Czynsz'],soon:[],plan:300000,left:-12000,dl:12,coins:0,saved:0,goal:null,backupDays:0,treats:0,jdg:false,births:{}};
+  const g1=greeting(c);eq('Po terminie – uwaga z przyciskiem',[/Po terminie: „Czynsz”/.test(g1.text),g1.k],[true,'late:2026-10:Czynsz']);
+  const g2=greeting({...c,ok:new Set([g1.k])});eq('Po „Rozumiem” – następna uwaga (plan przekroczony)',[/przekroczony o 120/.test(g2.text),g2.k],[true,'over:2026-10']);
+  const g3=greeting({...c,ok:new Set([g1.k,g2.k])});eq('Wszystkie uwagi schowane → ciekawostka dnia',[g3.fact,g3.text.includes(factOfDay('2026-10-20').text)],[true,true]);
+  eq('Kolejna opłata po terminie → uwaga wraca',greeting({...c,late:['Czynsz','Prąd'],ok:new Set([g1.k,g2.k])}).k,'late:2026-10:Czynsz|Prąd');
+  eq('Święto zamiast uwagi i ciekawostki',/Narodowe Święto Niepodległości/.test(greeting({...c,today:'2026-11-11'}).text),true);
+  eq('Po południu bez uwag → ciekawostka',greeting({...c,late:[],left:150000,hour:15}).fact,true);
 }
 /* ---------- ⏳ trwający miesiąc: poprzedni miesiąc do tego samego dnia ---------- */
 { const cfg={accs:[{id:'a',grp:'cur'}],cats:[{id:'c',type:'exp',name:'Dom',subs:[{id:'s',name:'Jedzenie'}]}]},E=(d,a)=>({id:d,type:'exp',sub:'s',acc:'a',amount:a,date:d});

@@ -78,7 +78,7 @@ export function wrapped(y){const tx=liveOf(S.tx),cfg=S.cfg,Y=agg(cfg,tx,y),sm=su
     ...(fav?[{scene:'wink',title:'Wasze ulubione miejsce',text:`„${fav[0]}” – w notatkach ${fav[1]} razy.`}]:[]),
     ...(best?[{scene:'happy',title:'Najlepszy miesiąc',text:`${MN[best.i]}: zostało ${zl0(best.a.inc-best.a.exp)}.`}]:[]),
     {scene:'coin',title:'Oszczędności',text:sd>0?`Na oszczędności i inwestycje odłożyliście ${zl0(sd)}. Moneta do monety!`:'W tym roku oszczędności nie urosły – nowy rok, nowa skarbonka.'},
-    ...(treats?[{scene:'churu',title:'Smaczki 😺',text:`Na smaczki dla nas wydaliście ${zl0(treats)}. Uważamy, że to za mało, ale dziękujemy.`}]:[]),
+    ...(treats?[{scene:'churu',title:'Smaczki 😺',text:`Na smaczki dla nas poszło ${zl0(treats)}. Naszym zdaniem trochę za mało – ale bardzo dziękujemy 😽`}]:[]),
     {scene:'celebrate',title:'Do zobaczenia w '+(+y+1)+'!',text:'Bailey pilnuje planu, Ivo pilnuje świętowania. Dobrego roku!'}];
   catSlides(sl,'Super!')}
 /* ---------- analysis ---------- */
