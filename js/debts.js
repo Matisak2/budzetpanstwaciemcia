@@ -3,12 +3,12 @@ import {doc,updateDoc,deleteField} from "https://www.gstatic.com/firebasejs/10.1
 import {catsEmpty} from './art.js';
 import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
-import {addM,position,limitOf,paidInYear,wrapOf} from './inv.js';
+import {addM,limitOf,paidInYear,wrapOf} from './inv.js';
 import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
-import {avgActuals,actuals,carStats,balance,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
-import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0} from './util.js';
-import {S,toast,ask,isP,am,accOwner,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard} from './core.js';
-import {plu,calcAmt,P,openTx} from './sheet.js';
+import {avgActuals,carStats,balance,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
+import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0,plu} from './util.js';
+import {S,toast,ask,isP,accOwner,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard} from './core.js';
+import {calcAmt} from './sheet.js';
 import {fixedPaid,isPod,txRowH} from './actions.js';
 import {gr,segL} from './salary.js';
 import {accById,pn,newYear} from './savings.js';
@@ -157,30 +157,29 @@ export function updProj(){if(!S.cfg)return;const has=projs().length>0,p=projById
 export const rems=()=>S.cfg.rems||[];
 export const saveRem=x=>merge(H,{remM:{[x.id]:strip(x,rems().indexOf(x))}});
 export const delRemDb=id=>w(updateDoc(H,{['remM.'+id]:deleteField()}));
-export const REM_PRE=[['','— własne —'],['🔧 Przegląd techniczny','12'],['🛞 Wymiana opon','6'],['🧰 Serwis / olej','12'],['💉 Szczepienie kotów','12'],['🐾 Odrobaczenie kotów','3']];
 export function remState(r){return remStateP(r,S.cfg,liveOf(S.tx),td())}
 export function warrantiesH(){const today=td(),sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>t.war&&t.type=='exp').sort((a,b)=>a.war.localeCompare(b.war)),act=L.filter(t=>t.war>=today),old=L.length-act.length;
   if(!L.length)return'';return`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">🛡️ Gwarancje</span><span class="mini">${act.length} ${plu(act.length,'aktywna','aktywne','aktywnych')}${old?` · ${old} ${plu(old,'wygasła','wygasłe','wygasłych')}`:''}</span></div>
   <div class="list">${act.map(t=>{const n=Math.round((new Date(t.war)-new Date(today))/864e5);return`<button class="acc" style="width:100%;text-align:left" onclick="openTx('${t.id}')"><div style="flex:1;min-width:0"><div class="r1"><b>${esc(t.note||sm[t.sub]?.name||'Zakup')}${t.rcpt?.length?' 📷':''}</b><b class="num">${zl(t.amount)}</b></div><div class="mini">kupione ${t.date.split('-').reverse().join('.')} · gwarancja do ${t.war.split('-').reverse().join('.')}${n<=30?` · <b class="t-exp">za ${n} ${plu(n,'dzień','dni','dni')}</b>`:''}</div></div></button>`}).join('')||'<div class="acc mini">Brak aktywnych gwarancji.</div>'}</div>`}
-/* 🔔 dates without putting money aside (📌 Stałe → 📅 Roczne i terminy) */
+/* 🔔 dates without putting money aside (📌 Stałe → 📅 Roczne i terminy; new ones come from „+ Dodaj” – addTerm in savings.js, with ready templates TERM_PRE) */
 export function remsH(){const L=rems().map(r=>({r,st:remState(r)})).sort((a,b)=>(a.r.next||'9999').localeCompare(b.r.next||'9999'));if(!L.length)return'';
   return`<div class="h2" style="padding:0 4px">🔔 Terminy bez odkładania</div><div class="list">${L.map(({r,st})=>`<div class="acc${st.late?' late':''}"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(r.name)}</b>${st.late?'<span class="pill over">po terminie</span>':st.due?'<span class="pill near">wkrótce</span>':''}</div>
     <div class="mini">${r.next?`termin ${r.next.split('-').reverse().join('.')}${st.days!=null?` · ${st.days<0?Math.abs(st.days)+' dni temu':st.days==0?'dziś':'za '+st.days+' '+plu(st.days,'dzień','dni','dni')}`:''}`:''}${r.km?`${r.next?' · ':''}co ${r.km.toLocaleString('pl-PL')} km${st.kmLeft!=null?` · zostało ${st.kmLeft.toLocaleString('pl-PL')} km`:''}`:''}${+r.every?` · co ${r.every} mies.`:' · jednorazowe'}${r.proj&&projById(r.proj)?' · '+esc(projById(r.proj).name):''}</div>
     ${r.note?`<div class="mini">📝 ${esc(r.note)}</div>`:''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="doneRem('${r.id}')">✓ Zrobione</button><button class="chip" onclick="editRem('${r.id}')">Edytuj</button></div></div></div>`).join('')}</div>`}
 export async function editRem(id){if(guard())return;const r0=id?rems().find(x=>x.id==id):null,cars=projs().filter(p=>p.kind=='car');
-  const r=await ask({title:r0?'Przypomnienie':'Nowe przypomnienie',fields:[...(r0?[]:[{id:'p',label:'Gotowe',type:'select',value:'',options:REM_PRE.map(([n,e])=>[n?n+'|'+e:'',n||'— własne —'])}]),
-    {id:'n',label:'Nazwa (gdy własne)',value:r0?.name||'',ph:'np. Wymiana klocków'},{id:'d',label:'Termin',type:'date',value:r0?.next||''},
+  const r=await ask({title:r0?'Przypomnienie':'Nowe przypomnienie',fields:[
+    {id:'n',label:'Nazwa',value:r0?.name||'',ph:'np. Wymiana klocków'},{id:'d',label:'Termin',type:'date',value:r0?.next||''},
     {id:'e',label:'Powtarzaj',type:'select',value:String(r0?.every??12),options:[['0','Jednorazowo'],['1','Co miesiąc'],['3','Co 3 miesiące'],['6','Co pół roku'],['12','Co rok'],['24','Co 2 lata']]},
     ...(cars.length?[{id:'c',label:'Pojazd',type:'select',value:r0?.proj||'',options:[['','— nie dotyczy —'],...cars.map(p=>[p.id,p.name])]},{id:'k',label:'Albo co ile km (np. serwis)',type:'int',value:r0?.km||''}]:[]),
     {id:'t',label:'Notatka',value:r0?.note||''},
     {id:'a',label:'Kwota (zł, opcjonalnie) – z kwotą będę liczyć odkładanie',type:'decimal',value:'',ph:'puste = samo przypomnienie'},{id:'s',label:'Pozycja budżetu (gdy jest kwota)',type:'select',value:'',options:[['','— wybierz —'],...subOpts('exp')]}],ok:r0?'Zapisz':'Dodaj',alt:r0?'Usuń':null});
   if(!r)return;if(r=='alt'){S.cfg.rems=rems().filter(x=>x!==r0);render();delRemDb(r0.id);return}
   /* with an amount the date becomes a yearly expense (money put aside every month) – the reminder moves there */
-  const amt=gr(r.a);if(amt>0){const nm=r.n.trim()||r0?.name||(r.p||'').split('|')[0],ev=+r.e;
+  const amt=gr(r.a);if(amt>0){const nm=r.n.trim()||r0?.name,ev=+r.e;
     if(!nm)return toast('Podaj nazwę','bad');if(!isDate(r.d))return toast('Podaj termin płatności','bad');if(!ev)return toast('Wydatek z kwotą musi się powtarzać','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');
     if(r0){S.cfg.rems=rems().filter(x=>x!==r0);delRemDb(r0.id)}newYear(nm,amt,r.d,ev,r.s);return toast('Przeniesione do odkładania: '+nm+' 📅')}
-  let name=r.n.trim(),every=+r.e;if(!name&&r.p){const[n,e]=r.p.split('|');name=n;if(!r0&&r.e=='12')every=+e}
-  if(!name)return toast('Podaj nazwę albo wybierz gotowe','bad');const km=Math.round(pnum(r.k||''))||0;if(!isDate(r.d)&&!km)return toast('Podaj termin albo liczbę km','bad');
+  const name=r.n.trim(),every=+r.e;
+  if(!name)return toast('Podaj nazwę','bad');const km=Math.round(pnum(r.k||''))||0;if(!isDate(r.d)&&!km)return toast('Podaj termin albo liczbę km','bad');
   const car=r.c?projById(r.c):null,body={id:r0?.id||'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),lastOdo:r0?.lastOdo??(car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0)};
   S.cfg.rems=rems();let x=r0;if(x)Object.assign(x,body);else{x=body;S.cfg.rems.push(x)}render();saveRem(x);toast(r0?'Zapisano':'Dodano przypomnienie 🔔')}
 export async function doneRem(id){const r=rems().find(x=>x.id==id);if(!r)return;const st=remState(r);

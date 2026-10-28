@@ -189,7 +189,6 @@ const SCENES={
   halloween:{vb:'0 0 430 262',draw:()=>duo({face:'wink',acc:['pumpkin']},{face:'surprised'})},
   valentine:{vb:'0 0 430 262',draw:()=>sprinkle(430,262,'hearts',8)+duo({face:'happy'},{face:'happy'})},
 };
-export const SCENE_NAMES=Object.keys(SCENES);
 /* scenes are drawn once and cached (they are big); every copy put on the page gets its own gradient/filter ids (§ = id placeholder),
    otherwise a copy on a hidden screen (e.g. the login page) would "own" the ids and the visible copy would not paint */
 const CACHE=new Map();let U=0;

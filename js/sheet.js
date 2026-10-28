@@ -3,12 +3,12 @@ import {doc,collection,setDoc,deleteDoc,getDoc,increment} from "https://www.gsta
 import {catIcon} from './art.js';
 import {isTreat,kotki,treatJoke} from './guide.js';
 import {CURS,catHue,pastel} from './data.js';
-import {addM,position} from './inv.js';
+import {addM} from './inv.js';
 import {ULGI,savedP,saveSplitP} from './today.js';
 import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch} from './logic.js';
-import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays} from './util.js';
+import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays,plu} from './util.js';
 import {S,toast,ask,accCur,am,fxRate,stripFx,accOwner,accOpts,H,DEBTS,w,merge,putTx,liveById,guard} from './core.js';
-import {exportJson,downloadBlob} from './actions.js';
+import {downloadBlob} from './actions.js';
 import {incById,openSlip} from './salary.js';
 import {markYearPaid} from './savings.js';
 import {dIcon,debtList,debtState,setDebtLeft,fillDebt,updDebtHint,updDebt,fillProj,updProj} from './debts.js';
@@ -16,7 +16,6 @@ import {accN,render} from './app.js';
 
 /* ---------- transaction sheet ---------- */
 export const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l').trim();
-export const plu=(n,a,b,c)=>n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c;
 export const catColor=c=>pastel(catHue(c,S.cfg.cats.indexOf(c)));
 /* amount field adds up a receipt: "12+8,50-3" → grosze */
 export const calcAmt=v=>(String(v||'').replace(/\s/g,'').replace(/−/g,'-').match(/[+-]?[^+-]+/g)||[]).reduce((a,p)=>a+pg(p),0);
@@ -155,7 +154,8 @@ export function openTx(id,pre){if(guard())return;
   if(sp&&sp.slip&&incById(sp.slip)){ask({title:'Wpis z paska pensji',text:`${sp.note} – ${sp.date.split('-').reverse().join('.')}\nTen wpis powstał z paska. Zmień go w pasku, a wszystko przeliczy się samo.`,ok:'Otwórz pasek',cancel:'Zamknij',alt:'Usuń wpis'}).then(r=>{if(r=='alt')delTx(id);else if(r)openSlip(sp.slip,sp.date.slice(0,7))});return}
   if(t&&t.type=='adj'){ask({title:t.int?'💰 Odsetki':'Wyrównanie salda',text:`${accN(t.acc)}: ${t.amount>0?'+':''}${zl(t.amount)} (${t.date})\nUsunąć to wyrównanie?`,ok:'Usuń',danger:true}).then(r=>{if(r)delTx(id)});return}
   if(t&&t.ppk){ask({title:t.note,text:`${accN(t.acc)}: ${zl(t.amount)} (${t.date.split('-').reverse().join('.')})\nTa wpłata jest powiązana z pensją. Żeby ją zmienić, odznacz i odhacz pensję ponownie w 📌 Stałe.`,ok:'Usuń wpłatę',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
-  if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTen starszy wpis usuniesz w zakładce Oszczędności.`,ok:'Przejdź',cancel:'Zamknij'}).then(r=>{if(r){S.tab='sav';render()}});return}
+  /* an entry of the old investment module (removed in 2026; only very old backups have them) – shown, can be deleted */
+  if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTo wpis ze starego modułu inwestycji. Dziś instrumenty prowadzi się w 📈 Oszczędnościach. Usunąć ten wpis?`,ok:'Usuń',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
   S.edit=t?id:null;S.refEdit=!!t?.refundOf;S.debtOpen=S.projOpen=false;S.autoSub=false;SP=[];
   /* an entry of an account in the archive keeps showing it (with a note), instead of an empty field */
   const arch=S.cfg.accs.filter(a=>a.archived&&t&&(a.id===t.acc||a.id===t.to)),og=[...accOpts(),...(arch.length?[{group:'🗄️ Archiwum',items:arch.map(a=>[a.id,a.name+' (archiwum)'])}]:[])];

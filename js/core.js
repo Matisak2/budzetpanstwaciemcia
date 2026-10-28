@@ -6,14 +6,11 @@ import {scene} from './cats.js';
 import {NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
 import {CURS,SEASON,tint} from './data.js';
 import {wrapOf} from './inv.js';
-import {actuals,agg,balance,cleanCat,fixedDate,fixedTwin,liveOf,savFlow,savIds,planOf} from './logic.js';
+import {actuals,agg,cleanCat,fixedDate,fixedTwin,liveOf,savFlow,savIds,planOf} from './logic.js';
 import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus} from './util.js';
 import {goalAlloc} from './actions.js';
-import {incs} from './salary.js';
-import {years} from './savings.js';
-import {projs,rems} from './debts.js';
 import {runGo,maybeToday} from './todayui.js';
-import {accN,render,showEmpty,showCat} from './app.js';
+import {accN,render} from './app.js';
 
 export const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
 export const auth=getAuth(fa);
@@ -27,7 +24,7 @@ export function applySeason(){const m=+S.ym.slice(5)-1,[c,l]=SEASON[m];const r=d
 export const DEMO=window.MW_DEMO||null;
 export const S={sub:'all',bf:'all',fold:{},showEmpty:{},showCat:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},hold:{},debts:{},market:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
 
-/* ---------- pure money logic ---------- */
+/* ---------- labels ---------- */
 export const catL=c=>(S.cfg.cats.findIndex(x=>x.id===c.id)+1)+'. '+cleanCat(c.name);
 
 /* ---------- decorations ---------- */

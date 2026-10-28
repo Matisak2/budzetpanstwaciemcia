@@ -4,7 +4,7 @@ import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {recurringP,automatStale,todayItems as todayItemsP} from './today.js';
 import {liveOf} from './logic.js';
-import {$,esc,ls,pg,sleep,td,money} from './util.js';
+import {$,esc,ls,pg,td,money} from './util.js';
 import {DEMO,S,toast,err,ask,CUR,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
 import {editFixed,goFixed,exportJson,editInt} from './actions.js';
@@ -13,7 +13,6 @@ import {openClose} from './close.js';
 import {accById,openInst,editLimits,goYear,bookInt} from './savings.js';
 import {render,goTab} from './app.js';
 
-/* ---------- 🔔 „Na dziś”: everything that needs attention, only inside the app (no calendar, no card) ---------- */
 /* ---------- 🔔 real notifications (Web Push); the automat sends them, keys are made by the automat ---------- */
 export const pushCan=()=>!DEMO&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
 export const standalone=()=>navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
@@ -45,6 +44,7 @@ export const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,de
 /* 🗓️ the closing of the month is personal – each phone shows only its own person's */
 export function todayItems(){if(!S.cfg)return[];return todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}).filter(x=>x.k!='close'||x.who==S.who)}
 /* where a tap on an item (or on a notification) leads */
+/* ---------- 🔔 „Na dziś”: everything that needs attention, only inside the app (no calendar, no card) ---------- */
 export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='today')return showToday();if(a=='add')return openTx(null,{type:['exp','inc','tr'].includes(g.type)?g.type:'exp',...(g.amount?{amount:pg(g.amount)}:{}),...(g.note?{note:g.note}:{})});
   if(a=='pit'){S.fixSub='pay';S.payView='y';S.ym=(g.y||String(+td().slice(0,4)-1))+'-12';return goTab('fix')}if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);

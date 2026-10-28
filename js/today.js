@@ -1,14 +1,12 @@
 /* 🔔 „Na dziś” and the tidiness guard – pure functions shared by the app and the GitHub automat (no DOM, no Firebase).
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
-import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl} from './util.js';
+import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy} from './util.js';
 import {balance,carStats,dueAlerts,fixedDate,fixedTwin,inPeriod,subsMap,ownerOf,yearDueIn} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 export {ownerOf};
 const person=o=>o=='Mati'||o=='Wercia'?o:null;
-const plu=(n,a,b,c)=>n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c;
-const dmy=d=>d.split('-').reverse().join('.');
 const dd=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
 /* yearly expenses: what the envelopes hold, what to put aside this month, what is due soon */
 export function yearStateP(cfg,tx,hraw,ym,today){const id=hraw?.yearAcc,years=cfg.years||[];if(!id||!cfg.accs.some(a=>a.id==id)||!years.length)return null;

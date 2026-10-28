@@ -6,8 +6,8 @@ import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {CLOSE_STEPS,CLOSE_SHARED,closeDueP,closeStateP,closeYmP} from './today.js';
-import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds,subsMap} from './logic.js';
-import {MN,MNG,addDays,addMonths,esc,td,zl,zl0,money} from './util.js';
+import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds} from './logic.js';
+import {MN,MNG,addDays,addMonths,esc,td,zl0,money,dmy} from './util.js';
 import {S,toast,CUR,accOwner,H,PLC,merge,guard,celebrate} from './core.js';
 import {goalProgress,goalOwner,unallocated,markRecon} from './actions.js';
 import {cascadeH} from './debts.js';
@@ -24,7 +24,6 @@ const bankAccs=()=>S.cfg.accs.filter(a=>!a.archived&&a.grp!='inv'&&['Wspólne',S
 export function lastCheck(id){let d=S.hraw?.reconM?.[id]||'';
   for(const t of liveOf(S.tx))if(t.acc===id&&t.type=='adj'&&!t.val&&t.date>d)d=t.date;return d}
 const fresh=(id,ym)=>lastCheck(id)>=ym+'-25';
-const dmy=d=>d.split('-').reverse().join('.');
 
 export function openClose(ym){if(guard())return;S.tab='dash';S.proj=null;S.close=ym||closeYm();S.ym=td().slice(0,7);window.scrollTo(0,0);render()}
 export function closeClose(){S.close=null;window.scrollTo(0,0);render()}
@@ -53,7 +52,7 @@ const stepH=(i,k,body,label)=>{const st=stOf(S.close).steps?.[k];
   return`<section class="chart cstep${st?' done':''}"><div class="ct"><b>${i}. ${STEP_N[k]}</b>${st?`<span class="pill ok">✓ ${esc(st.by||'')}</span>`:CLOSE_SHARED.includes(k)?'<span class="pill low">wspólny</span>':''}</div>${body}
     <div class="btns" style="gap:6px">${st?`<button class="btn sm" onclick="closeStep('${k}',0)">↺ Cofnij</button>`:`<button class="btn sm primary" onclick="closeStep('${k}',1)">✓ ${label}</button>`}</div></section>`};
 
-export function closePageH(){const ym=S.close,cur=td().slice(0,7),tx=liveOf(S.tx),sm=subsMap(S.cfg),mn=MN[+ym.slice(5)-1],mnc=MN[+cur.slice(5)-1],n=nDone(ym),c=stOf(ym);
+export function closePageH(){const ym=S.close,cur=td().slice(0,7),tx=liveOf(S.tx),mn=MN[+ym.slice(5)-1],mnc=MN[+cur.slice(5)-1],n=nDone(ym),c=stOf(ym);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeClose()">‹ Budżet</button>`;
   h+=`<section class="greet"><div class="gtxt"><b>🗓️ Zamknięcie: ${esc(mn)} ${ym.slice(0,4)} – ${esc(S.who)}</b><span>${c.done?`Gotowe 🎉 Możesz tu zajrzeć, kiedy chcesz.`:`5 kroków, ok. 10 minut – najlepiej dzień przed wypłatą: na kontach jest wtedy to, co naprawdę zostało. „Co było ponad plan” i „Plan” są wspólne – odhaczone przez jedno z Was są odhaczone u obojga.`}</span></div>${kotki.mode=='off'?'':`<div class="gcats">${scene(c.done?'happy':'lupa','kot')}</div>`}</section>`;
   h+=`<div class="gbar"><i style="width:${(n/5*100).toFixed(0)}%"></i></div><div class="mini" style="text-align:center">${n} z 5 kroków</div>`;

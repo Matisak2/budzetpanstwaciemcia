@@ -2,13 +2,11 @@
 import {doc,updateDoc,deleteField} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {catsEmpty} from './art.js';
 import {C_INC,barsSvg,chartBox} from './charts.js';
-import {position} from './inv.js';
 import {ULGI,pitSummaryP} from './today.js';
 import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf,youngLeft,youngUntil,youngPart,baseOf} from './pay.js';
 import {liveOf,subsMap} from './logic.js';
-import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0} from './util.js';
+import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu} from './util.js';
 import {S,toast,ask,accCur,am,accOwner,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard} from './core.js';
-import {plu,P,openTx} from './sheet.js';
 import {txRowH} from './actions.js';
 import {accN,render} from './app.js';
 

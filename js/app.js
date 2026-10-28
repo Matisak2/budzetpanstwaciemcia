@@ -4,18 +4,18 @@ import {catIcon,catsEmpty} from './art.js';
 import {scene} from './cats.js';
 import {CELEBRATE,HELP,NEWS_V,kotki} from './guide.js';
 import {hbarsH} from './charts.js';
-import {HUES,OWN,OWN_COL,SEASON,ZWROT_PIT,catHue,pastel,seed} from './data.js';
+import {HUES,OWN,OWN_COL,SEASON,catHue,pastel,seed} from './data.js';
 import {IICON,limitOf,paidInYear,wrapOf,intOf,intLabel} from './inv.js';
 import {saveSplitP} from './today.js';
 import {yearBody,yearStats} from './report.js';
 import {avgActuals,actuals,agg,balance,cleanCat,dueAlerts,liveOf,status,subsMap,savFlow,savIds,firstYm,planOf,yearPlanOf,yearSubs,fixedTwin,fixedPlanGap} from './logic.js';
-import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,isDate,ls,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt,priv} from './util.js';
-import {auth,fdb,applySeason,DEMO,S,catL,greetH,okCats,showTour,showNews,maybeIntro,askBirth,celebrate,coinSum,editRound,setKotki,toast,err,ask,CUR,accCur,isP,am,fxOf,fxSmall,stripFx,accOwner,accOpts,H,MARKET,DEBTS,HOLD,SLIPS,MC,PLC,INV,GOALS,w,merge,fromDoc,saveCfg,saveAcc,saveSub,saveCat,liveById,guard} from './core.js';
-import {plu,catColor,refundsOf,setType,updCoin,updFx,SV,updSave,autoWho,closePick,RMETA,phMeterH,openTx,closeSheet,saveTx,delTx,markRefund,wireSheet} from './sheet.js';
+import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,ls,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt,priv,plu} from './util.js';
+import {auth,fdb,applySeason,DEMO,S,catL,greetH,okCats,showTour,showNews,maybeIntro,askBirth,celebrate,coinSum,editRound,setKotki,toast,err,ask,CUR,accCur,isP,am,fxOf,fxSmall,stripFx,accOwner,accOpts,H,MARKET,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,fromDoc,saveCfg,saveCat,liveById} from './core.js';
+import {catColor,refundsOf,setType,updCoin,updFx,updSave,autoWho,closePick,RMETA,phMeterH,openTx,closeSheet,saveTx,delTx,markRefund,wireSheet} from './sheet.js';
 import {editInt,setPlan,planToFixed,fixPlan,copyPlan,addAcc,editAcc,addSub,renSub,delSub,subMenu,hideSub,editCat,addCat,ACCTAB,setAccTab,moveAcc,moveCat,lookApply,setHide,setLook,lookH,setWho,fixedPaid,editFixed,toggleFixed,goFixed,invAccStats,goalOwner,goalAlloc,isPod,poolNow,goalProgress,editGoal,allocGoal,setSavTarget,setSub,recAccs,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,exportJson,META,importFile,backupH,amtQuery,txMatches,txRowH,txListH,setQ,setF,clearF,togF} from './actions.js';
 import {segL,fixSegH,setFixSub,setPayView,payH,fixYearH,deletedH,restoreTx,changesH,siriHelp,ulgaInfo,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,slipH,saveSlip,delSlip,pensLinkH,linkInc} from './salary.js';
 import {intMini,intCardH,bookInt,addTerm,accById,instsOf,matH,openInst,closeInst,instPageH,editInst,addLot,setPrice,setUnits,bondRatesDlg,saveInstVal,openValues,valuesH,saveValues,autoValH,saveAutoVal,limitPropH,acceptLimits,limitsH,editLimits,setGain,gainH,fireH,odloz,yearLineH,goYear,yearH,setYearAcc,editYear,payYear} from './savings.js';
-import {debtSum,setAccView,accSegH,debtsH,editDebt,payoffDebt,setDebtLeft,lentBack,moveLent,toPlanH,fillAvg,projectsH,editProj,openProj,closeProj,projPageH,remsH,editRem,doneRem,cascadeH,setCascade} from './debts.js';
+import {debtSum,setAccView,accSegH,debtsH,editDebt,payoffDebt,setDebtLeft,lentBack,moveLent,toPlanH,fillAvg,projectsH,editProj,openProj,closeProj,projPageH,editRem,doneRem,cascadeH,setCascade} from './debts.js';
 import {anaFull,setAnaMode,exportCsv,wrapped,anaMonth,anaYear} from './analysis.js';
 import {checkPush,enablePush,disablePush,shareDemo,demoCardH,pushCardH,todayItems,runGo,goFromHash,todayGo,ignoreCheck,addRecFixed,recH,closeToday,showToday,updToday,maybeToday,wireToday} from './todayui.js';
 import {openClose,closeClose,closeCardH,closeLinkH,closePageH,reconOk,closeStep,closePlan,closeRecAll} from './close.js';
@@ -52,7 +52,7 @@ export function render(){
   if(!S.cfg)return;
   const ae=document.activeElement;if(ae&&ae.tagName=='INPUT'&&$('app').contains(ae)){S.pend=true;return}S.pend=false;
   /* pl = the plan used everywhere (typed + 📅 yearly expenses due this month); plS = only what was typed (the input fields) */
-  const tx=liveOf(S.tx),sm=subsMap(S.cfg),end=S.ym+'-32',start=S.ym+'-00',plS=S.plans[S.ym]||{},pl=planOf(S.cfg,S.plans,tx,S.ym),act=actuals(S.cfg,tx,S.ym),FX=agg(S.cfg,tx,S.ym).fx;
+  const tx=liveOf(S.tx),end=S.ym+'-32',start=S.ym+'-00',plS=S.plans[S.ym]||{},pl=planOf(S.cfg,S.plans,tx,S.ym),act=actuals(S.cfg,tx,S.ym),FX=agg(S.cfg,tx,S.ym).fx;
   const sum=(ty,f)=>S.cfg.cats.filter(c=>c.type==ty).reduce((a,c)=>a+c.subs.reduce((b,s)=>b+f(s),0),0);
   const inc=sum('inc',s=>act[s.id]||0),exp=sum('exp',s=>act[s.id]||0),pinc=sum('inc',s=>pl[s.id]||0),pexp=sum('exp',s=>pl[s.id]||0);
   const tot=g=>S.cfg.accs.filter(a=>a.grp==g&&isP(a)).reduce((a,c)=>a+balance(S.cfg,tx,c.id,end),0),totFx=g=>fxOf(S.cfg.accs.filter(a=>a.grp==g),a=>balance(S.cfg,tx,a.id,end));
@@ -409,13 +409,8 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   const onErr=e=>{err(e);if(e?.code=='permission-denied')$('app').innerHTML='<div class="load">Brak dostępu do danych.<br><br>Sprawdź reguły Firestore albo czy ten e-mail jest na liście.</div>'};
   unsub.push(onSnapshot(H,s=>{
     if(s.exists()){const raw=s.data(),c=fromDoc(clone(raw));const leg=c.legacy;delete c.legacy;S.hraw=raw;S.cfg=c;if(!S.pushReady)S.pushReady=checkPush();S.savTarget=raw.savTarget||0;render();setTimeout(maybeIntro,700);if(leg&&!s.metadata.fromCache)saveCfg();
-      if(!leg&&!s.metadata.fromCache&&c.cats.some(k=>k.hue==null))c.cats.forEach((k,i)=>{if(k.hue==null){k.hue=HUES[i%HUES.length];saveCat(k)}});
-      if(!raw.zwrotyRen&&!s.metadata.fromCache&&!leg){for(const k of c.cats.filter(x=>x.type=='inc'))for(const x of k.subs)if(x.name.trim()=='Zwroty'){x.name=ZWROT_PIT;saveSub(k,x)}merge(H,{zwrotyRen:true})}
-      if(!raw.subAcc&&!s.metadata.fromCache&&!leg){c.accs.forEach(a=>{if(a.grp=='cur'&&/zwierzak|dzieciacz/i.test(a.name)){a.grp='sub';a.owner='Wspólne';saveAcc(a)}});merge(H,{subAcc:true})}
-      if(!raw.invAcc&&!s.metadata.fromCache&&!leg){[['ainvM','Inwestycje Mati','Mati'],['ainvW','Inwestycje Wercia','Wercia']].forEach(([id,n,o])=>{if(!c.accs.some(a=>a.id==id||a.name==n)){const a={id,name:n,grp:'inv',owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{invAcc:true});render()}
-      if(!raw.ikeAcc&&!s.metadata.fromCache&&!leg){[['aikeM','IKE Mati','inv','Mati'],['aikzeM','IKZE Mati','inv','Mati'],['aikeW','IKE Wercia','inv','Wercia'],['aikzeW','IKZE Wercia','inv','Wercia'],['apodu','Poduszka bezpieczeństwa','sav','Wspólne']].forEach(([id,n,g,o])=>{if(!c.accs.some(a=>a.id==id||a.name==n)){const a={id,name:n,grp:g,owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{ikeAcc:true});render()}
-      if(!raw.wspAcc&&!s.metadata.fromCache&&!leg){if(!c.accs.some(a=>a.id=='awsp'||/^oszczędności wspólne$/i.test(a.name))){const a={id:'awsp',name:'Oszczędności wspólne',grp:'sav',owner:'Wspólne',open:0};const pi=c.accs.findIndex(x=>x.id=='apodu');if(pi>=0){c.accs.splice(pi,0,a);saveAcc(a);c.accs.slice(pi+1).forEach(saveAcc)}else{c.accs.push(a);saveAcc(a)}}merge(H,{wspAcc:true});render()}
-      if(!raw.ppkAcc&&!s.metadata.fromCache&&!leg){[['appkM','PPK Mati','Mati'],['appkW','PPK Wercia','Wercia']].forEach(([id,n,o])=>{if(!c.accs.some(a=>a.id==id||a.name==n)){const a={id,name:n,grp:'inv',owner:o,open:0};c.accs.push(a);saveAcc(a)}});merge(H,{ppkAcc:true});render()}}
+      /* (one-time changes of 2025–26 – IKE/IKZE/PPK/shared accounts, „Zwroty”, subaccounts – removed in Oct 2026: done long ago, and the default accounts have them) */
+      if(!leg&&!s.metadata.fromCache&&c.cats.some(k=>k.hue==null))c.cats.forEach((k,i)=>{if(k.hue==null){k.hue=HUES[i%HUES.length];saveCat(k)}});}
     else if(!s.metadata.fromCache&&!seeding){seeding=true;S.cfg=seed();render();saveCfg()}
   },onErr));
   unsub.push(onSnapshot(MC(),{includeMetadataChanges:true},s=>{const all=[];S.months=new Set();

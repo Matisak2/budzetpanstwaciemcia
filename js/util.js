@@ -39,5 +39,8 @@ export const isDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'');
 /* phone settings; the demo (/demo/) keeps its own copy so it never touches the real app's settings */
 const LSP=globalThis.MW_DEMO?'demo_':'';
 export const ls={get(k){try{return localStorage.getItem(LSP+k)}catch(e){return null}},set(k,v){try{localStorage.setItem(LSP+k,v)}catch(e){}}};
+/* Polish plural: plu(n,'wpis','wpisy','wpisów'); a date YYYY-MM-DD as DD.MM.YYYY */
+export const plu=(n,a,b,c)=>n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c;
+export const dmy=d=>String(d||'').split('-').reverse().join('.');
 export const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())};
 export const addMonths=(ym,n)=>{let[y,m]=ym.split('-').map(Number);m+=n;while(m<1){m+=12;y--}while(m>12){m-=12;y++}return y+'-'+p2(m)};

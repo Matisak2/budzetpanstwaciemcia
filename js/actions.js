@@ -3,13 +3,12 @@ import {doc,collection,setDoc,deleteDoc,updateDoc,deleteField,getDocs} from "htt
 import {catIcon,catsEmpty} from './art.js';
 import {CELEBRATE} from './guide.js';
 import {HUES,catHue,freeHue} from './data.js';
-import {position,wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
+import {wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
 import {ULGI} from './today.js';
-import {suggest} from './pay.js';
 import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS} from './logic.js';
-import {$,MN,addDays,addMonths,clone,daysIn,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv} from './util.js';
-import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOwner,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,INV,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,delFixedDb,putTx,putInv,liveById,guard} from './core.js';
-import {plu,catColor,P,RCPT,RMETA,phCache,openTx} from './sheet.js';
+import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu} from './util.js';
+import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOwner,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,delFixedDb,putTx,putInv,guard} from './core.js';
+import {catColor,RCPT,RMETA,phCache} from './sheet.js';
 import {incs,gr,openSlip,saveInc} from './salary.js';
 import {saveYear} from './savings.js';
 import {debtList,debtState} from './debts.js';
@@ -64,7 +63,7 @@ export async function renSub(ci,si){if(guard())return;const s=S.cfg.cats[ci].sub
 /* what uses a position: entries, fixed payments, yearly expenses, income sources (income position, deductions), liabilities */
 export function subUse(sid){const live=liveOf(S.tx).filter(t=>t.sub===sid),fx=(S.cfg.fixed||[]).filter(f=>f.sub===sid),yr=(S.cfg.years||[]).filter(y=>y.sub===sid),
     inc=incs().filter(x=>x.sub===sid||(x.deds||[]).some(d=>d.sub===sid)||Object.values(x.dedSub||{}).includes(sid)),db=debtList().filter(d=>d.sub===sid);
-  const plf=(n,a,b,c)=>n+' '+(n==1?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c);
+  const plf=(n,a,b,c)=>n+' '+plu(n,a,b,c);
   return{n:live.length+fx.length+yr.length+inc.length+db.length,txt:[live.length?plf(live.length,'wpis','wpisy','wpisów'):'',fx.length?plf(fx.length,'opłata stała','opłaty stałe','opłat stałych'):'',yr.length?plf(yr.length,'wydatek roczny','wydatki roczne','wydatków rocznych'):'',inc.length?plf(inc.length,'źródło dochodu','źródła dochodu','źródeł dochodu'):'',db.length?plf(db.length,'zobowiązanie','zobowiązania','zobowiązań'):''].filter(Boolean).join(', ')}}
 /* ⚙️ → Kategorie: tap a position – rename, 🙈 hide, delete (only an unused one), or (rarely) merge into another one */
 export function subMenu(ci,si){if(guard())return;const c=S.cfg.cats[ci],s=c.subs[si],u=subUse(s.id),d=$('dlg');
@@ -220,8 +219,6 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
 
 export function goFixed(){S.ym=td().slice(0,7);S.tab='fix';S.fixSub='fix';S.slip=null;window.scrollTo(0,0);render()}
 
-/* ---------- investments ---------- */
-
 /* ---------- investment accounts ---------- */
 /* contributed = opening balance + money moved in − money moved out; value change = sum of value updates (adj) */
 export function invAccStats(cfg,tx,id,before){const a=cfg.accs.find(x=>x.id==id);let paid=a?.open||0,chg=0,last=null,own=0,emp=0;
@@ -354,7 +351,7 @@ export async function importTxList(o){const cfg=S.cfg,list=(o.tx||[]).filter(t=>
     mapped.push({t,sub})}
   const n=list.length,inc=list.filter(t=>t.type=='inc').reduce((a,t)=>a+t.amount,0),exp=list.filter(t=>t.type=='exp').reduce((a,t)=>a+t.amount,0);
   const dates=list.map(t=>t.date).sort();
-  const trW=n==1?'transakcja':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'transakcje':'transakcji';let text=`${n} ${trW} z okresu ${dates[0].split('-').reverse().join('.')}–${dates.at(-1).split('-').reverse().join('.')}\nprzychody ${zl(inc)} · wydatki ${zl(exp)}`;
+  const trW=plu(n,'transakcja','transakcje','transakcji');let text=`${n} ${trW} z okresu ${dates[0].split('-').reverse().join('.')}–${dates.at(-1).split('-').reverse().join('.')}\nprzychody ${zl(inc)} · wydatki ${zl(exp)}`;
   if(fuzzy.size)text+=`\n\nDopasowane do Waszych pozycji:\n`+[...fuzzy].map(([a,b])=>`• ${a} → ${b}`).join('\n');
   if(missing.size)text+=`\n\nNowe pozycje (zostaną dodane):\n`+[...missing].map(([a,c])=>`• ${a} (${cleanCat(c)})`).join('\n');
   if(newAccs.length)text+=`\n\nNowe konta (zostaną dodane): ${newAccs.join(', ')}`;
