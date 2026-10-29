@@ -46,6 +46,7 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ['nie-starczy',"closeAll();{const a=S.cfg.accs.find(a=>a.grp=='cur'&&a.owner=='Wspólne')||S.cfg.accs.find(a=>a.grp=='cur');S.cfg.fixed=[...S.cfg.fixed,{id:'fbig',name:'Wielki rachunek',amount:9999900,day:28,acc:a.id,kind:'exp',sub:S.cfg.cats.find(c=>c.type=='exp').subs[0].id}];showToday()}"],
   ['nie-starczy-przelew',"{const b=[...document.querySelectorAll('#dlg .titem')].find(x=>/zabraknie/.test(x.textContent));b&&b.querySelector('.chip').click()}"],
   ['oprocentowanie',"closeAll();goTab('sav');setSub('all')"],['oprocentowanie-edycja',"editInt(S.cfg.accs.find(a=>a.int).id)"],['odsetki-wpis',"closeAll();{const d=new Date(S.ym+'-15');d.setMonth(d.getMonth()-1);bookInt(S.cfg.accs.find(a=>a.int).id,d.toISOString().slice(0,7))}"],
+  ['stale-osoba',"closeAll();goTab('fix');setFixSub('fix');setFixWho(S.who)"],['stale-wszystkie',"setFixWho('all')"],
   ['urodziny-powitanie',"closeAll();S.slip=null;{const t=new Date().toISOString().slice(0,10);S.hraw={...S.hraw,birth:{Mati:'1995'+t.slice(4),Wercia:'1996'+t.slice(4)}};goTab('dash')}"]];
 const CASES=[{w:390,size:'0',role:'Wercia'},{w:360,size:'2',role:'Mati'},{w:320,size:'0',role:'Mati'},{w:390,size:'1',role:'Wercia'}];
 
@@ -57,7 +58,7 @@ for(const C of CASES){
   p.on('console',m=>{if(m.type()=='error'&&!/Failed to load resource|net::|ERR_/.test(m.text()))fail(`${tag}: błąd w konsoli: ${m.text()}`)});
   await p.addInitScript(([C])=>{if(sessionStorage.getItem('robot'))return;sessionStorage.setItem('robot','1');localStorage.clear();
     localStorage.setItem('demo_people',JSON.stringify({me:C.role=='Mati'?'Kuba':'Ania',role:C.role,partner:C.role=='Mati'?'Ola':'Tomek'}));
-    const t=new Date().toISOString().slice(0,10);for(const[k,v] of [['mw_tour','1'],['mw_news','999'],['mw_today',t],['mw_eve',t],['mw_size',C.size]])localStorage.setItem('demo_'+k,v)},[C]);
+    const t=new Date().toISOString().slice(0,10);for(const[k,v] of [['mw_tour','1'],['mw_news','999'],['mw_today',t],['mw_eve',t],['mw_size',C.size],['mw_oth',JSON.stringify({d:new Date().toISOString().slice(0,10),a:'aM aW aJ aG aS aP aI aK aO'.split(' ')})]])localStorage.setItem('demo_'+k,v)},[C]);
   await p.goto(BASE+'/demo/');
   await p.waitForFunction(()=>window.goTab&&document.querySelector('#app .kpis,#app .card'),null,{timeout:20000}).catch(()=>fail(`${tag}: aplikacja się nie wczytała`));
   await p.evaluate(()=>{window.closeAll=()=>{document.querySelectorAll('.ov').forEach(o=>o.hidden=true)}});
@@ -88,6 +89,7 @@ for(const C of CASES){
     if(name=='nie-starczy-przelew')await p.evaluate(()=>{document.getElementById('sheet').hidden=true;S.cfg.fixed=S.cfg.fixed.filter(f=>f.id!='fbig')});
     if(name=='oprocentowanie'&&!await p.evaluate(()=>/Odsetki z kont/.test(document.getElementById('app').innerText)&&/🎁 6%/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty odsetek albo oprocentowania przy koncie`);
     if(name=='odsetki-wpis'&&!await p.evaluate(()=>!document.getElementById('dlg').hidden&&/Odsetki/.test(document.getElementById('dlg').innerText)&&+$('f_a').value.replace(',','.')>0))fail(`${tag}: okienko odsetek bez szacunku`);
+    if(name=='stale-osoba'&&!await p.evaluate(async()=>{const{fixedWho}=await import('/js/logic.js');const names=[...document.querySelectorAll('#app .fx .info b')].map(b=>b.textContent);const want=S.cfg.fixed.filter(f=>fixedWho(S.cfg,f)==S.who).map(f=>f.name);return names.length==want.length&&names.every(n=>want.includes(n))}))fail(`${tag}: filtr osoby w 📌 Opłatach pokazuje cudze opłaty`);
     if(name=='usuniete'&&!await p.evaluate(()=>/Ostatnio usunięte/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty „Ostatnio usunięte”`);
     await p.screenshot({path:path.join(OUT,`${tag}-${name}.png`),fullPage:true});
   }
@@ -109,6 +111,14 @@ for(const C of CASES){
       if(await p.evaluate(()=>S.tx.length)!==n0||await p.evaluate(()=>document.getElementById('sheet').hidden))fail(`${tag}: „Nie zapisuj” nie zostawia okienka bez zmian`)}
     await p.evaluate(()=>closeAll());
   }catch(e){fail(`${tag}: test podwójnego wpisu – ${e.message.split('\n')[0]}`)}}
+  /* 🙀 an entry from the other person's own account → the cats ask; „Zmień konto” keeps the sheet open and saves nothing */
+  if(C===CASES[0]){try{await p.evaluate(()=>{closeAll();localStorage.removeItem('demo_mw_oth')});
+    const res=await p.evaluate(async()=>{const a=S.cfg.accs.find(a=>a.owner&&a.owner!='Wspólne'&&a.owner!=S.who&&a.grp=='cur');if(!a)return'brak';const n0=S.tx.length;openTx();$('mc').value=a.id;$('ma').value='9,99';$('ms').value=S.cfg.cats.find(c=>c.type=='exp').subs[0].id;$('shSave').click();
+      await new Promise(r=>setTimeout(r,400));const asked=!document.getElementById('dlg').hidden&&/konto/.test(document.getElementById('dlg').innerText);[...document.querySelectorAll('#dlg button')].find(b=>/Zmień konto/.test(b.textContent))?.click();
+      await new Promise(r=>setTimeout(r,300));return asked&&S.tx.length==n0&&!document.getElementById('sheet').hidden?'ok':'zle'});
+    if(res=='zle')fail(`${tag}: wpis z konta drugiej osoby – brak pytania kotków albo „Zmień konto” zapisało wpis`);
+    await p.evaluate(()=>{closeAll();localStorage.setItem('demo_mw_oth',JSON.stringify({d:new Date().toISOString().slice(0,10),a:'aM aW aJ aG aS aP aI aK aO'.split(' ')}))});
+  }catch(e){fail(`${tag}: test cudzego konta – ${e.message.split('\n')[0]}`)}}
   /* 🐾 a cats' warning (plan exceeded) → „Rozumiem, kociaki” → the fact of the day (on a holiday the cats send wishes instead – nothing to check then) */
   if(C===CASES[0]){try{await p.evaluate(()=>{closeAll();window.__pl=S.plans;const pl={};S.cfg.cats.filter(c=>c.type=='exp').forEach(c=>c.subs.forEach(x=>pl[x.id]=100));S.plans={...S.plans,[S.ym]:pl};goTab('dash')});await p.waitForTimeout(300);
     let n=0;while(n<6&&await p.$('.greet .gok')){await p.click('.greet .gok');await p.waitForTimeout(300);n++}
@@ -226,6 +236,10 @@ for(const [tag,user] of [['prawdziwa strona – logowanie',null],['prawdziwa str
   await p.goto(BASE+'/');await p.waitForTimeout(1500);
   if(!user&&!await p.isVisible('#loginBtn'))fail(`${tag}: nie widać ekranu logowania`);
   if(user&&!await p.evaluate(()=>!!document.querySelector('#app .kpis,#app .card')))fail(`${tag}: aplikacja nie pokazała budżetu`);
+  /* 🔒 the login gets its person once: „To ja – Mati” → locked, ⚙️ shows „Zalogowano jako”, the switch does nothing */
+  if(user){await p.evaluate(()=>{window.askWhoLock('Mati')});await p.waitForTimeout(300);await p.click('#dlg button:has-text("To ja")').catch(()=>{});await p.waitForTimeout(300);
+    const ok=await p.evaluate(()=>{goTab('set');document.querySelectorAll('details.sgrp').forEach(d=>d.open=true);const t=document.getElementById('app').innerText;window.setWho('Wercia');return S.whoLock&&S.who=='Mati'&&/Zalogowano jako/.test(t)});
+    if(!ok)fail(`${tag}: przypisanie osoby do loginu nie działa`)}
   await p.screenshot({path:path.join(OUT,`${tag.replace(/\W+/g,'-')}.png`),fullPage:true});await ctx.close()}
 
 await browser.close();srv.close();

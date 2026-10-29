@@ -77,6 +77,11 @@ Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). N
 ## Etap X6. Szybkość
 - [x] Mniej przerysowań: zmiany z Firestore rysowane raz na klatkę (`renderSoon`), potwierdzenie zapisu z serwera zmienia tylko napis synchronizacji (bez przebudowy listy wpisów); pomiar: 15 000 wpisów – jedno przerysowanie < 30 ms na komputerze
 
+## Etap X7. Każde ma swoje (uzgodnione 29.10.2026)
+- [x] 📌 Opłaty: przełącznik Wszystkie · Mati · Wercia · Wspólne (`fixedWho` = „Dotyczy” `f.who` albo właściciel konta), pole „👥 Dotyczy” w opłacie, przychodzie i przelewie stałym
+- [x] 🔒 Osoba przypisana do loginu: `users/{uid}` `{who,lock}` (bez adresów e-mail w kodzie), jedno pytanie przy starcie (`askWhoLock`), w ⚙️ „Zalogowano jako…”, `setWho` zablokowane
+- [x] 🙀 Wpis z konta drugiej osoby: pytanie kotków (`otherAccOk` w `sheet.js`), „Tak, wiem” = bez pytań o to konto do końca dnia (`mw_oth`); wspólne i przelewy NA konto – bez pytania
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

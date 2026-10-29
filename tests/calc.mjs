@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay} from '../js/logic.js';
+import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
@@ -106,6 +106,11 @@ const N=' ';
   eq('Na dziś: wpisane odsetki → bez przypomnienia',todayItems({...DI('2026-10-31'),tx:[T('2026-09-01',100000),{id:'i',type:'adj',val:true,int:true,intP:'2026-10',acc:'s',amount:500,date:'2026-10-31'}]},{today:'2026-10-31',checks:false}).some(x=>x.k=='int'&&x.go.acc=='s'),false);
   eq('Na dziś: koniec promocji za 10 dni',ti('2026-10-31').some(x=>x.k=='promo'&&/za 10 dni/.test(x.text)),true);
   eq('Odsetki to zysk, nie „odłożone”',savFlow({accs:[a]},[{id:'i',type:'adj',val:true,int:true,acc:'s',amount:500,date:'2026-10-31'}],['s'],'2026-10'),{flow:0,gain:500});
+}
+/* ---------- 👥 czyja opłata stała: „Dotyczy” albo właściciel konta ---------- */
+{ const cfg={accs:[{id:'m',name:'ING Mati',owner:'Mati'},{id:'w',name:'Revolut',owner:'Wercia'},{id:'s',name:'Wspólne',owner:'Wspólne'},{id:'x',name:'Revolut Wercia'}]};
+  eq('Opłata z konta Matiego → Mati',fixedWho(cfg,{acc:'m'}),'Mati');eq('Ze wspólnego → Wspólne',fixedWho(cfg,{acc:'s'}),'Wspólne');
+  eq('„Dotyczy” wygrywa z kontem',fixedWho(cfg,{acc:'s',who:'Wercia'}),'Wercia');eq('Konto bez właściciela – z nazwy',fixedWho(cfg,{acc:'x'}),'Wercia');
 }
 /* ---------- 🐾 kotki: uwaga → „Rozumiem, kociaki” → ciekawostka dnia ---------- */
 { eq('366 ciekawostek, każda inna',[FACTS.length,new Set(FACTS).size],[366,366]);

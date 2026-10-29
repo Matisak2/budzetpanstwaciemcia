@@ -126,7 +126,13 @@ export function setHide(on){setLook('mw_hide',on?'1':'0');toast(on?'🙈 Kwoty u
 export function setLook(k,v){ls.set(k,v);lookApply();render()}
 export const lookH=()=>`<div class="card"><h3>🎨 Wygląd</h3><div class="accs" role="group" aria-label="Kolor">${ACCENTS.map(([k,n,c])=>`<button class="accdot" style="background:${c}" aria-pressed="${accOf()==k}" aria-label="${n}" title="${n}" onclick="setLook('mw_acc','${k}')"></button>`).join('')}</div>
   <div class="seg seg3" role="group" aria-label="Wielkość tekstu">${[['0','A'],['1','A+'],['2','A++']].map(([k,l])=>`<button aria-pressed="${(ls.get('mw_size')||'0')==k}" onclick="setLook('mw_size','${k}')" style="font-size:${14+(+k)*2}px">${l}</button>`).join('')}</div><div class="mini" style="margin-top:10px"><b style="color:var(--fg)">🙈 Tryb dyskretny</b> – kwoty jako „•••”, gdy pokazujecie komuś telefon albo otwieracie aplikację przy ludziach.</div><div class="seg seg2" role="group" aria-label="Tryb dyskretny">${[[0,'👀 Kwoty widać'],[1,'🙈 Ukryte']].map(([k,l])=>`<button aria-pressed="${priv.on==!!k}" onclick="setHide(${k})">${l}</button>`).join('')}</div><div class="mini">Kolor, wielkość tekstu i tryb dyskretny dotyczą tylko tego telefonu.</div></div>`;
-export function setWho(v){S.who=v;ls.set('mw_who',v);if(S.uid)merge(doc(collection(H,'users'),S.uid),{email:S.email||'',who:v});const pid=ls.get('mw_push');if(pid&&S.pushOk)merge(doc(PUSH(),pid),{who:v});render()}
+/* 👤 the person is tied to the login (households/main/users/{uid}: who + lock) – no e-mail addresses in the code (the repository is public).
+   The first start after the update asks once „Ten login to …?” (the person saved before is the default), then it cannot be switched by accident. */
+export function lockWho(v){S.whoLock=true;if(S.who!==v){S.who=v;ls.set('mw_who',v);const pid=ls.get('mw_push');if(pid&&S.pushOk)merge(doc(PUSH(),pid),{who:v})}render()}
+export async function askWhoLock(def){const w0=def=='Wercia'?'Wercia':'Mati',w1=w0=='Mati'?'Wercia':'Mati';
+  const r=await ask({title:'Kto się tu loguje? 🐾',text:`Bailey i Ivo chcą zapamiętać na stałe, czyj jest ten login (${S.email||'to konto'}). Potem wpisy zawsze podpiszą się właściwą osobą, a przełącznika „kto korzysta” nie da się już przestawić przypadkiem.`,ok:'To ja – '+w0,alt:'Jestem '+(w1=='Wercia'?'Wercią':'Matim'),cancel:'Później'});
+  if(!r)return;const v=r=='alt'?w1:w0;if(S.uid)merge(doc(collection(H,'users'),S.uid),{who:v,lock:true});lockWho(v);toast('Zapamiętane: ten login to '+v+' ✓')}
+export function setWho(v){if(S.whoLock)return toast('Osoba jest przypisana do loginu – na innym koncie zaloguj się drugim adresem','bad');S.who=v;ls.set('mw_who',v);if(S.uid)merge(doc(collection(H,'users'),S.uid),{email:S.email||'',who:v});const pid=ls.get('mw_push');if(pid&&S.pushOk)merge(doc(PUSH(),pid),{who:v});render()}
 
 /* ---------- fixed costs ---------- */
 export const fixedPaid=(fid,ym)=>liveOf(S.tx).find(t=>t.fixedId===fid&&t.date.startsWith(ym));
@@ -140,6 +146,7 @@ export async function editFixed(fid,kind,pre){if(guard())return;
     {id:'d',label:inc?'Zwykle wpływa do dnia (1–31)':'Termin – dzień miesiąca (1–31)',type:'int',value:f?.day||10},
     {id:'s',label:'Pozycja budżetu',type:'select',value:f?.sub||'',options:[['','— wybierz —'],...subOpts(kind)]},
     {id:'c',label:inc?'Wpływa na konto':'Płacone z konta',type:'select',value:f?.acc||S.cfg.accs.find(a=>a.grp=='cur')?.id,options:accOpts()}];
+  fields.push({id:'wh',label:'👥 Dotyczy',type:'select',value:f?.who||'',options:[['','Jak konto'],['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]});
   if(!inc)fields.push({id:'u',label:'📄 Umowa do (opcjonalnie) – przypomnę 2 miesiące wcześniej',type:'date',value:f?.until||''});
   if(!inc&&debtList('owe').length)fields.push({id:'db',label:'🔻 Spłata zobowiązania',type:'select',value:f?.debt||'',options:[['','— nie —'],...debtList('owe').map(d=>[d.id,d.name])]});
   if(inc){fields.push({id:'v',label:'Kwota co miesiąc',type:'select',value:f?.vary?'1':'0',options:[['0','Podpowiadaj ostatnią kwotę'],['1','Zawsze inna – wpisuję od zera']]});
@@ -154,7 +161,7 @@ export async function editFixed(fid,kind,pre){if(guard())return;
   if(amount<=0&&!(inc&&r.v=='1'))return toast('Podaj kwotę większą od zera','bad');
   if(day<1||day>31)return toast('Dzień miesiąca musi być od 1 do 31','bad');
   if(!r.s)return toast('Wybierz pozycję budżetu','bad');
-  const body={id:f0?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:r.s,acc:r.c,kind};if(!inc){body.debt=r.db||'';body.until=isDate(r.u)?r.u:''}
+  const body={id:f0?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:r.s,acc:r.c,kind,who:r.wh||''};if(!inc){body.debt=r.db||'';body.until=isDate(r.u)?r.u:''}
   if(inc){body.vary=r.v=='1';body.ppk=r.p||'';body.najem=r.nj||''}
   let tgt=f0;if(f0)Object.assign(f0,body);else{tgt=body;S.cfg.fixed.push(body)}
   render();saveFixed(tgt)}
@@ -163,11 +170,12 @@ export async function editFixedTr(f,pre){const p=f||pre||null,savs=S.cfg.accs.fi
   const r=await ask({title:f?'Stały przelew':'Nowy stały przelew',text:f?'':'Na oszczędności, na konto wspólne, na konto drugiej osoby albo na subkonto. Jako „odłożone” liczą się tylko przelewy na oszczędności i inwestycje.',fields:[{id:'n',label:'Nazwa',value:p?.name||'',ph:'np. Oszczędności co miesiąc albo Na wspólne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:p?.amount?f2(p.amount):''},
     {id:'d',label:'Dzień miesiąca (1–31)',type:'int',value:p?.day||10},{id:'c',label:'Z konta',type:'select',value:p?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&accOwner(a)==S.who)?.id||'',options:accOpts()},
     {id:'t',label:'Na konto',type:'select',value:p?.to||savs[0]?.id||'',options:accOpts()},
+    {id:'wh',label:'👥 Dotyczy',type:'select',value:p?.who||'',options:[['','Jak konto'],['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},
     ...(svd.length||f?.saveFor?[{id:'sf',label:'💰 Odkładanie na spłatę pożyczki',type:'select',value:f?.saveFor||'',options:[['','— nie —'],...svd.map(d=>[d.id,`${d.name} (na „${accN(d.saveAcc)}”)`])]}]:[])],ok:f?'Zapisz':'Dodaj',alt:f?'Usuń przelew':null});
   if(!r)return;if(r=='alt'){S.cfg.fixed=S.cfg.fixed.filter(x=>x!==f);render();delFixedDb(f.id);return}
   const amount=gr(r.a),day=Math.round(pnum(r.d));if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(day<1||day>31)return toast('Dzień miesiąca musi być od 1 do 31','bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
   const sd=r.sf&&S.debts[r.sf];if(sd&&sd.saveAcc!=r.t)return toast(`Na „${sd.name}” odkładasz na koncie „${accN(sd.saveAcc)}” – wybierz je w polu „Na konto”`,'bad');
-  const body={id:f?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:'',acc:r.c,to:r.t,kind:'tr',saveFor:sd?r.sf:''};let tgt=f;if(f)Object.assign(f,body);else{tgt=body;S.cfg.fixed.push(body)}render();saveFixed(tgt)}
+  const body={id:f?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:'',acc:r.c,to:r.t,kind:'tr',saveFor:sd?r.sf:'',who:r.wh||''};let tgt=f;if(f)Object.assign(f,body);else{tgt=body;S.cfg.fixed.push(body)}render();saveFixed(tgt)}
 export const lastOf=(f,pred)=>liveOf(S.tx).filter(t=>pred(t)&&t.date<S.ym+'-01').sort((a,b)=>b.date.localeCompare(a.date))[0];
 export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==fid),paid=fixedPaid(fid,S.ym),inc=f.kind=='inc';
   const src=inc&&!paid&&incs().find(x=>x.fixed==fid);if(src)return openSlip(src.id);

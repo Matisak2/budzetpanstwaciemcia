@@ -190,6 +190,15 @@ function dupOf(type,amount,date,note,sub,acc,to){const n=norm(stripFx(note)),lo=
   const t=liveOf(S.tx).find(t=>t.type==type&&t.amount==amount&&t.date>=lo&&t.date<=hi&&!t.roundOf&&(type=='tr'?t.acc==acc&&t.to==to:(n&&norm(stripFx(t.note))==n)||(sub&&t.sub==sub)));
   if(!t)return null;const who=t.by||t.who,V=w=>w=='Wercia'?'dodała':'dodał';
   return{t,label:`${t.note?stripFx(t.note):sm[t.sub]?.name||'Przelew'} · ${am(t.amount,t.acc)} · ${t.date.split('-').reverse().join('.')}${who?` · ${V(who)} ${who}`:''}`}}
+/* 🙀 money going out of (or into) the OTHER person's own account – Bailey or Ivo ask once; „Tak, wiem” = no more questions about that account today on this phone.
+   Shared accounts never ask; a transfer TO the other person's account is normal, so only the source account counts. */
+const OTHER=[['🙀 Ivo','Halo, halo! To konto {o}, nie Twoje. Na pewno wpisujesz z niego?'],['🐾 Bailey','Chwileczkę… to konto należy do {og}. Wpisujesz za {ob}? Upewniam się, żeby salda się zgadzały.'],
+  ['😼 Ivo','Psst… to nie Twoja miska! Konto {o}. Mam udawać, że nic nie widziałem?'],['🐱 Bailey','Zauważyłam, że wybrane jest konto {o}. Jeśli to celowe – w porządku, zapiszę.']];
+export async function otherAccOk(acc){const a=S.cfg.accs.find(x=>x.id==acc),o=a&&accOwner(a);if(!o||o=='Wspólne'||o==S.who||S.edit&&liveById(S.edit)?.acc===acc)return true;
+  const today=td();let m={};try{m=JSON.parse(ls.get('mw_oth')||'{}')}catch(e){}if(m.d==today&&(m.a||[]).includes(acc))return true;
+  const [who,t]=OTHER[Math.floor(Date.now()/1000)%OTHER.length],gen=o=='Wercia'?'Werci':'Matiego';
+  const r=await ask({title:who+': to konto '+gen+'!',text:t.replace(/\{og\}/g,gen).replace(/\{ob\}/g,o=='Wercia'?'Wercię':'Matiego').replace(/\{o\}/g,`„${a.name}” (${gen})`),ok:'Tak, wiem, co robię',cancel:'Zmień konto'});
+  if(!r)return false;ls.set('mw_oth',JSON.stringify({d:today,a:[...(m.d==today?m.a||[]:[]),acc]}));return true}
 export async function saveTx(next){if(guard())return;
   const keep={acc:$('mc').value,date:$('md').value,who:$('mw').value,type:S.etype};
   const type=S.etype,amount=calcAmt($('ma').value),date=$('md').value;
@@ -197,6 +206,7 @@ export async function saveTx(next){if(guard())return;
   if(!isDate(date))return toast('Wybierz datę','bad');
   if(type!='tr'&&!$('ms').value)return toast('Wybierz pozycję budżetu','bad');
   if(!$('mc').value||(type=='tr'&&!$('mto').value))return toast('Wybierz konto','bad');
+  if(!await otherAccOk($('mc').value))return;
   if(type=='tr'&&$('mc').value==$('mto').value)return toast('Wybierz dwa różne konta','bad');
   const cA=accCur($('mc').value),cB=type=='tr'?accCur($('mto').value):cA,two=cA!=cB,amount2=two?calcAmt($('ma2').value):0;
   if(two&&amount2<=0)return toast(`Podaj, ile wpłynie na drugie konto (${curSym(cB)})`,'bad');

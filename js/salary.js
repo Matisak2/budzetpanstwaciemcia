@@ -5,7 +5,7 @@ import {C_INC,barsSvg,chartBox} from './charts.js';
 import {ULGI,pitSummaryP} from './today.js';
 import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf,youngLeft,youngUntil,youngPart,baseOf} from './pay.js';
 import {liveOf,subsMap} from './logic.js';
-import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu} from './util.js';
+import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu,ls} from './util.js';
 import {S,toast,ask,accCur,am,accOwner,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard} from './core.js';
 import {txRowH} from './actions.js';
 import {accN,render} from './app.js';
@@ -23,6 +23,8 @@ export const gr=v=>{const x=pg(v||'0');return isFinite(x)?x:0};
 export const segL=l=>l.replace(/^(\S+) /,'<i class="si">$1</i> ');
 /* 📌 Stałe: payments · salaries · 📅 yearly expenses and other dates (the former „🔔 Przyp.” tab is part of it) */
 export const fixSegH=()=>`<div class="seg seg3">${[['fix','📌 Opłaty'],['pay','💼 Pensje'],['year','📅 Roczne i terminy']].map(([k,l])=>`<button aria-pressed="${(S.fixSub=='rem'?'year':S.fixSub||'fix')==k}" onclick="setFixSub('${k}')">${segL(l)}</button>`).join('')}</div>`;
+/* 👥 📌 Opłaty: whose payments to show (this phone remembers it) */
+export function setFixWho(k){S.fixWho=k;ls.set('mw_fixwho',k);render()}
 export function setFixSub(k){S.fixSub=k=='rem'?'year':k;S.slip=null;window.scrollTo(0,0);render()}
 export function setPayView(k){S.payView=k;render()}
 export const payTabH=T=>`<div class="ptbl">${[['Brutto / faktury',T.brutto],['ZUS (społeczne)',-T.zus],['Zdrowotna',-T.health],['Zaliczka na podatek',-T.tax],['PPK – moje wpłaty',-T.ppkOwn],['PPK – pracodawca (na PPK)',T.ppkEmp],['Potrącenia',-T.ded],['Netto na konto',T.net]].filter(([,v],i)=>v||i==0||i==7).map(([l,v],i,a)=>`<div class="r1${i==a.length-1?' tot':''}"><span>${l}</span><b class="num">${v<0?'−'+zl(-v):zl(v)}</b></div>`).join('')}${T.hours?`<div class="mini">${String(T.hours).replace('.',',')} h wpisanych godzin</div>`:''}</div>`;

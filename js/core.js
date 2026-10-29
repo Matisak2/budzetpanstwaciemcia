@@ -8,7 +8,7 @@ import {CURS,SEASON,tint} from './data.js';
 import {wrapOf} from './inv.js';
 import {actuals,agg,cleanCat,fixedDate,fixedTwin,liveOf,savFlow,savIds,planOf} from './logic.js';
 import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus} from './util.js';
-import {goalAlloc} from './actions.js';
+import {goalAlloc,askWhoLock} from './actions.js';
 import {runGo,maybeToday} from './todayui.js';
 import {accN,render} from './app.js';
 
@@ -61,7 +61,8 @@ export const showTour=()=>catSlides(TOUR(S.who),'Zaczynamy!');
 export function showNews(all){const seen=all?0:+(ls.get('mw_news')||0),list=NEWS.filter(x=>x.v>seen);ls.set('mw_news',String(NEWS_V));
   return catSlides((list.length?list:NEWS.slice(0,1)).map(x=>({scene:x.scene,title:'Co nowego · '+x.title,text:x.items.map(t=>'• '+t).join('\n')})),'Super!')}
 /* once per session, after the budget has loaded: first steps on a new phone, otherwise "Co nowego" after an update */
-export function maybeIntro(){if(S.introDone||!S.cfg||!$('dlg').hidden||!$('sheet').hidden)return;S.introDone=true;
+export function maybeIntro(){if(S.introDone||!S.cfg||!$('dlg').hidden||!$('sheet').hidden)return;
+  if(S.whoAsk){const d=S.whoAsk;S.whoAsk=null;return askWhoLock(d).then(()=>setTimeout(maybeIntro,400))}S.introDone=true;
   if(!ls.get('mw_tour')&&kotki.mode!='off'){ls.set('mw_tour','1');ls.set('mw_news',String(NEWS_V));showTour()}
   else if(+(ls.get('mw_news')||0)<NEWS_V)showNews();
   else if(S.goPending){const g=S.goPending;S.goPending=null;setTimeout(()=>runGo(g),300)}
