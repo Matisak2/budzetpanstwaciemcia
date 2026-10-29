@@ -29,8 +29,9 @@ const browser=await chromium.launch(exe?{executablePath:exe}:{});
 const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-filtry',"togF()"],['stale',"goTab('fix');setFixSub('fix')"],['pensje',"setFixSub('pay')"],['pit',"setPayView&&setPayView('year')"],
   ['roczne',"setFixSub('year')"],['przypomnienia',"setFixSub('rem')"],['oszczednosci',"goTab('sav')"],['konta',"goTab('acc');setAccView('acc')"],['my-winni',"setAccView('owe')"],
   ['nam-winni',"setAccView('lent')"],['analiza',"goTab('ana');setAna('m');setAnaMode('full')"],['analiza-podst',"setAnaMode('basic')"],['analiza-rok',"setAnaMode('full');setAna('y')"],
-  ['ustawienia',"S.setOpen={bud:1,tel:1,bez:1,auto:1,pom:1};goTab('set')"],
-  ['usuniete',"{const L=S.tx.filter(t=>!t.deleted&&t.type=='exp').slice(0,3);S.tx=S.tx.map(t=>{const i=L.indexOf(t);return i<0?t:{...t,deleted:true,dAt:Date.now()-i*1000,dby:'Mati'}});S.setOpen={bez:1};goTab('dash');goTab('set')}"],
+  ['ustawienia',"goTab('set')"],
+  ...['acc','cat','tel','bez','auto','pom'].map(k=>['ust-'+k,`goTab('set');setPage('${k}')`]),
+  ['usuniete',"{const L=S.tx.filter(t=>!t.deleted&&t.type=='exp').slice(0,3);S.tx=S.tx.map(t=>{const i=L.indexOf(t);return i<0?t:{...t,deleted:true,dAt:Date.now()-i*1000,dby:'Mati'}});goTab('dash');goTab('set');setPage('bez')}"],
   ['umowa-stale',"{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp');f.until=new Date(Date.now()+40*864e5).toISOString().slice(0,10);window.__umowa=f.id;goTab('fix');setFixSub('fix')}"],
   ['umowa-na-dzis',"closeAll();showToday()"],['umowa-edycja',"closeAll();editFixed(window.__umowa)"],['gdzie-wydajemy',"closeAll();goTab('ana');setAnaMode('full');setAna('m')"],
   ['podpowiedz-notatki',"closeAll();openTx();setTimeout(()=>{const m=$('mn');m.focus();m.value='bi';m.dispatchEvent(new Event('input'))},200)"],
@@ -90,6 +91,8 @@ for(const C of CASES){
     if(name=='oprocentowanie'&&!await p.evaluate(()=>/Odsetki z kont/.test(document.getElementById('app').innerText)&&/🎁 6%/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty odsetek albo oprocentowania przy koncie`);
     if(name=='odsetki-wpis'&&!await p.evaluate(()=>!document.getElementById('dlg').hidden&&/Odsetki/.test(document.getElementById('dlg').innerText)&&+$('f_a').value.replace(',','.')>0))fail(`${tag}: okienko odsetek bez szacunku`);
     if(name=='stale-osoba'&&!await p.evaluate(async()=>{const{fixedWho}=await import('/js/logic.js');const names=[...document.querySelectorAll('#app .fx .info b')].map(b=>b.textContent);const want=S.cfg.fixed.filter(f=>fixedWho(S.cfg,f)==S.who).map(f=>f.name);return names.length==want.length&&names.every(n=>want.includes(n))}))fail(`${tag}: filtr osoby w 📌 Opłatach pokazuje cudze opłaty`);
+    if(name=='ustawienia'&&!await p.evaluate(()=>document.querySelectorAll('#app .stile').length==6&&!document.querySelector('#app .spage')&&!/Saldo początkowe|saldo początkowe/.test(document.getElementById('app').innerText)))fail(`${tag}: ⚙️ – nie 6 kafelków albo coś rozwinięte samo`);
+    if(name=='ust-acc'&&!await p.evaluate(()=>{const ok=/saldo początkowe/.test(document.getElementById('app').innerText);document.querySelector('#app .sback').click();return ok&&document.querySelectorAll('#app .stile').length==6}))fail(`${tag}: kafelek Konta nie pokazuje kont albo „‹ Ustawienia” nie wraca`);
     if(name=='usuniete'&&!await p.evaluate(()=>/Ostatnio usunięte/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty „Ostatnio usunięte”`);
     await p.screenshot({path:path.join(OUT,`${tag}-${name}.png`),fullPage:true});
   }
@@ -157,7 +160,7 @@ for(const C of CASES){
   /* 🙈 hiding a position: it leaves the position picker and comes back with ↺; „Plan a rzeczywistość” in Analiza → Rok; a yearly expense due this month is in the plan */
   if(C===CASES[0]){try{
     const r=await p.evaluate(()=>{closeAll();const ci=S.cfg.cats.findIndex(c=>c.type=='exp'&&c.subs.length>1),s=S.cfg.cats[ci].subs[1];hideSub(ci,1,true);
-      goTab('set');const inSet=/Ukryte:/.test(document.getElementById('app').innerText);openTx();$('pq').value='';window.__hid=s;return{ci,id:s.id,inSet}});
+      goTab('set');setPage('cat');const inSet=/Ukryte:/.test(document.getElementById('app').innerText);openTx();$('pq').value='';window.__hid=s;return{ci,id:s.id,inSet}});
     await p.waitForTimeout(300);await p.evaluate(()=>{$('msBtn').click();$('pq').value=window.__hid.name.slice(0,6);$('pq').dispatchEvent(new Event('input'))});await p.waitForTimeout(200);
     const inPick=await p.evaluate(id=>!!document.querySelector(`#pkBody [data-sid="${id}"]`),r.id);
     await p.screenshot({path:path.join(OUT,`${tag}-ukryta-pozycja.png`),fullPage:true});
@@ -238,7 +241,7 @@ for(const [tag,user] of [['prawdziwa strona – logowanie',null],['prawdziwa str
   if(user&&!await p.evaluate(()=>!!document.querySelector('#app .kpis,#app .card')))fail(`${tag}: aplikacja nie pokazała budżetu`);
   /* 🔒 the login gets its person once: „To ja – Mati” → locked, ⚙️ shows „Zalogowano jako”, the switch does nothing */
   if(user){await p.evaluate(()=>{window.askWhoLock('Mati')});await p.waitForTimeout(300);await p.click('#dlg button:has-text("To ja")').catch(()=>{});await p.waitForTimeout(300);
-    const ok=await p.evaluate(()=>{goTab('set');document.querySelectorAll('details.sgrp').forEach(d=>d.open=true);const t=document.getElementById('app').innerText;window.setWho('Wercia');return S.whoLock&&S.who=='Mati'&&/Zalogowano jako/.test(t)});
+    const ok=await p.evaluate(()=>{goTab('set');setPage('tel');const t=document.getElementById('app').innerText;window.setWho('Wercia');return S.whoLock&&S.who=='Mati'&&/Zalogowano jako/.test(t)});
     if(!ok)fail(`${tag}: przypisanie osoby do loginu nie działa`)}
   await p.screenshot({path:path.join(OUT,`${tag.replace(/\W+/g,'-')}.png`),fullPage:true});await ctx.close()}
 
