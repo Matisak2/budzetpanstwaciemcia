@@ -8,7 +8,7 @@ import {HUES,OWN,OWN_COL,SEASON,catHue,pastel,seed} from './data.js';
 import {IICON,limitOf,paidInYear,wrapOf,intOf,intLabel} from './inv.js';
 import {saveSplitP} from './today.js';
 import {yearBody,yearStats} from './report.js';
-import {avgActuals,actuals,agg,balance,cleanCat,dueAlerts,liveOf,status,subsMap,savFlow,savIds,firstYm,planOf,yearPlanOf,yearSubs,fixedTwin,fixedPlanGap,fixedWho} from './logic.js';
+import {avgActuals,actuals,agg,balance,cleanCat,dueAlerts,liveOf,status,subsMap,savFlow,savIds,firstYm,planOf,yearPlanOf,yearSubs,fixedTwin,fixedPlanGap,fixedWho,seenBy} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,ls,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt,priv,plu} from './util.js';
 import {auth,fdb,applySeason,DEMO,S,catL,greetH,okCats,showTour,showNews,maybeIntro,askBirth,celebrate,coinSum,editRound,setKotki,toast,err,ask,CUR,accCur,isP,am,fxOf,fxSmall,stripFx,accOwner,accOpts,H,MARKET,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,fromDoc,saveCfg,saveCat,liveById} from './core.js';
 import {catColor,refundsOf,setType,updCoin,updFx,updSave,autoWho,closePick,RMETA,phMeterH,openTx,closeSheet,saveTx,delTx,markRefund,wireSheet} from './sheet.js';
@@ -67,7 +67,7 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
   const trendH=d=>d>0?`<span class="trend up" title="Przybyło w tym miesiącu">▲ +${zl0(d)}</span>`:d<0?`<span class="trend down" title="Ubyło w tym miesiącu">▼ −${zl0(-d)}</span>`:'';
   const pct=(a,p)=>p?' · <span style="white-space:nowrap">'+Math.round(a/p*100)+'% planu</span>':'';
   let h='';
-  const al=dueAlerts(S.cfg.fixed||[],tx,td()).map(x=>({...x,tw:x.when!='inc'&&fixedTwin(S.cfg,tx,x.f,x.due.slice(0,7))}));
+  const al=dueAlerts(S.cfg.fixed||[],tx,td()).filter(x=>seenBy(fixedWho(S.cfg,x.f),S.who)).map(x=>({...x,tw:x.when!='inc'&&fixedTwin(S.cfg,tx,x.f,x.due.slice(0,7))}));
   const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+am(x.f.amount,x.f.acc)}</span><span class="when ${x.when=='late'&&!x.tw?'late':''}">${x.tw?'💡 jest podobny wpis – połącz':x.when=='inc'?'czeka na odhaczenie':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
 
   if(S.tab=='dash'&&S.proj)h+=projPageH();

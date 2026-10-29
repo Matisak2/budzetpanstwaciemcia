@@ -3,7 +3,7 @@ import {doc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {recurringP,automatStale,todayItems as todayItemsP} from './today.js';
-import {liveOf} from './logic.js';
+import {liveOf,seenBy} from './logic.js';
 import {$,esc,ls,pg,td,money} from './util.js';
 import {DEMO,S,toast,err,ask,CUR,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
@@ -42,7 +42,7 @@ export const pushCardH=()=>`<div class="card"><h3>🔔 Powiadomienia</h3><div cl
   <div class="btns" style="gap:6px">${S.pushOk?'<button class="btn sm" onclick="disablePush()">Wyłącz</button>':`<button class="btn sm primary" onclick="enablePush()">${S.pushLost?'Włącz ponownie':'Włącz powiadomienia'}</button>`}</div></div>`;
 export const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw});
 /* 🗓️ the closing of the month is personal – each phone shows only its own person's */
-export function todayItems(){if(!S.cfg)return[];return todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}).filter(x=>x.k!='close'||x.who==S.who)}
+export function todayItems(){if(!S.cfg)return[];return todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}).filter(x=>seenBy(x.who,S.who))}
 /* where a tap on an item (or on a notification) leads */
 /* ---------- 🔔 „Na dziś”: everything that needs attention, only inside the app (no calendar, no card) ---------- */
 export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;

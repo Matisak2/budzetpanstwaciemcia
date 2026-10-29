@@ -6,7 +6,7 @@ import {scene} from './cats.js';
 import {NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
 import {CURS,SEASON,tint} from './data.js';
 import {wrapOf} from './inv.js';
-import {actuals,agg,cleanCat,fixedDate,fixedTwin,liveOf,savFlow,savIds,planOf} from './logic.js';
+import {actuals,agg,cleanCat,fixedDate,fixedTwin,fixedWho,seenBy,liveOf,savFlow,savIds,planOf} from './logic.js';
 import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus} from './util.js';
 import {goalAlloc,askWhoLock} from './actions.js';
 import {runGo,maybeToday} from './todayui.js';
@@ -38,7 +38,7 @@ export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=t
   const [hi,em]=hr<5?['Dobranoc','🌙']:hr<12?['Dzień dobry','☀️']:hr<18?['Miłego dnia','🌤️']:hr<23?['Dobry wieczór','🌆']:['Dobranoc','🌙'];
   const tx=liveOf(txAll),A=agg(cfg,tx,ym),pl=planOf(cfg,S.plans,tx,ym),pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,x)=>b+(pl[x.id]||0),0),0);
   const sd=savFlow(cfg,tx,savIds(cfg),ym).flow;
-  const unpaid=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym))&&!fixedTwin(cfg,tx,f,ym));
+  const unpaid=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&seenBy(fixedWho(cfg,f),who)&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym))&&!fixedTwin(cfg,tx,f,ym));
   const late=unpaid.filter(f=>fixedDate(f,ym)<today).map(f=>f.name),soon=unpaid.filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)}).map(f=>f.name);
   const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({name:g.name,pct:goalAlloc(g)/g.target*100})).sort((a,b)=>b.pct-a.pct)[0]||null;
   const act=actuals(cfg,tx,ym),treats=cfg.cats.reduce((a,c)=>a+c.subs.filter(x=>isTreat(x.name)).reduce((b,x)=>b+Math.max(0,act[x.id]||0),0),0);

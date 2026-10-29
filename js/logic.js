@@ -23,6 +23,8 @@ export function balance(cfg,tx,id,before){const open=cfg.accs.find(a=>a.id===id)
 /* whose an account is: Mati / Wercia / Wspólne (older accounts without owner – by the name) */
 /* whose a fixed payment / income / transfer is: „Dotyczy” set by hand (f.who), otherwise the owner of its account */
 export const fixedWho=(cfg,f)=>f.who||ownerOf(cfg.accs.find(a=>a.id===f.acc));
+/* 👥 does a person see it on their phone: things of the other person stay hidden (shared ones and unknown – everybody) */
+export const seenBy=(w,who)=>!who||(w!='Mati'&&w!='Wercia')||w==who;
 export const ownerOf=a=>a?.owner||(/wercia|weronika/i.test(a?.name||'')?'Wercia':/mati/i.test(a?.name||'')?'Mati':'Wspólne');
 /* 🐷 savings and investment accounts in złoty (also archived ones – money moved out of them still counts), of one owner or all */
 export const savIds=(cfg,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&(!a.cur||a.cur=='PLN')&&(!owner||ownerOf(a)==owner)).map(a=>a.id);

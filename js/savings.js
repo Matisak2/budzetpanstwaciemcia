@@ -212,12 +212,12 @@ export function yearH(){const ym=S.ym,st=yearState(ym),id=yearAccId();let h='';
   h+=`<div class="list">${(st?.list||[]).map(x=>{const it=x.it,pc=it.amount?x.fill/it.amount*100:0,dn=MN[+x.due.slice(5)-1].toLowerCase()+' '+x.due.slice(0,4);
     const dd=it.day?`${it.day} ${MNG[+x.due.slice(5)-1]} ${x.due.slice(0,4)}`:dn;
     return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(it.name)}</b><b class="num">${zl(it.amount)}</b></div><div class="gbar"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div>
-      <div class="mini">${x.months<=2&&x.fill<it.amount?'⏰ ':''}termin: ${dd}${+it.every!=12?` · co ${it.every} mies.`:''} · w kopercie ${zl(x.fill)}${x.need?` · odkładaj ok. ${zl(x.need)}/mies.`:' · ✓ uzbierane'}</div>
+      <div class="mini">${x.months<=2&&x.fill<it.amount?'⏰ ':''}termin: ${dd}${+it.every!=12?` · co ${it.every} mies.`:''} · w kopercie ${zl(x.fill)}${x.need?` · odkładaj ok. ${zl(x.need)}/mies.`:' · ✓ uzbierane'}${it.who?` · 👤 ${esc(it.who)}`:''}</div>
       <div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="payYear('${it.id}')">✓ Zapłacone</button><button class="chip" onclick="editYear('${it.id}')">Edytuj</button></div></div></div>`}).join('')}</div>`;
   h+=`<div class="mini" style="padding:0 4px">Pieniądze na subkoncie wypełniają koperty od najbliższego terminu. Po zapłacie odliczanie rusza od nowa. Ok. 2 tygodnie przed terminem przypomnę o zapłacie.</div>`;
   return h+remsH()+seaH+warrantiesH()}
 /* a new yearly expense from a date (the shared subaccount is made the first time); every 24 months is counted from that date */
-export function newYear(name,amount,date,every,sub){const ym=date.slice(0,7),body={id:'y'+rid(),name,amount,month:+date.slice(5,7),day:+date.slice(8),every,sub,...(12%every?{last:addMonths(ym,-every)}:{})};
+export function newYear(name,amount,date,every,sub,who=''){const ym=date.slice(0,7),body={id:'y'+rid(),name,amount,month:+date.slice(5,7),day:+date.slice(8),every,sub,who,...(12%every?{last:addMonths(ym,-every)}:{})};
   S.cfg.years=years();S.cfg.years.push(body);if(!yearAccId()){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);S.hraw={...S.hraw,yearAcc:a.id};merge(H,{yearAcc:a.id});toast('Założyłem wspólne subkonto na wydatki roczne')}
   render();saveYear(body);return body}
 /* „+ Dodaj” in 📅 Roczne i terminy: a ready template or your own; with an amount → a yearly expense (money put aside every month),
@@ -233,14 +233,15 @@ export async function addTerm(){if(guard())return;const cars=projs().filter(p=>p
     {id:'e',label:'Powtarzaj',type:'select',value:'',options:[['','Według gotowego (zwykle co rok)'],['0','Jednorazowo'],['1','Co miesiąc'],['3','Co 3 miesiące'],['6','Co pół roku'],['12','Co rok'],['24','Co 2 lata']]},
     {id:'s',label:'Pozycja budżetu (gdy jest kwota)',type:'select',value:'',options:[['','— wybierz —'],...subOpts('exp')]},
     ...(cars.length?[{id:'c',label:'Pojazd',type:'select',value:'',options:[['','— nie dotyczy —'],...cars.map(p=>[p.id,p.name])]},{id:'k',label:'Albo co ile km (np. serwis)',type:'int',value:''}]:[]),
+    {id:'wh',label:'👥 Dotyczy – komu przypominać',type:'select',value:'',options:[['','Wspólne – oboje'],['Mati','Mati'],['Wercia','Wercia']]},
     {id:'t',label:'Notatka',value:''}],ok:'Dodaj'});
   if(!r)return;const pre=TERM_PRE.find(x=>x[0]==r.p),name=r.n.trim()||(pre?pre[1]:''),every=r.e!==''?+r.e:pre?pre[2]:12,amount=gr(r.a),km=Math.round(pnum(r.k||''))||0;
   if(!name)return toast('Podaj nazwę albo wybierz gotowe','bad');
   if(amount>0){if(!isDate(r.d))return toast('Podaj najbliższy termin płatności','bad');if(!every)return toast('Wydatek z kwotą musi się powtarzać – jednorazowy zakup zaplanuj jako 🎯 Cel','bad');if(km)return toast('Przy „co ile km” zostaw kwotę pustą','bad');
     if(!r.s)return toast('Wybierz pozycję budżetu – tam trafi wydatek','bad');
-    newYear(name,amount,r.d,every,r.s);return toast('Dodano: '+name+' 📅')}
+    newYear(name,amount,r.d,every,r.s,r.wh||'');return toast('Dodano: '+name+' 📅')}
   if(!isDate(r.d)&&!km)return toast('Podaj termin albo liczbę km','bad');
-  const car=r.c?projs().find(p=>p.id==r.c):null,body={id:'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),lastOdo:car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0};
+  const car=r.c?projs().find(p=>p.id==r.c):null,body={id:'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),who:r.wh||'',lastOdo:car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0};
   S.cfg.rems=rems();S.cfg.rems.push(body);render();saveRem(body);toast('Dodano przypomnienie 🔔')}
 export async function setYearAcc(){if(guard())return;const subs=S.cfg.accs.filter(a=>(a.grp=='sub'||a.grp=='sav')&&!a.archived);
   const r=await ask({title:'Subkonto na wydatki roczne',fields:[{id:'a',label:'Konto',type:'select',value:yearAccId()||'',options:[['new','+ Nowe: Subkonto – wydatki roczne'],...subs.map(a=>[a.id,a.name])]}]});if(!r)return;
@@ -251,10 +252,11 @@ export async function editYear(id,pre){if(guard())return;const y0=id?years().fin
     {id:'m',label:'Miesiąc płatności',type:'select',value:String(y0?.month||pre.month||+td().slice(5,7)),options:MN.map((n,i)=>[String(i+1),n])},
     {id:'dy',label:'Dzień płatności (1–31, opcjonalnie)',type:'int',value:y0?.day||'',ph:'przypomnę ok. 2 tygodnie wcześniej'},
     {id:'e',label:'Jak często',type:'select',value:String(y0?.every||12),options:[['12','Co rok'],['6','Co pół roku'],['3','Co kwartał'],['24','Co 2 lata']]},
-    {id:'s',label:'Pozycja budżetu',type:'select',value:y0?.sub||pre.sub||'',options:[['','— wybierz —'],...subOpts('exp')]}],ok:y0?'Zapisz':'Dodaj',alt:y0?'Usuń':null});
+    {id:'s',label:'Pozycja budżetu',type:'select',value:y0?.sub||pre.sub||'',options:[['','— wybierz —'],...subOpts('exp')]},
+    {id:'wh',label:'👥 Dotyczy – komu przypominać',type:'select',value:y0?.who||pre.who||'',options:[['','Wspólne – oboje'],['Mati','Mati'],['Wercia','Wercia']]}],ok:y0?'Zapisz':'Dodaj',alt:y0?'Usuń':null});
   if(!r)return;if(r=='alt'){S.cfg.years=years().filter(x=>x!==y0);render();delYearDb(y0.id);return toast('Usunięto')}
   const amount=gr(r.a);if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');
-  const dy=Math.round(pnum(r.dy||''))||0,body={id:y0?.id||'y'+rid(),name:r.n.trim(),amount,month:+r.m,day:dy>=1&&dy<=31?dy:0,every:+r.e,sub:r.s,...(y0?.last?{last:y0.last}:{})};
+  const dy=Math.round(pnum(r.dy||''))||0,body={id:y0?.id||'y'+rid(),name:r.n.trim(),amount,month:+r.m,day:dy>=1&&dy<=31?dy:0,every:+r.e,sub:r.s,who:r.wh||'',...(y0?.last?{last:y0.last}:{})};
   S.cfg.years=years();let x=y0;if(x)Object.assign(x,body);else{x=body;S.cfg.years.push(x)}
   if(!yearAccId()){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);S.hraw={...S.hraw,yearAcc:a.id};merge(H,{yearAcc:a.id});toast('Założyłem wspólne subkonto na wydatki roczne')}
   render();saveYear(x)}

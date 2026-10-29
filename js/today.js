@@ -2,7 +2,7 @@
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy} from './util.js';
-import {balance,carStats,dueAlerts,fixedDate,fixedTwin,inPeriod,subsMap,ownerOf,yearDueIn} from './logic.js';
+import {balance,carStats,dueAlerts,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 export {ownerOf};
@@ -180,15 +180,16 @@ export function closeDueP(hraw,tx,today,cfg,who){const w=cfg&&who?closeWinP(cfg,
 /* everything that needs attention today */
 export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,hold,debts,market,backup,hraw}=D;if(!cfg)return[];
   const ym=today.slice(0,7),day=+today.slice(8),out=[],cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const accOf=id=>cfg.accs.find(a=>a.id==id);
-  const add=(icon,text,go,label,k='',who=null)=>out.push({icon,text,go,label,k,who});const incs=cfg.incs||[];
-  const st=automatStale(market,today);if(st)add('🤖',`Automat nie pobiera danych od ${st} dni. Sprawdź go na GitHubie.`,{a:'automat'},'Otwórz','bad');
+  /* 🤖 technical matters (automat, backup, IKE/IKZE limits, payslip rules) – only Mati */
+  const TECH='Mati',add=(icon,text,go,label,k='',who=null)=>out.push({icon,text,go,label,k,who});const incs=cfg.incs||[];
+  const st=automatStale(market,today);if(st)add('🤖',`Automat nie pobiera danych od ${st} dni. Sprawdź go na GitHubie.`,{a:'automat'},'Otwórz','bad',TECH);
   for(const x of dueAlerts(cfg.fixed||[],tx,today)){const tw=x.when!='inc'&&fixedTwin(cfg,tx,x.f,x.due.slice(0,7));
-    if(tw){add('💡',`${x.f.name} – jest podobny wpis z ${dmy(tw.date)} (${money(tw.amount,cm[tw.acc])}). To ten rachunek? Odhacz, żeby je połączyć.`,{a:'fixed'},'Połącz','',person(ownerOf(accOf(x.f.acc))));continue}
-    add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – czeka na odhaczenie`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(ownerOf(accOf(x.f.acc))));}
+    if(tw){add('💡',`${x.f.name} – jest podobny wpis z ${dmy(tw.date)} (${money(tw.amount,cm[tw.acc])}). To ten rachunek? Odhacz, żeby je połączyć.`,{a:'fixed'},'Połącz','',person(fixedWho(cfg,x.f)));continue}
+    add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – czeka na odhaczenie`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(fixedWho(cfg,x.f)));}
   /* ⚠️ a fixed payment the account will not cover – a phone notification on the first day of the problem and the day before the payment */
   {const yd=addDays(today,-1),before=new Set(shortP(cfg,tx.filter(t=>t.date<today),yd).map(x=>x.acc+':'+x.fid+':'+x.date.slice(0,7)));
-    for(const x of shortP(cfg,tx,today)){const a=accOf(x.acc),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+ym;if(hraw?.checkIgnore?.[key])continue;
-      out.push({key,icon:'⚠️',text:`${a.name}: ${money(x.bal,cm[x.acc])}, a ${n<=0?'dziś':n==1?'jutro':dmy(x.date)} „${x.name}” ${money(x.amount,cm[x.acc])} – zabraknie ${money(x.miss,cm[x.acc])}. Przelej wcześniej na to konto.`,go:{a:'tr',to:x.acc,amount:x.miss},label:'Przelej',k:n<=1?'bad':'short',who:person(ownerOf(a)),quiet:!(n==1||!before.has(x.acc+':'+x.fid+':'+x.date.slice(0,7)))})}}
+    for(const x of shortP(cfg,tx,today)){const a=accOf(x.acc),f=(cfg.fixed||[]).find(f=>f.id==x.fid),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+ym;if(hraw?.checkIgnore?.[key])continue;
+      out.push({key,icon:'⚠️',text:`${a.name}: ${money(x.bal,cm[x.acc])}, a ${n<=0?'dziś':n==1?'jutro':dmy(x.date)} „${x.name}” ${money(x.amount,cm[x.acc])} – zabraknie ${money(x.miss,cm[x.acc])}. Przelej wcześniej na to konto.`,go:{a:'tr',to:x.acc,amount:x.miss},label:'Przelej',k:n<=1?'bad':'short',who:person(ownerOf(a))||(f?person(fixedWho(cfg,f)):null),quiet:!(n==1||!before.has(x.acc+':'+x.fid+':'+x.date.slice(0,7)))})}}
   const live=new Set(tx.map(t=>t.id));
   for(const s of incs)if(day>=(s.day||10)){const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata zwykle do ${s.day||10}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}
   /* 🎓 the end of ulga dla młodych: from a month before the 26th birthday – later payslips are taxed; the drop estimated from the last payslip of each source */
@@ -199,8 +200,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   if(day>=14&&day<=20)for(const s of incs.filter(s=>s.kind=='b2b'))add('🧾',`JDG (${s.name}): do 20. zapłać ZUS, zdrowotną i podatek.`,{a:'pay'},'Pensje','',person(s.who));
   if(hour>=20&&!tx.some(t=>t.date==today&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val)))add('✍️','Po 20:00 – dziś nic jeszcze nie wpisano. Były jakieś wydatki?',{a:'add'},'Wpisz');
   const ys=yearStateP(cfg,tx,hraw,ym,today);if(ys){if(ys.left)add('📅',`Wydatki roczne: w tym miesiącu odłóż jeszcze ${zl(ys.left)}.`,{a:'year'},'Odłóż');
-    ys.soon.filter(x=>!yearPayP(x.it,tx,today)).forEach(x=>add('⏰',`Wkrótce: ${x.it.name} (${zl(x.it.amount)}) – ${MN[+x.due.slice(5)-1].toLowerCase()}, w kopercie ${zl(x.fill)}.`,{a:'year'},'Zobacz'))}
-  for(const r of cfg.rems||[]){const s=remStateP(r,cfg,tx,today);if(s.due||s.late)add('🔔',`${r.name}${r.next?' – '+dmy(r.next):''}${s.kmLeft!=null?` · zostało ${s.kmLeft.toLocaleString('pl-PL')} km`:''}`,{a:'rem'},'Zobacz',s.late?'bad':'')}
+    ys.soon.filter(x=>!yearPayP(x.it,tx,today)).forEach(x=>add('⏰',`Wkrótce: ${x.it.name} (${zl(x.it.amount)}) – ${MN[+x.due.slice(5)-1].toLowerCase()}, w kopercie ${zl(x.fill)}.`,{a:'year'},'Zobacz','',person(x.it.who)))}
+  for(const r of cfg.rems||[]){const s=remStateP(r,cfg,tx,today);if(s.due||s.late)add('🔔',`${r.name}${r.next?' – '+dmy(r.next):''}${s.kmLeft!=null?` · zostało ${s.kmLeft.toLocaleString('pl-PL')} km`:''}`,{a:'rem'},'Zobacz',s.late?'bad':'',person(r.who))}
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='lent'||!x.until)continue;const d={id,...x},s=debtStateP(d,tx,today);if(!s.left)continue;const n=dd(today,d.until);
     if(n<=7)add('🔺',`${d.party||d.name} – zwrot ${zl(s.left)} ${n<0?'po terminie ('+dmy(d.until)+')':n==0?'dziś':'za '+n+' '+plu(n,'dzień','dni','dni')}`,{a:'lent'},'Zobacz',n<0?'bad':'',person(d.payer))}
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='owe'||!x.saveAcc)continue;const d={id,...x},s=debtStateP(d,tx,today),saved=savedP(id,tx),from=+d.day||1;
@@ -211,22 +212,22 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const m of maturitiesP(cfg,hold,today,30))add(IICON[m.it.kind],`${m.it.kind=='obl'?'Wykup':'Koniec lokaty'}: ${m.it.name} – ${dmy(m.end)}`,{a:'inst',acc:m.a.id},'Zobacz','',person(ownerOf(m.a)));
   const mo=+today.slice(5,7),y=today.slice(0,4),wr=cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   if(mo==12)for(const a of wr.filter(a=>wrapOf(a)=='ikze')){const left=limitOf(a,y,hraw?.limits)-paidInYear(tx,a.id,y);if(left>0)add('🛡️',`${a.name}: do 31.12 możesz wpłacić jeszcze ${zl(left)} (ulga w PIT).`,{a:'tr',to:a.id},'Wpłać','',person(ownerOf(a)))}
-  const lp=limitPropP(market,hraw);if(lp)add('🛡️',`Automat znalazł limity IKE i IKZE na ${lp.year} – potwierdź w Oszczędnościach.`,{a:'sav'},'Zobacz');
-  if(mo==1&&wr.some(a=>['ike','ikze'].includes(wrapOf(a))))add('🛡️',`Nowy rok – sprawdź limity IKE i IKZE na ${y}.`,{a:'limits'},'Limity');
-  if(tx.length){const days=backup?Math.floor((new Date(today+'T12:00:00')-backup.at)/864e5):null;if(!backup||days>=30)add('💾',backup?`Ostatnia kopia danych: ${days} dni temu.`:'Nie zrobiliście jeszcze kopii danych.',{a:'backup'},'Kopia')}
+  const lp=limitPropP(market,hraw);if(lp)add('🛡️',`Automat znalazł limity IKE i IKZE na ${lp.year} – potwierdź w Oszczędnościach.`,{a:'sav'},'Zobacz','',TECH);
+  if(mo==1&&wr.some(a=>['ike','ikze'].includes(wrapOf(a))))add('🛡️',`Nowy rok – sprawdź limity IKE i IKZE na ${y}.`,{a:'limits'},'Limity','',TECH);
+  if(tx.length){const days=backup?Math.floor((new Date(today+'T12:00:00')-backup.at)/864e5):null;if(!backup||days>=30)add('💾',backup?`Ostatnia kopia danych: ${days} dni temu.`:'Nie zrobiliście jeszcze kopii danych.',{a:'backup'},'Kopia','',TECH)}
   for(const t of tx){if(!t.war||t.type!='exp'||t.war<today)continue;const n=dd(today,t.war);
     if(n<=30)add('🛡️',`Gwarancja kończy się ${n?'za '+n+' '+plu(n,'dzień','dni','dni'):'dziś'}: ${t.note||subsMap(cfg)[t.sub]?.name||'zakup'} (${dmy(t.war)}). Coś nie działa? To ostatni moment na reklamację.`,{a:'tx',id:t.id},'Zobacz','',person(t.who))}
   /* 📄 contract end of a fixed payment (internet, phone, insurance…): from 2 months before the end until a month after.
      In „Na dziś” every day until „Załatwione”; a phone notification only on a few days (quiet on the rest). */
   for(const f of cfg.fixed||[]){if(!f.until||f.kind=='inc')continue;const key='umowa:'+f.id+':'+f.until;if(hraw?.checkIgnore?.[key])continue;const n=dd(today,f.until);if(n>61||n<-31)continue;
     out.push({key,icon:'📄',text:n>=0?`„${f.name}” – umowa kończy się ${n?'za '+n+' '+plu(n,'dzień','dni','dni'):'dziś'} (${dmy(f.until)}). Dobry moment, żeby porównać oferty albo negocjować cenę.`:`„${f.name}” – umowa skończyła się ${dmy(f.until)}. Nowa umowa? Wpisz jej koniec w opłacie stałej.`,
-      go:{a:'fixEdit',id:f.id},label:'Zobacz',k:'umowa',who:person(ownerOf(accOf(f.acc))),quiet:!(n>=59||n==30||n==7||n==0)})}
+      go:{a:'fixEdit',id:f.id},label:'Zobacz',k:'umowa',who:person(fixedWho(cfg,f)),quiet:!(n>=59||n==30||n==7||n==0)})}
   /* 🧾 a new year: the payslip rules (ZUS limit, tax thresholds – the „Podpowiedz z brutto” estimate) are from an earlier year – ask for an update (January–February) */
-  if(mo<=2&&+y>RULES_YEAR&&(cfg.incs||[]).length){const key='rules:'+y;if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🧾',text:`Nowy rok ${y}: zasady pensji w aplikacji (limit ZUS, progi podatku, „Podpowiedz z brutto”) są jeszcze z ${RULES_YEAR}. Poproś Claude o aktualizację na ${y}.`,go:{a:'pay'},label:'Pensje',k:'rules',who:'Mati',quiet:mo>1||+today.slice(8)>3})}
+  if(mo<=2&&+y>RULES_YEAR&&(cfg.incs||[]).length){const key='rules:'+y;if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🧾',text:`Nowy rok ${y}: zasady pensji w aplikacji (limit ZUS, progi podatku, „Podpowiedz z brutto”) są jeszcze z ${RULES_YEAR}. Poproś Claude o aktualizację na ${y}.`,go:{a:'pay'},label:'Pensje',k:'rules',who:TECH,quiet:mo>1||+today.slice(8)>3})}
   if(mo==1)for(const w of ['Mati','Wercia']){const p=pitSummaryP(cfg,tx,String(+y-1),w,hraw);if(p.n||p.ikze.length)add('🧾',`${w}: zestawienie ulg do PIT za ${+y-1} jest gotowe.`,{a:'pit',y:String(+y-1)},'Pokaż','',w)}
   /* 📅 a yearly expense to pay: about 14 days before its date, also when the envelope is full; „Załatwione” = paid some other way */
   for(const it of cfg.years||[]){const p=yearPayP(it,tx,today);if(!p)continue;const key='yearpay:'+it.id+':'+p.m;if(hraw?.checkIgnore?.[key])continue;const fill=ys?.list.find(x=>x.it.id==it.id)?.fill;
-    out.push({key,icon:'📅',text:`${it.name} – ${zl(it.amount)} ${p.n<0?'po terminie ('+dmy(p.due)+')':p.n?'do zapłaty za '+p.n+' '+plu(p.n,'dzień','dni','dni')+' ('+dmy(p.due)+')':'do zapłaty dziś'}${fill!=null&&fill<it.amount?` · w kopercie ${zl(fill)}`:''}.`,go:{a:'year'},label:'Zapłać',k:p.n<0?'bad':'year',who:null,quiet:!(p.n==14||p.n==3||p.n==0||p.n==-1)})}
+    out.push({key,icon:'📅',text:`${it.name} – ${zl(it.amount)} ${p.n<0?'po terminie ('+dmy(p.due)+')':p.n?'do zapłaty za '+p.n+' '+plu(p.n,'dzień','dni','dni')+' ('+dmy(p.due)+')':'do zapłaty dziś'}${fill!=null&&fill<it.amount?` · w kopercie ${zl(fill)}`:''}.`,go:{a:'year'},label:'Zapłać',k:p.n<0?'bad':'year',who:person(it.who),quiet:!(p.n==14||p.n==3||p.n==0||p.n==-1)})}
   /* 💰 interest of an account: on the last day of its period and 10 days after – the estimate ready to book; 🎁 a promotion ends in 14 days; 🧾 interest without the bank's tax → PIT-38 */
   for(const a of cfg.accs){const I=intOf(a);if(!I||a.archived)continue;const P=intPeriod(I,ym),Pp=intPeriod(I,addMonths(P.from.slice(0,7),-1)),Q=today>=P.to?P:dd(Pp.to,today)<=10?Pp:null;
     if(Q&&!tx.some(t=>t.intP===Q.key&&t.acc===a.id)){const key='int:'+a.id+':'+Q.key;if(!hraw?.checkIgnore?.[key]){const c=intCalc(cfg,tx,a,Q.from,Q.to,balance);
@@ -241,9 +242,9 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const f of (cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'))){const q=f.najem=='q',mo0=+ym.slice(5);if(q&&![1,4,7,10].includes(mo0))continue;if(day>25)continue;
     const per=q?[3,2,1].map(k=>addMonths(ym,-k)):[addMonths(ym,-1)],got=per.reduce((a,m)=>a+inPeriod(tx,m).filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((b,t)=>b+t.amount,0),0);if(!got)continue;
     const key='najem:'+f.id+':'+per[0],tax=Math.round(got*0.085/100)*100;if(hraw?.checkIgnore?.[key])continue;
-    out.push({key,icon:'🏠',text:`Ryczałt od najmu („${f.name}”) za ${q?'kwartał '+per.map(m=>MN[+m.slice(5)-1].slice(0,3).toLowerCase()).join('–'):MN[+per[0].slice(5)-1].toLowerCase()}: ok. ${zl(tax)} (8,5% z ${zl(got)}) – zapłać do 20. ${MNG[mo0-1]} na mikrorachunek podatkowy.`,go:{a:'fixed'},label:'Zobacz',k:day>20?'bad':'najem',who:person(ownerOf(accOf(f.acc))),quiet:!(day==10||day==18)})}
-  {const mo0=+ym.slice(5),ny=(cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'));if(ny.length&&(mo0==2||(mo0==1&&day>=15))){const key='pit28:'+(+y-1);
-    if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🏠',text:`PIT-28 za najem w ${+y-1} r. – złóż do końca lutego (Twój e-PIT na podatki.gov.pl).`,go:{a:'fixed'},label:'Zobacz',k:'pit',who:null,quiet:!((mo0==2&&(day==1||day==20)))})}}
+    out.push({key,icon:'🏠',text:`Ryczałt od najmu („${f.name}”) za ${q?'kwartał '+per.map(m=>MN[+m.slice(5)-1].slice(0,3).toLowerCase()).join('–'):MN[+per[0].slice(5)-1].toLowerCase()}: ok. ${zl(tax)} (8,5% z ${zl(got)}) – zapłać do 20. ${MNG[mo0-1]} na mikrorachunek podatkowy.`,go:{a:'fixed'},label:'Zobacz',k:day>20?'bad':'najem',who:person(fixedWho(cfg,f)),quiet:!(day==10||day==18)})}
+  {const mo0=+ym.slice(5),ny=(cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'));if(ny.length&&(mo0==2||(mo0==1&&day>=15))){const key='pit28:'+(+y-1),ws=[...new Set(ny.map(f=>person(fixedWho(cfg,f))))];
+    if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🏠',text:`PIT-28 za najem w ${+y-1} r. – złóż do końca lutego (Twój e-PIT na podatki.gov.pl).`,go:{a:'fixed'},label:'Zobacz',k:'pit',who:ws.length==1?ws[0]:null,quiet:!((mo0==2&&(day==1||day==20)))})}}
   /* 🧾 the yearly PIT: from 1 March until „✓ Złożone” (each of you apart), deadline 30 April; a phone notification on 1 March, 1 and 20 April */
   if(mo==3||mo==4)for(const w of ['Mati','Wercia']){const key='pit:'+(+y-1)+':'+w;if(hraw?.checkIgnore?.[key])continue;
     out.push({key,icon:'🧾',text:`${w}: PIT za ${+y-1} r. – termin 30 kwietnia. Twój e-PIT jest już gotowy, a zestawienie ulg i IKZE masz w aplikacji.`,go:{a:'pit',y:String(+y-1)},label:'Zestawienie',k:mo==4&&day>=20?'bad':'pit',who:w,quiet:!((mo==3&&day==1)||(mo==4&&(day==1||day==20)))})}

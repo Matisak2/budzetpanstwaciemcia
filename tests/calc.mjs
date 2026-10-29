@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho} from '../js/logic.js';
+import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
@@ -47,7 +47,7 @@ const N=' ';
 /* ---------- 📌 wpis z ＋ a opłata stała / wydatek roczny (bez podwójnego liczenia) ---------- */
 { const cfg={accs:[{id:'a',grp:'cur'}],cats:[{id:'c',type:'exp',name:'Dom',subs:[{id:'czy',name:'Czynsz'},{id:'net',name:'Netflix'},{id:'pr',name:'Prąd'},{id:'jed',name:'Jedzenie'},{id:'oc',name:'OC'}]}],
     fixed:[{id:'f1',name:'Czynsz',amount:185000,day:10,sub:'czy',acc:'a'},{id:'f2',name:'Netflix',amount:4300,day:20,sub:'net',acc:'a'},{id:'f3',name:'Prąd',amount:18000,day:15,sub:'pr',acc:'a',vary:true},{id:'f4',name:'Spotify',amount:2999,day:12,sub:'jed',acc:'a'}],
-    years:[{id:'y1',name:'OC auta',amount:120000,month:11,day:5,every:12,sub:'oc'}]};
+    years:[{id:'y1',name:'OC auta',amount:120000,month:11,day:1,every:12,sub:'oc'}]};
   const E=(sub,amount,date,note='')=>({type:'exp',sub,amount,date,note,acc:'a'});
   eq('Czynsz 1 850 → opłata stała',fixedMatch(cfg,[],E('czy',185000,'2026-10-09'))?.id,'f1');
   eq('Czynsz +10% → dalej ta sama',fixedMatch(cfg,[],E('czy',203500,'2026-10-09'))?.id,'f1');
@@ -111,6 +111,13 @@ const N=' ';
 { const cfg={accs:[{id:'m',name:'ING Mati',owner:'Mati'},{id:'w',name:'Revolut',owner:'Wercia'},{id:'s',name:'Wspólne',owner:'Wspólne'},{id:'x',name:'Revolut Wercia'}]};
   eq('Opłata z konta Matiego → Mati',fixedWho(cfg,{acc:'m'}),'Mati');eq('Ze wspólnego → Wspólne',fixedWho(cfg,{acc:'s'}),'Wspólne');
   eq('„Dotyczy” wygrywa z kontem',fixedWho(cfg,{acc:'s',who:'Wercia'}),'Wercia');eq('Konto bez właściciela – z nazwy',fixedWho(cfg,{acc:'x'}),'Wercia');
+  /* 👥 część 2: na telefonie widać swoje i wspólne, nie drugiej osoby; powiadomienia tak samo */
+  eq('Swoje i wspólne widać',[seenBy('Mati','Mati'),seenBy('Wspólne','Wercia'),seenBy(null,'Wercia')],[true,true,true]);eq('Cudze nie',seenBy('Mati','Wercia'),false);
+  const D={cfg:{...cfg,cats:[],fixed:[{id:'f1',name:'Telefon M',amount:5000,day:10,acc:'s',who:'Mati'},{id:'f2',name:'Prąd',amount:20000,day:10,acc:'s'},{id:'f3',name:'Siłownia',amount:9900,day:10,acc:'w'}],
+    years:[{id:'y1',name:'OC auta',amount:120000,month:11,day:1,every:12,sub:'x',who:'Mati'}],rems:[{id:'r1',name:'Fryzjer',next:'2026-10-21',every:0,who:'Wercia'}]},tx:[{id:'t',type:'exp',amount:100,date:'2026-10-01',acc:'m',sub:'x'}],slips:{},hold:{},debts:{},market:{},backup:null,hraw:{}};
+  const it=todayItems(D,{today:'2026-10-20',checks:false}),whoOf=t=>it.find(x=>x.text.includes(t))?.who;
+  eq('Na dziś: opłata „Dotyczy: Mati” ze wspólnego → Mati',whoOf('Telefon M'),'Mati');eq('Wspólna opłata → oboje',whoOf('Prąd'),null);eq('Z konta Werci → Wercia',whoOf('Siłownia'),'Wercia');
+  eq('Wydatek roczny i przypomnienie z „Dotyczy”',[whoOf('OC auta'),whoOf('Fryzjer')],['Mati','Wercia']);eq('Kopia danych – tylko Mati',whoOf('kopii danych'),'Mati');
 }
 /* ---------- 🐾 kotki: uwaga → „Rozumiem, kociaki” → ciekawostka dnia ---------- */
 { eq('366 ciekawostek, każda inna',[FACTS.length,new Set(FACTS).size],[366,366]);

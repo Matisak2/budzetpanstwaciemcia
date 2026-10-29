@@ -165,22 +165,23 @@ export function warrantiesH(){const today=td(),sm=subsMap(S.cfg),L=liveOf(S.tx).
 export function remsH(){const L=rems().map(r=>({r,st:remState(r)})).sort((a,b)=>(a.r.next||'9999').localeCompare(b.r.next||'9999'));if(!L.length)return'';
   return`<div class="h2" style="padding:0 4px">🔔 Terminy bez odkładania</div><div class="list">${L.map(({r,st})=>`<div class="acc${st.late?' late':''}"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(r.name)}</b>${st.late?'<span class="pill over">po terminie</span>':st.due?'<span class="pill near">wkrótce</span>':''}</div>
     <div class="mini">${r.next?`termin ${r.next.split('-').reverse().join('.')}${st.days!=null?` · ${st.days<0?Math.abs(st.days)+' dni temu':st.days==0?'dziś':'za '+st.days+' '+plu(st.days,'dzień','dni','dni')}`:''}`:''}${r.km?`${r.next?' · ':''}co ${r.km.toLocaleString('pl-PL')} km${st.kmLeft!=null?` · zostało ${st.kmLeft.toLocaleString('pl-PL')} km`:''}`:''}${+r.every?` · co ${r.every} mies.`:' · jednorazowe'}${r.proj&&projById(r.proj)?' · '+esc(projById(r.proj).name):''}</div>
-    ${r.note?`<div class="mini">📝 ${esc(r.note)}</div>`:''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="doneRem('${r.id}')">✓ Zrobione</button><button class="chip" onclick="editRem('${r.id}')">Edytuj</button></div></div></div>`).join('')}</div>`}
+    ${r.who?`<div class="mini">👤 ${esc(r.who)}</div>`:''}${r.note?`<div class="mini">📝 ${esc(r.note)}</div>`:''}<div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="doneRem('${r.id}')">✓ Zrobione</button><button class="chip" onclick="editRem('${r.id}')">Edytuj</button></div></div></div>`).join('')}</div>`}
 export async function editRem(id){if(guard())return;const r0=id?rems().find(x=>x.id==id):null,cars=projs().filter(p=>p.kind=='car');
   const r=await ask({title:r0?'Przypomnienie':'Nowe przypomnienie',fields:[
     {id:'n',label:'Nazwa',value:r0?.name||'',ph:'np. Wymiana klocków'},{id:'d',label:'Termin',type:'date',value:r0?.next||''},
     {id:'e',label:'Powtarzaj',type:'select',value:String(r0?.every??12),options:[['0','Jednorazowo'],['1','Co miesiąc'],['3','Co 3 miesiące'],['6','Co pół roku'],['12','Co rok'],['24','Co 2 lata']]},
     ...(cars.length?[{id:'c',label:'Pojazd',type:'select',value:r0?.proj||'',options:[['','— nie dotyczy —'],...cars.map(p=>[p.id,p.name])]},{id:'k',label:'Albo co ile km (np. serwis)',type:'int',value:r0?.km||''}]:[]),
     {id:'t',label:'Notatka',value:r0?.note||''},
+    {id:'wh',label:'👥 Dotyczy – komu przypominać',type:'select',value:r0?.who||'',options:[['','Wspólne – oboje'],['Mati','Mati'],['Wercia','Wercia']]},
     {id:'a',label:'Kwota (zł, opcjonalnie) – z kwotą będę liczyć odkładanie',type:'decimal',value:'',ph:'puste = samo przypomnienie'},{id:'s',label:'Pozycja budżetu (gdy jest kwota)',type:'select',value:'',options:[['','— wybierz —'],...subOpts('exp')]}],ok:r0?'Zapisz':'Dodaj',alt:r0?'Usuń':null});
   if(!r)return;if(r=='alt'){S.cfg.rems=rems().filter(x=>x!==r0);render();delRemDb(r0.id);return}
   /* with an amount the date becomes a yearly expense (money put aside every month) – the reminder moves there */
   const amt=gr(r.a);if(amt>0){const nm=r.n.trim()||r0?.name,ev=+r.e;
     if(!nm)return toast('Podaj nazwę','bad');if(!isDate(r.d))return toast('Podaj termin płatności','bad');if(!ev)return toast('Wydatek z kwotą musi się powtarzać','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');
-    if(r0){S.cfg.rems=rems().filter(x=>x!==r0);delRemDb(r0.id)}newYear(nm,amt,r.d,ev,r.s);return toast('Przeniesione do odkładania: '+nm+' 📅')}
+    if(r0){S.cfg.rems=rems().filter(x=>x!==r0);delRemDb(r0.id)}newYear(nm,amt,r.d,ev,r.s,r.wh||'');return toast('Przeniesione do odkładania: '+nm+' 📅')}
   const name=r.n.trim(),every=+r.e;
   if(!name)return toast('Podaj nazwę','bad');const km=Math.round(pnum(r.k||''))||0;if(!isDate(r.d)&&!km)return toast('Podaj termin albo liczbę km','bad');
-  const car=r.c?projById(r.c):null,body={id:r0?.id||'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),lastOdo:r0?.lastOdo??(car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0)};
+  const car=r.c?projById(r.c):null,body={id:r0?.id||'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),who:r.wh||'',lastOdo:r0?.lastOdo??(car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0)};
   S.cfg.rems=rems();let x=r0;if(x)Object.assign(x,body);else{x=body;S.cfg.rems.push(x)}render();saveRem(x);toast(r0?'Zapisano':'Dodano przypomnienie 🔔')}
 export async function doneRem(id){const r=rems().find(x=>x.id==id);if(!r)return;const st=remState(r);
   if(!+r.every&&!r.km){if(!await ask({title:'Zrobione: '+r.name,text:'To przypomnienie było jednorazowe – usunąć je?',ok:'Usuń'}))return;S.cfg.rems=rems().filter(x=>x!==r);render();delRemDb(r.id);return toast('Gotowe ✓')}

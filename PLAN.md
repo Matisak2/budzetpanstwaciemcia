@@ -82,6 +82,14 @@ Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). N
 - [x] 🔒 Osoba przypisana do loginu: `users/{uid}` `{who,lock}` (bez adresów e-mail w kodzie), jedno pytanie przy starcie (`askWhoLock`), w ⚙️ „Zalogowano jako…”, `setWho` zablokowane
 - [x] 🙀 Wpis z konta drugiej osoby: pytanie kotków (`otherAccOk` w `sheet.js`), „Tak, wiem” = bez pytań o to konto do końca dnia (`mw_oth`); wspólne i przelewy NA konto – bez pytania
 
+## Etap X8. Każde ma swoje – część 2 (uzgodnione 29.10.2026)
+- [x] Na Budżecie („Do odhaczenia”), w „Na dziś”, w dymku kotków i w powiadomieniach – tylko swoje i wspólne sprawy (`seenBy` w `logic.js`; opłaty stałe, umowa, najem, „nie starczy” według `fixedWho`)
+- [x] „👥 Dotyczy” w wydatkach rocznych i przypomnieniach (`who`, puste = wspólne)
+- [x] Sprawy techniczne (kopia, automat, limity IKE/IKZE, zasady pensji) – tylko Mati
+
+## Etap X9. Ustawienia jako kafelki (uzgodnione 29.10.2026)
+- [ ] ⚙️ = 6 kafelków (Konta · Kategorie i drobne · Ten telefon · Bezpieczeństwo · Automaty · Pomoc), po stuknięciu osobny ekran z „‹ Ustawienia”, nic nie rozwinięte samo
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 
