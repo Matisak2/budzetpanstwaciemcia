@@ -90,6 +90,9 @@ Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). N
 ## Etap X9. Ustawienia jako kafelki (uzgodnione 29.10.2026)
 - [x] ⚙️ = 6 kafelków (Konta · Kategorie i drobne · Ten telefon · Bezpieczeństwo · Automaty · Pomoc), po stuknięciu osobny ekran z „‹ Ustawienia”, nic nie rozwinięte samo
 
+## Etap X10. Kwiatki dla Werci (uzgodnione 29.10.2026)
+- [x] Tylko Wercia + różowy kolor (`body.wf`): gałązka przy powitaniu, kwiatek przy miesiącu, pod zakładką i w komunikatach, doniczka na pustych ekranach, kwiatki w kafelkach ⚙️, girlanda w okienku wpisu, kwiatki na kartach Analizy i w slajdach (Wrapped), cele jako łodyżki zakwitające na 100%, płatki wiśni zamiast konfetti (paski budżetu bez zmian)
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

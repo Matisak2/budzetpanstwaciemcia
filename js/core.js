@@ -29,9 +29,10 @@ export const catL=c=>(S.cfg.cats.findIndex(x=>x.id===c.id)+1)+'. '+cleanCat(c.na
 
 /* ---------- decorations ---------- */
 export function confetti(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const box=document.createElement('div');box.className='confetti';const cols=['#fbcfe8','#bbf0d6','#dfe5ff','#fde68a','#fecdd3','#c7f0dd','#e9d5ff'];
-  for(let i=0;i<70;i++){const p=document.createElement('i');p.style.left=Math.random()*100+'%';p.style.background=cols[i%cols.length];p.style.animationDelay=(Math.random()*.6)+'s';p.style.animationDuration=(1.8+Math.random()*1.4)+'s';p.style.transform=`rotate(${Math.random()*360}deg)`;if(i%3==0)p.style.borderRadius='50%';box.append(p)}
-  document.body.append(box);setTimeout(()=>box.remove(),3800)}
+  /* 🌸 on Wercia's pink phone: falling cherry petals instead of confetti */
+  const pet=document.body.classList.contains('wf'),box=document.createElement('div');box.className='confetti'+(pet?' petals':'');const cols=pet?['#fbcfe8','#f9a8d4','#fce7f3','#f472b6','#fff']:['#fbcfe8','#bbf0d6','#dfe5ff','#fde68a','#fecdd3','#c7f0dd','#e9d5ff'];
+  for(let i=0;i<70;i++){const p=document.createElement('i');p.style.left=Math.random()*100+'%';p.style.background=cols[i%cols.length];p.style.animationDelay=(Math.random()*.6)+'s';p.style.animationDuration=(1.8+Math.random()*1.4)*(pet?1.3:1)+'s';p.style.transform=`rotate(${Math.random()*360}deg)`;if(i%3==0&&!pet)p.style.borderRadius='50%';box.append(p)}
+  document.body.append(box);setTimeout(()=>box.remove(),pet?5200:3800)}
 kotki.mode=ls.get('mw_kotki')||'lots';
 /* greeting on the Budget screen: Bailey or Ivo says one thing (special day, something to fix, good news or an everyday line) */
 export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=td(),ym=today.slice(0,7),who=S.who;

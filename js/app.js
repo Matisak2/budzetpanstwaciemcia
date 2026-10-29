@@ -50,7 +50,7 @@ let rq=0;const renderSoon=()=>{if(!rq)rq=requestAnimationFrame(()=>{rq=0;render(
 export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
   const tabOf=S.tab=='sav'||S.tab=='acc'?'maj':S.tab=='ana'?'dash':S.tab;document.querySelectorAll('.tabs [data-tab]').forEach(b=>{if(b.dataset.tab==tabOf)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   if(S.tab=='set')$('gearBtn').setAttribute('aria-current','page');else $('gearBtn').removeAttribute('aria-current');
-  document.body.classList.toggle('w-theme',S.who=='Wercia');lookApply();
+  document.body.classList.toggle('w-theme',S.who=='Wercia');document.body.dataset.tab=S.tab;lookApply();
   const[y,m]=S.ym.split('-').map(Number);applySeason();$('mlabel').textContent=S.tab=='ana'&&S.ana=='y'?'Rok '+y:SEASON[m-1][2]+' '+MN[m-1]+' '+y;$('mlabel').dataset.short=S.tab=='ana'&&S.ana=='y'?'':SEASON[m-1][2]+' '+MN[m-1].slice(0,3)+' '+y;
   if(!S.cfg)return;
   const ae=document.activeElement;if(ae&&ae.tagName=='INPUT'&&$('app').contains(ae)){S.pend=true;return}S.pend=false;
@@ -188,7 +188,7 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
       if(free<0)x+=`<div class="note bad">⚠️ Na kontach jest mniej, niż przydzieliliście do celów. Zabierzcie ${zl(-free)} z któregoś celu.</div>`;
       if(!goals.length)x+=catsEmpty(`Cele działają jak koperty: część pieniędzy z kont powyżej przydzielacie na konkretny cel, np. ${owner=='Wspólne'?'Wakacje, Remont':'Nowy laptop, Kurs'}.`,1,'envelope');
       x+=goals.map(g=>{const p=g.pr,wd=Math.min(100,p.pct);
-        return`<div class="goal"><div class="r1"><b>${p.done?'🎉 ':''}${esc(g.name)}</b><span class="pill ${p.done?'ok':'low'}">${Math.floor(p.pct)}%</span></div><div class="gbar"><i style="width:${wd.toFixed(1)}%"></i></div>
+        return`<div class="goal"><div class="r1"><b>${p.done?'🎉 ':''}${esc(g.name)}</b><span class="pill ${p.done?'ok':'low'}">${Math.floor(p.pct)}%</span></div><div class="gbar${p.done?' bloom':''}"><i style="width:${wd.toFixed(1)}%"></i></div>
           <div class="r1 mini"><span><b class="num" style="color:var(--fg)">${zl0(p.saved)}</b> z ${zl0(g.target)}</span><span>${p.done?'Cel osiągnięty!':'brakuje '+zl0(p.left)}</span></div>
           ${p.perMonth?`<div class="mini">Do ${MNG[+g.deadline.slice(5,7)-1]} ${g.deadline.slice(0,4)}: przydzielajcie ok. <b style="color:var(--fg)">${zl0(p.perMonth)}</b> miesięcznie (${p.months} mies.)</div>`:''}
           <div class="btns" style="gap:6px"><button class="btn sm primary" onclick="allocGoal('${g.id}',1)">+ Przydziel</button>${p.saved>0?`<button class="btn sm" onclick="allocGoal('${g.id}',-1)">− Zabierz</button>`:''}<button class="btn sm" onclick="editGoal('${g.id}')">Edytuj</button></div></div>`}).join('');
@@ -203,7 +203,7 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
       const gainL=(g,when)=>g?`<div class="mini">📈 Zyski ${when}: <b class="${g>0?'t-inc':'t-exp'}">${g>0?'+':'−'}${zl(Math.abs(g))}</b> – zmiana kursów i wycen oraz 💰 odsetki, nie liczą się do odłożonych.</div>`:'';
       h+=`<section class="chart"><div class="ct"><b>Ile odłożyliście</b><span class="mini">wpłaty na oszczędności i inwestycje (z PPK) minus wypłaty – bez zmiany kursów</span></div>
         <div class="kpis" style="gap:8px"><div class="kpi k-em"><div class="l">${MN[+S.ym.slice(5)-1]}</div><div class="v num ${put<0?'t-exp':''}">${put>0?'+':''}${zl(put)}</div>${tg?`<div class="s">cel ${zl0(tg)} · ${Math.max(0,Math.round(put/tg*100))}%</div>`:''}</div><div class="kpi k-sk"><div class="l">Rok ${S.ym.slice(0,4)}</div><div class="v num ${yF.flow<0?'t-exp':''}">${yF.flow>0?'+':''}${zl(yF.flow)}</div>${tg?`<div class="s">cel ${zl0(tg*(+S.ym.slice(5)))} do końca ${MNG[+S.ym.slice(5)-1]}</div>`:''}</div></div>
-        ${tg?`<div class="gbar"><i style="width:${Math.min(100,Math.max(0,put/tg*100)).toFixed(1)}%"></i></div><div class="mini">${put>=tg?'🎉 Cel na ten miesiąc osiągnięty!':`Do celu w tym miesiącu brakuje ${zl0(tg-Math.max(0,put))}.`}</div>`:''}
+        ${tg?`<div class="gbar stem${put>=tg?' bloom':''}"><i style="width:${Math.min(100,Math.max(0,put/tg*100)).toFixed(1)}%"></i></div><div class="mini">${put>=tg?'🎉 Cel na ten miesiąc osiągnięty!':`Do celu w tym miesiącu brakuje ${zl0(tg-Math.max(0,put))}.`}</div>`:''}
         ${gainL(flowM.gain,'w tym miesiącu')}${yF.gain&&yF.gain!=flowM.gain?gainL(yF.gain,'w '+S.ym.slice(0,4)+' r.'):''}
         ${coins?`<div class="mini">🪙 w tym z drobnych: <b style="color:var(--fg)">${zl(coins)}</b></div>`:''}
         <button class="btn sm" style="align-self:flex-start" onclick="setSavTarget()">${tg?'Zmień cel miesięczny ('+zl0(tg)+')':'+ Ustaw cel: ile odkładać co miesiąc'}</button></section>`;

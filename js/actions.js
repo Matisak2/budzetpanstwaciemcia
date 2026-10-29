@@ -121,7 +121,7 @@ export function moveCat(ci,d){if(guard())return;const j=ci+d;if(j<0||j>=S.cfg.ca
 /* 🎨 the look of this phone: accent colour (default: Wercia pink, Mati mint) and text size */
 export const ACCENTS=[['mint','Miętowy','#a7f3d0'],['pink','Różowy','#fbcfe8'],['lav','Lawendowy','#ddd6fe'],['sky','Błękitny','#bae6fd'],['peach','Brzoskwiniowy','#fed7aa'],['lemon','Cytrynowy','#fef08a']];
 export const accOf=()=>ls.get('mw_acc')||(S.who=='Wercia'?'pink':'mint');
-export function lookApply(){document.body.dataset.acc=accOf();document.body.dataset.size=ls.get('mw_size')||'0';priv.on=ls.get('mw_hide')=='1';document.body.classList.toggle('hidev',priv.on)}
+export function lookApply(){document.body.dataset.acc=accOf();document.body.dataset.size=ls.get('mw_size')||'0';priv.on=ls.get('mw_hide')=='1';document.body.classList.toggle('hidev',priv.on);document.body.classList.toggle('wf',S.who=='Wercia'&&accOf()=='pink')}
 export function setHide(on){setLook('mw_hide',on?'1':'0');toast(on?'🙈 Kwoty ukryte na tym telefonie':'👀 Kwoty znów widać')}
 export function setLook(k,v){ls.set(k,v);lookApply();render()}
 export const lookH=()=>`<div class="card"><h3>🎨 Wygląd</h3><div class="accs" role="group" aria-label="Kolor">${ACCENTS.map(([k,n,c])=>`<button class="accdot" style="background:${c}" aria-pressed="${accOf()==k}" aria-label="${n}" title="${n}" onclick="setLook('mw_acc','${k}')"></button>`).join('')}</div>
