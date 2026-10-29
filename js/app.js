@@ -44,7 +44,10 @@ function fitNums(){document.querySelectorAll('#app .kpi .v,#app .worth .v').forE
 const majSegH=()=>`<div class="seg seg2 majseg">${[['sav','🐷 Oszczędności'],['acc','👛 Konta']].map(([k,l])=>`<button aria-pressed="${S.tab==k}" onclick="${k=='acc'?"S.accView='acc';":''}goTab('${k}')">${segL(l)}</button>`).join('')}</div>`;
 function setAccSub(k){S.accSub=k;window.scrollTo(0,0);render()}
 
-export function render(){
+/* ⚡ changes from Firestore (several collections, a local write and then the server's confirmation) are drawn once per frame;
+   render() itself stays immediate – code that calls it reads the screen right after */
+let rq=0;const renderSoon=()=>{if(!rq)rq=requestAnimationFrame(()=>{rq=0;render()})};
+export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
   const tabOf=S.tab=='sav'||S.tab=='acc'?'maj':S.tab=='ana'?'dash':S.tab;document.querySelectorAll('.tabs [data-tab]').forEach(b=>{if(b.dataset.tab==tabOf)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   if(S.tab=='set')$('gearBtn').setAttribute('aria-current','page');else $('gearBtn').removeAttribute('aria-current');
   document.body.classList.toggle('w-theme',S.who=='Wercia');lookApply();
@@ -408,22 +411,23 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   $('app').innerHTML=`<div class="load">${kotki.mode=='off'?'':scene('window')}Wczytywanie budżetu…</div>`;
   const onErr=e=>{err(e);if(e?.code=='permission-denied')$('app').innerHTML='<div class="load">Brak dostępu do danych.<br><br>Sprawdź reguły Firestore albo czy ten e-mail jest na liście.</div>'};
   unsub.push(onSnapshot(H,s=>{
-    if(s.exists()){const raw=s.data(),c=fromDoc(clone(raw));const leg=c.legacy;delete c.legacy;S.hraw=raw;S.cfg=c;if(!S.pushReady)S.pushReady=checkPush();S.savTarget=raw.savTarget||0;render();setTimeout(maybeIntro,700);if(leg&&!s.metadata.fromCache)saveCfg();
+    if(s.exists()){const raw=s.data(),c=fromDoc(clone(raw));const leg=c.legacy;delete c.legacy;S.hraw=raw;S.cfg=c;if(!S.pushReady)S.pushReady=checkPush();S.savTarget=raw.savTarget||0;renderSoon();setTimeout(maybeIntro,700);if(leg&&!s.metadata.fromCache)saveCfg();
       /* (one-time changes of 2025–26 – IKE/IKZE/PPK/shared accounts, „Zwroty”, subaccounts – removed in Oct 2026: done long ago, and the default accounts have them) */
       if(!leg&&!s.metadata.fromCache&&c.cats.some(k=>k.hue==null))c.cats.forEach((k,i)=>{if(k.hue==null){k.hue=HUES[i%HUES.length];saveCat(k)}});}
-    else if(!s.metadata.fromCache&&!seeding){seeding=true;S.cfg=seed();render();saveCfg()}
+    else if(!s.metadata.fromCache&&!seeding){seeding=true;S.cfg=seed();renderSoon();saveCfg()}
   },onErr));
-  unsub.push(onSnapshot(MC(),{includeMetadataChanges:true},s=>{const all=[];S.months=new Set();
+  /* only the sync state changed (e.g. the server confirmed a write) – the label, not the whole list and screen again */
+  unsub.push(onSnapshot(MC(),{includeMetadataChanges:true},s=>{if(S.months&&s.docChanges&&!s.docChanges().length)return syncLabel(s.metadata);const all=[];S.months=new Set();
     s.docs.forEach(d=>{S.months.add(d.id);const m=d.data()?.tx||{};for(const[id,t]of Object.entries(m))all.push({id,...t})});
-    S.tx=all;syncLabel(s.metadata);render()},onErr));
-  unsub.push(onSnapshot(PLC(),{includeMetadataChanges:true},s=>{const p={};s.docs.forEach(d=>p[d.id]={...d.data()});S.plans=p;S.plansSrv=!s.metadata.fromCache;render()},onErr));
-  unsub.push(onSnapshot(META(),s=>{S.backup=s.exists()?s.data():null;render()},onErr));
-  unsub.push(onSnapshot(RMETA(),s=>{S.rcptMeta=s.exists()?s.data():null;if(S.tab=='set')render()},onErr));
-  unsub.push(onSnapshot(MARKET(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.market=p;render()},onErr));
-  unsub.push(onSnapshot(DEBTS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.debts=p;render()},onErr));
-  unsub.push(onSnapshot(HOLD(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.hold=p;render()},onErr));
-  unsub.push(onSnapshot(SLIPS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data().s||{}));S.slips=p;render()},onErr));
-  unsub.push(onSnapshot(GOALS(),s=>{const g={};s.docs.forEach(d=>g[d.id]=clone(d.data()));S.goals=g;render()},onErr));
+    S.tx=all;syncLabel(s.metadata);renderSoon()},onErr));
+  unsub.push(onSnapshot(PLC(),{includeMetadataChanges:true},s=>{const p={};s.docs.forEach(d=>p[d.id]={...d.data()});S.plans=p;S.plansSrv=!s.metadata.fromCache;renderSoon()},onErr));
+  unsub.push(onSnapshot(META(),s=>{S.backup=s.exists()?s.data():null;renderSoon()},onErr));
+  unsub.push(onSnapshot(RMETA(),s=>{S.rcptMeta=s.exists()?s.data():null;if(S.tab=='set')renderSoon()},onErr));
+  unsub.push(onSnapshot(MARKET(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.market=p;renderSoon()},onErr));
+  unsub.push(onSnapshot(DEBTS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.debts=p;renderSoon()},onErr));
+  unsub.push(onSnapshot(HOLD(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.hold=p;renderSoon()},onErr));
+  unsub.push(onSnapshot(SLIPS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data().s||{}));S.slips=p;renderSoon()},onErr));
+  unsub.push(onSnapshot(GOALS(),s=>{const g={};s.docs.forEach(d=>g[d.id]=clone(d.data()));S.goals=g;renderSoon()},onErr));
 });
 /* 🔄 a new version: sw.js downloads all its files first, then takes over – the page reloads itself when nothing is being typed (sw.js) */
 if(!DEMO&&'serviceWorker' in navigator){const SW=navigator.serviceWorker,had=!!SW.controller;SW.register('./sw.js').then(r=>{document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')r.update().catch(()=>{})})}).catch(()=>{});

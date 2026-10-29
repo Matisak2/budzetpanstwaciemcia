@@ -75,7 +75,7 @@ Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). N
 - [x] Krótszy `PLAN.md` (zakończone etapy w `PLAN-archiwum.md`, bez zmian treści)
 
 ## Etap X6. Szybkość
-- [ ] Mniej przerysowań ekranu przy zapisie
+- [x] Mniej przerysowań: zmiany z Firestore rysowane raz na klatkę (`renderSoon`), potwierdzenie zapisu z serwera zmienia tylko napis synchronizacji (bez przebudowy listy wpisów); pomiar: 15 000 wpisów – jedno przerysowanie < 30 ms na komputerze
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
