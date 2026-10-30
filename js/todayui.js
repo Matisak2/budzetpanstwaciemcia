@@ -3,14 +3,15 @@ import {doc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {recurringP,automatStale,todayItems as todayItemsP} from './today.js';
-import {liveOf,seenBy} from './logic.js';
-import {$,esc,ls,pg,td,money} from './util.js';
-import {DEMO,S,toast,err,ask,CUR,H,PUSH,w,merge,liveById,guard} from './core.js';
+import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap} from './logic.js';
+import {$,esc,ls,pg,td,zl0,plu,daysIn} from './util.js';
+import {DEMO,S,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
-import {editFixed,goFixed,exportJson,editInt} from './actions.js';
+import {editFixed,goFixed,exportJson,editInt,planToFixed} from './actions.js';
 import {openSlip} from './salary.js';
 import {openClose} from './close.js';
-import {accById,openInst,editLimits,goYear,bookInt} from './savings.js';
+import {fillAvg} from './debts.js';
+import {openInst,editLimits,goYear,bookInt} from './savings.js';
 import {render,goTab} from './app.js';
 
 /* ---------- 🔔 real notifications (Web Push); the automat sends them, keys are made by the automat ---------- */
@@ -42,7 +43,18 @@ export const pushCardH=()=>`<div class="card"><h3>🔔 Powiadomienia</h3><div cl
   <div class="btns" style="gap:6px">${S.pushOk?'<button class="btn sm" onclick="disablePush()">Wyłącz</button>':`<button class="btn sm primary" onclick="enablePush()">${S.pushLost?'Włącz ponownie':'Włącz powiadomienia'}</button>`}</div></div>`;
 export const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw});
 /* 🗓️ the closing of the month is personal – each phone shows only its own person's */
-export function todayItems(){if(!S.cfg)return[];return todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}).filter(x=>seenBy(x.who,S.who))}
+export function todayItems(){if(!S.cfg)return[];return [...todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}),...planTodo()].filter(x=>seenBy(x.who,S.who))}
+/* 📊 the plan of the current month (only in the app – plans are not read by the automat, so no phone notification): it used to be banners and cats' warnings on Budżet */
+export function planTodo(){const today=td(),ym=today.slice(0,7),tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),ig=S.hraw?.checkIgnore||{},out=[];
+  const add=(key,icon,text,go,label)=>{if(!ig[key])out.push({key,icon,text,go,label,k:'plan',who:null,quiet:true})};
+  const pexp=S.cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,x)=>b+(pl[x.id]||0),0),0),left=pexp-agg(S.cfg,tx,ym).exp,dl=daysIn(ym)-(+today.slice(8))+1;
+  if(pexp>0&&left<0)add('over:'+ym,'📊',`Plan wydatków na ten miesiąc przekroczony o ${zl0(-left)}.`,{a:'dash',bf:'over'},'Co przekroczone');
+  else if(pexp>0&&left<pexp*.15)add('near:'+ym,'📊',`W budżecie zostało ${zl0(left)} na ${dl} ${plu(dl,'dzień','dni','dni')} – mniej niż 15% planu.`,{a:'dash'},'Budżet');
+  const{avg}=avgActuals(S.cfg,tx,ym,3),YS=yearSubs(S.cfg),L=S.cfg.cats.filter(c=>!c.hidden).flatMap(c=>c.subs.filter(x=>!x.hidden&&!pl[x.id]&&avg[x.id]>0&&!YS.has(x.id)).map(x=>({c,x})));
+  if(L.length){const tot=L.filter(y=>y.c.type=='exp').reduce((a,y)=>a+avg[y.x.id],0);add('toplan:'+ym,'📝',`Do zaplanowania: ${L.length} ${plu(L.length,'pozycja','pozycje','pozycji')} bez planu, które w ostatnich miesiącach miały wpisy${tot?` (wydatki średnio ${zl0(tot)}/mies.)`:''}.`,{a:'fillAvg'},'Wypełnij średnimi')}
+  const G=fixedPlanGap(S.cfg,pl).filter(y=>!y.sub.hidden&&!y.sub.cat.hidden);
+  if(G.length)add('gap:'+ym,'📌',`Plan niższy niż opłaty stałe: ${G.map(y=>`${y.sub.name} – plan ${zl0(y.plan)}, opłaty ${zl0(y.fix)}`).join(' · ')}.`,{a:'planFix'},'Podnieś plan');
+  return out}
 /* where a tap on an item (or on a notification) leads */
 /* ---------- 🔔 „Na dziś”: everything that needs attention, only inside the app (no calendar, no card) ---------- */
 export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
@@ -54,17 +66,17 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
   if(a=='close')return openClose();
+  if(a=='dash'||a=='fillAvg'||a=='planFix'){S.ym=td().slice(0,7);if(g.bf)S.bf=g.bf;goTab('dash');if(a=='fillAvg')return fillAvg();if(a=='planFix')return planToFixed();return}
   if(a=='int')return bookInt(g.acc,g.key);if(a=='accInt')return editInt(g.id);
   if(a=='tx'){const t=liveById(g.id);if(t){S.ym=t.date.slice(0,7);openTx(g.id)}}}
 export const goFromHash=h=>{const m=/go=([^&]+)(.*)/.exec(h||'');if(!m)return null;const g={a:decodeURIComponent(m[1])};new window.URLSearchParams(m[2].replace(/^&/,'')).forEach((v,k)=>g[k]=v);return g};
 export function todayGo(i){runGo((S.todayL||[])[i]?.go)}
 /* the second button of an item in „Na dziś” – by the kind of its key */
-const GHOST={rec:'Nie, dzięki',umowa:'Załatwione',rules:'Załatwione',yearpay:'Załatwione',najem:'✓ Zapłacone',pit:'✓ Złożone',pit28:'✓ Złożone',young:'Wiem',close:'Pomiń',short:'Wiem',int:'Pomiń',promo:'Wiem',pit38:'✓ Rozliczone'};
+const GHOST={over:'Wiem',near:'Wiem',toplan:'Nie teraz',gap:'Wiem',rec:'Nie, dzięki',umowa:'Załatwione',rules:'Załatwione',yearpay:'Załatwione',najem:'✓ Zapłacone',pit:'✓ Złożone',pit28:'✓ Złożone',young:'Wiem',close:'Pomiń',short:'Wiem',int:'Pomiń',promo:'Wiem',pit38:'✓ Rozliczone'};
 export function ignoreCheck(key,stay){if(guard())return;S.hraw={...S.hraw,checkIgnore:{...(S.hraw?.checkIgnore||{}),[key]:true}};merge(H,{checkIgnore:{[key]:true}});if(stay)render();else showToday();toast(GHOST[key.split(':')[0]]&&key.split(':')[0]!='rec'?'Gotowe ✓':'Ukryte – nie pokażę tego więcej')}
 /* 📌 a payment that repeats every month – into 📌 Stałe with the form filled in */
 export const recList=()=>S.cfg?recurringP(S.cfg,liveOf(S.tx),td(),S.hraw?.checkIgnore):[];
 export function addRecFixed(key){const r=recList().find(x=>x.key==key);if(!r)return;S.fixSub='fix';goTab('fix');if(r.kind=='tr')return editFixed(null,'tr',{name:r.note?r.note.slice(0,1).toUpperCase()+r.note.slice(1):'Przelew '+r.name,amount:r.amount,day:r.day,acc:r.acc,to:r.to});editFixed(null,'exp',{name:r.name.slice(0,1).toUpperCase()+r.name.slice(1),amount:r.amount,day:r.day,sub:r.sub,acc:r.acc})}
-export const recH=()=>recList().map(r=>`<div class="note">${r.kind=='tr'?`🔁 Przelew ${esc(r.name)} – ${money(r.amount,CUR(accById(r.acc)||{}))} co miesiąc od 3 miesięcy. Dodać do stałych przelewów?`:`📌 „${esc(r.name)}” – ${money(r.amount,CUR(accById(r.acc)||{}))} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`}<div class="btns" style="gap:6px;margin-top:6px"><button class="btn sm primary" onclick="addRecFixed('${esc(r.key)}')">Dodaj</button><button class="btn sm" onclick="ignoreCheck('${esc(r.key)}',1)">Nie, dzięki</button></div></div>`).join('');
 export function closeToday(){$('dlg').hidden=true}
 export function showToday(){const L=todayItems(),d=$('dlg'),bad=L.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
   $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(L.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${L.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>

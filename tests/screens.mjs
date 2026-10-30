@@ -40,7 +40,7 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ['zamkniecie',"closeAll();openClose()"],['zamkniecie-krok',"closeStep('prev',1);reconOk(S.cfg.accs[0].id)"],
   ['stale-polacz',"closeAll();{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp'&&f.name=='Netflix')||S.cfg.fixed.find(f=>(f.kind||'exp')=='exp');window.__tw=f.id;S.tx=S.tx.map(t=>t.fixedId===f.id&&t.date.startsWith(S.ym)?{...t,deleted:true}:t).concat([{id:'ttw',type:'exp',amount:f.amount,date:S.ym+'-03',sub:f.sub,acc:f.acc,note:f.name,who:'Wercia',by:'Wercia',ts:1,deleted:false}]);goTab('fix');setFixSub('fix')}"],
   ['stale-polacz-pytanie',"toggleFixed(window.__tw)"],
-  ['plan-oplaty',"closeAll();{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp'&&f.sub);S.plans={...S.plans,[S.ym]:{...(S.plans[S.ym]||{}),[f.sub]:Math.max(0,f.amount-5000)}};goTab('dash')}"],
+  ['plan-oplaty',"closeAll();{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp'&&f.sub);S.plans={...S.plans,[S.ym]:{...(S.plans[S.ym]||{}),[f.sub]:Math.max(0,f.amount-5000)}};goTab('dash');showToday()}"],
   ['wpis-oplata-pytanie',"closeAll();{const f=S.cfg.fixed.find(x=>x.id==window.__tw);S.tx=S.tx.map(t=>t.id=='ttw'?{...t,deleted:true}:t);openTx();setTimeout(()=>{$('ma').value=String(f.amount/100).replace('.',',');$('ms').value=f.sub;$('shSave').click()},150)}"],
   ['pasek-mlodzi',"closeAll();{S.hraw={...S.hraw,birth:{Mati:'2001-05-12',Wercia:'2001-05-12'}};if(!S.cfg.incs.some(x=>x.id=='iy'))S.cfg.incs.push({id:'iy',name:'Szpital',who:S.who,kind:'uop',acc:S.cfg.accs[0].id,sub:'',day:10});goTab('fix');setFixSub('pay');openSlip('iy');setTimeout(()=>{document.querySelector('.slip [data-c=\"0\"][data-f=\"a\"]').value='8000';slipSuggest()},100)}"],
   ['kaskada-osoba',"closeAll();goTab('sav');setSub('Mati')"],['nowy-staly-przelew',"closeAll();goTab('fix');setFixSub('fix');editFixed(null,'tr')"],
@@ -122,13 +122,15 @@ for(const C of CASES){
     if(res=='zle')fail(`${tag}: wpis z konta drugiej osoby – brak pytania kotków albo „Zmień konto” zapisało wpis`);
     await p.evaluate(()=>{closeAll();localStorage.setItem('demo_mw_oth',JSON.stringify({d:new Date().toISOString().slice(0,10),a:'aM aW aJ aG aS aP aI aK aO'.split(' ')}))});
   }catch(e){fail(`${tag}: test cudzego konta – ${e.message.split('\n')[0]}`)}}
-  /* 🐾 a cats' warning (plan exceeded) → „Rozumiem, kociaki” → the fact of the day (on a holiday the cats send wishes instead – nothing to check then) */
+  /* 🔔 plan exceeded: the warning is in „Na dziś” (not in the cats' bubble on Budżet), „Co przekroczone” opens Budżet with the filter */
   if(C===CASES[0]){try{await p.evaluate(()=>{closeAll();window.__pl=S.plans;const pl={};S.cfg.cats.filter(c=>c.type=='exp').forEach(c=>c.subs.forEach(x=>pl[x.id]=100));S.plans={...S.plans,[S.ym]:pl};goTab('dash')});await p.waitForTimeout(300);
-    let n=0;while(n<6&&await p.$('.greet .gok')){await p.click('.greet .gok');await p.waitForTimeout(300);n++}
-    if(n&&!await p.evaluate(()=>/Ciekawostka dnia/.test(document.querySelector('.greet').innerText)))fail(`${tag}: po „Rozumiem, kociaki” nie ma ciekawostki dnia`);
-    if(!n&&!await p.evaluate(()=>/Dziś|urodzin|Świąt|Nowego Roku|Walentynki|Halloween/.test(document.querySelector('.greet')?.innerText||'')))fail(`${tag}: przekroczony plan, a kotki nie mają przycisku „Rozumiem, kociaki”`);
-    await p.evaluate(()=>{localStorage.removeItem('demo_mw_ok');S.plans=window.__pl;render()});
-  }catch(e){fail(`${tag}: test „Rozumiem, kociaki” – ${e.message.split('\n')[0]}`)}}
+    if(await p.evaluate(()=>/przekroczony|Do odhaczenia|Zamknij |Do zaplanowania/.test(document.getElementById('app').innerText)))fail(`${tag}: na Budżecie zostały uwagi – miały być tylko w 🔔`);
+    await p.evaluate(()=>showToday());await p.waitForTimeout(200);
+    if(!await p.evaluate(()=>/przekroczony o/.test(document.getElementById('dlg').innerText)))fail(`${tag}: przekroczony plan, a „Na dziś” o tym nie mówi`);
+    await p.evaluate(()=>{const b=[...document.querySelectorAll('#dlg .chip')].find(b=>/Co przekroczone/.test(b.textContent));b.click()});await p.waitForTimeout(200);
+    if(!await p.evaluate(()=>S.tab=='dash'&&S.bf=='over'&&document.getElementById('dlg').hidden))fail(`${tag}: „Co przekroczone” nie otwiera Budżetu z filtrem`);
+    await p.evaluate(()=>{S.bf='all';S.plans=window.__pl;render()});
+  }catch(e){fail(`${tag}: test planu w „Na dziś” – ${e.message.split('\n')[0]}`)}}
   /* 🔁 an entry moved to the previous month and back keeps its links, and after deleting it is in 🗑️ Ostatnio usunięte; an archived account shows in the sheet */
   if(C===CASES[0]){try{await p.evaluate(()=>closeAll());
     const id=await p.evaluate(async()=>{const{putTx}=await import('/js/core.js');const t=S.tx.find(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.split&&!t.slipOf&&!t.yearId&&t.date.startsWith(S.ym));putTx(S.ym,t.id,{yearId:'yX'});return t.id});await p.waitForTimeout(300);

@@ -409,10 +409,6 @@ export async function importFile(file){if(guard())return;let o;
     toast(`Wczytano ${n} transakcji`)}
   catch(e){err(e);toast('Błąd wczytywania: '+(e.message||e),'bad')}}
 
-export function backupH(){if(!S.tx.length)return'';const b=S.backup,days=b?Math.floor((Date.now()-b.at)/864e5):null;
-  if(b&&days<30)return'';
-  return`<button class="alert info" onclick="exportJson()"><b>💾 ${b?`Ostatnia kopia danych: ${days} dni temu`:'Nie zrobiliście jeszcze kopii danych'}</b><span class="mini">Stuknij, żeby zapisać kopię na telefonie (np. w Plikach / na Dysku). Zajmie to chwilę.</span></button>`}
-
 /* ---------- register search & filters ---------- */
 /* amount filters typed into the search (zł): ">200", "<50", ">=100", "100-300"; the rest of the text is searched as words */
 export function amtQuery(raw){const f=[];

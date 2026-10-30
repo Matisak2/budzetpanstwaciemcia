@@ -128,6 +128,7 @@ const N=' ';
   const g3=greeting({...c,ok:new Set([g1.k,g2.k])});eq('Wszystkie uwagi schowane → ciekawostka dnia',[g3.fact,g3.text.includes(factOfDay('2026-10-20').text)],[true,true]);
   eq('Kolejna opłata po terminie → uwaga wraca',greeting({...c,late:['Czynsz','Prąd'],ok:new Set([g1.k,g2.k])}).k,'late:2026-10:Czynsz|Prąd');
   eq('Święto zamiast uwagi i ciekawostki',/Narodowe Święto Niepodległości/.test(greeting({...c,today:'2026-11-11'}).text),true);
+  {const gc=greeting({...c,calm:true});eq('Budżet (calm): uwagi są w 🔔 „Na dziś”, kotki bez ostrzeżeń',[gc.k,/Po terminie|przekroczony|blisko limitu/.test(gc.text)],[undefined,false])}
   eq('Po południu bez uwag → ciekawostka',greeting({...c,late:[],left:150000,hour:15}).fact,true);
 }
 /* ---------- ⏳ trwający miesiąc: poprzedni miesiąc do tego samego dnia ---------- */

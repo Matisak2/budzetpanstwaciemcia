@@ -42,9 +42,6 @@ export function closeStep(k,on){if(guard())return;const ym=S.close;if(!ym)return
 export function closePlan(sid,val){if(guard())return;const ym=td().slice(0,7);S.plans={...S.plans,[ym]:{...(S.plans[ym]||{}),[sid]:val}};merge(doc(PLC(),ym),{[sid]:val});render();toast('Plan na '+MN[+ym.slice(5)-1].toLowerCase()+': '+zl0(val))}
 
 /* the card on the Budget screen: big while the month waits, a small line when it is done or not due */
-export function closeCardH(){if(S.ym!=td().slice(0,7))return'';const due=closeDueP(S.hraw,liveOf(S.tx),td(),S.cfg,S.who);
-  if(due)return`<button class="alert info closecard" onclick="openClose()"><b>🗓️ Zamknij ${MN[+due.ym.slice(5)-1].toLowerCase()} – ${due.n} z 5 kroków ›</b><span class="mini">${due.pay&&due.pay>td()?`przed wypłatą ${dmy(due.pay)} · `:''}salda z bankiem · co było ponad plan · nadwyżka · plan · cele – ok. 10 minut</span></button>`;
-  return''}
 export function closeLinkH(){if(S.ym!=td().slice(0,7))return'';const ym=closeYm(),c=stOf(ym);
   return`<button class="btn sm" onclick="openClose()">🗓️ Zamknięcie miesiąca: ${MN[+ym.slice(5)-1].toLowerCase()}${c.done?' ✓':nDone(ym)?` (${nDone(ym)}/5)`:''}</button>`}
 

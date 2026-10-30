@@ -44,7 +44,7 @@ export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=t
   const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({name:g.name,pct:goalAlloc(g)/g.target*100})).sort((a,b)=>b.pct-a.pct)[0]||null;
   const act=actuals(cfg,tx,ym),treats=cfg.cats.reduce((a,c)=>a+c.subs.filter(x=>isTreat(x.name)).reduce((b,x)=>b+Math.max(0,act[x.id]||0),0),0);
   const okL=(()=>{try{const o=JSON.parse(ls.get('mw_ok')||'{}');return o.d==today?o.k||[]:[]}catch(e){return[]}})();
-  const g=greeting({ok:new Set(okL),jdg:(cfg.incs||[]).some(s=>s.kind=='b2b')&&+today.slice(8)>=14&&+today.slice(8)<=20,coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats,births:S.hraw?.birth||{}});
+  const g=greeting({calm:true,ok:new Set(okL),jdg:(cfg.incs||[]).some(s=>s.kind=='b2b')&&+today.slice(8)>=14&&+today.slice(8)<=20,coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats,births:S.hraw?.birth||{}});
   if((g.scene.startsWith('birthday')||g.bday)&&kotki.mode!='off'&&!ls.get('mw_bd_'+today)){ls.set('mw_bd_'+today,'1');setTimeout(confetti,400)}
   const pic=kotki.mode=='off'?'':`<div class="gcats${WIDE.has(g.scene)?' w':''}">${scene(g.scene,'kot',g.arg)}</div>`;
   const txt=esc(g.text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>'),okB=g.k?`<button class="chip gok" data-k="${esc(g.k)}" onclick="okCats(this.dataset.k)">Rozumiem, kociaki 🐾</button>`:'';
@@ -83,7 +83,8 @@ export function askBirth(force){const who=S.who,cur=S.hraw?.birth?.[who]||'';if(
 /* a celebration: confetti + Bailey & Ivo (or just a message when they are switched to "few"/"off") */
 export function celebrate(c){confetti();if(kotki.mode=='lots')catSlides([c],'Hura!');else toast(c.title)}
 /* drobne saved in a month (all rules, one rule, or into one account) */
-export const coinSum=(ym,r,to)=>liveOf(S.tx).filter(t=>t.roundOf&&t.date.startsWith(ym)&&(!r||t.acc==r.from&&t.to==r.to)&&(!to||t.to==to)&&(r||to||accCur(t.acc)=='PLN')).reduce((a,t)=>a+t.amount,0);
+/* ids = only coins that went to these accounts (e.g. savings – „w tym z drobnych” under „Ile odłożyliście”) */
+export const coinSum=(ym,r,to,ids)=>liveOf(S.tx).filter(t=>t.roundOf&&t.date.startsWith(ym)&&(!r||t.acc==r.from&&t.to==r.to)&&(!to||t.to==to)&&(!ids||ids.includes(t.to))&&(r||to||accCur(t.acc)=='PLN')).reduce((a,t)=>a+t.amount,0);
 export async function editRound(id){if(guard())return;const r0=id?(S.cfg.round||[]).find(x=>x.id==id):null,opts=accOpts();
   const res=await ask({title:r0?'Reguła drobnych':'Nowa reguła drobnych',text:'Przykład: płacisz 12,34 zł → do pełnych 5 zł brakuje 2,66 zł → przy mnożniku ×2 odłożę 5,32 zł.\nDrobne liczą się od dnia dodania reguły.',fields:[
     {id:'f',label:'Z konta (nim płacisz kartą)',type:'select',value:r0?.from||'',options:[['','— wybierz —'],...opts]},

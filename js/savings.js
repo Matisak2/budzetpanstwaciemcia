@@ -198,8 +198,6 @@ export const saveYear=x=>merge(H,{yearM:{[x.id]:strip(x,years().indexOf(x))}});
 export const delYearDb=id=>w(updateDoc(H,{['yearM.'+id]:deleteField()}));
 export const yearAccId=()=>{const id=S.hraw?.yearAcc;return id&&accById(id)?id:null};
 export function yearState(ym){return yearStateP(S.cfg,liveOf(S.tx),S.hraw,ym,td())}
-export function yearLineH(){const st=yearState(td().slice(0,7));if(!st||S.ym!=td().slice(0,7))return'';
-  return`<button class="alert info" onclick="goYear()"><b>📅 Wydatki roczne: ${st.left?`w tym miesiącu odłóż jeszcze ${zl(st.left)}`:'✓ w tym miesiącu odłożone'}</b><span class="mini">${st.dep?`odłożono ${zl(st.dep)} z ${zl(st.need)} · `:''}na subkoncie ${zl(st.now)}${st.soon.length?' · ⏰ wkrótce: '+st.soon.map(x=>esc(x.it.name)).join(', '):''}</span></button>`}
 export function goYear(){S.tab='fix';S.fixSub='year';S.slip=null;window.scrollTo(0,0);render()}
 /* 📅 Roczne i terminy: yearly expenses with money put aside (an envelope on one shared subaccount) + dates without money + warranties; one „+ Dodaj” */
 export function yearH(){const ym=S.ym,st=yearState(ym),id=yearAccId();let h='';

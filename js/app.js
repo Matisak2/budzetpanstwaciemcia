@@ -8,17 +8,17 @@ import {HUES,OWN,OWN_COL,SEASON,catHue,pastel,seed} from './data.js';
 import {IICON,limitOf,paidInYear,wrapOf,intOf,intLabel} from './inv.js';
 import {saveSplitP} from './today.js';
 import {yearBody,yearStats} from './report.js';
-import {avgActuals,actuals,agg,balance,cleanCat,dueAlerts,liveOf,status,subsMap,savFlow,savIds,firstYm,planOf,yearPlanOf,yearSubs,fixedTwin,fixedPlanGap,fixedWho,seenBy} from './logic.js';
+import {avgActuals,actuals,agg,balance,cleanCat,liveOf,status,subsMap,savFlow,savIds,firstYm,planOf,yearPlanOf,yearSubs,fixedTwin,fixedPlanGap,fixedWho} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,ls,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt,priv,plu} from './util.js';
 import {auth,fdb,applySeason,DEMO,S,catL,greetH,okCats,showTour,showNews,maybeIntro,askBirth,celebrate,coinSum,editRound,setKotki,toast,err,ask,CUR,accCur,isP,am,fxOf,fxSmall,stripFx,accOwner,accOpts,H,MARKET,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,fromDoc,saveCfg,saveCat,liveById} from './core.js';
 import {catColor,refundsOf,setType,updCoin,updFx,updSave,autoWho,closePick,RMETA,phMeterH,openTx,closeSheet,saveTx,delTx,markRefund,wireSheet} from './sheet.js';
-import {lockWho,askWhoLock,editInt,setPlan,planToFixed,fixPlan,copyPlan,addAcc,editAcc,addSub,renSub,delSub,subMenu,hideSub,editCat,addCat,ACCTAB,setAccTab,moveAcc,moveCat,lookApply,setHide,setLook,lookH,setWho,fixedPaid,editFixed,toggleFixed,goFixed,invAccStats,goalOwner,goalAlloc,isPod,poolNow,goalProgress,editGoal,allocGoal,setSavTarget,setSub,recAccs,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,exportJson,META,importFile,backupH,amtQuery,txMatches,txRowH,txListH,setQ,setF,clearF,togF} from './actions.js';
+import {lockWho,askWhoLock,editInt,setPlan,planToFixed,fixPlan,copyPlan,addAcc,editAcc,addSub,renSub,delSub,subMenu,hideSub,editCat,addCat,ACCTAB,setAccTab,moveAcc,moveCat,lookApply,setHide,setLook,lookH,setWho,fixedPaid,editFixed,toggleFixed,goFixed,invAccStats,goalOwner,goalAlloc,isPod,poolNow,goalProgress,editGoal,allocGoal,setSavTarget,setSub,recAccs,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,exportJson,META,importFile,amtQuery,txMatches,txRowH,txListH,setQ,setF,clearF,togF} from './actions.js';
 import {segL,fixSegH,setFixSub,setFixWho,setPayView,payH,fixYearH,deletedH,restoreTx,changesH,siriHelp,ulgaInfo,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,slipH,saveSlip,delSlip,pensLinkH,linkInc} from './salary.js';
-import {intMini,intCardH,bookInt,addTerm,accById,instsOf,matH,openInst,closeInst,instPageH,editInst,addLot,setPrice,setUnits,bondRatesDlg,saveInstVal,openValues,valuesH,saveValues,autoValH,saveAutoVal,limitPropH,acceptLimits,limitsH,editLimits,setGain,gainH,fireH,odloz,yearLineH,goYear,yearH,setYearAcc,editYear,payYear} from './savings.js';
+import {intMini,intCardH,bookInt,addTerm,accById,instsOf,matH,openInst,closeInst,instPageH,editInst,addLot,setPrice,setUnits,bondRatesDlg,saveInstVal,openValues,valuesH,saveValues,autoValH,saveAutoVal,limitPropH,acceptLimits,limitsH,editLimits,setGain,gainH,fireH,odloz,goYear,yearH,setYearAcc,editYear,payYear} from './savings.js';
 import {debtSum,setAccView,accSegH,debtsH,editDebt,payoffDebt,setDebtLeft,lentBack,moveLent,toPlanH,fillAvg,projectsH,editProj,openProj,closeProj,projPageH,editRem,doneRem,cascadeH,setCascade} from './debts.js';
 import {anaFull,setAnaMode,exportCsv,wrapped,anaMonth,anaYear} from './analysis.js';
-import {checkPush,enablePush,disablePush,shareDemo,demoCardH,pushCardH,todayItems,runGo,goFromHash,todayGo,ignoreCheck,addRecFixed,recH,closeToday,showToday,updToday,maybeToday,wireToday} from './todayui.js';
-import {openClose,closeClose,closeCardH,closeLinkH,closePageH,reconOk,closeStep,closePlan,closeRecAll} from './close.js';
+import {checkPush,enablePush,disablePush,shareDemo,demoCardH,pushCardH,runGo,goFromHash,todayGo,ignoreCheck,addRecFixed,closeToday,showToday,updToday,maybeToday,wireToday} from './todayui.js';
+import {openClose,closeClose,closeLinkH,closePageH,reconOk,closeStep,closePlan,closeRecAll} from './close.js';
 
 wireSheet();wireToday();
 let seeding=false;
@@ -67,19 +67,13 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
   const trendH=d=>d>0?`<span class="trend up" title="Przybyło w tym miesiącu">▲ +${zl0(d)}</span>`:d<0?`<span class="trend down" title="Ubyło w tym miesiącu">▼ −${zl0(-d)}</span>`:'';
   const pct=(a,p)=>p?' · <span style="white-space:nowrap">'+Math.round(a/p*100)+'% planu</span>':'';
   let h='';
-  const al=dueAlerts(S.cfg.fixed||[],tx,td()).filter(x=>seenBy(fixedWho(S.cfg,x.f),S.who)).map(x=>({...x,tw:x.when!='inc'&&fixedTwin(S.cfg,tx,x.f,x.due.slice(0,7))}));
-  const alertH=al.length?`<button class="alert" onclick="goFixed()"><b>🔔 Do odhaczenia w 📌 Stałe</b>${al.map(x=>`<span class="it"><span>${x.when=='inc'?'📥 ':''}${esc(x.f.name)}${x.when=='inc'?'':' · '+am(x.f.amount,x.f.acc)}</span><span class="when ${x.when=='late'&&!x.tw?'late':''}">${x.tw?'💡 jest podobny wpis – połącz':x.when=='inc'?'czeka na odhaczenie':x.when=='late'?'po terminie ('+x.due.slice(8)+'.'+x.due.slice(5,7)+')':x.when=='today'?'dziś':'jutro'}</span></span>`).join('')}</button>`:'';
 
   if(S.tab=='dash'&&S.proj)h+=projPageH();
   else if(S.tab=='dash'&&S.close)h+=closePageH();
   else if(S.tab=='dash'){
     setTimeout(autoPlan,0);const AVG=avgActuals(S.cfg,tx,S.ym,3).avg,YS=yearSubs(S.cfg),YP=yearPlanOf(S.cfg,tx,S.ym).items;
+    /* 🔔 to-dos and warnings (payments, closing the month, envelopes, backup, plan) are only in „Na dziś” – the cats only greet */
     if(S.ym==td().slice(0,7))h+=greetH(S.cfg,S.tx);
-    {const bad=todayItems().filter(x=>x.k=='bad');if(bad.length)h+=`<button class="urgent" onclick="showToday()">⏰ ${bad.length} ${plu(bad.length,'sprawa wymaga','sprawy wymagają','spraw wymaga')} uwagi – ${esc(bad[0].text.slice(0,48))}${bad[0].text.length>48?'…':''} ›</button>`}
-    h+=alertH;
-    h+=closeCardH();
-    h+=yearLineH();
-    h+=backupH();
     h+=`<div class="kpis">
       <div class="kpi k-em"><div class="l">Przychody</div><div class="v num">${zl(inc)}${fxSmall(FX.inc)}</div><div class="s">plan ${zl0(pinc)}${pct(inc,pinc)}</div></div>
       <div class="kpi k-ro"><div class="l">Wydatki</div><div class="v num">${zl(exp)}${fxSmall(FX.exp)}</div><div class="s">plan ${zl0(pexp)}${pct(exp,pexp)}</div></div>
@@ -94,10 +88,11 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
     const VC=S.cfg.cats.map((c,i)=>({...c,_i:i,subs:c.subs.filter(s=>!(s.hidden||c.hidden)||!isE(s))})).filter(c=>!c.hidden||c.subs.length);
     const keep=(c,s)=>BF=='all'||(BF=='over'?c.type=='exp'&&stOf(c,s).k=='over':!(pl[s.id]||0));
     const nOver=VC.reduce((a,c)=>a+c.subs.filter(s=>c.type=='exp'&&stOf(c,s).k=='over').length,0),nNo=VC.reduce((a,c)=>a+c.subs.filter(s=>!(pl[s.id]||0)).length,0);
-    h+=toPlanH();
+    /* planning a later month: hints here; for the current month they are in 🔔 „Na dziś” (planTodo in todayui.js) */
+    const later=S.ym>td().slice(0,7);if(later)h+=toPlanH();
     /* 📌 the plan of a position lower than its fixed payments – it would be „over plan” every month */
     const GAP=S.ym>=td().slice(0,7)?fixedPlanGap(S.cfg,pl).filter(x=>!x.sub.hidden&&!x.sub.cat.hidden):[],gapOf=Object.fromEntries(GAP.map(x=>[x.sub.id,x]));
-    if(GAP.length)h+=`<div class="note">📌 <b>Plan niższy niż opłaty stałe:</b> ${GAP.map(x=>`${esc(x.sub.name)} – plan ${zl0(x.plan)}, opłaty stałe ${zl0(x.fix)}`).join(' · ')}.<br><button class="btn sm primary" style="margin-top:6px" onclick="planToFixed()">Podnieś plan do opłat stałych</button></div>`;
+    if(GAP.length&&later)h+=`<div class="note">📌 <b>Plan niższy niż opłaty stałe:</b> ${GAP.map(x=>`${esc(x.sub.name)} – plan ${zl0(x.plan)}, opłaty stałe ${zl0(x.fix)}`).join(' · ')}.<br><button class="btn sm primary" style="margin-top:6px" onclick="planToFixed()">Podnieś plan do opłat stałych</button></div>`;
     h+=`<div class="seg seg3 bfilt">${[['all','Wszystko'],['over','▲ Ponad plan'+(nOver?` (${nOver})`:'')],['none','Bez planu'+(nNo?` (${nNo})`:'')]].map(([k,l])=>`<button aria-pressed="${BF==k}" onclick="setBF('${k}')">${l}</button>`).join('')}</div>`;
     let shownCats=VC.map(c=>({c,i:c._i,subs:c.subs.filter(s=>keep(c,s))})).filter(x=>BF=='all'||x.subs.length);
     const anyData=shownCats.some(x=>!x.c.subs.every(isE)),emptyCats=BF=='all'&&anyData?shownCats.filter(x=>x.c.subs.every(isE)&&!S.showCat[x.c.id]):[];
@@ -137,8 +132,7 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
     /* 👥 whose: Wszystkie / Mati / Wercia / Wspólne (fixedWho – „Dotyczy” or the account's owner), the last choice remembered on this phone */
     if(S.fixWho==null)S.fixWho=ls.get('mw_fixwho')||'all';const fw=['Mati','Wercia','Wspólne'].includes(S.fixWho)?S.fixWho:'all',allF=S.cfg.fixed||[];
     const whoSeg=!allF.length?'':`<div class="seg seg4">${[['all','Wszystkie'],['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']].map(([k,l])=>`<button aria-pressed="${fw==k}"${k=='Wercia'?' class="wbtn"':''} onclick="setFixWho('${k}')">${l}${k!='all'?` <small>${allF.filter(f=>fixedWho(S.cfg,f)==k).length}</small>`:''}</button>`).join('')}</div>`;
-    h+=fixSegH()+whoSeg+(S.ym==td().slice(0,7)?recH():'')+pensLinkH();
-    if(S.ym==td().slice(0,7)||al.some(x=>x.due.startsWith(S.ym)))h+=alertH;
+    h+=fixSegH()+whoSeg+pensLinkH();
     const isCur=td().startsWith(S.ym),today=+td().slice(8),all=allF.filter(f=>fw=='all'||fixedWho(S.cfg,f)==fw).sort((a,b)=>(+a.day)-(+b.day)||a.name.localeCompare(b.name,'pl'));
     const row=(f,paid)=>{const inc=f.kind=='inc',late=!paid&&isCur&&today>Math.min(+f.day,daysIn(S.ym)),tw=!paid&&!inc&&f.kind!='tr'?fixedTwin(S.cfg,liveOf(S.tx),f,S.ym):null;
       const ppk=paid&&inc?liveOf(S.tx).filter(t=>t.ppkOf===paid.id):[];
@@ -199,13 +193,13 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
       h+=actH('all')+autoValH()+limitPropH()+matH()+limitsH();
       /* who saves how much: the line under the total and the tabs Mati / Wercia / Wspólne (no separate card) */
       /* the year so far: January … the shown month */
-      const yF=Array.from({length:+S.ym.slice(5)},(_,i)=>savFlow(S.cfg,tx,SVI,S.ym.slice(0,5)+String(i+1).padStart(2,'0'))).reduce((a,x)=>({flow:a.flow+x.flow,gain:a.gain+x.gain}),{flow:0,gain:0}),put=flowM.flow,coins=coinSum(S.ym);
+      const yF=Array.from({length:+S.ym.slice(5)},(_,i)=>savFlow(S.cfg,tx,SVI,S.ym.slice(0,5)+String(i+1).padStart(2,'0'))).reduce((a,x)=>({flow:a.flow+x.flow,gain:a.gain+x.gain}),{flow:0,gain:0}),put=flowM.flow,coins=coinSum(S.ym,null,null,SVI);
       const gainL=(g,when)=>g?`<div class="mini">📈 Zyski ${when}: <b class="${g>0?'t-inc':'t-exp'}">${g>0?'+':'−'}${zl(Math.abs(g))}</b> – zmiana kursów i wycen oraz 💰 odsetki, nie liczą się do odłożonych.</div>`:'';
       h+=`<section class="chart"><div class="ct"><b>Ile odłożyliście</b><span class="mini">wpłaty na oszczędności i inwestycje (z PPK) minus wypłaty – bez zmiany kursów</span></div>
         <div class="kpis" style="gap:8px"><div class="kpi k-em"><div class="l">${MN[+S.ym.slice(5)-1]}</div><div class="v num ${put<0?'t-exp':''}">${put>0?'+':''}${zl(put)}</div>${tg?`<div class="s">cel ${zl0(tg)} · ${Math.max(0,Math.round(put/tg*100))}%</div>`:''}</div><div class="kpi k-sk"><div class="l">Rok ${S.ym.slice(0,4)}</div><div class="v num ${yF.flow<0?'t-exp':''}">${yF.flow>0?'+':''}${zl(yF.flow)}</div>${tg?`<div class="s">cel ${zl0(tg*(+S.ym.slice(5)))} do końca ${MNG[+S.ym.slice(5)-1]}</div>`:''}</div></div>
         ${tg?`<div class="gbar stem${put>=tg?' bloom':''}"><i style="width:${Math.min(100,Math.max(0,put/tg*100)).toFixed(1)}%"></i></div><div class="mini">${put>=tg?'🎉 Cel na ten miesiąc osiągnięty!':`Do celu w tym miesiącu brakuje ${zl0(tg-Math.max(0,put))}.`}</div>`:''}
         ${gainL(flowM.gain,'w tym miesiącu')}${yF.gain&&yF.gain!=flowM.gain?gainL(yF.gain,'w '+S.ym.slice(0,4)+' r.'):''}
-        ${coins?`<div class="mini">🪙 w tym z drobnych: <b style="color:var(--fg)">${zl(coins)}</b></div>`:''}
+        ${coins?`<div class="mini">🪙 w tym z drobnych: <b style="color:var(--fg)">${zl(coins)}</b>${put-coins?` · reszta: <b style="color:var(--fg)">${zl(put-coins)}</b>`:''}</div>`:''}
         <button class="btn sm" style="align-self:flex-start" onclick="setSavTarget()">${tg?'Zmień cel miesięczny ('+zl0(tg)+')':'+ Ustaw cel: ile odkładać co miesiąc'}</button></section>`;
       if(tg&&put>=tg&&S.ym==td().slice(0,7)&&!ls.get('mw_conf_'+S.ym)){ls.set('mw_conf_'+S.ym,'1');setTimeout(()=>celebrate(CELEBRATE.saving(S.who)),300)}
       h+=cushion()+intCardH();
