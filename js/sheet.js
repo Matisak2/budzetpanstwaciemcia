@@ -13,6 +13,7 @@ import {incById,openSlip} from './salary.js';
 import {markYearPaid} from './savings.js';
 import {dIcon,debtList,debtState,setDebtLeft,fillDebt,updDebtHint,updDebt,fillProj,updProj} from './debts.js';
 import {accN,render} from './app.js';
+import {use,useTx} from './usage.js';
 
 /* ---------- transaction sheet ---------- */
 export const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l').trim();
@@ -258,6 +259,7 @@ export async function saveTx(next){if(guard())return;
   const sm2=subsMap(S.cfg);if(ok&&!old&&kotki.mode=='lots'&&[body.sub,...parts.map(x=>x.sub)].some(x=>isTreat(sm2[x]?.name)))setTimeout(()=>toast(treatJoke(Math.floor(Date.now()/1000))),1900);
   if(ok&&debt&&S.debts[debt]?.mode=='bank'&&!old)setTimeout(()=>toast('Rata zapisana. Wpisz, ile zostało wg banku.','',{label:'✎ Pozostało',fn:()=>setDebtLeft(debt)}),1500);
   if(ok&&next===true){openTx(null,{type:keep.type});$('mc').value=keep.acc;$('md').value=keep.date;$('mw').value=keep.who;updX()}
+  if(ok)useTx(body,{old,parts:parts.length,coin,next:next===true});
   if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):''));if(ym!=S.ym){S.ym=ym;render()}}}
 export async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
@@ -278,7 +280,7 @@ export async function markRefund(id){const t=liveById(id);if(!t)return;const don
 export function wireSheet(){
 $('mn').addEventListener('input',renderNoteSug);$('mn').addEventListener('focus',renderNoteSug);$('mn').addEventListener('blur',()=>setTimeout(renderNoteSug,150));
 $('mnSug').addEventListener('pointerdown',e=>e.preventDefault());
-$('mnSug').onclick=e=>{const b=e.target.closest('[data-note]');if(!b)return;$('mn').value=b.dataset.note;$('mn').dispatchEvent(new window.Event('input'));$('mn').blur();$('mnSug').hidden=true};
+$('mnSug').onclick=e=>{const b=e.target.closest('[data-note]');if(!b)return;use('f:notesug');$('mn').value=b.dataset.note;$('mn').dispatchEvent(new window.Event('input'));$('mn').blur();$('mnSug').hidden=true};
 $('mwarPhBtn').onclick=()=>$('mphIn').click();
 
 $('msBtn').onclick=()=>openPick($('ms').value,sid=>{S.autoSub=false;setMs(sid)});

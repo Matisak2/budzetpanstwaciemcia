@@ -13,14 +13,15 @@ import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,ls,sleep,td,zl,zl0,
 import {auth,fdb,applySeason,DEMO,S,catL,greetH,okCats,showTour,showNews,maybeIntro,askBirth,celebrate,coinSum,editRound,setKotki,toast,err,ask,CUR,accCur,isP,am,fxOf,fxSmall,stripFx,accOwner,accOpts,H,MARKET,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,fromDoc,saveCfg,saveCat,liveById} from './core.js';
 import {catColor,refundsOf,setType,updCoin,updFx,updSave,autoWho,closePick,RMETA,phMeterH,openTx,closeSheet,saveTx,delTx,markRefund,wireSheet} from './sheet.js';
 import {lockWho,askWhoLock,editInt,setPlan,planToFixed,fixPlan,copyPlan,addAcc,editAcc,addSub,renSub,delSub,subMenu,hideSub,editCat,addCat,ACCTAB,setAccTab,moveAcc,moveCat,lookApply,setHide,setLook,lookH,setWho,fixedPaid,editFixed,toggleFixed,goFixed,invAccStats,goalOwner,goalAlloc,isPod,poolNow,goalProgress,editGoal,allocGoal,setSavTarget,setSub,recAccs,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,exportJson,META,importFile,amtQuery,txMatches,txRowH,txListH,setQ,setF,clearF,togF} from './actions.js';
-import {segL,fixSegH,setFixSub,setFixWho,setPayView,payH,fixYearH,deletedH,restoreTx,changesH,siriHelp,ulgaInfo,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,slipH,saveSlip,delSlip,pensLinkH,linkInc} from './salary.js';
+import {segL,fixSegH,setFixSub,setFixWho,setPayView,payH,fixYearH,deletedH,restoreTx,changesH,siriHelp,ulgaInfo,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,slipH,saveSlip,delSlip,pensLinkH,linkInc,openSubs,subKeep,subEdit,subDrop} from './salary.js';
 import {intMini,intCardH,bookInt,addTerm,accById,instsOf,matH,openInst,closeInst,instPageH,editInst,addLot,setPrice,setUnits,bondRatesDlg,saveInstVal,openValues,valuesH,saveValues,autoValH,saveAutoVal,limitPropH,acceptLimits,limitsH,editLimits,setGain,gainH,fireH,odloz,goYear,yearH,setYearAcc,editYear,payYear} from './savings.js';
 import {debtSum,setAccView,accSegH,debtsH,editDebt,payoffDebt,setDebtLeft,lentBack,moveLent,toPlanH,fillAvg,projectsH,editProj,openProj,closeProj,projPageH,editRem,doneRem,cascadeH,setCascade} from './debts.js';
 import {anaFull,setAnaMode,exportCsv,wrapped,anaMonth,anaYear} from './analysis.js';
 import {checkPush,enablePush,disablePush,shareDemo,demoCardH,pushCardH,runGo,goFromHash,todayGo,ignoreCheck,addRecFixed,closeToday,showToday,updToday,maybeToday,wireToday} from './todayui.js';
 import {openClose,closeClose,closeLinkH,closePageH,reconOk,closeStep,closePlan,closeRecAll} from './close.js';
+import {use,useScreen,openUsage,wireUsage} from './usage.js';
 
-wireSheet();wireToday();
+wireSheet();wireToday();wireUsage();
 let seeding=false;
 
 /* ---------- render ---------- */
@@ -279,7 +280,7 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
 `;C.catc=h;h='';
     h+=`<div class="card"><h3>Kopia danych</h3><div class="mini">Pobierz kopię co jakiś czas. Tym samym miejscem wczytasz też kopię ze starej wersji aplikacji.</div><div class="btns"><button class="btn primary" onclick="exportJson()">Pobierz kopię</button><button class="btn" onclick="$('fileIn').click()">Wczytaj kopię (.json)</button>${DEMO?'':'<button class="btn" onclick="logout()">Wyloguj</button>'}</div>${phMeterH()}<div class="mini">Zalogowano: ${esc(auth.currentUser?.email||'')}</div><div class="diag">Diagnostyka: ${esc(S.last||'brak błędów')} · transakcji: ${tx.length}</div></div>`;C.backup=h;
     /* ⚙️ = tiles; a tap opens one group on its own page („‹ Ustawienia” goes back); nothing opens by itself */
-    const helpC=`<div class="card"><h3>📖 Pomoc</h3><div class="mini">Każda funkcja aplikacji krok po kroku, z wyszukiwarką.</div><div class="btns"><button class="btn sm primary" onclick="openHelp()">📖 Co nowego i jak to działa</button><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button></div></div>`;
+    const helpC=`<div class="card"><h3>📖 Pomoc</h3><div class="mini">Każda funkcja aplikacji krok po kroku, z wyszukiwarką.</div><div class="btns"><button class="btn sm primary" onclick="openHelp()">📖 Co nowego i jak to działa</button><button class="btn sm" onclick="showTour()">Pokaż pierwsze kroki</button></div></div><div class="card"><h3>📊 Czego używamy</h3><div class="mini">Które ekrany, przyciski i karty otwieracie (Mati i Wercia osobno) – i czego nikt nie używa od 3 miesięcy. Liczby tylko w Waszym Firebase.</div><div class="btns"><button class="btn sm" onclick="openUsage()">📊 Pokaż</button></div></div>`;
     const P=[['acc','🏦','Konta','dodaj, zmień, oprocentowanie, archiwum',C.acc],['cat','🗂️','Kategorie i drobne','pozycje budżetu, 🪙 drobne',C.catc+C.round],
       ['tel','📱','Ten telefon','wygląd, tryb dyskretny, kotki, kto korzysta',C.look+C.cats+C.who],['bez','🛡️','Bezpieczeństwo','kopia danych, usunięte, zmiany',C.backup+C.chg],
       ['auto','🤖','Automaty',(DEMO?'':S.pushOk?'powiadomienia, ':'⚠️ powiadomienia wyłączone · ')+'maile, automat, Siri',C.push+C.mail+C.auto+C.siri],['pom','📖','Pomoc','jak to działa, pokaż komuś aplikację',helpC+C.demo]].filter(x=>x[4]);
@@ -288,7 +289,7 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
       :`<div class="stiles">${P.map(([k,i,t,sub])=>`<button class="stile st-${k}" onclick="setPage('${k}')"><span class="si">${i}</span><b>${t}</b><small>${sub}</small></button>`).join('')}</div>`)}
   if(priv.on)h=`<div class="demob hideb">🙈 Tryb dyskretny – kwoty są ukryte <button onclick="setHide(0)">Pokaż kwoty</button></div>`+h;
   if(DEMO)h=`<div class="demob">🧪 Wersja demonstracyjna · przykładowe dane, tylko w tej przeglądarce <button onclick="MW_DEMO.reset()">Zacznij od nowa</button></div>`+h;
-  $('app').innerHTML=h;updToday();fitNums();
+  $('app').innerHTML=h;updToday();fitNums();useScreen();
   {const key=[S.tab,S.ym,S.sub,S.fixSub,S.accView,S.ana,!!S.instAcc,S.setPage].join('|'),a=$('app');if(key!=S.animKey){const first=!S.animKey;S.animKey=key;if(!first){a.classList.remove('anim','sl','sr');void a.offsetWidth;a.classList.add('anim',S.swipe>0?'sl':S.swipe<0?'sr':'up');clearTimeout(S.animT);S.animT=setTimeout(()=>a.classList.remove('anim','sl','sr','up'),650)}}S.swipe=0}if(S.tab=='acc'&&S.recon&&$('recApp'))recSum();if(S.tab=='fix'&&S.slip)slipCalc()}
 function setAna(k){S.ana=k;render()}
 export function showEmpty(id){S.showEmpty[id]=!S.showEmpty[id];render()}
@@ -308,7 +309,7 @@ $('findBtn').onclick=openFind;
   ['pointerup','pointerleave','pointercancel'].forEach(k=>m.addEventListener(k,stop));m.addEventListener('contextmenu',e=>e.preventDefault())}$('prevM').onclick=()=>mv(-1);$('nextM').onclick=()=>mv(1);
 function mv(d){if(S.tab=='ana'&&S.ana=='y')d*=12;S.swipe=Math.sign(d);S.ym=addMonths(S.ym,d);render()}
 /* ✋ hold an entry in the Register: duplicate, refund, delete */
-function txMenu(id){const t=liveById(id);if(!t)return;const d=$('dlg'),sm=subsMap(S.cfg);
+function txMenu(id){const t=liveById(id);if(!t)return;use('f:txmenu');const d=$('dlg'),sm=subsMap(S.cfg);
   const special=t.slip||t.slipOf||t.ppk||t.refundOf||t.roundOf||t.lendOf||t.debtIn||['adj','lend','inv','invs'].includes(t.type);
   const left=t.type=='exp'?t.amount-refundsOf(t.id).reduce((a,x)=>a+x.amount,0):0;
   $('dlgBody').innerHTML=`<h2>${esc(stripFx(t.note)||sm[t.sub]?.name||'Wpis')}</h2><p class="dtext">${am(t.amount,t.acc)} · ${t.date.split('-').reverse().join('.')}${sm[t.sub]?' · '+esc(sm[t.sub].name):''}</p>
@@ -335,7 +336,7 @@ function txMenu(id){const t=liveById(id);if(!t)return;const d=$('dlg'),sm=subsMa
   app.addEventListener('touchstart',e=>{sw=null;if(e.touches.length!=1||!['dash','tx','fix','ana'].includes(S.tab)||S.slip||S.proj||!$('sheet').hidden||!$('dlg').hidden)return;
     const el=e.target;if(el.closest('input,select,textarea,.noswipe')||scrollsX(el))return;sw={x:e.touches[0].clientX,y:e.touches[0].clientY,at:Date.now()}},{passive:true});
   app.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y,dt=Date.now()-sw.at;sw=null;
-    if(Math.abs(dx)>80&&Math.abs(dy)<Math.abs(dx)*0.5&&dt<800)mv(dx<0?1:-1)},{passive:true})}
+    if(Math.abs(dx)>80&&Math.abs(dy)<Math.abs(dx)*0.5&&dt<800){use('f:swipe');mv(dx<0?1:-1)}},{passive:true})}
 /* 📖 every feature: a list by section, tap = what it is for and how to use it */
 function openReport(y){S.report=y;window.scrollTo(0,0);render()}
 function closeReport(){S.report=null;window.scrollTo(0,0);render()}
@@ -353,7 +354,7 @@ function helpH(){const isNew=x=>x.v&&x.v>=NEWS_V-2;
   h+=HELP.map(s=>`<div class="card hlpsec"><h3>${esc(s.s)}</h3>${s.items.map(item).join('')}</div>`).join('');
   return h+`<div class="btns" style="justify-content:center"><button class="btn sm" onclick="showNews(true)">🎞️ Slajdy „Co nowego”</button><button class="btn sm" onclick="showTour()">🐾 Pierwsze kroki</button></div>`}
 /* 🔍 one search: entries, positions, accounts, instruments, fixed payments */
-function openFind(){if(!S.cfg)return;const d=$('dlg');
+function openFind(){if(!S.cfg)return;use('f:find');const d=$('dlg');
   $('dlgBody').innerHTML=`<div class="r1"><h2>🔍 Szukaj</h2><button class="btn sm" data-x="1">Zamknij</button></div><input id="fdQ" class="pq" type="search" enterkeyhint="search" placeholder="np. Biedronka, prąd, 120, >200" autocomplete="off"><div id="fdRes" class="fdres"></div>`;
   d.hidden=false;const q=$('fdQ');q.oninput=()=>findRun(q.value);findRun('');setTimeout(()=>q.focus(),60);
   d.onclick=e=>{if(e.target===d||e.target.closest('[data-x]')){d.hidden=true;return}const b=e.target.closest('[data-go],.tx');if(!b)return;d.hidden=true;if(b.dataset.go)findGo(b.dataset.go)}}
@@ -437,7 +438,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
 /* 🔄 a new version: sw.js downloads all its files first, then takes over – the page reloads itself when nothing is being typed (sw.js) */
 if(!DEMO&&'serviceWorker' in navigator){const SW=navigator.serviceWorker,had=!!SW.controller;SW.register('./sw.js').then(r=>{document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')r.update().catch(()=>{})})}).catch(()=>{});
   const reload=()=>{const busy=document.querySelector('.ov:not([hidden])')||!$('sheet').hidden||/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||'');if(busy)return setTimeout(reload,3000);location.reload()};
-  SW.addEventListener('controllerchange',()=>{if(had)reload()});SW.addEventListener('message',e=>{const u=e.data?.go;if(u){const g=goFromHash(new URL(u,location.href).hash);if(g)runGo(g)}})}
-window.addEventListener('hashchange',()=>{const g=goFromHash(location.hash);if(g&&S.cfg){window.history.replaceState(null,'',location.pathname+location.search);runGo(g)}});
+  SW.addEventListener('controllerchange',()=>{if(had)reload()});SW.addEventListener('message',e=>{const u=e.data?.go;if(u){const g=goFromHash(new URL(u,location.href).hash);if(g){use('f:link');runGo(g)}}})}
+window.addEventListener('hashchange',()=>{const g=goFromHash(location.hash);if(g&&S.cfg){use('f:link');window.history.replaceState(null,'',location.pathname+location.search);runGo(g)}});
 S.goPending=goFromHash(location.hash);if(S.goPending)window.history.replaceState(null,'',location.pathname+location.search);
-Object.assign(window,{setPage,askWhoLock,setFixWho,editInt,bookInt,okCats,askBirth,planToFixed,togF,openClose,closeClose,closeRecAll,reconOk,closeStep,closePlan,subMenu,hideSub,fixPlan,addTerm,payoffDebt,restoreTx,setHide,openReport,closeReport,openHelp,closeHelp,helpFilter,shareDemo,showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,linkInc,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,exportJson,logout});
+Object.assign(window,{openUsage,openSubs,subKeep,subEdit,subDrop,setPage,askWhoLock,setFixWho,editInt,bookInt,okCats,askBirth,planToFixed,togF,openClose,closeClose,closeRecAll,reconOk,closeStep,closePlan,subMenu,hideSub,fixPlan,addTerm,payoffDebt,restoreTx,setHide,openReport,closeReport,openHelp,closeHelp,helpFilter,shareDemo,showEmpty,showCat,setLook,addRecFixed,setUnits,bondRatesDlg,ulgaInfo,siriHelp,maybeToday,todayGo,ignoreCheck,enablePush,disablePush,saveAutoVal,acceptLimits,showToday,closeToday,goTab,setAnaMode,exportCsv,wrapped,fillAvg,editProj,openProj,closeProj,editRem,doneRem,setCascade,setAccView,editDebt,setDebtLeft,lentBack,moveLent,openInst,closeInst,editInst,addLot,setPrice,saveInstVal,openValues,saveValues,editLimits,setGain,odloz,goYear,setYearAcc,editYear,payYear,editRound,setFixSub,setPayView,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,linkInc,saveSlip,delSlip,setKotki,showTour,showNews,setAccTab,moveAcc,setBF,setAccSub,showWealth,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,allocGoal,setSavTarget,setSub,setAna,editGoal,setQ,setF,clearF,editCat,addCat,moveCat,goFixed,$,S,render,tog,openTx,setPlan,copyPlan,addAcc,editAcc,addSub,renSub,delSub,setWho,editFixed,toggleFixed,exportJson,logout});

@@ -108,9 +108,9 @@ Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: w
 - [x] 🧪 Demo: przykładowe wydatki roczne, subkonto kopert i terminy bez kwoty
 
 ## Etap X13. Rok temu, przegląd subskrypcji, licznik użycia
-- [ ] 📅 Analiza → Miesiąc: karta „Rok temu” (przychody, wydatki, odłożone i 3 kategorie z największą zmianą; w trwającym miesiącu do tego samego dnia)
-- [ ] 📋 Raz w roku przegląd subskrypcji w „Na dziś”: lista z kosztem rocznym, „Zostaje” / „Zmień” / „Rezygnuję”
-- [ ] 📊 Licznik „Czego używamy” (ekrany, okienka, dodatki, karty widoczne 2 s) w ⚙️ → Pomoc
+- [x] 📅 Analiza → Miesiąc: karta „Rok temu” (przychody, wydatki, odłożone i 3 kategorie z największą zmianą; w trwającym miesiącu do tego samego dnia)
+- [x] 📋 Raz w roku przegląd subskrypcji w „Na dziś”: lista z kosztem rocznym, „Zostaje” / „Zmień” / „Rezygnuję”
+- [x] 📊 Licznik „Czego używamy” (ekrany, okienka, dodatki, karty widoczne 2 s) w ⚙️ → Pomoc
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.

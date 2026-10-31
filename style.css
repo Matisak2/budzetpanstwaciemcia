@@ -546,6 +546,13 @@ details.more[open] summary{margin-bottom:4px}
 .titem .ti{font-size:20px;flex:none}
 .titem .tt{flex:1;min-width:0;font-size:14px;font-weight:600}
 .titem .chip{flex:none}
+/* 📊 Czego używamy */
+.usage{display:flex;flex-direction:column;gap:2px}.usage .urow{padding:5px 2px;border-bottom:1px solid var(--line);font-size:14px;gap:10px}.usage .urow span:last-child{text-align:right;white-space:nowrap}
+.usage .urow.off{color:var(--muted)}.usage .h2{margin:10px 2px 4px}
+/* 📋 the yearly review of subscriptions */
+.subrv{display:flex;flex-direction:column;gap:8px}
+.subrv .subi{background:#f8fafc;border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.subrv .subi.ok{background:#ecfdf5}
 /* ⏳ „Wkrótce” – not for today: collapsed, quieter */
 details.tsoon{margin:4px 0 6px;background:#fbfaff;border-radius:14px;padding:2px 8px}
 details.tsoon summary{cursor:pointer;list-style:none;font-size:13.5px;font-weight:800;color:var(--muted);min-height:44px;display:flex;align-items:center;gap:6px}

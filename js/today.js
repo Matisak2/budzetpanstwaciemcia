@@ -2,7 +2,7 @@
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy} from './util.js';
-import {balance,carStats,dueAlerts,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn} from './logic.js';
+import {balance,carStats,dueAlerts,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 export {ownerOf};
@@ -250,6 +250,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   if(mo==3||mo==4)for(const w of ['Mati','Wercia']){const key='pit:'+(+y-1)+':'+w;if(hraw?.checkIgnore?.[key])continue;
     out.push({key,icon:'🧾',text:`${w}: PIT za ${+y-1} r. – termin 30 kwietnia. Twój e-PIT jest już gotowy, a zestawienie ulg i IKZE masz w aplikacji.`,go:{a:'pit',y:String(+y-1)},label:'Zestawienie',k:mo==4&&day>=20?'bad':'pit',later:!(mo==4&&day>=20),who:w,quiet:!((mo==3&&day==1)||(mo==4&&(day==1||day==20)))})}
   for(const w of ['Mati','Wercia']){const cl=closeDueP(hraw,tx,today,cfg,w);if(cl)out.push({key:'close:'+cl.ym+':'+w,icon:'🗓️',text:`${w}: zamknięcie miesiąca – ${MN[+cl.ym.slice(5)-1].toLowerCase()}${cl.n?` (zrobione ${cl.n} z 5 kroków)`:''}${cl.pay&&cl.pay>today?`, przed wypłatą ${dmy(cl.pay)}`:''}. Salda z bankiem, co było ponad plan, nadwyżka, plan i cele – ok. 10 minut.`,go:{a:'close'},label:cl.n?'Dokończ':'Zacznij',k:'close',who:w,quiet:today!=cl.start})}
+  /* 📋 once a year each of you looks through own and shared subscriptions; a phone notification on the 1st of the month */
+  for(const w of ['Mati','Wercia']){const r=subsReviewP(cfg,hraw,w,today);if(r)out.push({key:r.key,icon:'📋',text:`${w}: przegląd subskrypcji raz w roku – ${r.list.length} ${plu(r.list.length,'subskrypcja','subskrypcje','subskrypcji')}, razem ok. ${zl(r.month*12)} rocznie. Czy wszystkich nadal używacie?`,go:{a:'subs'},label:'Przejrzyj',k:'subs',who:w,quiet:day!=1})}
   if(checks){for(const r of recurringP(cfg,tx,today,hraw?.checkIgnore))out.push({key:r.key,icon:r.kind=='tr'?'🔁':'📌',text:r.kind=='tr'?`Przelew ${r.name} – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do stałych przelewów?`:`„${r.name}” – ${money(r.amount,cm[r.acc])} co miesiąc od 3 miesięcy. Dodać do opłat stałych?`,go:{a:'recFix',key:r.key},label:'Dodaj',k:'rec',who:null});
     out.push(...checksP(D,today))}
   return out}

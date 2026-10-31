@@ -11,6 +11,7 @@ import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus} from './util.js';
 import {goalAlloc,askWhoLock} from './actions.js';
 import {runGo,maybeToday} from './todayui.js';
 import {accN,render} from './app.js';
+import {use} from './usage.js';
 
 export const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
 export const auth=getAuth(fa);
@@ -66,7 +67,7 @@ export function maybeIntro(){if(S.introDone||!S.cfg||!$('dlg').hidden||!$('sheet
   if(S.whoAsk){const d=S.whoAsk;S.whoAsk=null;return askWhoLock(d).then(()=>setTimeout(maybeIntro,400))}S.introDone=true;
   if(!ls.get('mw_tour')&&kotki.mode!='off'){ls.set('mw_tour','1');ls.set('mw_news',String(NEWS_V));showTour()}
   else if(+(ls.get('mw_news')||0)<NEWS_V)showNews();
-  else if(S.goPending){const g=S.goPending;S.goPending=null;setTimeout(()=>runGo(g),300)}
+  else if(S.goPending){const g=S.goPending;S.goPending=null;setTimeout(()=>{use('f:link');runGo(g)},300)}
   else if(birthDue())askBirth().then(()=>setTimeout(maybeToday,400));
   else setTimeout(maybeToday,400)}
 /* 🎂 Bailey & Ivo ask this phone's person for the date of birth (shared on both phones: birthday wishes, ulga dla młodych in the payslip until 26).

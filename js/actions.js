@@ -13,6 +13,7 @@ import {incs,gr,openSlip,saveInc} from './salary.js';
 import {saveYear} from './savings.js';
 import {debtList,debtState} from './debts.js';
 import {accN,render} from './app.js';
+import {use} from './usage.js';
 
 /* ---------- budget / accounts actions ---------- */
 export function setPlan(sid,v){if(guard())return;const ym=S.ym,val=pg(v);
@@ -122,7 +123,7 @@ export function moveCat(ci,d){if(guard())return;const j=ci+d;if(j<0||j>=S.cfg.ca
 export const ACCENTS=[['mint','Miętowy','#a7f3d0'],['pink','Różowy','#fbcfe8'],['lav','Lawendowy','#ddd6fe'],['sky','Błękitny','#bae6fd'],['peach','Brzoskwiniowy','#fed7aa'],['lemon','Cytrynowy','#fef08a']];
 export const accOf=()=>ls.get('mw_acc')||(S.who=='Wercia'?'pink':'mint');
 export function lookApply(){document.body.dataset.acc=accOf();document.body.dataset.size=ls.get('mw_size')||'0';priv.on=ls.get('mw_hide')=='1';document.body.classList.toggle('hidev',priv.on);document.body.classList.toggle('wf',S.who=='Wercia'&&accOf()=='pink')}
-export function setHide(on){setLook('mw_hide',on?'1':'0');toast(on?'🙈 Kwoty ukryte na tym telefonie':'👀 Kwoty znów widać')}
+export function setHide(on){if(on)use('f:hide');setLook('mw_hide',on?'1':'0');toast(on?'🙈 Kwoty ukryte na tym telefonie':'👀 Kwoty znów widać')}
 export function setLook(k,v){ls.set(k,v);lookApply();render()}
 export const lookH=()=>`<div class="card"><h3>🎨 Wygląd</h3><div class="accs" role="group" aria-label="Kolor">${ACCENTS.map(([k,n,c])=>`<button class="accdot" style="background:${c}" aria-pressed="${accOf()==k}" aria-label="${n}" title="${n}" onclick="setLook('mw_acc','${k}')"></button>`).join('')}</div>
   <div class="seg seg3" role="group" aria-label="Wielkość tekstu">${[['0','A'],['1','A+'],['2','A++']].map(([k,l])=>`<button aria-pressed="${(ls.get('mw_size')||'0')==k}" onclick="setLook('mw_size','${k}')" style="font-size:${14+(+k)*2}px">${l}</button>`).join('')}</div><div class="mini" style="margin-top:10px"><b style="color:var(--fg)">🙈 Tryb dyskretny</b> – kwoty jako „•••”, gdy pokazujecie komuś telefon albo otwieracie aplikację przy ludziach.</div><div class="seg seg2" role="group" aria-label="Tryb dyskretny">${[[0,'👀 Kwoty widać'],[1,'🙈 Ukryte']].map(([k,l])=>`<button aria-pressed="${priv.on==!!k}" onclick="setHide(${k})">${l}</button>`).join('')}</div><div class="mini">Kolor, wielkość tekstu i tryb dyskretny dotyczą tylko tego telefonu.</div></div>`;
@@ -177,7 +178,7 @@ export async function editFixedTr(f,pre){const p=f||pre||null,savs=S.cfg.accs.fi
   const sd=r.sf&&S.debts[r.sf];if(sd&&sd.saveAcc!=r.t)return toast(`Na „${sd.name}” odkładasz na koncie „${accN(sd.saveAcc)}” – wybierz je w polu „Na konto”`,'bad');
   const body={id:f?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:'',acc:r.c,to:r.t,kind:'tr',saveFor:sd?r.sf:'',who:r.wh||''};let tgt=f;if(f)Object.assign(f,body);else{tgt=body;S.cfg.fixed.push(body)}render();saveFixed(tgt)}
 export const lastOf=(f,pred)=>liveOf(S.tx).filter(t=>pred(t)&&t.date<S.ym+'-01').sort((a,b)=>b.date.localeCompare(a.date))[0];
-export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==fid),paid=fixedPaid(fid,S.ym),inc=f.kind=='inc';
+export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==fid),paid=fixedPaid(fid,S.ym),inc=f.kind=='inc';if(!paid)use('f:fixtick');
   const src=inc&&!paid&&incs().find(x=>x.fixed==fid);if(src)return openSlip(src.id);
   if(paid){const ym=paid.date.slice(0,7),linked=liveOf(S.tx).filter(t=>t.ppkOf===paid.id||t.slipOf===paid.id);
     if(await putTx(ym,paid.id,{deleted:true})){linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));
@@ -260,7 +261,7 @@ export async function editGoal(gid,owner){if(guard())return;const g=gid?S.goals[
   const body={name:r.n.trim(),target,deadline:/^\d{4}-\d{2}$/.test(r.d)?r.d:'',owner:r.o};
   const id=gid||'g'+rid();if(!g)body.alloc=0,body.ts=Date.now();
   merge(doc(GOALS(),id),body);toast(g?'Zapisano cel':'Dodano cel: '+body.name)}
-export async function allocGoal(gid,dir){if(guard())return;const g=S.goals[gid],have=goalAlloc(g),own=goalOwner(g),free=unallocated(own);
+export async function allocGoal(gid,dir){if(guard())return;use('f:goal');const g=S.goals[gid],have=goalAlloc(g),own=goalOwner(g),free=unallocated(own);
   if(dir>0&&free<=0)return ask({title:'Brak wolnych pieniędzy',text:`Wszystkie ${own=='Wspólne'?'wspólne oszczędności':'oszczędności ('+own+')'} są już przydzielone do celów. Wpłaćcie coś na takie konto albo zabierzcie z innego celu.`,ok:'OK',cancel:'Zamknij'});
   const sug=dir>0?Math.max(0,Math.min(free,g.target-have)):have;
   const r=await ask({title:(dir>0?'Przydziel do: ':'Zabierz z: ')+g.name,text:dir>0?`Do przydzielenia: ${zl(free)}`:`W kopercie: ${zl(have)}`,fields:[{id:'v',label:'Kwota (zł)',type:'decimal',value:sug?f2(sug):''}],ok:dir>0?'Przydziel':'Zabierz'});
@@ -323,7 +324,7 @@ export async function removeSavAcc(id){const a=S.cfg.accs.find(x=>x.id==id),tx=l
   render();toast(target?`Usunięto konto. ${money(Math.abs(bal),CUR(a))} → ${accN(target)}`:'Usunięto konto')}
 
 /* ---------- backup ---------- */
-export async function exportJson(withPhotos){if(!S.cfg)return;let receipts;
+export async function exportJson(withPhotos){if(!S.cfg)return;use('f:backup');let receipts;
   if(withPhotos===true){toast('Zbieram zdjęcia…');try{receipts={};(await getDocs(RCPT())).docs.forEach(d=>receipts[d.id]=d.data())}catch(e){err(e);return toast('Nie udało się pobrać zdjęć – spróbuj przy dobrym internecie','bad')}}
   const data=JSON.stringify(backupDoc(S,new Date(),receipts?{receipts}:{}),null,receipts?0:1);
   const name=(receipts?'budzet-kopia-ze-zdjeciami-':'budzet-kopia-')+td()+'.json',blob=new Blob([data],{type:'application/json'});

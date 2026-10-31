@@ -12,6 +12,7 @@ import {openTx} from './sheet.js';
 import {gr} from './salary.js';
 import {remsH,warrantiesH,rems,saveRem,projs} from './debts.js';
 import {accN,render} from './app.js';
+import {use} from './usage.js';
 
 /* ---------- 📈 savings & investments: instruments, values on one screen, limits, paid vs value, FIRE ---------- */
 export const accById=id=>S.cfg.accs.find(a=>a.id==id);
@@ -190,7 +191,7 @@ export function fireH(savNow,monthlySave){const tx=liveOf(S.tx),cur=td().slice(0
     <div class="mini">Z obecnych oszczędności bezpiecznie ok. <b style="color:var(--fg)">${zl0(savNow*0.04/12)}</b> miesięcznie (4% rocznie).</div>
     <div class="mini">${monthlySave>0?(m===0?'🎉 Cel FIRE osiągnięty!':m?`Przy odkładaniu ok. ${zl0(monthlySave)}/mies. i 4% realnego zysku: ok. <b style="color:var(--fg)">${(m/12).toFixed(1).replace('.',',')} lat</b> (${+td().slice(0,4)+Math.ceil(m/12)}).`:'Przy obecnym tempie to ponad 100 lat.'):'Gdy zaczniecie odkładać co miesiąc, policzę, ile lat zostało.'} Szacunek, nie prognoza.</div></section>`}
 /* 🐷 put money aside: a transfer to the person's savings account */
-export function odloz(owner){const o=owner&&owner!='all'?owner:S.who,a=S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived&&accOwner(x)==o&&!/poduszk/i.test(x.name))||S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived);
+export function odloz(owner){use('f:odloz');const o=owner&&owner!='all'?owner:S.who,a=S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived&&accOwner(x)==o&&!/poduszk/i.test(x.name))||S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived);
   openTx(null,{type:'tr',to:a?.id})}
 /* ---------- 📅 yearly expenses: one shared subaccount with envelopes (📌 Stałe → Roczne) ---------- */
 export const years=()=>S.cfg.years||[];

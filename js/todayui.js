@@ -8,11 +8,12 @@ import {$,esc,ls,pg,td,zl0,plu,daysIn} from './util.js';
 import {DEMO,S,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
 import {editFixed,goFixed,exportJson,editInt,planToFixed} from './actions.js';
-import {openSlip} from './salary.js';
+import {openSlip,openSubs} from './salary.js';
 import {openClose} from './close.js';
 import {fillAvg} from './debts.js';
 import {openInst,editLimits,goYear,bookInt} from './savings.js';
 import {render,goTab} from './app.js';
+import {use} from './usage.js';
 
 /* ---------- 🔔 real notifications (Web Push); the automat sends them, keys are made by the automat ---------- */
 export const pushCan=()=>!DEMO&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
@@ -67,20 +68,20 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='tr')return openTx(null,{type:'tr',to:g.to,...(+g.amount>0?{amount:+g.amount}:{})});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
-  if(a=='close')return openClose();
+  if(a=='close')return openClose();if(a=='subs')return openSubs();
   if(a=='dash'||a=='fillAvg'||a=='planFix'){S.ym=td().slice(0,7);if(g.bf)S.bf=g.bf;goTab('dash');if(a=='fillAvg')return fillAvg();if(a=='planFix')return planToFixed();return}
   if(a=='int')return bookInt(g.acc,g.key);if(a=='accInt')return editInt(g.id);
   if(a=='tx'){const t=liveById(g.id);if(t){S.ym=t.date.slice(0,7);openTx(g.id)}}}
 export const goFromHash=h=>{const m=/go=([^&]+)(.*)/.exec(h||'');if(!m)return null;const g={a:decodeURIComponent(m[1])};new window.URLSearchParams(m[2].replace(/^&/,'')).forEach((v,k)=>g[k]=v);return g};
 export function todayGo(i){runGo((S.todayL||[])[i]?.go)}
 /* the second button of an item in „Na dziś” – by the kind of its key */
-const GHOST={over:'Wiem',near:'Wiem',toplan:'Nie teraz',gap:'Wiem',rec:'Nie, dzięki',umowa:'Załatwione',rules:'Załatwione',yearpay:'Załatwione',najem:'✓ Zapłacone',pit:'✓ Złożone',pit28:'✓ Złożone',young:'Wiem',close:'Pomiń',short:'Wiem',int:'Pomiń',promo:'Wiem',pit38:'✓ Rozliczone'};
+const GHOST={over:'Wiem',near:'Wiem',toplan:'Nie teraz',gap:'Wiem',rec:'Nie, dzięki',umowa:'Załatwione',rules:'Załatwione',yearpay:'Załatwione',najem:'✓ Zapłacone',pit:'✓ Złożone',pit28:'✓ Złożone',young:'Wiem',close:'Pomiń',short:'Wiem',int:'Pomiń',promo:'Wiem',pit38:'✓ Rozliczone',subs:'Przejrzane'};
 export function ignoreCheck(key,stay){if(guard())return;S.hraw={...S.hraw,checkIgnore:{...(S.hraw?.checkIgnore||{}),[key]:true}};merge(H,{checkIgnore:{[key]:true}});if(stay)render();else showToday();toast(GHOST[key.split(':')[0]]&&key.split(':')[0]!='rec'?'Gotowe ✓':'Ukryte – nie pokażę tego więcej')}
 /* 📌 a payment that repeats every month – into 📌 Stałe with the form filled in */
 export const recList=()=>S.cfg?recurringP(S.cfg,liveOf(S.tx),td(),S.hraw?.checkIgnore):[];
 export function addRecFixed(key){const r=recList().find(x=>x.key==key);if(!r)return;S.fixSub='fix';goTab('fix');if(r.kind=='tr')return editFixed(null,'tr',{name:r.note?r.note.slice(0,1).toUpperCase()+r.note.slice(1):'Przelew '+r.name,amount:r.amount,day:r.day,acc:r.acc,to:r.to});editFixed(null,'exp',{name:r.name.slice(0,1).toUpperCase()+r.name.slice(1),amount:r.amount,day:r.day,sub:r.sub,acc:r.acc})}
 export function closeToday(){$('dlg').hidden=true}
-export function showToday(){const L=todayItems(),d=$('dlg'),now=L.filter(x=>!x.later),soon=L.length-now.length,bad=now.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
+export function showToday(){use('f:today');const L=todayItems(),d=$('dlg'),now=L.filter(x=>!x.later),soon=L.length-now.length,bad=now.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
   const row=(x,i)=>`<div class="titem ${x.k}"><span class="ti">${x.icon}</span><span class="tt">${esc(x.text)}${x.k=='check'?'<small>🧹 strażnik porządku</small>':''}</span><span class="tb"><button class="chip" onclick="todayGo(${i})">${esc(x.label)}</button>${x.key?`<button class="chip ghost" onclick="ignoreCheck('${esc(x.key)}')">${GHOST[x.key.split(':')[0]]||GHOST[x.k]||'To nie błąd'}</button>`:''}</span></div>`;
   $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(now.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${now.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):soon?'Na dziś nic pilnego. Niżej to, co będzie za kilka dni 😺':'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>
     ${now.length?`<div class="today">${now.map(row).join('')}</div>`:''}

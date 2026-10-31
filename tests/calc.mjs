@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy} from '../js/logic.js';
+import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
@@ -379,6 +379,30 @@ const N=' ';
   eq('Umowa za 14 dni – już na dziś',todayItems({cfg:{accs:[{id:'a',grp:'cur',owner:'Wspólne'}],cats:[],fixed:[F('f5','Gaz',3,{until:'2026-11-03'})],years:[]},tx:[{id:'p5',type:'exp',amount:10000,date:'2026-10-03',acc:'a',sub:'s',fixedId:'f5'}],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-20T12:00:00').getTime()},hraw:{}},{today:'2026-10-20',checks:false}).find(x=>x.k=='umowa')?.later,false);
   eq('PIT w marcu – Wkrótce, od 20 kwietnia – pilne',[todayItems({cfg:{accs:[],cats:[],fixed:[],years:[]},tx:[],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2027-03-05T12:00:00').getTime()},hraw:{}},{today:'2027-03-05',checks:false}).find(x=>x.key?.startsWith('pit:'))?.later,
     todayItems({cfg:{accs:[],cats:[],fixed:[],years:[]},tx:[],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2027-04-21T12:00:00').getTime()},hraw:{}},{today:'2027-04-21',checks:false}).find(x=>x.key?.startsWith('pit:'))?.later],[true,false]);
+}
+
+/* ---------- 📅 rok temu: ten sam miesiąc rok wcześniej ---------- */
+{ const cfg={accs:[{id:'a',grp:'cur',owner:'Wspólne'},{id:'v',grp:'sav',owner:'Wspólne'}],cats:[{id:'i',type:'inc',name:'WPŁYWY',subs:[{id:'si',name:'Pensja'}]},{id:'c',type:'exp',name:'DOM',subs:[{id:'s',name:'Czynsz'}]},{id:'k',type:'exp',name:'KOTY',subs:[{id:'sk',name:'Karma'}]}]};
+  const T=(id,type,amount,date,sub,x)=>({id,type,amount,date,sub,acc:'a',...x});
+  const tx=[T('1','exp',50000,'2025-10-05','s'),T('2','exp',30000,'2025-10-25','s'),T('3','inc',400000,'2025-10-10','si'),T('4','tr',20000,'2025-10-11','',{to:'v'}),
+    T('5','exp',90000,'2026-10-03','s'),T('6','inc',450000,'2026-10-10','si'),T('7','exp',5000,'2026-10-04','sk')];
+  const L=yearAgoP(cfg,tx,'2026-10','2026-10-20');
+  // trwa: rok temu do 20. dnia → 500 zł wydatków (bez 300 zł z 25.10), przychody 4 000 zł, odłożone 200 zł
+  eq('Rok temu – trwający miesiąc do 20. dnia',[L.ym,L.day,L.then.exp,L.then.inc,L.then.put,L.now.exp,L.now.put],['2025-10',20,50000,400000,20000,95000,0]);
+  eq('Rok temu – kategorie (Dom +400 zł, Koty +50 zł)',L.cats.map(x=>[x.id,x.d]),[['c',40000],['k',5000]]);
+  eq('Rok temu – po końcu miesiąca cały miesiąc',yearAgoP(cfg,tx,'2026-10','2026-11-02').then.exp,80000);
+  eq('Rok temu – brak wpisów sprzed roku',yearAgoP(cfg,tx,'2026-09','2026-10-20'),null);
+}
+
+/* ---------- 📋 przegląd subskrypcji raz w roku ---------- */
+{ const cfg={accs:[{id:'m',grp:'cur',owner:'Mati'},{id:'w',grp:'cur',owner:'Wercia'},{id:'j',grp:'cur',owner:'Wspólne'}],cats:[{id:'c',type:'exp',name:'SUBSKRYPCJE',subs:[{id:'s',name:'Spotify'}]},{id:'d',type:'exp',name:'DOM',subs:[{id:'x',name:'Czynsz'}]}],
+    fixed:[{id:'f1',name:'Spotify',amount:2999,sub:'s',acc:'m'},{id:'f2',name:'Netflix',amount:4300,sub:'s',acc:'w'},{id:'f3',name:'Chmura',amount:1199,sub:'s',acc:'j'},{id:'f4',name:'Czynsz',amount:185000,sub:'x',acc:'j'}]};
+  const r=subsReviewP(cfg,{},'Mati','2026-10-31');
+  // Mati: swoje (Spotify) + wspólne (Chmura), bez Netflixa Werci i bez czynszu; 29,99 + 11,99 = 41,98 zł/mies.
+  eq('Przegląd subskrypcji – czyje',r.list.map(f=>f.id),['f1','f3']);eq('Przegląd subskrypcji – suma miesięczna',r.month,4198);eq('Przegląd – klucz',r.key,'subs:Mati:2026-10');
+  eq('Przegląd – po przejrzeniu nic przez rok',subsReviewP(cfg,{checkIgnore:{'subs:Mati:2026-10':true}},'Mati','2027-09-15'),null);
+  eq('Przegląd – po 12 miesiącach znowu',subsReviewP(cfg,{checkIgnore:{'subs:Mati:2026-10':true}},'Mati','2027-10-01')?.key,'subs:Mati:2027-10');
+  eq('Przegląd – przejrzane przez Matiego nie dotyczy Werci',subsReviewP(cfg,{checkIgnore:{'subs:Mati:2026-10':true}},'Wercia','2026-11-01')?.list.map(f=>f.id),['f2','f3']);
 }
 
 /* ---------- 🔢 wpisywanie i pokazywanie kwot ---------- */

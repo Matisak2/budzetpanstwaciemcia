@@ -4,7 +4,7 @@ import {scene} from './cats.js';
 import {isTreat,kotki} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,gainSvg,hbarsH,legendH,lineSvg,pctS} from './charts.js';
 import {OWN,OWN_COL,catHue,catMark} from './data.js';
-import {anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs} from './logic.js';
+import {anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs,yearAgoP} from './logic.js';
 import {MN,MNG,addMonths,daysIn,esc,ls,p2,td,zl,zl0,fxTxt,plu} from './util.js';
 import {S,catSlides,toast,accCur,isP,accOwner} from './core.js';
 import {norm} from './sheet.js';
@@ -12,6 +12,7 @@ import {downloadBlob,txRowH} from './actions.js';
 import {macro} from './savings.js';
 import {projById} from './debts.js';
 import {accN,render} from './app.js';
+import {use} from './usage.js';
 
 /* ---------- 📊 analysis extras: month summary, Mati ↔ Wercia, Sankey, wealth, 12 months, personal inflation, export, Wrapped ---------- */
 export const anaFull=()=>ls.get('mw_anam')!='basic';
@@ -59,13 +60,13 @@ export function inflationH(cfg,tx,y){const cur=td().slice(0,7),last=y<cur.slice(
     <div class="kpis" style="gap:8px"><div class="kpi k-ro"><div class="l">Wasze wydatki</div><div class="v num">${f(your)}</div><div class="s">${zl0(curTot)} wobec ${zl0(prevTot)}</div></div><div class="kpi k-sk"><div class="l">Inflacja GUS</div><div class="v num">${gus!=null?f(+gus):'—'}</div><div class="s">${gus!=null?(S.market?.rates?.inflPer?'automat, '+S.market.rates.inflPer:'wpisana ręcznie'):'wpisze ją automat'}</div></div></div>
     ${rows.slice(0,8).map(x=>`<div class="r1"><span>${esc(cleanCat(x.c.name))}</span><b class="num ${x.d>0?'t-exp':'t-inc'}">${x.d>0?'▲':'▼'} ${f(x.d)}</b></div>`).join('')}</section>`}
 /* CSV for Excel: semicolons, decimal comma, UTF-8 with BOM */
-export function exportCsv(y){const sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>!y||t.date.startsWith(y)).sort((a,b)=>a.date.localeCompare(b.date));if(!L.length)return toast('Brak wpisów do eksportu','bad');
+export function exportCsv(y){use('f:csv');const sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>!y||t.date.startsWith(y)).sort((a,b)=>a.date.localeCompare(b.date));if(!L.length)return toast('Brak wpisów do eksportu','bad');
   const TY={exp:'wydatek',inc:'przychód',tr:'przelew',adj:'wyrównanie',inv:'zakup inwestycji',invs:'sprzedaż inwestycji',lend:'pożyczka'},q=v=>{const s=String(v??'');return/[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
   const rows=[['Data','Rodzaj','Kwota','Waluta','Kategoria','Pozycja','Konto','Na konto','Kto','Notatka','Projekt'],...L.map(t=>{const s=sm[t.sub];
     return[t.date,t.refundOf?'zwrot':t.payoff?'spłata zobowiązania':TY[t.type]||t.type,((t.type=='exp'||t.type=='lend'||t.type=='inv'?-1:1)*t.amount/100).toFixed(2).replace('.',','),accCur(t.acc),s?cleanCat(s.cat.name):'',s?.name||'',accN(t.acc),t.to?accN(t.to):'',t.who||'',t.note||'',t.proj?projById(t.proj)?.name||'':'']})];
   downloadBlob(new Blob(['﻿'+rows.map(r=>r.map(q).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'}),`budzet-${y||'wszystko'}.csv`);toast(`Pobrano ${L.length} ${plu(L.length,'wpis','wpisy','wpisów')} do Excela ✓`)}
 /* 🎁 Money Wrapped: the year told by Bailey and Ivo */
-export function wrapped(y){const tx=liveOf(S.tx),cfg=S.cfg,Y=agg(cfg,tx,y),sm=subsMap(cfg);if(!Y.exp&&!Y.inc)return toast('Brak danych za rok '+y,'bad');
+export function wrapped(y){use('f:wrapped');const tx=liveOf(S.tx),cfg=S.cfg,Y=agg(cfg,tx,y),sm=subsMap(cfg);if(!Y.exp&&!Y.inc)return toast('Brak danych za rok '+y,'bad');
   const cats=Object.entries(Y.cat).sort((a,b)=>b[1]-a[1]),top=cats[0]&&cfg.cats.find(c=>c.id==cats[0][0]),big=tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&!t.payoff).sort((a,b)=>b.amount-a.amount)[0];
   const words={};tx.filter(t=>t.date.startsWith(y)&&t.type=='exp'&&!t.payoff&&t.note).forEach(t=>{const w=t.note.trim().split(/\s+/)[0].toLowerCase();if(w.length>2)words[w]=(words[w]||0)+1});
   const fav=Object.entries(words).sort((a,b)=>b[1]-a[1])[0],ms=Array.from({length:12},(_,i)=>({i,a:agg(cfg,tx,y+'-'+p2(i+1))})).filter(x=>x.a.inc||x.a.exp),best=ms.length?ms.reduce((p,c)=>c.a.inc-c.a.exp>p.a.inc-p.a.exp?c:p):null;
@@ -120,6 +121,7 @@ export function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.f
   const segs=top.map(r=>({l:r.l,v:r.v,c:markOf(cats[r.id])}));if(rest>0)segs.push({l:'Pozostałe',v:rest,c:P_OTHER});
   if(segs.length){const tot=segs.reduce((a,x)=>a+x.v,0);
     h+=chartBox('Na co poszły pieniądze','wydatki według kategorii',`<div class="dwrap">${donutSvg(segs,zl0(tot),'wydatki')}${hbarsH(segs.map(x=>({l:x.l,v:x.v,c:x.c,dot:x.c})),tot)}</div>`)}
+  h+=yearAgoH(cfg,tx,ym);
   if(!ctx.full)return h;
   h+=sankeyH(cfg,tx,ym,A)+personsH(cfg,tx,ym);
   // top subcategories
@@ -146,6 +148,13 @@ export function anaMonth(ctx){const{cfg,tx,ym}=ctx,sm=subsMap(cfg),cats=Object.f
   h+=shopsH(cfg,tx,ym,'w tym miesiącu');
   if(A.big.length)h+=`<section class="chart"><div class="ct"><b>Największe pojedyncze wydatki</b></div><div class="list" style="border:0">${A.big.map(t=>txRowH(t,sm)).join('')}</div></section>`;
   return h}
+
+/* 📅 the same month a year ago (both Podstawowa and Pełna) – only when there are entries from then */
+export function yearAgoH(cfg,tx,ym){const Y=yearAgoP(cfg,tx,ym,td());if(!Y)return'';const yn=MN[+Y.ym.slice(5)-1].toLowerCase()+' '+Y.ym.slice(0,4);
+  const row=(l,a,b,up)=>`<div class="r1"><span>${l}</span><span style="text-align:right"><b class="num">${zl0(a)}</b> ${deltaH(a,b,up)}<span class="mini" style="display:block">rok temu ${zl0(b)}</span></span></div>`;
+  return`<section class="chart yago"><div class="ct"><b>📅 Rok temu: ${yn}</b><span class="mini">ten sam miesiąc rok wcześniej${Y.day?` – do ${Y.day}. dnia, bo ten miesiąc jeszcze trwa`:''}</span></div>
+    ${row('Przychody',Y.now.inc,Y.then.inc,true)}${row('Wydatki',Y.now.exp,Y.then.exp,false)}${Y.now.put||Y.then.put?row('Odłożone',Y.now.put,Y.then.put,true):''}
+    ${Y.cats.length?`<div class="mini" style="font-weight:800;margin-top:4px">Najbardziej się zmieniło</div>${Y.cats.map(x=>`<div class="r1"><span>${esc(cleanCat(x.name))}</span><b class="num ${x.d>0?'t-exp':'t-inc'}">${x.d>0?'+':'−'}${zl0(Math.abs(x.d))}</b></div>`).join('')}`:''}</section>`}
 
 export const n0=v=>zl0(v).replace(/\s*zł$/,'');
 /* 📊 plan and reality in a year: positions over the plan in most months (the plan is too small – or the spending too big) and positions far below it;

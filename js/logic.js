@@ -1,4 +1,4 @@
-import {addDays,daysIn,isDate,p2,zl} from './util.js';
+import {addDays,addMonths,daysIn,isDate,p2,zl} from './util.js';
 export const cleanCat=n=>String(n||'').replace(/^\s*\d+\s*[.)]\s*/,'').trim();
 export const subsMap=cfg=>{const m={};cfg.cats.forEach(c=>c.subs.forEach(s=>m[s.id]={...s,cat:c}));return m};
 /* ⚡ speed with many years of entries: results that depend only on the list of entries are remembered for that list
@@ -163,3 +163,16 @@ export function backupDoc(D,now=new Date(),extra={}){const h=D.hraw||{};
   return{format:'budzet-mw-2',exported:now.toISOString(),cfg:D.cfg,savTarget:D.savTarget??h.savTarget??0,
     ...Object.fromEntries(BACKUP_KEYS.map(k=>[k,h[k]??(k=='yearAcc'?'':{})])),
     tx:D.tx,plans:D.plans,inv:D.inv||{},goals:D.goals,slips:D.slips,hold:D.hold,debts:D.debts,...extra}}
+/* 📅 the same month a year earlier (Analiza → Miesiąc „Rok temu”): income, spending, put aside and the 3 categories that changed most;
+   a month that still lasts (today in ym) is compared up to the same day; null = no entries a year ago */
+export function yearAgoP(cfg,tx,ym,today){const yym=addMonths(ym,-12),live=today.slice(0,7)==ym,day=live?Math.min(+today.slice(8),daysIn(yym)):null;
+  const ytx=live?upToDay(tx,yym,day):tx,Y=agg(cfg,ytx,yym);if(!Y.inc&&!Y.exp)return null;const A=agg(cfg,tx,ym),SV=savIds(cfg);
+  const cats=cfg.cats.filter(c=>c.type=='exp').map(c=>({id:c.id,name:c.name,d:(A.cat[c.id]||0)-(Y.cat[c.id]||0)})).filter(x=>Math.abs(x.d)>=100).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,3);
+  return{ym:yym,day,now:{inc:A.inc,exp:A.exp,put:savFlow(cfg,tx,SV,ym).flow},then:{inc:Y.inc,exp:Y.exp,put:savFlow(cfg,ytx,SV,yym).flow},cats}}
+/* 📋 subscriptions = fixed payments in a category of subscriptions / abonaments / apps / streaming (the same rule as „Opłaty stałe w roku”) */
+export const SUBSCR_RE=/subskryp|abonament|aplikacj|streaming/i;
+export const subscrOf=cfg=>{const sm=subsMap(cfg);return(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&SUBSCR_RE.test(sm[f.sub]?.cat?.name||''))};
+/* the yearly review: due when it was never done or 12 months have passed since the last one (checkIgnore 'subs:'+osoba+':'+YYYY-MM) */
+export function subsReviewP(cfg,hraw,who,today){const L=subscrOf(cfg).filter(f=>seenBy(fixedWho(cfg,f),who));if(!L.length)return null;const ym=today.slice(0,7),ig=hraw?.checkIgnore||{};
+  const last=Object.keys(ig).filter(k=>ig[k]&&k.startsWith('subs:'+who+':')).map(k=>k.split(':')[2]).sort().pop();if(last&&ym<addMonths(last,12))return null;
+  return{key:'subs:'+who+':'+ym,list:L,month:L.reduce((a,f)=>a+(+f.amount||0),0),last:last||null}}

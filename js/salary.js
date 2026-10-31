@@ -4,11 +4,13 @@ import {catsEmpty} from './art.js';
 import {C_INC,barsSvg,chartBox} from './charts.js';
 import {ULGI,pitSummaryP} from './today.js';
 import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf,youngLeft,youngUntil,youngPart,baseOf} from './pay.js';
-import {liveOf,subsMap} from './logic.js';
+import {liveOf,subsMap,SUBSCR_RE,subscrOf,fixedWho,seenBy} from './logic.js';
 import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu,ls} from './util.js';
-import {S,toast,ask,accCur,am,accOwner,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard} from './core.js';
+import {S,toast,ask,accCur,am,accOwner,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard,delFixedDb} from './core.js';
+import {editFixed} from './actions.js';
 import {txRowH} from './actions.js';
-import {accN,render} from './app.js';
+import {accN,render,goTab} from './app.js';
+import {use} from './usage.js';
 
 /* ---------- 💼 salaries (📌 Stałe → Pensje): income sources per person, a payslip per source and month ---------- */
 export const incs=()=>S.cfg.incs||[],incById=id=>incs().find(s=>s.id==id);
@@ -78,9 +80,28 @@ export function pitH(y){const tx=liveOf(S.tx);
       <div class="mini">Do zeznania potrzebne będą faktury i potwierdzenia. Ulgi niezależne od wydatków (np. na dzieci, 1,5% dla OPP) sprawdzicie w objaśnieniach do PIT.</div></section>`}).join('')}
 /* 📆 what the fixed payments cost in a year (złoty accounts only), subscriptions separately, plus yearly expenses */
 export function fixYearH(all){const sm=subsMap(S.cfg),ex=all.filter(f=>(f.kind||'exp')=='exp'&&accCur(f.acc)=='PLN');if(!ex.length)return'';
-  const m=ex.reduce((a,f)=>a+(+f.amount||0),0),isSub=f=>/subskryp|abonament|aplikacj|streaming/i.test(sm[f.sub]?.cat?.name||''),subs=ex.filter(isSub),ms=subs.reduce((a,f)=>a+(+f.amount||0),0);
+  const m=ex.reduce((a,f)=>a+(+f.amount||0),0),isSub=f=>SUBSCR_RE.test(sm[f.sub]?.cat?.name||''),subs=ex.filter(isSub),ms=subs.reduce((a,f)=>a+(+f.amount||0),0);
   const yr=(S.cfg.years||[]).reduce((a,it)=>a+(+it.amount||0)*12/Math.max(1,+it.every||12),0);
-  return`<div class="card yfix"><div class="r1"><b>📆 Opłaty stałe w roku</b><b class="num">${zl0(m*12)}</b></div><div class="mini">czyli ok. ${zl0(m)} co miesiąc${subs.length?` · w tym subskrypcje ${zl0(ms*12)} rocznie (${subs.map(f=>esc(f.name)).join(', ')})`:''}${yr?` · do tego wydatki roczne ok. ${zl0(yr)}`:''}.</div>${subs.length?`<div class="mini">Raz na jakiś czas warto sprawdzić, czy wszystkich subskrypcji nadal używacie.</div>`:''}</div>`}
+  return`<div class="card yfix"><div class="r1"><b>📆 Opłaty stałe w roku</b><b class="num">${zl0(m*12)}</b></div><div class="mini">czyli ok. ${zl0(m)} co miesiąc${subs.length?` · w tym subskrypcje ${zl0(ms*12)} rocznie (${subs.map(f=>esc(f.name)).join(', ')})`:''}${yr?` · do tego wydatki roczne ok. ${zl0(yr)}`:''}.</div>${subs.length?`<div class="r1"><span class="mini">Raz na jakiś czas warto sprawdzić, czy wszystkich subskrypcji nadal używacie.</span><button class="btn sm" onclick="openSubs()">📋 Przejrzyj</button></div>`:''}</div>`}
+/* 📋 the yearly review of subscriptions (🔔 „Na dziś” once a year, or „📋 Przejrzyj” under „Opłaty stałe w roku”): own and shared ones of this phone's person;
+   „Zostaje” only marks it on the screen, „Rezygnuję” removes it from 📌 Stałe (past payments stay in Rejestr), „Gotowe” = reviewed for a year */
+const SUBKEEP=new Set();
+export function openSubs(){use('f:subs');const L=subscrOf(S.cfg).filter(f=>seenBy(fixedWho(S.cfg,f),S.who)),sum=L.reduce((a,f)=>a+(+f.amount||0),0),tx=liveOf(S.tx);
+  const since=f=>{const t=tx.filter(t=>t.fixedId===f.id).map(t=>t.date).sort()[0];return t?` · płacicie od ${t.slice(5,7)}.${t.slice(0,4)}`:''};
+  $('dlgBody').innerHTML=`<h2>📋 Przegląd subskrypcji</h2><p class="dtext">${L.length?`Razem <b>${zl(sum)}</b> miesięcznie, czyli <b>${zl0(sum*12)}</b> rocznie. Czy wszystkich nadal używacie?`:'Nie ma subskrypcji w opłatach stałych.'}</p>
+    <div class="subrv">${L.map(f=>{const ok=SUBKEEP.has(f.id);return`<div class="subi${ok?' ok':''}"><div class="r1"><b>${ok?'✓ ':''}${esc(f.name)}</b><b class="num">${zl(+f.amount||0)}<small class="mini">/mies.</small></b></div>
+      <div class="mini"><b style="color:var(--fg)">${zl0((+f.amount||0)*12)}</b> rocznie · ${esc(accN(f.acc))}${since(f)}</div>
+      <div class="btns" style="gap:6px"><button class="chip" onclick="subKeep('${f.id}')">✓ Zostaje</button><button class="chip ghost" onclick="subEdit('${f.id}')">✎ Zmień</button><button class="chip ghost" onclick="subDrop('${f.id}')">✕ Rezygnuję</button></div></div>`}).join('')}</div>
+    <div class="g2"><button class="btn" id="subNo">Zamknij</button><button class="btn primary" id="subOk">Gotowe – przejrzane</button></div>`;
+  const d=$('dlg');d.hidden=false;d.onclick=e=>{if(e.target===d)d.hidden=true};$('subNo').onclick=()=>{d.hidden=true};$('subOk').onclick=subsDone}
+export function subKeep(id){SUBKEEP.has(id)?SUBKEEP.delete(id):SUBKEEP.add(id);openSubs()}
+export function subEdit(id){$('dlg').hidden=true;S.fixSub='fix';goTab('fix');editFixed(id)}
+export async function subDrop(id){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==id);if(!f)return openSubs();
+  if(await ask({title:'Rezygnujecie z „'+f.name+'”?',text:'Usunę ją z 📌 Stałe – dawne płatności zostają w Rejestrze.\nPamiętajcie, żeby wyłączyć ją też w samym serwisie (ustawienia konta, App Store, Google Play).',ok:'Usuń z opłat stałych',danger:true})){
+    S.cfg.fixed=S.cfg.fixed.filter(x=>x.id!=id);delFixedDb(id);render();toast('Usunięte z opłat stałych ✓')}
+  openSubs()}
+export function subsDone(){if(guard())return;const key='subs:'+S.who+':'+td().slice(0,7);S.hraw={...S.hraw,checkIgnore:{...(S.hraw?.checkIgnore||{}),[key]:true}};merge(H,{checkIgnore:{[key]:true}});
+  SUBKEEP.clear();$('dlg').hidden=true;render();toast('Przejrzane ✓ Przypomnę za rok')}
 /* 🗑️ recently deleted (60 days): a deleted entry is only marked deleted:true, so it can always come back.
    Entries deleted together with their parent (PPK, refunds, interest, paystub deductions) come back with it; paystub entries replaced by a re-saved paystub are not listed. */
 export const DEL_DAYS=60,parOf=t=>t.ppkOf||t.refundOf||t.payOf||t.slipOf;
@@ -152,7 +173,7 @@ export async function editInc(id,who){if(guard())return;const s0=id?incById(id):
   S.cfg.incs=incs();let x=s0;if(x)Object.assign(x,body);else{x=body;S.cfg.incs.push(x)}
   render();saveInc(x);toast(s0?'Zapisano źródło dochodu':'Dodano źródło dochodu 💼')}
 /* the payslip editor (a page in 📌 Stałe) */
-export function openSlip(id,ym){if(guard())return;const src=incById(id);if(!src)return toast('Nie ma już tego źródła dochodu','bad');ym=ym||S.ym;
+export function openSlip(id,ym){if(guard())return;use('f:slip');const src=incById(id);if(!src)return toast('Nie ma już tego źródła dochodu','bad');ym=ym||S.ym;
   const old=slipOf(ym,id),day=ym+'-'+p2(Math.min(src.day||10,daysIn(ym)));
   /* ✂️ a new payslip starts with the deductions of the last one (or the ones given when the source was added) – they repeat every month */
   const prev=Object.keys(S.slips).filter(m=>m<ym&&S.slips[m][id]).sort().pop(),ded0=src.kind=='b2b'?[]:clone(prev?S.slips[prev][id].ded||[]:src.deds||[]);
