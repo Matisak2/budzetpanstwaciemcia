@@ -97,8 +97,12 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 /* register */
 .day{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:4px 4px 0}
 .list{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-/* 🔎 the entries of a position (subTx) scroll inside the dialog – .list alone cuts them (overflow:hidden), and the finger must not move the page underneath */
-.list.subtx{max-height:52vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex-shrink:0}
+/* 🔎 the entries of a position (subTx): the whole dialog is one scrolling page (no list scrolling inside it – iPhone Safari moved the page underneath instead),
+   .list would cut the rows (overflow:hidden), the buttons stay stuck at the bottom */
+.list.subtx{overflow:visible;flex-shrink:0}
+.dlg .stfoot{position:sticky;bottom:-16px;margin:0 -16px -16px;padding:10px 16px 16px;background:#fff;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.dlg>*{flex-shrink:0}
+.dlg{-webkit-overflow-scrolling:touch}
 .tx{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--line);width:100%;text-align:left;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .tx:first-child{border-top:0}
 .tx .info{flex:1;min-width:0;font-size:13.5px}
@@ -576,6 +580,8 @@ details.tsoon summary::after{content:'›';margin-left:auto;font-size:18px;trans
 details.tsoon .today{max-height:none;overflow:visible}details.tsoon .titem{background:#fff}
 /* the dialog scrolls as a whole – the lists must not be squeezed to one row when „Wkrótce” is open */
 .dlg>.today,.dlg>details.tsoon{flex-shrink:0}
+/* the „Na dziś” list – no scrolling inside the scrolling dialog either (iPhone) */
+.dlg>.today:not(.hb){max-height:none;overflow:visible}
 
 /* ⏰ urgent strip, guard items */
 .titem .tt small{display:block;font-size:11px;font-weight:700;color:#7c6f9b}

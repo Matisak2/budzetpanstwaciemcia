@@ -465,8 +465,8 @@ export function subTx(sid){const sm=subsMap(S.cfg),s=sm[sid];if(!s)return;use('f
   const L=inPeriod(tx,ym).filter(t=>t.sub===sid).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0)),p=planOf(S.cfg,S.plans,tx,ym)[sid]||0,a=actuals(S.cfg,tx,ym)[sid]||0;
   const d=$('dlg');$('dlgBody').innerHTML=`<h2>${catIcon(c)} ${esc(s.name)}</h2><p class="dtext">${MN[+ym.slice(5)-1]} · plan ${zl(p)} · ${c.type=='inc'?'wpłynęło':'wydano'} <b>${zl(a)}</b>${L.length?` · ${L.length} ${plu(L.length,'wpis','wpisy','wpisów')}`:''}</p>
     ${L.length?`<div class="list subtx">${L.map(t=>txRowH(t,sm)).join('')}</div>`:`<div class="empty" style="padding:14px">W tym miesiącu nic tu nie wpisano.</div>`}
-    <div class="g2"><button class="btn" id="stReg">🧾 W Rejestrze</button><button class="btn primary" id="stAdd">＋ Dodaj</button></div><button class="btn sm" id="stNo" style="align-self:center">Zamknij</button>`;
-  d.hidden=false;const close=()=>{d.hidden=true};d.onclick=e=>{if(e.target===d)close();else if(e.target.closest('.subtx .tx'))close()};$('stNo').onclick=close;
+    <div class="stfoot"><div class="g2"><button class="btn" id="stReg">🧾 W Rejestrze</button><button class="btn primary" id="stAdd">＋ Dodaj</button></div><button class="btn sm" id="stNo" style="align-self:center">Zamknij</button></div>`;
+  d.hidden=false;$('dlgBody').scrollTop=0;const close=()=>{d.hidden=true};d.onclick=e=>{if(e.target===d)close();else if(e.target.closest('.subtx .tx'))close()};$('stNo').onclick=close;
   $('stAdd').onclick=()=>{close();openTx(null,{type:c.type,sub:sid})};
   $('stReg').onclick=()=>{close();S.f={q:s.name,type:'',who:'',acc:'',cat:c.id,scope:'m'};goTab('tx')}}
 export function clearF(){S.f={q:'',type:'',who:'',acc:'',cat:'',scope:'m'};if(document.activeElement?.id=='fq')document.activeElement.blur();render()}
