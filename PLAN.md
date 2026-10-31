@@ -120,6 +120,7 @@ Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: w
 - [x] „Skopiuj plan z poprzedniego miesiąca” tylko, gdy miesiąc nie ma planu
 - [x] ⓘ Długie objaśnienia zwinięte (poduszka, FIRE, odsetki, kaskada, koperty roczne, konta inwestycyjne, zamknięcie)
 - [x] 🔎 Stuknięcie pozycji w Budżecie → jej wpisy z miesiąca
+- [x] 🔎 Poprawka: lista wpisów pozycji przewija się w okienku (wcześniej `.list` ją ucinał), a otwarte okienko nie przesuwa strony pod spodem
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
