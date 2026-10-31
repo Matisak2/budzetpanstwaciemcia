@@ -2,7 +2,7 @@
 import {doc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
-import {recurringP,automatStale,todayItems as todayItemsP} from './today.js';
+import {recurringP,automatStale,todayItems as todayItemsP,todayRank} from './today.js';
 import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap} from './logic.js';
 import {$,esc,ls,pg,td,zl0,plu,daysIn} from './util.js';
 import {DEMO,S,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
@@ -42,8 +42,10 @@ export const demoCardH=()=>`<div class="card"><h3>🧪 Wersja demonstracyjna</h3
 export const pushCardH=()=>`<div class="card"><h3>🔔 Powiadomienia</h3><div class="mini">${S.pushOk?'✓ Włączone na tym telefonie: rano ok. 7:30 „Na dziś” (gdy coś czeka), o 20:00 przypomnienie, gdy dziś nic nie wpisano. Okienka „Na dziś” nie wyskakują już same – dzwonek 🔔 zostaje.':S.pushLost?'⚠️ Powiadomienia na tym telefonie przestały działać (wyłączone w ustawieniach telefonu albo cofnięta zgoda). Do czasu ponownego włączenia okienka „Na dziś” pokazują się w aplikacji.':'Prawdziwe powiadomienia na telefon, także gdy aplikacja jest zamknięta. Każde z Was włącza je na swoim telefonie.'}</div>
   <div class="btns" style="gap:6px">${S.pushOk?'<button class="btn sm" onclick="disablePush()">Wyłącz</button>':`<button class="btn sm primary" onclick="enablePush()">${S.pushLost?'Włącz ponownie':'Włącz powiadomienia'}</button>`}</div></div>`;
 export const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw});
-/* 🗓️ the closing of the month is personal – each phone shows only its own person's */
-export function todayItems(){if(!S.cfg)return[];return [...todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}),...planTodo()].filter(x=>seenBy(x.who,S.who))}
+/* 🗓️ the closing of the month is personal – each phone shows only its own person's; the most urgent first (late → today → tomorrow → the rest), „Wkrótce” (later) at the end */
+export function todayItems(){if(!S.cfg)return[];const L=[...todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}),...planTodo()].filter(x=>seenBy(x.who,S.who)).map((x,i)=>({x,i,r:todayRank(x)}));
+  return L.sort((a,b)=>(!!a.x.later-!!b.x.later)||a.r-b.r||a.i-b.i).map(y=>y.x)}
+export const todayNow=()=>todayItems().filter(x=>!x.later);
 /* 📊 the plan of the current month (only in the app – plans are not read by the automat, so no phone notification): it used to be banners and cats' warnings on Budżet */
 export function planTodo(){const today=td(),ym=today.slice(0,7),tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),ig=S.hraw?.checkIgnore||{},out=[];
   const add=(key,icon,text,go,label)=>{if(!ig[key])out.push({key,icon,text,go,label,k:'plan',who:null,quiet:true})};
@@ -78,14 +80,16 @@ export function ignoreCheck(key,stay){if(guard())return;S.hraw={...S.hraw,checkI
 export const recList=()=>S.cfg?recurringP(S.cfg,liveOf(S.tx),td(),S.hraw?.checkIgnore):[];
 export function addRecFixed(key){const r=recList().find(x=>x.key==key);if(!r)return;S.fixSub='fix';goTab('fix');if(r.kind=='tr')return editFixed(null,'tr',{name:r.note?r.note.slice(0,1).toUpperCase()+r.note.slice(1):'Przelew '+r.name,amount:r.amount,day:r.day,acc:r.acc,to:r.to});editFixed(null,'exp',{name:r.name.slice(0,1).toUpperCase()+r.name.slice(1),amount:r.amount,day:r.day,sub:r.sub,acc:r.acc})}
 export function closeToday(){$('dlg').hidden=true}
-export function showToday(){const L=todayItems(),d=$('dlg'),bad=L.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
-  $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(L.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${L.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>
-    ${L.length?`<div class="today">${L.map((x,i)=>`<div class="titem ${x.k}"><span class="ti">${x.icon}</span><span class="tt">${esc(x.text)}${x.k=='check'?'<small>🧹 strażnik porządku</small>':''}</span><span class="tb"><button class="chip" onclick="todayGo(${i})">${esc(x.label)}</button>${x.key?`<button class="chip ghost" onclick="ignoreCheck('${esc(x.key)}')">${GHOST[x.key.split(':')[0]]||GHOST[x.k]||'To nie błąd'}</button>`:''}</span></div>`).join('')}</div>`:''}
+export function showToday(){const L=todayItems(),d=$('dlg'),now=L.filter(x=>!x.later),soon=L.length-now.length,bad=now.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
+  const row=(x,i)=>`<div class="titem ${x.k}"><span class="ti">${x.icon}</span><span class="tt">${esc(x.text)}${x.k=='check'?'<small>🧹 strażnik porządku</small>':''}</span><span class="tb"><button class="chip" onclick="todayGo(${i})">${esc(x.label)}</button>${x.key?`<button class="chip ghost" onclick="ignoreCheck('${esc(x.key)}')">${GHOST[x.key.split(':')[0]]||GHOST[x.k]||'To nie błąd'}</button>`:''}</span></div>`;
+  $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(now.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${now.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):soon?'Na dziś nic pilnego. Niżej to, co będzie za kilka dni 😺':'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>
+    ${now.length?`<div class="today">${now.map(row).join('')}</div>`:''}
+    ${soon?`<details class="tsoon"${now.length?'':' open'}><summary>⏳ Wkrótce (${soon})</summary><div class="today">${L.slice(now.length).map((x,j)=>row(x,now.length+j)).join('')}</div></details>`:''}
     <div class="g2" style="grid-template-columns:1fr"><button class="btn primary" id="tdOk">Zamknij</button></div>`;
   d.hidden=false;$('tdOk').onclick=closeToday;d.onclick=e=>{if(e.target===d)closeToday()};updToday()}
-export function updToday(){const n=todayItems().length,b=$('todayBtn');if(!b)return;b.dataset.n=n||'';b.setAttribute('aria-label',n?`Na dziś: ${n}`:'Na dziś')}
+export function updToday(){const n=todayNow().length,b=$('todayBtn');if(!b)return;b.dataset.n=n||'';b.setAttribute('aria-label',n?`Na dziś: ${n}`:'Na dziś')}
 /* the first time the app is opened on a given day, if anything is waiting */
-export async function maybeToday(){await S.pushReady;if(ls.get('mw_today')==td()||!$('dlg').hidden||!$('sheet').hidden)return;if(S.pushOk&&!automatStale(S.market,td())){ls.set('mw_today',td());return}if(todayItems().length)showToday();else ls.set('mw_today',td())}
+export async function maybeToday(){await S.pushReady;if(ls.get('mw_today')==td()||!$('dlg').hidden||!$('sheet').hidden)return;if(S.pushOk&&!automatStale(S.market,td())){ls.set('mw_today',td());return}if(todayNow().length)showToday();else ls.set('mw_today',td())}
 /* event wiring of this part – app.js calls it once at start (it used to run while app.js was loading) */
 export function wireToday(){
 /* while the app stays open: at 20:00 a gentle nudge when nothing was entered today */

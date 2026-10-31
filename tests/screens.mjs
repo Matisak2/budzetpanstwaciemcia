@@ -33,7 +33,7 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ...['acc','cat','tel','bez','auto','pom'].map(k=>['ust-'+k,`goTab('set');setPage('${k}')`]),
   ['usuniete',"{const L=S.tx.filter(t=>!t.deleted&&t.type=='exp').slice(0,3);S.tx=S.tx.map(t=>{const i=L.indexOf(t);return i<0?t:{...t,deleted:true,dAt:Date.now()-i*1000,dby:'Mati'}});goTab('dash');goTab('set');setPage('bez')}"],
   ['umowa-stale',"{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp');f.until=new Date(Date.now()+40*864e5).toISOString().slice(0,10);window.__umowa=f.id;goTab('fix');setFixSub('fix')}"],
-  ['umowa-na-dzis',"closeAll();showToday()"],['umowa-edycja',"closeAll();editFixed(window.__umowa)"],['gdzie-wydajemy',"closeAll();goTab('ana');setAnaMode('full');setAna('m')"],
+  ['umowa-na-dzis',"closeAll();showToday()"],['na-dzis-wkrotce',"{const d=document.querySelector('#dlg details.tsoon');if(d)d.open=true}"],['umowa-edycja',"closeAll();editFixed(window.__umowa)"],['gdzie-wydajemy',"closeAll();goTab('ana');setAnaMode('full');setAna('m')"],
   ['podpowiedz-notatki',"closeAll();openTx();setTimeout(()=>{const m=$('mn');m.focus();m.value='bi';m.dispatchEvent(new Event('input'))},200)"],
   ['dyskretny-budzet',"setHide(1);goTab('dash')"],['dyskretny-analiza',"goTab('ana');setAna('m')"],['dyskretny-majatek',"goTab('sav')"],['dyskretny-koniec',"setHide(0);goTab('dash')"],['nowy-wpis',"goTab('dash');openTx()"],['na-dzis',"closeAll();showToday()"],['pomoc',"closeAll();openHelp()"],
   ['urodziny',"closeAll();askBirth(true)"],
@@ -78,7 +78,9 @@ for(const C of CASES){
     bad.forEach(m=>fail(`${tag}: ekran „${name}” – ${m}`));
     if(/^dyskretny-(budzet|analiza|majatek)/.test(name)){const leak=await p.evaluate(()=>(document.getElementById('app').innerText.match(/\d[\d\u00a0 ]*(,\d+)?\s?(zł|€|\$|£|tys\.)/g)||[]).slice(0,5));
       if(leak.length)fail(`${tag}: tryb dyskretny – widać kwoty: ${leak.join(' | ')}`)}
-    if(name=='umowa-na-dzis'&&!await p.evaluate(()=>/umowa kończy się/.test(document.body.innerText)))fail(`${tag}: „Na dziś” nie przypomina o końcu umowy`);
+    /* ⏳ a contract ending in 40 days is not for today – it waits under „Wkrótce” (collapsed) and does not count on the bell */
+    if(name=='umowa-na-dzis'&&!await p.evaluate(()=>/umowa kończy się/.test(document.querySelector('#dlg details.tsoon')?.textContent||'')&&!/umowa kończy się/.test([...document.querySelectorAll('#dlg .today')].filter(x=>!x.closest('.tsoon')).map(x=>x.textContent).join(''))))fail(`${tag}: „Na dziś” – koniec umowy za 40 dni powinien być pod „Wkrótce”`);
+    if(name=='na-dzis-wkrotce'&&!await p.evaluate(()=>/umowa kończy się/.test(document.getElementById('dlg').innerText)))fail(`${tag}: „Wkrótce” po rozwinięciu nie pokazuje końca umowy`);
     if(name=='gdzie-wydajemy'&&!await p.evaluate(()=>/Gdzie wydajemy/.test(document.getElementById('app').innerText)))fail(`${tag}: brak „Gdzie wydajemy” w Analizie`);
     if(name=='podpowiedz-notatki'&&!await p.evaluate(()=>!document.getElementById('mnSug').hidden&&document.querySelectorAll('#mnSug .chip').length>0))fail(`${tag}: brak podpowiedzi notatki`);
     if(name=='podpowiedz-notatki')await p.evaluate(()=>{document.getElementById('mn').blur();document.getElementById('sheet').hidden=true});

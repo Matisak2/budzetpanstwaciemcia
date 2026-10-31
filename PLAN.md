@@ -97,6 +97,21 @@ Mati zlecił wszystkie etapy po kolei (bez czekania na komendę między nimi). N
 - [x] 🔔 Budżet i Stałe bez ramek z uwagami: „Do odhaczenia”, zamknięcie miesiąca, koperty roczne, kopia, „Do zaplanowania”, „Plan niższy niż opłaty stałe”, podpowiedzi stałych opłat, przekroczony plan – tylko w „Na dziś” (`planTodo`); kotki na Budżecie bez ostrzeżeń (`calm`)
 - [x] 🪙 „W tym z drobnych” liczy tylko drobne na kontach oszczędnościowych/inwestycyjnych i pokazuje resztę wpłat
 
+# Część 8 – po czwartym przeglądzie aplikacji (uzgodnione 31.10.2026)
+Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: wszystko (1–4). Nie robimy (na razie): bilans z podziałem na odłożone, krótszy Budżet, krótsza Analiza, jeden przełącznik osób w Kontach, usuwanie funkcji – wrócimy do tego z licznikiem użycia.
+
+## Etap X12. Porządek: najpilniejsze na górze
+- [x] 🔔 „Na dziś” według pilności (po terminie → dziś → jutro → reszta), rzeczy na za kilka dni zwinięte pod „⏳ Wkrótce”, liczba na dzwonku tylko na dziś
+- [x] 🐷 Oszczędności: „Ile odłożyliście” i cele na górze, FIRE i „Wpłacone a wartość” na dole; w zakładkach osób cele pod przyciskami; odsetki w jednej linijce
+- [x] 📌 Stałe: opłaty na górze, przychody stałe na dole (bez nich – mały przycisk)
+- [x] 🐾 Kotki na Budżecie nie powtarzają paska 🐷
+- [x] 🧪 Demo: przykładowe wydatki roczne, subkonto kopert i terminy bez kwoty
+
+## Etap X13. Rok temu, przegląd subskrypcji, licznik użycia
+- [ ] 📅 Analiza → Miesiąc: karta „Rok temu” (przychody, wydatki, odłożone i 3 kategorie z największą zmianą; w trwającym miesiącu do tego samego dnia)
+- [ ] 📋 Raz w roku przegląd subskrypcji w „Na dziś”: lista z kosztem rocznym, „Zostaje” / „Zmień” / „Rezygnuję”
+- [ ] 📊 Licznik „Czego używamy” (ekrany, okienka, dodatki, karty widoczne 2 s) w ⚙️ → Pomoc
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

@@ -138,6 +138,8 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
       const ppk=paid&&inc?liveOf(S.tx).filter(t=>t.ppkOf===paid.id):[];
       return`<div class="fx ${paid?'done':''}"><button class="box${paid&&S.justChecked==f.id?' pop':''}" role="checkbox" aria-checked="${!!paid}" aria-label="${esc(f.name)}" onclick="toggleFixed('${f.id}')">${paid?'✓':''}</button><button class="info" onclick="editFixed('${f.id}')"><b>${esc(f.name)}</b><span class="mini">${paid?(inc?'wpłynęło ':'zapłacono ')+paid.date.slice(8)+'.'+paid.date.slice(5,7)+' · '+esc(accN(paid.acc))+(ppk.length?' · PPK '+zl0(ppk.reduce((a,t)=>a+t.amount,0)):''):(tw?`<span class="t-inc">💡 jest podobny wpis z ${tw.date.slice(8)}.${tw.date.slice(5,7)} – stuknij kwadracik, żeby połączyć</span> · `:late?`<span class="late">${inc?'czeka na odhaczenie':'po terminie'}</span> · `:'')+(inc?'zwykle do ':'termin do ')+f.day+'. · '+esc(accN(f.acc))+(f.kind=='tr'?' → '+esc(accN(f.to)):'')+(inc&&f.ppk?' · z PPK':'')}${f.until&&!inc?` · <span class="${f.until<addDays(td(),62)?'late':''}">📄 umowa do ${f.until.split('-').reverse().join('.')}</span>`:''}</span></button><span class="num ${inc?'t-inc':''}">${paid?am(paid.amount,paid.acc):inc&&f.vary?'—':(inc?'~':'')+am(f.amount,f.acc)}</span></div>`};
     const block=(kind)=>{const fx=all.filter(f=>(f.kind||'exp')==kind),inc=kind=='inc',trf=kind=='tr';if(!fx.length&&fw!='all')return'';
+      /* no fixed income (rent etc.) – only a small button, not an empty section */
+      if(inc&&!fx.length)return`<button class="btn sm" style="align-self:flex-start" onclick="editFixed(null,'inc')">📥 + Przychód stały (np. najem)</button>`;
       let x=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">${inc?'📥 Przychody stałe':trf?'🔁 Stałe przelewy':'📤 Opłaty stałe'}</span><button class="btn sm dark" onclick="editFixed(null,'${kind}')">+ ${inc?'Przychód':trf?'Przelew':'Opłata'}</button></div>`;
       if(!fx.length)return x+`<div class="mini" style="padding:0 6px">${inc?'Np. najem mieszkania – co miesiąc odhaczysz, ile faktycznie wpłynęło. Pensje wpisujesz w 💼 Pensje.':trf?'Np. 500 zł co miesiąc na oszczędności albo zrzutka na konto wspólne – odhaczasz, gdy przelew wyjdzie.':'Dodaj np. czynsz, prąd albo Spotify – co miesiąc odhaczysz je na liście.'}</div>`;
       const rows=fx.map(f=>({f,paid:fixedPaid(f.id,S.ym)})),done=rows.filter(r=>r.paid),left=rows.filter(r=>!r.paid);
@@ -145,8 +147,9 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
       x+=`<div class="prog"><div class="r1"><b>${inc?'Wpłynęło':trf?'Przelane':'Zapłacone'} ${done.length} z ${rows.length}</b><span class="num">${zl(sumDone)}</span></div><div class="bar"><i style="width:${(done.length/rows.length*100).toFixed(1)}%;background:#86efac"></i></div><div class="mini">${done.length==rows.length?`<b class="t-inc">✓ ${inc?'wszystko wpłynęło':trf?'wszystko przelane':'wszystko zapłacone'}</b>`:`${inc?'Jeszcze oczekiwane: ok. ':'Zostało do zapłaty: '}<b class="num" style="color:var(--fg)">${zl(sumLeft)}</b>`}</div></div>`;
       return x+`<div class="list">${rows.map(r=>row(r.f,r.paid)).join('')}</div>`};
     if(!all.length&&fw!='all'&&allF.length)h+=`<div class="empty">${fw=='Wspólne'?'Nie ma wspólnych opłat ani przelewów stałych':'Nie ma opłat ani przelewów '+(fw=='Mati'?'Matiego':'Werci')} – stuknij „Wszystkie”, żeby zobaczyć resztę.</div>`;
-    else if(!all.length)h+=catsEmpty('Dodaj stałe przychody (np. pensje) i opłaty (np. czynsz, prąd, Spotify).<br>Co miesiąc odhaczysz je na liście, a wpisy same trafią do rejestru.',0,'bell');
-    h+=block('inc')+block('exp')+fixYearH(all)+block('tr');
+    else if(!all.length)h+=catsEmpty('Dodaj opłaty stałe (np. czynsz, prąd, Spotify) i stałe przelewy.<br>Co miesiąc odhaczysz je na liście, a wpisy same trafią do rejestru. Pensje są w 💼 Pensje.',0,'bell');
+    /* payments first (the most used), fixed income (rent) at the end */
+    h+=block('exp')+fixYearH(all)+block('tr')+block('inc');
     h+=`<div class="mini" style="text-align:center">Stuknij kwadracik, żeby odhaczyć. Stuknij nazwę, żeby zmienić.</div>`}
 
   else if(S.tab=='sav'){
@@ -190,7 +193,7 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
 
     if(S.sub=='all'){
       h+=`<div class="worth"><div class="l">Oszczędności i inwestycje razem</div><div class="v num">${zl(savEnd)} ${trendH(savDelta)}</div>${fxTxt(ownFx(null,end))?`<div class="s">${esc(fxPlus(ownFx(null,end)).trim())} (bez przeliczania)</div>`:''}<div class="s">${OWN.map(o=>`${o} ${zl0(ownAt(o,end))}`).join(' · ')}</div></div>`;
-      h+=actH('all')+autoValH()+limitPropH()+matH()+limitsH();
+      h+=actH('all')+autoValH()+limitPropH()+matH();
       /* who saves how much: the line under the total and the tabs Mati / Wercia / Wspólne (no separate card) */
       /* the year so far: January … the shown month */
       const yF=Array.from({length:+S.ym.slice(5)},(_,i)=>savFlow(S.cfg,tx,SVI,S.ym.slice(0,5)+String(i+1).padStart(2,'0'))).reduce((a,x)=>({flow:a.flow+x.flow,gain:a.gain+x.gain}),{flow:0,gain:0}),put=flowM.flow,coins=coinSum(S.ym,null,null,SVI);
@@ -202,23 +205,22 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
         ${coins?`<div class="mini">🪙 w tym z drobnych: <b style="color:var(--fg)">${zl(coins)}</b>${put-coins?` · reszta: <b style="color:var(--fg)">${zl(put-coins)}</b>`:''}</div>`:''}
         <button class="btn sm" style="align-self:flex-start" onclick="setSavTarget()">${tg?'Zmień cel miesięczny ('+zl0(tg)+')':'+ Ustaw cel: ile odkładać co miesiąc'}</button></section>`;
       if(tg&&put>=tg&&S.ym==td().slice(0,7)&&!ls.get('mw_conf_'+S.ym)){ls.set('mw_conf_'+S.ym,'1');setTimeout(()=>celebrate(CELEBRATE.saving(S.who)),300)}
-      h+=cushion()+intCardH();
-      h+=fireH(savAt(tom),monthlySave());
-      h+=gainH(S.cfg.accs.filter(a=>shown(a)),'Wszystkie konta');
+      /* the order: what you look at most often first – put aside, goals, cushion; FIRE and the long chart at the end */
       const gl=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())}));
-      if(gl.length)h+=`<section class="chart"><div class="ct"><b>Wszystkie cele</b></div>${hbarsH(gl.map(g=>({l:g.name+' · '+goalOwner(g),v:g.pr.saved,c:cols[goalOwner(g)],dot:cols[goalOwner(g)],note:`${Math.floor(g.pr.pct)}% z ${zl0(g.target)}`})))}</section>`;}
+      if(gl.length)h+=`<section class="chart"><div class="ct"><b>Wszystkie cele</b></div>${hbarsH(gl.map(g=>({l:g.name+' · '+goalOwner(g),v:g.pr.saved,c:cols[goalOwner(g)],dot:cols[goalOwner(g)],note:`${Math.floor(g.pr.pct)}% z ${zl0(g.target)}`})))}</section>`;
+      h+=cushion()+limitsH()+intCardH()+gainH(S.cfg.accs.filter(a=>shown(a)),'Wszystkie konta')+fireH(savAt(tom),monthlySave())}
     else{const o=S.sub,accs=S.cfg.accs.filter(a=>shown(a)&&accOwner(a)==o),tE=ownAt(o,end),tD=tE-ownAt(o,start);
       const invV=accs.filter(a=>a.grp=='inv'&&isP(a)).reduce((x,a)=>x+balance(S.cfg,tx,a.id,end),0);
       h+=`<div class="ptab ${o=='Wercia'?'pink':''}">`;
       h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}">${o=='Wercia'?'<svg class="flowers" viewBox="0 0 170 120" aria-hidden="true"><g stroke-linecap="round"><path d="M40 120 C40 96 42 80 46 64" stroke="#86c29a" stroke-width="4" fill="none"/><path d="M42 98 C30 92 24 84 22 74 C34 78 40 86 42 98Z" fill="#a7d8b5"/><path d="M46 64 C34 60 30 44 34 30 C40 38 44 40 46 40 C48 40 52 38 58 30 C62 44 58 60 46 64Z" fill="#f472b6"/><path d="M46 40 C44 30 46 22 46 18 C50 24 52 32 50 42Z" fill="#ec4899"/><path d="M118 120 C118 100 116 86 112 74" stroke="#86c29a" stroke-width="4" fill="none"/><path d="M115 100 C126 94 132 86 134 78 C122 80 116 90 115 100Z" fill="#a7d8b5"/><circle cx="112" cy="62" r="17" fill="#fda4af"/><path d="M112 62 m-11 0 a11 11 0 1 1 11 11" fill="none" stroke="#e11d48" stroke-width="3"/><path d="M112 62 m-6 0 a6 6 0 1 1 6 6" fill="none" stroke="#e11d48" stroke-width="2.5"/><path d="M80 120 C80 108 80 100 82 92" stroke="#86c29a" stroke-width="3" fill="none"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(0 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(45 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(90 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(135 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(180 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(225 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(270 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(315 82 90)"/><circle cx="82" cy="90" r="5" fill="#fbbf24"/><g transform="translate(150 96) scale(.6)"><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(0)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(60)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(120)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(180)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(240)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(300)"/><circle r="5" fill="#fde68a"/></g><g transform="translate(14 104) scale(.5)"><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(0)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(60)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(120)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(180)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(240)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(300)"/><circle r="5" fill="#f9a8d4"/></g></g></svg>':''}<div class="l">${o=='Wercia'?'🌷 ':''}${o=='Wspólne'?'Wspólne oszczędności':'Oszczędności: '+o}</div><div class="v num">${zl(tE)} ${trendH(tD)}</div><div class="s">oszczędności ${zl0(tE-invV)} · inwestycje, IKE, IKZE ${zl0(invV)}</div></div>`;
+      h+=actH(o)+goalsH(o);
       if(o=='Wspólne')h+=cushion('Wspólne');
-      h+=actH(o)+intCardH(o);
       const grpL=(g,t)=>{const L=accs.filter(a=>a.grp==g);return L.length?`<div class="list"><div class="grp-h ${g}"><span>${t}</span><span class="num">${zl(L.filter(isP).reduce((x,a)=>x+balance(S.cfg,tx,a.id,end),0))}${fxPlus(fxOf(L,a=>balance(S.cfg,tx,a.id,end)))}</span></div>${L.map(accRow).join('')}</div>`:''};
       h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">Razem ${zl(tE)}${fxPlus(ownFx(o,end))}</span><button class="btn sm dark" onclick="addSavAcc('${o}')">+ Dodaj konto</button></div>`+(grpL('sav','OSZCZĘDNOŚCI')+grpL('inv','INWESTYCJE, IKE, IKZE, PPK')||'<div class="acc mini">Brak kont – dodaj pierwsze przyciskiem powyżej.</div>');
-      h+=cascadeH(o);
+      h+=cascadeH(o)+intCardH(o);
       h+=gainH(accs,'Wszystkie konta: '+o);
       h+=`<div class="mini" style="padding:0 4px">Konta „inwest.” (inwestycje, IKE, IKZE) mają zmienną wartość – automat wycenia je sam na koniec miesiąca, a w każdej chwili zrobisz to przyciskiem „📈 Aktualizuj wartości”. Przycisk ⋯ zmienia nazwę lub usuwa konto (pieniądze przejdą na inne konto).</div>`;
-      h+=goalsH(o)+'</div>'}}}
+      h+='</div>'}}}
 
   else if(S.tab=='acc'&&(S.accView=='owe'||S.accView=='lent'))h+=majSegH()+accSegH()+debtsH(S.accView);
   else if(S.tab=='acc'&&S.recon){

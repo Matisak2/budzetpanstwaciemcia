@@ -2,7 +2,7 @@
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
-import {debtStateP,rataP,recurringP,savedP,todayItems,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
+import {debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
@@ -366,6 +366,19 @@ const N=' ';
   const has=(d,today)=>todayItems(d,{today,checks:false}).some(x=>x.k=='rules');
   eq('Zasady pensji – styczeń 2027 przypomina',has(D(),'2027-01-05'),true);eq('Zasady pensji – w roku zasad nie przypomina',has(D(),'2026-01-05'),false);
   eq('Zasady pensji – „Załatwione” chowa',has(D({checkIgnore:{'rules:2027':true}}),'2027-01-05'),false);eq('Zasady pensji – w marcu już nie',has(D(),'2027-03-05'),false);
+}
+
+/* ---------- ⏳ „Na dziś” według pilności: po terminie → dziś → jutro → reszta; daleko = „Wkrótce” ---------- */
+{ const F=(id,name,day,x)=>({id,name,amount:10000,day,sub:'s',acc:'a',kind:'exp',...x});
+  const L=todayItems({cfg:{accs:[{id:'a',grp:'cur',owner:'Wspólne'}],cats:[],fixed:[F('f1','Czynsz',10),F('f2','Prąd',20),F('f3','Woda',21),F('f4','Internet',5,{until:'2026-12-09'}),F('f5','Gaz',3,{until:'2026-11-05'})],years:[]},
+    tx:[{id:'p4',type:'exp',amount:10000,date:'2026-10-05',acc:'a',sub:'s',fixedId:'f4'},{id:'p5',type:'exp',amount:10000,date:'2026-10-03',acc:'a',sub:'s',fixedId:'f5'}],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-20T12:00:00').getTime()},hraw:{}},{today:'2026-10-20',checks:false});
+  const by=t=>L.find(x=>x.text.includes(t));
+  eq('Pilność – po terminie',[by('Czynsz')?.k,todayRank(by('Czynsz'))],['bad',0]);eq('Pilność – dziś',[by('Prąd')?.n,todayRank(by('Prąd'))],[0,1]);eq('Pilność – jutro',[by('Woda')?.n,todayRank(by('Woda'))],[1,2]);
+  // umowa: za 50 dni → „Wkrótce”, za 16 dni też (> 14), opłaty z terminem → na dziś
+  eq('Umowa za 50 dni – Wkrótce',by('Internet')?.later,true);eq('Umowa za 16 dni – Wkrótce',by('Gaz')?.later,true);eq('Opłaty na dziś – nie Wkrótce',[by('Czynsz'),by('Prąd'),by('Woda')].map(x=>!!x.later),[false,false,false]);
+  eq('Umowa za 14 dni – już na dziś',todayItems({cfg:{accs:[{id:'a',grp:'cur',owner:'Wspólne'}],cats:[],fixed:[F('f5','Gaz',3,{until:'2026-11-03'})],years:[]},tx:[{id:'p5',type:'exp',amount:10000,date:'2026-10-03',acc:'a',sub:'s',fixedId:'f5'}],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-20T12:00:00').getTime()},hraw:{}},{today:'2026-10-20',checks:false}).find(x=>x.k=='umowa')?.later,false);
+  eq('PIT w marcu – Wkrótce, od 20 kwietnia – pilne',[todayItems({cfg:{accs:[],cats:[],fixed:[],years:[]},tx:[],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2027-03-05T12:00:00').getTime()},hraw:{}},{today:'2027-03-05',checks:false}).find(x=>x.key?.startsWith('pit:'))?.later,
+    todayItems({cfg:{accs:[],cats:[],fixed:[],years:[]},tx:[],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2027-04-21T12:00:00').getTime()},hraw:{}},{today:'2027-04-21',checks:false}).find(x=>x.key?.startsWith('pit:'))?.later],[true,false]);
 }
 
 /* ---------- 🔢 wpisywanie i pokazywanie kwot ---------- */

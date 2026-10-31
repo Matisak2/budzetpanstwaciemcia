@@ -283,7 +283,8 @@ export function intCardH(owner){const tx=liveOf(S.tx),y=td().slice(0,4),L=S.cfg.
   const cand=S.cfg.accs.filter(a=>!a.archived&&(a.grp=='sav'||a.grp=='sub')&&!intOf(a)&&(!owner||accOwner(a)==owner));
   if(!L.length)return cand.length?`<div class="note">💰 Konta oszczędnościowe mają oprocentowanie? Wpisz je przyciskiem „💰 Oprocentowanie” przy koncie, a policzę odsetki i przypomnę o nich.</div>`:'';
   const got=a=>tx.filter(t=>t.int&&t.acc===a.id&&t.date.startsWith(y)).reduce((x,t)=>x+t.amount,0),sum=L.filter(isP).reduce((x,a)=>x+got(a),0),mon=L.filter(isP).reduce((x,a)=>x+intMonthly(a,balance(S.cfg,tx,a.id,addDays(td(),1)),td()),0);
-  return`<section class="chart"><div class="ct"><b>💰 Odsetki z kont ${y}</b><span class="mini">wpisane w tym roku · szacunek miesięczny z dzisiejszego salda</span></div>
-    <div class="kpis" style="gap:8px"><div class="kpi k-em"><div class="l">Wpisane w ${y}</div><div class="v num">${zl(sum)}</div></div><div class="kpi k-sk"><div class="l">Ok. miesięcznie</div><div class="v num">${zl(mon)}</div><div class="s">do końca roku ok. ${zl0(mon*(12-+td().slice(5,7))+sum)}</div></div></div>
-    ${L.map(a=>`<div class="r1"><span><b>${esc(a.name)}</b>${intMini(a,tx)}</span><button class="btn sm" onclick="editInt('${a.id}')">Zmień</button></div>`).join('')}
+  /* one line of totals; the accounts with „Zmień” only in Razem – the tabs Mati / Wercia / Wspólne list the accounts with their 💰 line right below */
+  return`<section class="chart"><div class="ct"><b>💰 Odsetki z kont ${y}</b></div>
+    <div class="mini">wpisane w ${y}: <b style="color:var(--fg)">${zl(sum)}</b> · ok. <b style="color:var(--fg)">${zl0(mon)}</b>/mies. · do końca roku ok. <b style="color:var(--fg)">${zl0(mon*(12-+td().slice(5,7))+sum)}</b></div>
+    ${owner?'':L.map(a=>`<div class="r1"><span><b>${esc(a.name)}</b>${intMini(a,tx)}</span><button class="btn sm" onclick="editInt('${a.id}')">Zmień</button></div>`).join('')}
     <div class="mini">Odsetki to zysk – nie liczą się do „odłożonych”, tak jak zmiana kursów inwestycji.</div></section>`}

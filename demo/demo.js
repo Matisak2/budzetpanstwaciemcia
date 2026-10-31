@@ -36,12 +36,12 @@
     let seed=20261022;const R=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296},r=(a,b)=>Math.round(a+(b-a)*R()),pick=L=>L[Math.floor(R()*L.length)];
     const HUES=[150,205,28,340,265,48,185,12,295,95,228,320,62,168,245,0];
     const CATS=[['ZAROBKI I WPŁYWY','inc','💰',[`Pensja ${A}`,`Pensja ${B}`,'Premie i dodatki','Zwroty i inne']],['JEDZENIE','exp','🛒',['Zakupy spożywcze','Restauracje','Kawa i przekąski','Jedzenie z dowozem']],
-      ['DOM','exp','🏠',['Czynsz','Prąd','Internet i telefon','Środki czystości','Wyposażenie']],['TRANSPORT','exp','🚗',['Paliwo','Komunikacja miejska','Serwis auta']],
+      ['DOM','exp','🏠',['Czynsz','Prąd','Internet i telefon','Środki czystości','Wyposażenie','Ubezpieczenie mieszkania']],['TRANSPORT','exp','🚗',['Paliwo','Komunikacja miejska','Serwis auta','Ubezpieczenie auta']],
       ['ZDROWIE I URODA','exp','💊',['Lekarz','Leki','Fryzjer i kosmetyki']],['UBRANIA','exp','👕',[`Ubrania ${A}`,`Ubrania ${B}`]],['ROZRYWKA','exp','🎉',['Kino i koncerty','Hobby','Wyjazdy']],
       ['SUBSKRYPCJE','exp','📱',['Spotify','Netflix','Chmura i aplikacje']],['ZWIERZAKI','exp','🐱',['Karma','Weterynarz']],['PREZENTY','exp','🎁',['Prezenty','Święta i okazje']],['INNE','exp','📦',['Opłaty bankowe','Inne wydatki']]];
     const catsM={},sid={};CATS.forEach(([name,type,icon,subs],i)=>{const subsM={};subs.forEach((s,j)=>{subsM[`c${i}s${j}`]={name:s,o:j};sid[s]=`c${i}s${j}`});catsM['c'+i]={name,type,icon,hue:HUES[i],o:i,subsM}});
     const ACC=[['aM',`Konto ${A}`,'cur','Mati',420000],['aW',`Konto ${B}`,'cur','Wercia',380000],['aJ','Konto wspólne','cur','Wspólne',150000],['aG','Gotówka','cur','Wspólne',30000],
-      ['aS','Oszczędności wspólne','sav','Wspólne',1200000],['aP','Poduszka bezpieczeństwa','sav','Wspólne',1800000],['aI',`IKE ${A}`,'inv','Mati',450300,'ike'],['aK',`PPK ${B}`,'inv','Wercia',622380,'ppk'],['aO','Obligacje','inv','Wspólne',1000000]];
+      ['aS','Oszczędności wspólne','sav','Wspólne',1200000],['aP','Poduszka bezpieczeństwa','sav','Wspólne',1800000],['aI',`IKE ${A}`,'inv','Mati',450300,'ike'],['aK',`PPK ${B}`,'inv','Wercia',622380,'ppk'],['aO','Obligacje','inv','Wspólne',1000000],['aY','Subkonto – wydatki roczne','sub','Wspólne',90000]];
     const accsM={};ACC.forEach(([id,name,grp,owner,open,wrap],o)=>{accsM[id]={name,grp,owner,open,o,...(wrap?{wrap}:{})}});
     /* 💰 the shared savings account has interest: 4,5%, a 6% promotion up to 10 000 zł ending in 12 days */
     {const iso=d=>d.toISOString().slice(0,10),n=new Date();accsM.aS.int={rates:{[iso(new Date(Date.UTC(n.getFullYear(),n.getMonth()-4,1)))]:4.5},promo:6,promoTo:iso(new Date(Date.now()+12*864e5)),promoMax:1000000,cap:'m',tax:'bank'}}const own=Object.fromEntries(ACC.map(a=>[a[0],a[3]]));
@@ -57,7 +57,12 @@
     const payDay=(ym,last)=>{let d=new Date(+ym.slice(0,4),+ym.slice(5)-1,last?daysIn(ym):10);while(d.getDay()==0||d.getDay()==6)d.setDate(d.getDate()-1);return d.getDate()};
     const ppkLots={};
     const fixedM={};FIX.forEach(([id,name,amount,day,s,acc,kind],o)=>{fixedM[id]={name,amount,day,sub:sid[s],acc,kind,o}});fixedM.f8={name:'Na oszczędności',amount:100000,day:11,sub:'',acc:'aJ',to:'aS',kind:'tr',o:8};
-    const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:INC,yearM:{},projM:{},remM:{},invAcc:true,ikeAcc:true,wspAcc:true,ppkAcc:true,zwrotyRen:true,subAcc:true,savTarget:150000,demo:true,
+    /* 📅 yearly expenses (envelopes on the shared sub-account aY) and dates without an amount – months counted from today, so the demo always has something coming */
+    const mOf=k=>addMonths(ym0,k),YEAR={},REM={};
+    [['y1','🛡️ OC i AC samochodu',145000,mOf(2),15,'Ubezpieczenie auta'],['y2','🏠 Ubezpieczenie mieszkania',42000,mOf(5),1,'Ubezpieczenie mieszkania'],['y3','🔧 Przegląd auta',25000,mOf(8),20,'Serwis auta'],['y4','🎁 Prezenty świąteczne',120000,ym0.slice(0,4)+'-12',10,'Święta i okazje']]
+      .forEach(([id,name,amount,due,day,s],o)=>{YEAR[id]={name,amount,month:+due.slice(5),day,every:12,sub:sid[s],last:addMonths(due,-12),o}});
+    [['r1','💉 Szczepienie kotów',`${mOf(3)}-12`,12],['r2','🛞 Wymiana opon',`${mOf(1)}-05`,6]].forEach(([id,name,next,every],o)=>{REM[id]={name,next,every,o}});
+    const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:INC,yearM:YEAR,yearAcc:'aY',projM:{},remM:REM,invAcc:true,ikeAcc:true,wspAcc:true,ppkAcc:true,zwrotyRen:true,subAcc:true,savTarget:150000,demo:true,
       /* random shop / restaurant notes must not look like a fixed payment by chance (only „Bilet miesięczny” and „Chmura 200 GB” are meant to) */
       checkIgnore:Object.fromEntries(['Biedronka','Lidl','Żabka','Auchan','Warzywniak','Pizzeria','Sushi','Bistro','Pierogarnia','Kawiarnia','Pyszne','Glovo','Orlen','BP','Shell','Sklep zoologiczny','Drogeria','Kino','Sklep z modelami','Fryzjer','Apteka','Prezent urodzinowy','Sklep odzieżowy','Wizyta prywatna','Opłata za kartę'].map(n=>['rec:'+n.toLowerCase(),true]))}};
     const PLAN={'Zakupy spożywcze':140000,'Restauracje':40000,'Kawa i przekąski':15000,'Jedzenie z dowozem':12000,'Czynsz':185000,'Prąd':20000,'Internet i telefon':9000,'Środki czystości':8000,'Paliwo':50000,
