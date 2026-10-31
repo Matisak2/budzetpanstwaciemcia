@@ -214,6 +214,10 @@ const N=' ';
   eq('Stały przelew – podpowiedź',r&&[r.key,r.name,r.amount,r.day],['rec:tr:m>w','Konto Mati → Konto wspólne',310000,2]);
   eq('Stały przelew – już jest w 📌 Stałe',recurringP({accs,fixed:[{id:'f',kind:'tr',acc:'m',to:'w',amount:300000,day:2}]},tx,'2026-10-25').filter(x=>x.kind=='tr'),[]);
   eq('Stały przelew – „Nie, dzięki”',recurringP({accs,fixed:[]},tx,'2026-10-25',{'rec:tr:m>w':true}).filter(x=>x.kind=='tr'),[]);
+  // podpowiedź tylko dla właściciela konta, z którego idzie przelew (Mati); z konta wspólnego – dla obojga
+  const D=(A,T2)=>todayItems({cfg:{accs:A,cats:[],fixed:[],years:[]},tx:T2,slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-10-25T12:00:00').getTime()},hraw:{}},{today:'2026-10-25'}).find(x=>x.k=='rec');
+  eq('Podpowiedź stałego przelewu – czyja',D([{...accs[0],owner:'Mati'},{...accs[1],owner:'Wspólne'}],tx)?.who,'Mati');
+  eq('Podpowiedź z konta wspólnego – dla obojga',D([{...accs[0],owner:'Wspólne'},{...accs[1],owner:'Wspólne'}],tx)?.who,null);
 }
 /* ---------- 🎓 ulga dla młodych (do 26 lat, limit 85 528 zł) ---------- */
 { // 10 000 zł brutto w całości w limicie: ZUS 1 371 i zdrowotna 776,61 jak zwykle, podatku 0 → na konto 7 852,39 zł

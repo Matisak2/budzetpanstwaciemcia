@@ -15,7 +15,7 @@ export const USAGE_CAT=[
     ['e:set','⚙️ Ustawienia'],['e:set-acc','⚙️ Konta'],['e:set-cat','⚙️ Kategorie i drobne'],['e:set-tel','⚙️ Ten telefon'],['e:set-bez','⚙️ Bezpieczeństwo'],['e:set-auto','⚙️ Automaty'],['e:set-pom','⚙️ Pomoc']]],
   ['Okienka i przyciski',[['f:today','🔔 Na dziś'],['f:find','🔍 Szukaj wszędzie'],['f:add','➕ Nowy wpis'],['f:edit','✎ Zmiana wpisu'],['f:next','⏩ Zapisz i dodaj kolejny'],['f:slip','💼 Pasek pensji'],
     ['f:fixtick','📌 Odhaczenie opłaty stałej'],['f:txmenu','✋ Przytrzymanie wpisu'],['f:swipe','👆 Zmiana miesiąca palcem'],['f:hide','🙈 Tryb dyskretny'],['f:link','🗣️ Siri / skrót / link z powiadomienia'],
-    ['f:wrapped','🎁 Money Wrapped'],['f:csv','📤 Eksport CSV'],['f:backup','💾 Pobierz kopię'],['f:subs','📋 Przegląd subskrypcji'],['f:goal','🎯 Przydziel do celu'],['f:odloz','🐷 Odłóż'],['f:usage','📊 Czego używamy']]],
+    ['f:wrapped','🎁 Money Wrapped'],['f:csv','📤 Eksport CSV'],['f:backup','💾 Pobierz kopię'],['f:subs','📋 Przegląd subskrypcji'],['f:subtx','🔎 Wpisy pozycji z Budżetu'],['f:goal','🎯 Przydziel do celu'],['f:odloz','🐷 Odłóż'],['f:usage','📊 Czego używamy']]],
   ['Dodatki we wpisie (zapisane)',[['f:split','✂️ Podział paragonu'],['f:fx','🌍 Obca waluta'],['f:photo','📷 Zdjęcie paragonu'],['f:refund','↩️ Zwrot'],['f:ulga','🧾 Ulga w PIT'],['f:projtx','🏷️ Projekt we wpisie'],
     ['f:debt','🔻 Rata / spłata we wpisie'],['f:war','🛡️ Gwarancja'],['f:coin','🪙 Drobne'],['f:fuel','⛽ Tankowanie (litry, licznik)'],['f:notesug','✍️ Podpowiedź notatki']]],
   ['Karty (widoczne na ekranie co najmniej 2 s)',[...['Podsumowanie miesiąca','Nietypowo dużo','Na co poszły pieniądze','Rok temu','Przepływ pieniędzy','Mati ↔ Wercia','Największe pozycje','Co się zmieniło','Wydatki dzień po dniu',

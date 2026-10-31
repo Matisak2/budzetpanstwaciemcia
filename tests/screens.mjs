@@ -26,8 +26,8 @@ const exe=['/opt/pw-browsers/chromium'].find(p=>fs.existsSync(p));
 const browser=await chromium.launch(exe?{executablePath:exe}:{});
 
 /* every screen: [name, code run in the page] */
-const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-filtry',"togF()"],['stale',"goTab('fix');setFixSub('fix')"],['pensje',"setFixSub('pay')"],['pit',"setPayView&&setPayView('year')"],
-  ['roczne',"setFixSub('year')"],['przypomnienia',"setFixSub('rem')"],['oszczednosci',"goTab('sav')"],['konta',"goTab('acc');setAccView('acc')"],['my-winni',"setAccView('owe')"],
+const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-filtry',"togF()"],['stale',"goTab('fix');setFixSub('fix')"],['pensje',"setFixSub('pay')"],['pit',"setPayView('y')"],
+  ['roczne',"setPayView('m');setFixSub('year')"],['przypomnienia',"setFixSub('rem')"],['oszczednosci',"goTab('sav')"],['konta',"goTab('acc');setAccView('acc')"],['my-winni',"setAccView('owe')"],
   ['nam-winni',"setAccView('lent')"],['analiza',"goTab('ana');setAna('m');setAnaMode('full')"],['analiza-podst',"setAnaMode('basic')"],['analiza-rok',"setAnaMode('full');setAna('y')"],
   ['ustawienia',"goTab('set')"],
   ...['acc','cat','tel','bez','auto','pom'].map(k=>['ust-'+k,`goTab('set');setPage('${k}')`]),
@@ -49,6 +49,7 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ['oprocentowanie',"closeAll();goTab('sav');setSub('all')"],['oprocentowanie-edycja',"editInt(S.cfg.accs.find(a=>a.int).id)"],['odsetki-wpis',"closeAll();{const d=new Date(S.ym+'-15');d.setMonth(d.getMonth()-1);bookInt(S.cfg.accs.find(a=>a.int).id,d.toISOString().slice(0,7))}"],
   ['stale-osoba',"closeAll();goTab('fix');setFixSub('fix');setFixWho(S.who)"],['stale-wszystkie',"setFixWho('all')"],
   ['urodziny-powitanie',"closeAll();S.slip=null;{const t=new Date().toISOString().slice(0,10);S.hraw={...S.hraw,birth:{Mati:'1995'+t.slice(4),Wercia:'1996'+t.slice(4)}};goTab('dash')}"],
+  ['pozycja-wpisy',"closeAll();goTab('dash');S.open={};{const c=S.cfg.cats.find(c=>c.type=='exp');S.open[c.id]=true;render();subTx(c.subs[0].id)}"],['info-otwarte',"closeAll();goTab('sav');setSub('all');{const d=document.querySelector('#app details.info');if(d){d.open=true}}"],
   ['subskrypcje',"closeAll();goTab('fix');setFixSub('fix');openSubs()"],['czego-uzywamy',"closeAll();goTab('set');setPage('pom');openUsage()"],
   ['rok-temu',"closeAll();{S.ym=new Date().toISOString().slice(0,7);S.tx=S.tx.concat(S.tx.filter(t=>!t.deleted&&t.type=='exp'&&t.date.startsWith(S.ym)).map(t=>({...t,id:'ya'+t.id,date:(+t.date.slice(0,4)-1)+t.date.slice(4),amount:Math.round(t.amount*0.8)})));goTab('ana');setAnaMode('basic');setAna('m')}"]];
 const CASES=[{w:390,size:'0',role:'Wercia'},{w:360,size:'2',role:'Mati'},{w:320,size:'0',role:'Mati'},{w:390,size:'1',role:'Wercia'}];
@@ -84,6 +85,13 @@ for(const C of CASES){
     if(name=='umowa-na-dzis'&&!await p.evaluate(()=>/umowa kończy się/.test(document.querySelector('#dlg details.tsoon')?.textContent||'')&&!/umowa kończy się/.test([...document.querySelectorAll('#dlg .today')].filter(x=>!x.closest('.tsoon')).map(x=>x.textContent).join(''))))fail(`${tag}: „Na dziś” – koniec umowy za 40 dni powinien być pod „Wkrótce”`);
     if(name=='subskrypcje'&&!await p.evaluate(()=>/Przegląd subskrypcji/.test(document.getElementById('dlg').innerText)&&/rocznie/.test(document.getElementById('dlg').innerText)&&document.querySelectorAll('#dlg .subi').length>0))fail(`${tag}: przegląd subskrypcji – brak listy`);
     if(name=='czego-uzywamy'){await p.waitForTimeout(400);if(!await p.evaluate(()=>/Czego używamy/.test(document.getElementById('dlg').innerText)&&/Najczęściej/i.test(document.getElementById('dlg').innerText)&&/Nieużywane od 3 miesięcy/i.test(document.getElementById('dlg').innerText)))fail(`${tag}: „Czego używamy” – brak listy`)}
+    if(name=='pit'&&!await p.evaluate(()=>/Cały rok/.test(document.getElementById('app').innerText)))fail(`${tag}: Pensje – nie otwiera się widok roku (PIT)`);
+    if(name=='pozycja-wpisy'&&!await p.evaluate(()=>document.querySelectorAll('#app .sub .subln').length>0&&/W Rejestrze/.test(document.getElementById('dlg').innerText)&&document.querySelectorAll('#dlg .subtx .tx').length>0))fail(`${tag}: Budżet – stuknięcie pozycji nie pokazuje jej wpisów`);
+    if(name=='info-otwarte'&&!await p.evaluate(()=>{const d=document.querySelector('#app details.info');return !!d&&d.open&&/Liczę|Odsetki|FIRE/.test(d.textContent)}))fail(`${tag}: Oszczędności – brak „ⓘ” z objaśnieniem`);
+    /* a big number in a tile is never cut with „…” (A++) */
+    if(/^(budzet|analiza|analiza-podst|oszczednosci|konta)$/.test(name)){const cut=await p.evaluate(()=>[...document.querySelectorAll('#app .kpi .v,#app .worth .v')].filter(e=>e.scrollWidth>e.clientWidth).map(e=>e.textContent.trim()));if(cut.length)fail(`${tag}: ekran „${name}” – ucięta kwota: ${cut.join(' | ')}`)}
+    /* 🗓️ the plan step is for the month after the closed one (a payday from the 20th closes this month → the plan of the next one) */
+    if(name=='zamkniecie'){const ok=await p.evaluate(()=>{const[y,m]=S.close.split('-').map(Number),nm=new Date(y,m,1).toLocaleString('pl-PL',{month:'long'}),st=[...document.querySelectorAll('#app .cstep')].find(x=>/Plan na nowy miesiąc/.test(x.textContent));return !!st&&new RegExp(nm+'(:| nie ma)','i').test(st.textContent)});if(!ok)fail(`${tag}: zamknięcie – krok „Plan na nowy miesiąc” nie dotyczy miesiąca po zamykanym`)}
     if(name=='rok-temu'&&!await p.evaluate(()=>/Rok temu:/.test(document.getElementById('app').innerText)&&/Najbardziej się zmieniło/.test(document.getElementById('app').innerText)))fail(`${tag}: Analiza – brak karty „Rok temu”`);
     if(name=='na-dzis-wkrotce'&&!await p.evaluate(()=>/umowa kończy się/.test(document.getElementById('dlg').innerText)))fail(`${tag}: „Wkrótce” po rozwinięciu nie pokazuje końca umowy`);
     if(name=='gdzie-wydajemy'&&!await p.evaluate(()=>/Gdzie wydajemy/.test(document.getElementById('app').innerText)))fail(`${tag}: brak „Gdzie wydajemy” w Analizie`);

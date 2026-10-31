@@ -5,14 +5,14 @@ import {CELEBRATE} from './guide.js';
 import {HUES,catHue,freeHue} from './data.js';
 import {wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
 import {ULGI} from './today.js';
-import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS} from './logic.js';
+import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod} from './logic.js';
 import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu} from './util.js';
 import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOwner,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,delFixedDb,putTx,putInv,guard} from './core.js';
-import {catColor,RCPT,RMETA,phCache} from './sheet.js';
+import {catColor,RCPT,RMETA,phCache,openTx} from './sheet.js';
 import {incs,gr,openSlip,saveInc} from './salary.js';
 import {saveYear} from './savings.js';
 import {debtList,debtState} from './debts.js';
-import {accN,render} from './app.js';
+import {accN,render,goTab} from './app.js';
 import {use} from './usage.js';
 
 /* ---------- budget / accounts actions ---------- */
@@ -20,7 +20,8 @@ export function setPlan(sid,v){if(guard())return;const ym=S.ym,val=pg(v);
   if(((S.plans[ym]||{})[sid]||0)===val)return;
   merge(doc(PLC(),ym),{[sid]:val})}
 /* 📌 „Podnieś plan do opłat stałych”: the typed plan of each such position grows so that the plan (with 📅 yearly expenses) covers its fixed payments */
-export async function planToFixed(){if(guard())return;const ym=S.ym,tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),typed=S.plans[ym]||{},d={};
+/* ym – the month to change (the closing of the month passes the new month), else the shown one */
+export async function planToFixed(m){if(guard())return;const ym=typeof m=='string'?m:S.ym,tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),typed=S.plans[ym]||{},d={};
   for(const x of fixedPlanGap(S.cfg,pl))if(!x.sub.hidden&&!x.sub.cat.hidden)d[x.sub.id]=(typed[x.sub.id]||0)+x.fix-x.plan;const n=Object.keys(d).length;if(!n)return;
   if(!await ask({title:'Podnieść plan?',text:Object.entries(d).map(([id,v])=>`${subsMap(S.cfg)[id].name}: ${zl(v)}`).join('\n')+`\n\nZmieniam plan na ${MN[+ym.slice(5)-1].toLowerCase()}. Następny miesiąc skopiuje go sam, jeśli nie ma jeszcze planu.`,ok:'Podnieś'}))return;
   merge(doc(PLC(),ym),d);toast('Plan podniesiony ✓')}
@@ -29,10 +30,10 @@ export async function planToFixed(){if(guard())return;const ym=S.ym,tx=liveOf(S.
 export function fixPlan(sid,val){if(guard())return;const nm=addMonths(td().slice(0,7),1),src=S.plans[nm]?null:Object.keys(S.plans).filter(k=>k<nm&&Object.values(S.plans[k]).some(v=>v)).sort().pop();
   if(S.plans[nm])merge(doc(PLC(),nm),{[sid]:val});else{S.autoPlanned[nm]=1;w(setDoc(doc(PLC(),nm),{...(src?S.plans[src]:{}),[sid]:val}))}
   toast(`Plan na ${MN[+nm.slice(5)-1].toLowerCase()}: ${subsMap(S.cfg)[sid]?.name||''} ${zl0(val)}`)}
-export async function copyPlan(){if(guard())return;const[y,m]=S.ym.split('-').map(Number);const prev=m==1?(y-1)+'-12':y+'-'+p2(m-1);const src=S.plans[prev];
+export async function copyPlan(to){if(guard())return;const ym=typeof to=='string'?to:S.ym,[y,m]=ym.split('-').map(Number);const prev=m==1?(y-1)+'-12':y+'-'+p2(m-1);const src=S.plans[prev];
   if(!src||!Object.values(src).some(v=>v))return toast('Poprzedni miesiąc nie ma planu','bad');
   if(!await ask({title:'Skopiować plan?',text:`Plan z miesiąca ${MN[+prev.slice(5)-1]} zastąpi plan na ${MN[m-1]}.`,ok:'Kopiuj'}))return;
-  if(w(setDoc(doc(PLC(),S.ym),{...src})))toast('Skopiowano plan')}
+  if(w(setDoc(doc(PLC(),ym),{...src})))toast('Skopiowano plan')}
 /* 🗓️ „sprawdzone z bankiem” – the date an account's balance was compared with the bank (zamknięcie miesiąca) */
 export function markRecon(ids){if(!ids.length)return;const v=td(),m=Object.fromEntries(ids.map(id=>[id,v]));S.hraw={...S.hraw,reconM:{...(S.hraw?.reconM||{}),...m}};merge(H,{reconM:m})}
 /* ⚖️ balances are corrected only all at once (openRecon – 👛 Konta and the closing of the month), never one account by hand */
@@ -459,4 +460,13 @@ export let qT=null;
 export function setQ(v){S.f.q=v;clearTimeout(qT);qT=setTimeout(()=>{const el=$('txlist');if(el)el.innerHTML=txListH()},150)}
 export function setF(k,v){S.f[k]=v;if(document.activeElement?.id=='fq')document.activeElement.blur();render()}
 export function togF(){S.fOpen=!S.fShown;render()}
+/* 🔎 a tap on a position in Budżet: its entries of the shown month (refunds too), plan and spent; a tap on an entry opens it */
+export function subTx(sid){const sm=subsMap(S.cfg),s=sm[sid];if(!s)return;use('f:subtx');const c=s.cat,tx=liveOf(S.tx),ym=S.ym;
+  const L=inPeriod(tx,ym).filter(t=>t.sub===sid).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0)),p=planOf(S.cfg,S.plans,tx,ym)[sid]||0,a=actuals(S.cfg,tx,ym)[sid]||0;
+  const d=$('dlg');$('dlgBody').innerHTML=`<h2>${catIcon(c)} ${esc(s.name)}</h2><p class="dtext">${MN[+ym.slice(5)-1]} · plan ${zl(p)} · ${c.type=='inc'?'wpłynęło':'wydano'} <b>${zl(a)}</b>${L.length?` · ${L.length} ${plu(L.length,'wpis','wpisy','wpisów')}`:''}</p>
+    ${L.length?`<div class="list subtx">${L.map(t=>txRowH(t,sm)).join('')}</div>`:`<div class="empty" style="padding:14px">W tym miesiącu nic tu nie wpisano.</div>`}
+    <div class="g2"><button class="btn" id="stReg">🧾 W Rejestrze</button><button class="btn primary" id="stAdd">＋ Dodaj</button></div><button class="btn sm" id="stNo" style="align-self:center">Zamknij</button>`;
+  d.hidden=false;const close=()=>{d.hidden=true};d.onclick=e=>{if(e.target===d)close();else if(e.target.closest('.subtx .tx'))close()};$('stNo').onclick=close;
+  $('stAdd').onclick=()=>{close();openTx(null,{type:c.type,sub:sid})};
+  $('stReg').onclick=()=>{close();S.f={q:s.name,type:'',who:'',acc:'',cat:c.id,scope:'m'};goTab('tx')}}
 export function clearF(){S.f={q:'',type:'',who:'',acc:'',cat:'',scope:'m'};if(document.activeElement?.id=='fq')document.activeElement.blur();render()}

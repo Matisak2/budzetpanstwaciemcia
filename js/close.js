@@ -2,13 +2,13 @@
    (learned from the payslips, today.js closeWinP). Bank balances (own + shared accounts), surplus (own accounts) and goals are personal
    (closeM{ym:{p:{who:{steps,done}}}}), „Co było ponad plan” and „Plan” are shared (closeM{ym:{steps}} – ticked by one = ticked for both).
    „✓ Zgadza się” at an account = reconM{accId:date}. Only declarations here – nothing runs when the module loads. */
-import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {doc,setDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {CLOSE_STEPS,CLOSE_SHARED,closeDueP,closeStateP,closeYmP} from './today.js';
 import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds} from './logic.js';
 import {MN,MNG,addDays,addMonths,esc,td,zl0,money,dmy} from './util.js';
-import {S,toast,CUR,accOwner,H,PLC,merge,guard,celebrate} from './core.js';
+import {S,toast,CUR,accOwner,H,PLC,merge,guard,celebrate,w,infoH} from './core.js';
 import {goalProgress,goalOwner,unallocated,markRecon} from './actions.js';
 import {cascadeH} from './debts.js';
 import {render} from './app.js';
@@ -38,8 +38,11 @@ export function closeStep(k,on){if(guard())return;const ym=S.close;if(!ym)return
   nc.p={...(nc.p||{}),[S.who]:{...(nc.p?.[S.who]||{}),done}};
   S.hraw={...S.hraw,closeM:{...(S.hraw?.closeM||{}),[ym]:nc}};merge(H,{closeM:{[ym]:sh?{steps:{[k]:v},p:{[S.who]:{done}}}:{p:{[S.who]:{steps:{[k]:v},done}}}}});render();
   if(all&&!was.done)celebrate({scene:'celebrate',title:`${MN[+ym.slice(5)-1]} zamknięty! 🎉`,text:`Salda sprawdzone, plan gotowy, nadwyżka na swoim miejscu. Bailey odhacza w kalendarzu, Ivo idzie na drzemkę.`})}
-/* the plan of the new month for one position (from step 2) */
-export function closePlan(sid,val){if(guard())return;const ym=td().slice(0,7);S.plans={...S.plans,[ym]:{...(S.plans[ym]||{}),[sid]:val}};merge(doc(PLC(),ym),{[sid]:val});render();toast('Plan na '+MN[+ym.slice(5)-1].toLowerCase()+': '+zl0(val))}
+/* the plan of the new month (the one after the closed month – with a payday from the 20th it is the next calendar month) for one position (from step 2);
+   a month without a plan yet gets a copy of the last plan with this change – one position alone would stop the automatic copy of the whole plan */
+export function closePlan(sid,val){if(guard())return;const ym=S.close?addMonths(S.close,1):td().slice(0,7),src=S.plans[ym]?null:Object.keys(S.plans).filter(k=>k<ym&&Object.values(S.plans[k]).some(v=>v)).sort().pop();
+  if(S.plans[ym])merge(doc(PLC(),ym),{[sid]:val});else{S.autoPlanned[ym]=1;w(setDoc(doc(PLC(),ym),{...(src?S.plans[src]:{}),[sid]:val}))}
+  S.plans={...S.plans,[ym]:{...(S.plans[ym]||(src?S.plans[src]:{})),[sid]:val}};render();toast('Plan na '+MN[+ym.slice(5)-1].toLowerCase()+': '+zl0(val))}
 
 /* the card on the Budget screen: big while the month waits, a small line when it is done or not due */
 export function closeLinkH(){if(S.ym!=td().slice(0,7))return'';const ym=closeYm(),c=stOf(ym);
@@ -49,20 +52,21 @@ const stepH=(i,k,body,label)=>{const st=stOf(S.close).steps?.[k];
   return`<section class="chart cstep${st?' done':''}"><div class="ct"><b>${i}. ${STEP_N[k]}</b>${st?`<span class="pill ok">✓ ${esc(st.by||'')}</span>`:CLOSE_SHARED.includes(k)?'<span class="pill low">wspólny</span>':''}</div>${body}
     <div class="btns" style="gap:6px">${st?`<button class="btn sm" onclick="closeStep('${k}',0)">↺ Cofnij</button>`:`<button class="btn sm primary" onclick="closeStep('${k}',1)">✓ ${label}</button>`}</div></section>`};
 
-export function closePageH(){const ym=S.close,cur=td().slice(0,7),tx=liveOf(S.tx),mn=MN[+ym.slice(5)-1],mnc=MN[+cur.slice(5)-1],n=nDone(ym),c=stOf(ym);
+/* cur = the new month: the one after the closed month (closing October before a payday on the 30th → November) */
+export function closePageH(){const ym=S.close,cur=addMonths(ym,1),tx=liveOf(S.tx),mn=MN[+ym.slice(5)-1],mnc=MN[+cur.slice(5)-1],n=nDone(ym),c=stOf(ym);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeClose()">‹ Budżet</button>`;
-  h+=`<section class="greet"><div class="gtxt"><b>🗓️ Zamknięcie: ${esc(mn)} ${ym.slice(0,4)} – ${esc(S.who)}</b><span>${c.done?`Gotowe 🎉 Możesz tu zajrzeć, kiedy chcesz.`:`5 kroków, ok. 10 minut – najlepiej dzień przed wypłatą: na kontach jest wtedy to, co naprawdę zostało. „Co było ponad plan” i „Plan” są wspólne – odhaczone przez jedno z Was są odhaczone u obojga.`}</span></div>${kotki.mode=='off'?'':`<div class="gcats">${scene(c.done?'happy':'lupa','kot')}</div>`}</section>`;
+  h+=`<section class="greet"><div class="gtxt"><b>🗓️ Zamknięcie: ${esc(mn)} ${ym.slice(0,4)} – ${esc(S.who)}</b><span>${c.done?`Gotowe 🎉 Możesz tu zajrzeć, kiedy chcesz.`:`5 kroków, ok. 10 minut.${infoH('closehow','Najlepiej dzień przed wypłatą: na kontach jest wtedy to, co naprawdę zostało. „Co było ponad plan” i „Plan” są wspólne – odhaczone przez jedno z Was są odhaczone u obojga.','ⓘ Jak to działa')}`}</span></div>${kotki.mode=='off'?'':`<div class="gcats">${scene(c.done?'happy':'lupa','kot')}</div>`}</section>`;
   h+=`<div class="gbar"><i style="width:${(n/5*100).toFixed(0)}%"></i></div><div class="mini" style="text-align:center">${n} z 5 kroków</div>`;
 
   /* 1. bank balances */
   const A=bankAccs(),ok=A.filter(a=>fresh(a.id,ym)).length,tom=addDays(td(),1);
-  h+=stepH(1,'bank',`<div class="mini">Otwórz aplikacje banków i porównaj salda (Twoje i wspólne). Zgadza się – „✓”. Inaczej – „Wyrównaj wszystkie salda naraz” i wpisz salda z banku (różnica zapisze się jako przelew albo wyrównanie, nie wydatek). Wspólne konto sprawdzone przez jedno z Was jest sprawdzone u obojga.</div>
+  h+=stepH(1,'bank',`<div class="mini">Otwórz aplikacje banków i porównaj salda (Twoje i wspólne). Zgadza się – „✓”.</div>${infoH('closebank','Nie zgadza się – „Wyrównaj wszystkie salda naraz” i wpisz salda z banku (różnica zapisze się jako przelew albo wyrównanie, nie wydatek). Wspólne konto sprawdzone przez jedno z Was jest sprawdzone u obojga.','ⓘ A jeśli się nie zgadza?')}
     <div class="list">${A.map(a=>{const lc=lastCheck(a.id),f=fresh(a.id,ym);return`<div class="acc"><div style="min-width:0;flex:1"><b>${esc(a.name)}</b><div class="mini">${esc(accOwner(a))} · ${f?`<span class="t-inc">✓ sprawdzone ${dmy(lc)}</span>`:lc?`sprawdzone ${dmy(lc)}`:'jeszcze nie sprawdzane'}</div></div><div class="r"><b class="num">${money(balance(S.cfg,tx,a.id,tom),CUR(a))}</b>${f?'':`<div class="btns" style="gap:4px;justify-content:flex-end"><button class="chip" aria-label="Zgadza się: ${esc(a.name)}" onclick="reconOk('${a.id}')">✓ Zgadza się</button></div>`}</div></div>`}).join('')}</div>
     ${ok<A.length?`<button class="btn sm" onclick="closeRecAll()">⚖️ Wyrównaj wszystkie salda naraz</button>`:''}
     <div class="mini">${ok} z ${A.length} kont sprawdzonych.</div>`,ok==A.length?'Wszystko sprawdzone':'Gotowe');
 
   /* 2. what went over the plan last month */
-  const pl=planOf(S.cfg,S.plans,tx,ym),act=actuals(S.cfg,tx,ym),plc=S.plans[cur]||{},Ag=agg(S.cfg,tx,ym),put=savFlow(S.cfg,tx,savIds(S.cfg),ym).flow;
+  const pl=planOf(S.cfg,S.plans,tx,ym),act=actuals(S.cfg,tx,ym),plc=S.plans[cur]||S.plans[Object.keys(S.plans).filter(k=>k<cur&&Object.values(S.plans[k]).some(v=>v)).sort().pop()]||{},Ag=agg(S.cfg,tx,ym),put=savFlow(S.cfg,tx,savIds(S.cfg),ym).flow;
   /* the proposed plan = the average of the closed month and the two before (one expensive month should not raise the plan for good) */
   const{avg:AV,months:AVn}=avgActuals(S.cfg,tx,addMonths(ym,1),3);
   const L=S.cfg.cats.filter(c=>c.type=='exp').flatMap(c=>c.subs.map(s=>({s,p:pl[s.id]||0,a:act[s.id]||0}))).filter(x=>x.a>x.p).sort((x,y)=>(y.a-y.p)-(x.a-x.p));
@@ -75,8 +79,8 @@ export function closePageH(){const ym=S.close,cur=td().slice(0,7),tx=liveOf(S.tx
 
   /* 4. the plan of the new month */
   const pn=planOf(S.cfg,S.plans,tx,cur),sum=t=>S.cfg.cats.filter(c=>c.type==t).reduce((a,c)=>a+c.subs.reduce((b,s)=>b+(pn[s.id]||0),0),0),pi=sum('inc'),pe=sum('exp'),gap=fixedPlanGap(S.cfg,pn).filter(x=>!x.sub.hidden&&!x.sub.cat.hidden),tg=S.savTarget||0;
-  h+=stepH(4,'plan',pe||pi?`<div class="mini">${esc(mnc)}: przychody w planie ${zl0(pi)} · wydatki ${zl0(pe)} · zostaje ${zl0(pi-pe)}${tg?` · cel odkładania ${zl0(tg)}${pi-pe<tg?' – <b class="t-exp">plan nie zostawia tyle</b>':''}`:''}</div>${gap.length?`<div class="mini t-exp">📌 Plan niższy niż opłaty stałe: ${gap.map(x=>esc(x.sub.name)).join(', ')}</div><button class="btn sm" onclick="planToFixed()">Podnieś plan do opłat stałych</button>`:''}`
-    :`<div class="mini">${esc(mnc)} nie ma jeszcze planu.</div><div class="btns" style="gap:6px"><button class="btn sm" onclick="copyPlan()">Skopiuj z poprzedniego miesiąca</button><button class="btn sm" onclick="fillAvg()">Wypełnij średnimi</button></div>`,'Plan gotowy');
+  h+=stepH(4,'plan',pe||pi?`<div class="mini">${esc(mnc)}: przychody w planie ${zl0(pi)} · wydatki ${zl0(pe)} · zostaje ${zl0(pi-pe)}${tg?` · cel odkładania ${zl0(tg)}${pi-pe<tg?' – <b class="t-exp">plan nie zostawia tyle</b>':''}`:''}</div>${gap.length?`<div class="mini t-exp">📌 Plan niższy niż opłaty stałe: ${gap.map(x=>esc(x.sub.name)).join(', ')}</div><button class="btn sm" onclick="planToFixed('${cur}')">Podnieś plan do opłat stałych</button>`:''}`
+    :`<div class="mini">${esc(mnc)} nie ma jeszcze planu.</div><div class="btns" style="gap:6px"><button class="btn sm" onclick="copyPlan('${cur}')">Skopiuj z poprzedniego miesiąca</button><button class="btn sm" onclick="fillAvg('${cur}')">Wypełnij średnimi</button></div>`,'Plan gotowy');
 
   /* 5. goals: what to put into each this month */
   const G=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())})).filter(g=>!g.pr.done&&[S.who,'Wspólne'].includes(goalOwner(g)));

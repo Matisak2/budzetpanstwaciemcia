@@ -112,6 +112,15 @@ Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: w
 - [x] 📋 Raz w roku przegląd subskrypcji w „Na dziś”: lista z kosztem rocznym, „Zostaje” / „Zmień” / „Rezygnuję”
 - [x] 📊 Licznik „Czego używamy” (ekrany, okienka, dodatki, karty widoczne 2 s) w ⚙️ → Pomoc
 
+## Etap X14. Poprawki z drugiego przeglądu (uzgodnione 31.10.2026)
+- [x] 🗓️ Zamknięcie miesiąca: plan na miesiąc po zamykanym (wypłata od 20. → następny miesiąc), kopia ostatniego planu przy pierwszej zmianie
+- [x] 🔢 Kwoty w kafelkach nie są ucinane „…” przy A++ (dopasowanie bez zapasu 1 px, ponownie po wczytaniu czcionki)
+- [x] 👥 Podpowiedzi stałych opłat / przelewów tylko dla właściciela konta źródłowego
+- [x] 🤖 Robot sprawdza widok roku w Pensjach (PIT), plan w zamknięciu, ucięte kwoty, „ⓘ” i wpisy pozycji
+- [x] „Skopiuj plan z poprzedniego miesiąca” tylko, gdy miesiąc nie ma planu
+- [x] ⓘ Długie objaśnienia zwinięte (poduszka, FIRE, odsetki, kaskada, koperty roczne, konta inwestycyjne, zamknięcie)
+- [x] 🔎 Stuknięcie pozycji w Budżecie → jej wpisy z miesiąca
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

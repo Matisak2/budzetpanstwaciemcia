@@ -7,7 +7,7 @@ import {addM,limitOf,paidInYear,wrapOf} from './inv.js';
 import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
 import {avgActuals,carStats,balance,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
 import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0,plu} from './util.js';
-import {S,toast,ask,isP,accOwner,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard} from './core.js';
+import {S,toast,ask,isP,accOwner,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard,infoH} from './core.js';
 import {calcAmt} from './sheet.js';
 import {fixedPaid,isPod,txRowH} from './actions.js';
 import {gr,segL} from './salary.js';
@@ -107,7 +107,7 @@ export function toPlanH(){const ym=S.ym,cur=td().slice(0,7);if(ym<cur)return'';c
   const L=S.cfg.cats.filter(c=>!c.hidden).flatMap(c=>c.subs.filter(s=>!s.hidden).map(s=>({c,s}))).filter(x=>!pl[x.s.id]&&avg[x.s.id]>0&&!YS.has(x.s.id));if(!L.length)return'';
   const tot=L.filter(x=>x.c.type=='exp').reduce((a,x)=>a+avg[x.s.id],0);
   return`<div class="note">📝 <b>Do zaplanowania: ${L.length} ${plu(L.length,'pozycja','pozycje','pozycji')}</b> bez planu, które w ostatnich miesiącach miały wpisy${tot?` (wydatki średnio ${zl0(tot)}/mies.)`:''}. Średnią widać w pustym polu planu.<br><button class="btn sm primary" style="margin-top:6px" onclick="fillAvg()">Wypełnij średnimi</button></div>`}
-export async function fillAvg(){if(guard())return;const ym=S.ym,tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),{avg,months}=avgActuals(S.cfg,tx,ym,3),YS=yearSubs(S.cfg),d={};
+export async function fillAvg(m){if(guard())return;const ym=typeof m=='string'?m:S.ym,tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),{avg,months}=avgActuals(S.cfg,tx,ym,3),YS=yearSubs(S.cfg),d={};
   S.cfg.cats.filter(c=>!c.hidden).forEach(c=>c.subs.forEach(s=>{if(!s.hidden&&!YS.has(s.id)&&!pl[s.id]&&avg[s.id]>0)d[s.id]=Math.ceil(avg[s.id]/1000)*1000}));const n=Object.keys(d).length;if(!n)return;
   if(!await ask({title:'Wypełnić średnimi?',text:`${n} ${plu(n,'pozycja','pozycje','pozycji')} dostanie plan równy średniej z ${months} ${plu(months,'miesiąca','miesięcy','miesięcy')}, zaokrąglonej w górę do 10 zł. Pozycje z planem zostają bez zmian.`,ok:'Wypełnij'}))return;
   merge(doc(PLC(),ym),d);toast('Wypełniono plan średnimi ✓')}
@@ -206,7 +206,7 @@ export function cascadeH(o){const cfgc=(S.hraw?.cascade||{})[o]||{},buf=cfgc.buf
   const ta=accById(to),w=wrapOf(ta),room=w=='ike'||w=='ikze'?Math.max(0,limitOf(ta,y,S.hraw?.limits)-paidInYear(tx,to,y)):Infinity;
   const head=`<section class="chart"><div class="ct"><b>💧 Kaskada nadwyżek${o=='Wspólne'?' – wspólne':''}</b><button class="btn sm" aria-label="Ustawienia kaskady" onclick="setCascade('${o}')">⚙️</button></div>`;
   const{win,next}=cascWin(o,tx,today);
-  if(!win)return head+`<div class="mini">${next?`Nadwyżkę policzę dzień przed wypłatą (<b style="color:var(--fg)">${dmyC(next)}</b>) – wtedy na kontach jest to, co naprawdę zostało z poprzedniej pensji. Teraz te pieniądze są jeszcze potrzebne na wydatki do wypłaty.`:`Nadwyżkę policzę dzień przed wypłatą – dodaj źródło dochodu w 📌 Stałe → 💼 Pensje (dzień wypłaty aplikacja nauczy się sama z pasków).`}</div></section>`;
+  if(!win)return head+`<div class="mini">${next?`Nadwyżkę policzę dzień przed wypłatą (<b style="color:var(--fg)">${dmyC(next)}</b>).</div>${infoH('casc','Wtedy na kontach jest to, co naprawdę zostało z poprzedniej pensji. Teraz te pieniądze są jeszcze potrzebne na wydatki do wypłaty.','ⓘ Dlaczego dopiero wtedy?')}<div>`:`Nadwyżkę policzę dzień przed wypłatą – dodaj źródło dochodu w 📌 Stałe → 💼 Pensje (dzień wypłaty aplikacja nauczy się sama z pasków).`}</div></section>`;
   let left=room;const L=src.map(a=>{const c=cascSurplus(a,win,buf,tx,today),sur=Math.min(c.sur,left);if(sur>=10000)left-=sur;return{a,...c,sur}}).filter(x=>x.sur>=10000);
   return head+`<div class="mini">Propozycja ${win.pay>today?`przed wypłatą ${dmyC(win.pay)}`:`po wypłacie ${dmyC(win.pay)}`}: to, co zostało na kontach bieżących ponad zapas ${zl0(buf)} i opłaty stałe przed wypłatą, możesz przelać na „${esc(accN(to))}”.${room<Infinity?` Limit ${w.toUpperCase()} na ${y}: zostało ${zl0(room)}.`:''}</div>
     ${L.length?L.map(x=>`<div class="r1"><span>${esc(x.a.name)}${x.u||x.fresh?` <span class="mini">(${[x.u?`po opłatach ${zl0(x.u)}`:'',x.fresh?`bez nowej pensji i wpłat ${zl0(x.fresh)}`:''].filter(Boolean).join(', ')})</span>`:''}</span><button class="chip" onclick="openTx(null,{type:'tr',from:'${x.a.id}',to:'${to}',amount:${x.sur}})">→ ${zl(x.sur)}</button></div>`).join(''):`<div class="mini">${room<=0?`Limit ${w.toUpperCase()} na ten rok jest już wykorzystany – wybierz inne konto (⚙️).`:'Teraz nie ma nadwyżek do przelania.'}</div>`}</section>`}

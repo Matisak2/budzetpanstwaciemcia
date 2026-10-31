@@ -111,6 +111,9 @@ export function toast(msg,kind,action){const t=$('toast');t.textContent='';const
   if(action){const b=document.createElement('button');b.className='tbtn';b.textContent=action.label;b.onclick=()=>{t.hidden=true;clearTimeout(toast.h);action.fn()};t.append(b)}
   t.dataset.kind=kind||'';t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,action?7000:3800)}
 export function err(e){S.last=new Date().toLocaleTimeString('pl-PL')+' · '+(e&&e.code?e.code+': ':'')+((e&&e.message)||e);if(S.tab=='set')render()}
+/* ⓘ a long explanation folded under a small link – open once, it stays open on this screen until closed (S.infoOpen survives re-renders) */
+export const infoH=(k,html,label='ⓘ Jak to liczę')=>`<details class="info"${S.infoOpen?.[k]?' open':''} ontoggle="infoTog('${k}',this.open)"><summary>${label}</summary><div class="mini">${html}</div></details>`;
+export function infoTog(k,o){S.infoOpen={...(S.infoOpen||{}),[k]:o}}
 export function ask({title,text='',fields=[],ok='Zapisz',cancel='Anuluj',danger=false,alt=null}){
   return new Promise(res=>{const d=$('dlg');
     const opt=o=>o.group?`<optgroup label="${esc(o.group)}">${o.items.map(opt).join('')}</optgroup>`:`<option value="${esc(o[0])}">${esc(o[1])}</option>`;

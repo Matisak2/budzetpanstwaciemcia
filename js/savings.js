@@ -7,7 +7,7 @@ import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFrom
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
 import {seasonal,agg,balance,liveOf,carStats,yearDueNear} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym,plu} from './util.js';
-import {S,toast,ask,CUR,isP,CUR_OPTS,accOwner,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard} from './core.js';
+import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOwner,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard} from './core.js';
 import {openTx} from './sheet.js';
 import {gr} from './salary.js';
 import {remsH,warrantiesH,rems,saveRem,projs} from './debts.js';
@@ -188,8 +188,7 @@ export function gainH(accs,key){if(!accs.length)return'';const R=S.gRange||'y',t
 export function fireH(savNow,monthlySave){const tx=liveOf(S.tx),cur=td().slice(0,7),ex=[];for(let k=1;k<=12;k++){const e=agg(S.cfg,tx,addMonths(cur,-k)).exp;if(e>0)ex.push(e)}
   if(!ex.length)return'';const yearly=Math.round(ex.reduce((a,v)=>a+v,0)/ex.length*12),target=yearly*25,pc=savNow/target*100,m=fireMonths(savNow,target,Math.max(0,monthlySave));
   return`<section class="chart"><div class="ct"><b>🔥 Niezależność finansowa (FIRE)</b><span class="mini">25 × roczne wydatki (${zl0(yearly)}) – zasada 4%</span></div><div class="cush"><span class="num">${pc.toFixed(1).replace('.',',')}%</span><span>z ${zl0(target)}</span></div><div class="gbar"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div>
-    <div class="mini">Z obecnych oszczędności bezpiecznie ok. <b style="color:var(--fg)">${zl0(savNow*0.04/12)}</b> miesięcznie (4% rocznie).</div>
-    <div class="mini">${monthlySave>0?(m===0?'🎉 Cel FIRE osiągnięty!':m?`Przy odkładaniu ok. ${zl0(monthlySave)}/mies. i 4% realnego zysku: ok. <b style="color:var(--fg)">${(m/12).toFixed(1).replace('.',',')} lat</b> (${+td().slice(0,4)+Math.ceil(m/12)}).`:'Przy obecnym tempie to ponad 100 lat.'):'Gdy zaczniecie odkładać co miesiąc, policzę, ile lat zostało.'} Szacunek, nie prognoza.</div></section>`}
+    <div class="mini">${monthlySave>0?(m===0?'🎉 Cel FIRE osiągnięty!':m?`Przy odkładaniu ok. ${zl0(monthlySave)}/mies. i 4% realnego zysku: ok. <b style="color:var(--fg)">${(m/12).toFixed(1).replace('.',',')} lat</b> (${+td().slice(0,4)+Math.ceil(m/12)}).`:'Przy obecnym tempie to ponad 100 lat.'):'Gdy zaczniecie odkładać co miesiąc, policzę, ile lat zostało.'}</div>${infoH('fire',`FIRE = oszczędności równe 25 rocznym wydatkom: z nich można bezpiecznie brać ok. 4% rocznie. Z obecnych oszczędności to ok. <b style="color:var(--fg)">${zl0(savNow*0.04/12)}</b> miesięcznie. Szacunek, nie prognoza.`)}</section>`}
 /* 🐷 put money aside: a transfer to the person's savings account */
 export function odloz(owner){use('f:odloz');const o=owner&&owner!='all'?owner:S.who,a=S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived&&accOwner(x)==o&&!/poduszk/i.test(x.name))||S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived);
   openTx(null,{type:'tr',to:a?.id})}
@@ -213,7 +212,7 @@ export function yearH(){const ym=S.ym,st=yearState(ym),id=yearAccId();let h='';
     return`<div class="acc"><div style="min-width:0;flex:1"><div class="r1"><b>${esc(it.name)}</b><b class="num">${zl(it.amount)}</b></div><div class="gbar"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div>
       <div class="mini">${x.months<=2&&x.fill<it.amount?'⏰ ':''}termin: ${dd}${+it.every!=12?` · co ${it.every} mies.`:''} · w kopercie ${zl(x.fill)}${x.need?` · odkładaj ok. ${zl(x.need)}/mies.`:' · ✓ uzbierane'}${it.who?` · 👤 ${esc(it.who)}`:''}</div>
       <div class="btns" style="gap:6px;margin-top:6px"><button class="chip" onclick="payYear('${it.id}')">✓ Zapłacone</button><button class="chip" onclick="editYear('${it.id}')">Edytuj</button></div></div></div>`}).join('')}</div>`;
-  h+=`<div class="mini" style="padding:0 4px">Pieniądze na subkoncie wypełniają koperty od najbliższego terminu. Po zapłacie odliczanie rusza od nowa. Ok. 2 tygodnie przed terminem przypomnę o zapłacie.</div>`;
+  h+=`<div style="padding:0 4px">${infoH('years','Pieniądze na subkoncie wypełniają koperty od najbliższego terminu. Po zapłacie odliczanie rusza od nowa. Ok. 2 tygodnie przed terminem przypomnę o zapłacie.','ⓘ Jak działają koperty')}</div>`;
   return h+remsH()+seaH+warrantiesH()}
 /* a new yearly expense from a date (the shared subaccount is made the first time); every 24 months is counted from that date */
 export function newYear(name,amount,date,every,sub,who=''){const ym=date.slice(0,7),body={id:'y'+rid(),name,amount,month:+date.slice(5,7),day:+date.slice(8),every,sub,who,...(12%every?{last:addMonths(ym,-every)}:{})};
@@ -288,4 +287,4 @@ export function intCardH(owner){const tx=liveOf(S.tx),y=td().slice(0,4),L=S.cfg.
   return`<section class="chart"><div class="ct"><b>💰 Odsetki z kont ${y}</b></div>
     <div class="mini">wpisane w ${y}: <b style="color:var(--fg)">${zl(sum)}</b> · ok. <b style="color:var(--fg)">${zl0(mon)}</b>/mies. · do końca roku ok. <b style="color:var(--fg)">${zl0(mon*(12-+td().slice(5,7))+sum)}</b></div>
     ${owner?'':L.map(a=>`<div class="r1"><span><b>${esc(a.name)}</b>${intMini(a,tx)}</span><button class="btn sm" onclick="editInt('${a.id}')">Zmień</button></div>`).join('')}
-    <div class="mini">Odsetki to zysk – nie liczą się do „odłożonych”, tak jak zmiana kursów inwestycji.</div></section>`}
+    ${infoH('int','Odsetki to zysk – nie liczą się do „odłożonych”, tak jak zmiana kursów inwestycji. Kwota miesięczna to szacunek z dzisiejszego salda.','ⓘ')}</section>`}
