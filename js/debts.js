@@ -5,9 +5,9 @@ import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
 import {addM,limitOf,paidInYear,wrapOf} from './inv.js';
 import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
-import {avgActuals,carStats,balance,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs} from './logic.js';
+import {avgActuals,carStats,balance,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf} from './logic.js';
 import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0,plu} from './util.js';
-import {S,toast,ask,isP,accOwner,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard,infoH} from './core.js';
+import {S,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard,infoH} from './core.js';
 import {calcAmt} from './sheet.js';
 import {fixedPaid,isPod,txRowH} from './actions.js';
 import {gr,segL} from './salary.js';
@@ -74,7 +74,7 @@ export async function payoffDebt(id){if(guard())return;const d=dById(id);if(!d)r
   const r=await ask({title:'✅ Spłata całości: '+d.name,text:`Spłata kapitału nie liczy się w Budżecie – oddajesz pożyczone pieniądze. Do Budżetu trafią tylko odsetki i opłaty.${saved>0?`\n💰 Odłożone: ${zl(saved)} na „${accN(d.saveAcc)}”.`:''}${est?`\nPrzy ${String(d.rate).replace('.',',')}% odsetki za miesiąc od ${zl(st.left)} to ok. ${zl(est)} – dokładną kwotę poda bank.`:''}`,
     fields:[{id:'a',label:'Spłacony kapitał (zł)',type:'decimal',value:f2(st.left)},{id:'i',label:'Odsetki i opłaty (zł, z banku)',type:'decimal',value:'',ph:'0,00'},
       {id:'s',label:'Pozycja na odsetki',type:'select',value:isub,options:[['','— wybierz —'],...subOpts('exp')]},
-      {id:'c',label:'Z konta',type:'select',value:d.saveAcc||S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived&&accOwner(a)==S.who)?.id||'',options:accOpts()},{id:'d',label:'Data',type:'date',value:td()}],ok:'Zapisz spłatę'});
+      {id:'c',label:'Z konta',type:'select',value:d.saveAcc||S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived&&ownerOf(a)==S.who)?.id||'',options:accOpts()},{id:'d',label:'Data',type:'date',value:td()}],ok:'Zapisz spłatę'});
   if(!r)return;const P=gr(r.a),I=gr(r.i);if(P<=0)return toast('Podaj spłacony kapitał','bad');if(I<0)return toast('Odsetki nie mogą być ujemne','bad');if(!isDate(r.d))return toast('Wybierz datę','bad');if(I&&!r.s)return toast('Wybierz pozycję na odsetki','bad');
   const full=P>=st.left,here=r.c==d.saveAcc,use=Math.max(0,full?saved:here?Math.min(saved,P+I):0),ui=here?Math.min(I,use):0,up=use-ui;
   const ym=r.d.slice(0,7),pid='t'+rid(),who=d.payer=='Mati'||d.payer=='Wercia'?d.payer:S.who,base={date:r.d,acc:r.c,to:'',who,deleted:false,ts:Date.now()};
@@ -86,14 +86,14 @@ export async function setDebtLeft(id){if(guard())return;const d=dById(id);if(!d)
   const r=await ask({title:'Pozostało do spłaty: '+d.name,text:'Wpisz kwotę z aplikacji banku (kapitał do spłaty).',fields:[{id:'a',label:'Pozostało (zł)',type:'decimal',value:f2(st.left)},{id:'d',label:'Stan na dzień',type:'date',value:td()}]});
   if(!r)return;if(!isDate(r.d))return toast('Wybierz datę','bad');merge(doc(DEBTS(),id),{left:{[r.d]:gr(r.a)}});toast('Zapisano')}
 export async function lentBack(id){if(guard())return;const d=dById(id);if(!d)return;const st=debtState(d);
-  const r=await ask({title:'↩️ Zwrot: '+d.name,fields:[{id:'a',label:'Ile oddano (zł)',type:'decimal',value:f2(st.left)},{id:'d',label:'Data',type:'date',value:td()},{id:'c',label:'Na konto',type:'select',value:S.cfg.accs.find(a=>a.grp=='cur'&&accOwner(a)==S.who)?.id||'',options:accOpts()}]});
+  const r=await ask({title:'↩️ Zwrot: '+d.name,fields:[{id:'a',label:'Ile oddano (zł)',type:'decimal',value:f2(st.left)},{id:'d',label:'Data',type:'date',value:td()},{id:'c',label:'Na konto',type:'select',value:S.cfg.accs.find(a=>a.grp=='cur'&&ownerOf(a)==S.who)?.id||'',options:accOpts()}]});
   if(!r)return;const amt=gr(r.a);if(amt<=0||!isDate(r.d))return toast('Podaj kwotę i datę','bad');if(amt>st.left)return toast('Zwrot może wynieść najwyżej '+zl(st.left),'bad');
   if(await putTx(r.d.slice(0,7),'t'+rid(),{type:'inc',amount:amt,date:r.d,sub:'',acc:r.c,to:'',who:S.who,note:'🔺 Zwrot pożyczki: '+(d.party||d.name),lendOf:id,deleted:false,ts:Date.now()}))toast(amt>=st.left?'Pożyczka oddana w całości 🎉':'Zapisano zwrot '+zl(amt))}
 /* earlier "Udzielone pożyczki" expenses become receivables (the entries stay, only their type changes) */
 export async function moveLent(){if(guard())return;const sid=S.cfg.cats.flatMap(c=>c.subs).find(s=>/udzielone pożyczki/i.test(s.name))?.id,old=liveOf(S.tx).filter(t=>t.type=='exp'&&t.sub===sid);if(!old.length)return;
   if(!await ask({title:'Przenieść do należności?',text:`${old.length} ${plu(old.length,'wpis','wpisy','wpisów')} przestanie liczyć się jako wydatek. Każdy stanie się pożyczką, którą można oznaczyć jako oddaną. Saldo kont się nie zmieni.`,ok:'Przenieś'}))return;
   for(const t of old){const did='d'+rid();merge(doc(DEBTS(),did),{dir:'lent',kind:'inne',name:t.note||'Pożyczka',party:t.note||'',payer:t.who||'Wspólne',start:t.amount,date:t.date,until:'',note:'przeniesione z „Udzielone pożyczki”',deleted:false,ts:Date.now()});
-    putTx(t.date.slice(0,7),t.id,{type:'lend',sub:'',wasSub:t.sub,lendId:did,note:'🔺 Pożyczka'+(t.note?': '+t.note:'')})}
+    putTx(t.date.slice(0,7),t.id,{type:'lend',by:t.by||t.who||'',sub:'',wasSub:t.sub,lendId:did,note:'🔺 Pożyczka'+(t.note?': '+t.note:'')})}
   toast('Przeniesiono do należności')}
 /* the sheet: which liability an expense pays off */
 export function fillDebt(sel){const L=debtList('owe').filter(d=>debtState(d).left>0||d.id==sel);$('mdebt').innerHTML='<option value="">— nie —</option>'+L.map(d=>`<option value="${d.id}">${esc(dIcon(d)+' '+d.name)}</option>`).join('');$('mdebt').value=sel||'';updDebt()}
@@ -191,7 +191,7 @@ export async function doneRem(id){const r=rems().find(x=>x.id==id);if(!r)return;
    due before the pay day − the new salary when it already came (it is for the next month, not a surplus). Shared accounts: the earliest pay day
    of the two of you, money transferred in since then is new money too. Never to PPK / OKI, never from cash, not above the IKE / IKZE limit. ---------- */
 const CASC_BUF=25000;
-export const cascTargets=o=>S.cfg.accs.filter(a=>!a.archived&&isP(a)&&accOwner(a)==o&&(a.grp=='sav'||(a.grp=='inv'&&!['ppk','oki'].includes(wrapOf(a)))));
+export const cascTargets=o=>S.cfg.accs.filter(a=>!a.archived&&isP(a)&&ownerOf(a)==o&&(a.grp=='sav'||(a.grp=='inv'&&!['ppk','oki'].includes(wrapOf(a)))));
 const dmyC=d=>d.split('-').reverse().join('.');
 /* the pay window of a person (shared accounts: of whoever is paid first) – only a real pay day, not the „first 10 days” of a month without income sources */
 export function cascWin(o,tx,today){const W=(o=='Wspólne'?['Mati','Wercia']:[o]).map(p=>closeWinP(S.cfg,tx,p,today)).filter(w=>w&&w.pay).sort((a,b)=>a.pay.localeCompare(b.pay));
@@ -202,7 +202,7 @@ export function cascSurplus(a,win,buf,tx,today){const tom=addDays(today,1),pm=wi
   return{sur:balance(S.cfg,tx,a.id,tom)-buf-unpaid-fresh,u:unpaid,fresh}}
 export function cascadeH(o){const cfgc=(S.hraw?.cascade||{})[o]||{},buf=cfgc.buf??CASC_BUF,today=td(),tx=liveOf(S.tx),y=today.slice(0,4);
   const T=cascTargets(o),rank=a=>a.grp=='sav'?(isPod(a)?1:0):!wrapOf(a)?2:3,to=T.find(a=>a.id==cfgc.to)?.id||T.slice().sort((a,b)=>rank(a)-rank(b))[0]?.id;
-  const src=S.cfg.accs.filter(a=>a.grp=='cur'&&!a.archived&&isP(a)&&accOwner(a)==o&&!/gotówk/i.test(a.name));if(!src.length||!to)return'';
+  const src=S.cfg.accs.filter(a=>a.grp=='cur'&&!a.archived&&isP(a)&&ownerOf(a)==o&&!/gotówk/i.test(a.name));if(!src.length||!to)return'';
   const ta=accById(to),w=wrapOf(ta),room=w=='ike'||w=='ikze'?Math.max(0,limitOf(ta,y,S.hraw?.limits)-paidInYear(tx,to,y)):Infinity;
   const head=`<section class="chart"><div class="ct"><b>💧 Kaskada nadwyżek${o=='Wspólne'?' – wspólne':''}</b><button class="btn sm" aria-label="Ustawienia kaskady" onclick="setCascade('${o}')">⚙️</button></div>`;
   const{win,next}=cascWin(o,tx,today);

@@ -6,7 +6,7 @@ import {scene} from './cats.js';
 import {NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
 import {CURS,SEASON,tint} from './data.js';
 import {wrapOf} from './inv.js';
-import {actuals,agg,cleanCat,fixedDate,fixedTwin,fixedWho,seenBy,liveOf,savFlow,savIds,planOf} from './logic.js';
+import {actuals,agg,cleanCat,liveOf,planOf} from './logic.js';
 import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus} from './util.js';
 import {goalAlloc,askWhoLock} from './actions.js';
 import {runGo,maybeToday} from './todayui.js';
@@ -39,19 +39,13 @@ kotki.mode=ls.get('mw_kotki')||'lots';
 export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=td(),ym=today.slice(0,7),who=S.who;
   const [hi,em]=hr<5?['Dobranoc','🌙']:hr<12?['Dzień dobry','☀️']:hr<18?['Miłego dnia','🌤️']:hr<23?['Dobry wieczór','🌆']:['Dobranoc','🌙'];
   const tx=liveOf(txAll),A=agg(cfg,tx,ym),pl=planOf(cfg,S.plans,tx,ym),pexp=cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,x)=>b+(pl[x.id]||0),0),0);
-  const sd=savFlow(cfg,tx,savIds(cfg),ym).flow;
-  const unpaid=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&seenBy(fixedWho(cfg,f),who)&&!tx.some(t=>t.fixedId===f.id&&t.date.startsWith(ym))&&!fixedTwin(cfg,tx,f,ym));
-  const late=unpaid.filter(f=>fixedDate(f,ym)<today).map(f=>f.name),soon=unpaid.filter(f=>{const d=fixedDate(f,ym);return d>=today&&d<=addDays(today,5)}).map(f=>f.name);
   const gl=Object.values(S.goals).filter(g=>g.target&&goalAlloc(g)<g.target).map(g=>({name:g.name,pct:goalAlloc(g)/g.target*100})).sort((a,b)=>b.pct-a.pct)[0]||null;
   const act=actuals(cfg,tx,ym),treats=cfg.cats.reduce((a,c)=>a+c.subs.filter(x=>isTreat(x.name)).reduce((b,x)=>b+Math.max(0,act[x.id]||0),0),0);
-  const okL=(()=>{try{const o=JSON.parse(ls.get('mw_ok')||'{}');return o.d==today?o.k||[]:[]}catch(e){return[]}})();
-  const g=greeting({calm:true,ok:new Set(okL),jdg:(cfg.incs||[]).some(s=>s.kind=='b2b')&&+today.slice(8)>=14&&+today.slice(8)<=20,coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,saved:sd,late,soon,goal:gl,backupDays:0,treats,births:S.hraw?.birth||{}});
+  const g=greeting({coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,goal:gl,treats,births:S.hraw?.birth||{}});
   if((g.scene.startsWith('birthday')||g.bday)&&kotki.mode!='off'&&!ls.get('mw_bd_'+today)){ls.set('mw_bd_'+today,'1');setTimeout(confetti,400)}
   const pic=kotki.mode=='off'?'':`<div class="gcats${WIDE.has(g.scene)?' w':''}">${scene(g.scene,'kot',g.arg)}</div>`;
-  const txt=esc(g.text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>'),okB=g.k?`<button class="chip gok" data-k="${esc(g.k)}" onclick="okCats(this.dataset.k)">Rozumiem, kociaki 🐾</button>`:'';
-  return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${kotki.mode=='off'?'':`<em class="who">${g.who}:</em> `}${txt}</span>${okB}</div>${pic}</section>`}
-/* „Rozumiem, kociaki 🐾”: this warning hides until tomorrow on this phone, the fact of the day comes instead */
-export function okCats(k){const today=td();let o={};try{o=JSON.parse(ls.get('mw_ok')||'{}')}catch(e){}const L=o.d==today?o.k||[]:[];ls.set('mw_ok',JSON.stringify({d:today,k:[...new Set([...L,k])]}));render()}
+  const txt=esc(g.text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+  return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${kotki.mode=='off'?'':`<em class="who">${g.who}:</em> `}${txt}</span></div>${pic}</section>`}
 /* Bailey & Ivo slides: first steps, "Co nowego", celebrations */
 export function catSlides(slides,done='Gotowe'){return new Promise(res=>{const d=$('dlg');let i=0;
   const fin=()=>{d.hidden=true;d.onclick=null;d.onkeydown=null;res()};
@@ -145,7 +139,6 @@ export const r4=x=>x.toLocaleString('pl-PL',{minimumFractionDigits:4,maximumFrac
 export function fxRate(c1,a1,c2,a2){if(c1=='PLN'){[c1,c2]=[c2,c1];[a1,a2]=[a2,a1]}return`1 ${c1} = ${r4(a2/a1)} ${curSym(c2)}`}
 export const stripFx=n=>String(n||'').replace(/\s*(·\s*)?💱.*$/,'');
 export const GRPN={cur:'Konto bieżące',sub:'Subkonto',sav:'Oszczędności',inv:'Inwestycje'};
-export const accOwner=a=>a.owner||(/wercia|weronika/i.test(a.name)?'Wercia':/mati/i.test(a.name)?'Mati':'Wspólne');
 export const accOpts=()=>[['cur','Konta bieżące'],['sub','Subkonta'],['sav','Oszczędności'],['inv','Inwestycje']].map(([g,l])=>({group:l,items:S.cfg.accs.filter(a=>a.grp==g&&!a.archived).map(a=>[a.id,a.name])})).filter(g=>g.items.length);
 /* positions for a select; 🙈 hidden ones last in their own group (a dialog may still show one that is already chosen) */
 export const subOpts=type=>{const C=S.cfg.cats.filter(c=>!type||c.type==type),hid=C.flatMap(c=>c.subs.filter(s=>s.hidden||c.hidden).map(s=>[s.id,s.name+' ('+cleanCat(c.name).toLowerCase()+')']));

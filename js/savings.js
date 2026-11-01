@@ -5,9 +5,9 @@ import {kotki} from './guide.js';
 import {gainSvg} from './charts.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue,intOf,intPeriod,intCalc,intTax,intMonthly,intLabel} from './inv.js';
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
-import {seasonal,agg,balance,liveOf,carStats,yearDueNear} from './logic.js';
+import {seasonal,agg,balance,liveOf,carStats,yearDueNear,ownerOf} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym,plu} from './util.js';
-import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOwner,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard} from './core.js';
+import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard} from './core.js';
 import {openTx} from './sheet.js';
 import {gr} from './salary.js';
 import {remsH,warrantiesH,rems,saveRem,projs} from './debts.js';
@@ -190,7 +190,7 @@ export function fireH(savNow,monthlySave){const tx=liveOf(S.tx),cur=td().slice(0
   return`<section class="chart"><div class="ct"><b>🔥 Niezależność finansowa (FIRE)</b><span class="mini">25 × roczne wydatki (${zl0(yearly)}) – zasada 4%</span></div><div class="cush"><span class="num">${pc.toFixed(1).replace('.',',')}%</span><span>z ${zl0(target)}</span></div><div class="gbar"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div>
     <div class="mini">${monthlySave>0?(m===0?'🎉 Cel FIRE osiągnięty!':m?`Przy odkładaniu ok. ${zl0(monthlySave)}/mies. i 4% realnego zysku: ok. <b style="color:var(--fg)">${(m/12).toFixed(1).replace('.',',')} lat</b> (${+td().slice(0,4)+Math.ceil(m/12)}).`:'Przy obecnym tempie to ponad 100 lat.'):'Gdy zaczniecie odkładać co miesiąc, policzę, ile lat zostało.'}</div>${infoH('fire',`FIRE = oszczędności równe 25 rocznym wydatkom: z nich można bezpiecznie brać ok. 4% rocznie. Z obecnych oszczędności to ok. <b style="color:var(--fg)">${zl0(savNow*0.04/12)}</b> miesięcznie. Szacunek, nie prognoza.`)}</section>`}
 /* 🐷 put money aside: a transfer to the person's savings account */
-export function odloz(owner){use('f:odloz');const o=owner&&owner!='all'?owner:S.who,a=S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived&&accOwner(x)==o&&!/poduszk/i.test(x.name))||S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived);
+export function odloz(owner){use('f:odloz');const o=owner&&owner!='all'?owner:S.who,a=S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived&&ownerOf(x)==o&&!/poduszk/i.test(x.name))||S.cfg.accs.find(x=>x.grp=='sav'&&!x.archived);
   openTx(null,{type:'tr',to:a?.id})}
 /* ---------- 📅 yearly expenses: one shared subaccount with envelopes (📌 Stałe → Roczne) ---------- */
 export const years=()=>S.cfg.years||[];
@@ -245,11 +245,14 @@ export async function setYearAcc(){if(guard())return;const subs=S.cfg.accs.filte
   const r=await ask({title:'Subkonto na wydatki roczne',fields:[{id:'a',label:'Konto',type:'select',value:yearAccId()||'',options:[['new','+ Nowe: Subkonto – wydatki roczne'],...subs.map(a=>[a.id,a.name])]}]});if(!r)return;
   let id=r.a;if(id=='new'){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);id=a.id}
   S.hraw={...S.hraw,yearAcc:id};merge(H,{yearAcc:id});render()}
+/* „Jak często” – the same choices as in „+ Dodaj”; an unusual period of an existing item stays on the list, so saving never changes it */
+const EVERY=[['1','Co miesiąc'],['3','Co kwartał'],['6','Co pół roku'],['12','Co rok'],['24','Co 2 lata']];
+export const everyOpts=e=>EVERY.some(([k])=>k==String(e))||!(+e>0)?EVERY:[...EVERY,[String(e),'Co '+e+' mies.']];
 export async function editYear(id,pre){if(guard())return;const y0=id?years().find(x=>x.id==id):null;pre=pre||{};
   const r=await ask({title:y0?'Wydatek roczny':'Nowy wydatek roczny',text:y0?'':'Co roku (albo co kilka miesięcy) – policzę, ile odkładać co miesiąc na wspólne subkonto. Jednorazowy duży zakup? Lepszy 🎯 Cel w Oszczędnościach.',fields:[{id:'n',label:'Nazwa',value:y0?.name||pre.name||'',ph:'np. OC samochodu, Prezenty świąteczne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:y0?f2(y0.amount):pre.amount?f2(pre.amount):''},
     {id:'m',label:'Miesiąc płatności',type:'select',value:String(y0?.month||pre.month||+td().slice(5,7)),options:MN.map((n,i)=>[String(i+1),n])},
     {id:'dy',label:'Dzień płatności (1–31, opcjonalnie)',type:'int',value:y0?.day||'',ph:'przypomnę ok. 2 tygodnie wcześniej'},
-    {id:'e',label:'Jak często',type:'select',value:String(y0?.every||12),options:[['12','Co rok'],['6','Co pół roku'],['3','Co kwartał'],['24','Co 2 lata']]},
+    {id:'e',label:'Jak często',type:'select',value:String(y0?.every||12),options:everyOpts(y0?.every)},
     {id:'s',label:'Pozycja budżetu',type:'select',value:y0?.sub||pre.sub||'',options:[['','— wybierz —'],...subOpts('exp')]},
     {id:'wh',label:'👥 Dotyczy – komu przypominać',type:'select',value:y0?.who||pre.who||'',options:[['','Wspólne – oboje'],['Mati','Mati'],['Wercia','Wercia']]}],ok:y0?'Zapisz':'Dodaj',alt:y0?'Usuń':null});
   if(!r)return;if(r=='alt'){S.cfg.years=years().filter(x=>x!==y0);render();delYearDb(y0.id);return toast('Usunięto')}
@@ -260,6 +263,12 @@ export async function editYear(id,pre){if(guard())return;const y0=id?years().fin
   render();saveYear(x)}
 /* 📅 paid: the next date counts from the due month closest to the payment (paid early or a little late – the same term) */
 export function markYearPaid(it,date){const ym=date.slice(0,7),due=yearDueNear(it,ym)||yearDue(it,ym);it.last=due;saveYear(it);render();return due}
+/* 📅 a payment deleted (back=false) or brought back (back=true): the envelope follows – when this payment moved the next date, deleting it moves it back
+   (unless another payment of the same date is still there); restoring moves it forward again */
+export function yearUndo(t,back){const it=years().find(x=>x.id===t?.yearId);if(!it||t.type!='exp')return;const ym=t.date.slice(0,7),due=yearDueNear(it,ym)||yearDue(it,ym);
+  if(back){if(!it.last||it.last<due){it.last=due;saveYear(it);render()}return}
+  if(it.last!==due||liveOf(S.tx).some(x=>x.yearId===it.id&&x.id!==t.id&&x.type=='exp'&&(yearDueNear(it,x.date.slice(0,7))||'')===due))return;
+  it.last=addMonths(due,-Math.max(1,+it.every||12));saveYear(it);render()}
 export async function payYear(id){if(guard())return;const it=years().find(x=>x.id==id);if(!it)return;
   /* already typed through ＋ (the same position, a similar amount, the last 2 months, not linked to anything) → link that entry instead of a second expense */
   {const from=addDays(td(),-62),tw=liveOf(S.tx).filter(t=>t.type=='exp'&&t.sub==it.sub&&!t.yearId&&!t.fixedId&&!t.slipOf&&!t.roundOf&&t.date>=from&&Math.abs(t.amount-it.amount)<=it.amount*.25).sort((a,b)=>b.date.localeCompare(a.date))[0];
@@ -274,13 +283,13 @@ export async function bookInt(accId,key){if(guard())return;const a=accById(accId
   const r=await ask({title:'💰 Odsetki: '+a.name,text:`Szacunek za ${P.from.split('-').reverse().join('.')}–${P.to.split('-').reverse().join('.')}: ${money(c.book,CUR(a))}${self?' (bez podatku – podatek 19% ≈ '+money(c.tax,CUR(a))+' rozliczysz w PIT-38)':intTax(a)=='bank'?` (przed podatkiem ${money(c.gross,CUR(a))}, podatek ${money(c.tax,CUR(a))})`:''}.\nJeśli w banku jest inna kwota, popraw ją.`,
     fields:[{id:'a',label:`Kwota z banku (${curSym(CUR(a))})`,type:'decimal',value:f2(c.book)},{id:'d',label:'Data',type:'date',value:P.to<=td()?P.to:td()}],ok:'Zapisz odsetki'});
   if(!r)return;const v=Math.round((pnum(r.a)||0)*100),d=isDate(r.d)?r.d:td();if(v<=0)return toast('Podaj kwotę odsetek','bad');
-  if(await putTx(d.slice(0,7),id,{type:'adj',val:true,int:true,intP:key,amount:v,date:d,sub:'',acc:a.id,to:'',who:accOwner(a)=='Wspólne'?S.who:accOwner(a),note:'💰 odsetki '+key,deleted:false,ts:Date.now()}))toast('Zapisano odsetki: '+money(v,CUR(a))+' 💰')}
+  if(await putTx(d.slice(0,7),id,{type:'adj',val:true,int:true,intP:key,amount:v,date:d,sub:'',acc:a.id,to:'',who:ownerOf(a)=='Wspólne'?S.who:ownerOf(a),note:'💰 odsetki '+key,deleted:false,ts:Date.now()}))toast('Zapisano odsetki: '+money(v,CUR(a))+' 💰')}
 /* the line under an account: its rate and about how much a month */
 export function intMini(a,tx){const I=intOf(a);if(!I)return'';const b=balance(S.cfg,tx,a.id,addDays(td(),1)),m=intMonthly(a,b,td());
   return`<div class="mini">💰 ${esc(intLabel(I,td()))}${m>0?` · ok. ${money(m,CUR(a))}/mies.${intTax(a)=='bank'?' na rękę':''}`:''}</div>`}
 /* Oszczędności: interest of the year – booked and about how much more a month */
-export function intCardH(owner){const tx=liveOf(S.tx),y=td().slice(0,4),L=S.cfg.accs.filter(a=>!a.archived&&intOf(a)&&(!owner||accOwner(a)==owner));
-  const cand=S.cfg.accs.filter(a=>!a.archived&&(a.grp=='sav'||a.grp=='sub')&&!intOf(a)&&(!owner||accOwner(a)==owner));
+export function intCardH(owner){const tx=liveOf(S.tx),y=td().slice(0,4),L=S.cfg.accs.filter(a=>!a.archived&&intOf(a)&&(!owner||ownerOf(a)==owner));
+  const cand=S.cfg.accs.filter(a=>!a.archived&&(a.grp=='sav'||a.grp=='sub')&&!intOf(a)&&(!owner||ownerOf(a)==owner));
   if(!L.length)return cand.length?`<div class="note">💰 Konta oszczędnościowe mają oprocentowanie? Wpisz je przyciskiem „💰 Oprocentowanie” przy koncie, a policzę odsetki i przypomnę o nich.</div>`:'';
   const got=a=>tx.filter(t=>t.int&&t.acc===a.id&&t.date.startsWith(y)).reduce((x,t)=>x+t.amount,0),sum=L.filter(isP).reduce((x,a)=>x+got(a),0),mon=L.filter(isP).reduce((x,a)=>x+intMonthly(a,balance(S.cfg,tx,a.id,addDays(td(),1)),td()),0);
   /* one line of totals; the accounts with „Zmień” only in Razem – the tabs Mati / Wercia / Wspólne list the accounts with their 💰 line right below */

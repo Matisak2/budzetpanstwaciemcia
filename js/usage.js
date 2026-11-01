@@ -34,14 +34,16 @@ export function flushUsage(){clearTimeout(timer);timer=0;const who=S.who,keys=Ob
 export function useScreen(){const t=S.tab;let k=t=='dash'?(S.close?'e:close':S.proj?'e:proj':'e:dash'):t=='tx'?'e:tx':t=='fix'?(S.fixSub=='pay'?(S.payView=='y'?'e:payy':'e:pay'):S.fixSub=='year'||S.fixSub=='rem'?'e:year':'e:fix')
     :t=='sav'?(S.values?'e:values':S.instAcc?'e:inst':S.sub=='all'?'e:sav':'e:savp'):t=='acc'?(S.recon?'e:recon':S.accView=='owe'?'e:owe':S.accView=='lent'?'e:lent':'e:acc')
     :t=='ana'?(S.report?'e:report':S.ana=='y'?'e:anay':ls.get('mw_anam')!='basic'?'e:anamf':'e:anam'):t=='set'?(S.help?'e:help':S.setPage?'e:set-'+S.setPage:'e:set'):'';
-  if(S.help)k='e:help';if(k&&k!=lastScreen){lastScreen=k;use(k)}watchCards()}
+  if(S.help)k='e:help';if(k&&k!=lastScreen){lastScreen=k;counted.clear();use(k)}watchCards()}
 /* a card = section.chart; its title without emoji, year, „: …” or „ – …” */
 export const cardKey=t=>{t=(t||'').replace(/^[^\p{L}]+/u,'').split(/:| – /)[0].replace(/\s*\d{4}\s*$/,'').replace(/\./g,'').trim();return t.includes('↔')?'Mati ↔ Wercia':t};
-let io=null;const seen=new WeakMap();
+/* a card counts once per visit of a screen: the screen is drawn again after every change (new elements), so pending 2-second timers of the old
+   elements are cancelled and a card already counted on this screen is not counted again */
+let io=null,pending=new Map();const counted=new Set();
 function watchCards(){if(!('IntersectionObserver' in window))return;if(!io)io=new window.IntersectionObserver(es=>{for(const e of es){const el=e.target;
-    if(e.isIntersecting&&e.intersectionRatio>=0.5){if(!seen.has(el))seen.set(el,setTimeout(()=>{const k=cardKey(el.querySelector('.ct b')?.textContent);if(k)use('k:'+k);seen.set(el,-1)},2000))}
-    else{const v=seen.get(el);if(v&&v!==-1){clearTimeout(v);seen.delete(el)}}}},{threshold:[0,0.5]});
-  io.disconnect();document.querySelectorAll('#app section.chart').forEach(el=>io.observe(el))}
+    if(e.isIntersecting&&e.intersectionRatio>=0.5){if(!pending.has(el))pending.set(el,setTimeout(()=>{pending.delete(el);const k=cardKey(el.querySelector('.ct b')?.textContent);if(k&&!counted.has(k)){counted.add(k);use('k:'+k)}},2000))}
+    else{const v=pending.get(el);if(v){clearTimeout(v);pending.delete(el)}}}},{threshold:[0,0.5]});
+  io.disconnect();pending.forEach(clearTimeout);pending=new Map();document.querySelectorAll('#app section.chart').forEach(el=>io.observe(el))}
 /* what a saved entry used (new / edit / extras) */
 export function useTx(b,{old,parts,coin,next}){use(old?'f:edit':'f:add');if(next)use('f:next');if(parts)use('f:split');if(b.fxCur||b.amount2)use('f:fx');if(b.rcpt?.length&&!old?.rcpt?.length)use('f:photo');
   if(b.refundOf&&!old)use('f:refund');if(b.ulga)use('f:ulga');if(b.proj)use('f:projtx');if(b.debt)use('f:debt');if(b.war)use('f:war');if(coin)use('f:coin');if(b.lit||b.odo)use('f:fuel')}

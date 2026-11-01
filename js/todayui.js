@@ -12,7 +12,7 @@ import {openSlip,openSubs} from './salary.js';
 import {openClose} from './close.js';
 import {fillAvg} from './debts.js';
 import {openInst,editLimits,goYear,bookInt} from './savings.js';
-import {render,goTab} from './app.js';
+import {render,goTab,setPage} from './app.js';
 import {use} from './usage.js';
 
 /* ---------- 🔔 real notifications (Web Push); the automat sends them, keys are made by the automat ---------- */
@@ -68,7 +68,7 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='tr')return openTx(null,{type:'tr',to:g.to,...(+g.amount>0?{amount:+g.amount}:{})});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
-  if(a=='close')return openClose();if(a=='subs')return openSubs();
+  if(a=='round'){goTab('set');return setPage('cat')}if(a=='close')return openClose();if(a=='subs')return openSubs();
   if(a=='dash'||a=='fillAvg'||a=='planFix'){S.ym=td().slice(0,7);if(g.bf)S.bf=g.bf;goTab('dash');if(a=='fillAvg')return fillAvg();if(a=='planFix')return planToFixed();return}
   if(a=='int')return bookInt(g.acc,g.key);if(a=='accInt')return editInt(g.id);
   if(a=='tx'){const t=liveById(g.id);if(t){S.ym=t.date.slice(0,7);openTx(g.id)}}}

@@ -5,12 +5,12 @@ import {isTreat,kotki,treatJoke} from './guide.js';
 import {CURS,catHue,pastel} from './data.js';
 import {addM} from './inv.js';
 import {ULGI,savedP,saveSplitP} from './today.js';
-import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch} from './logic.js';
-import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays,plu} from './util.js';
-import {S,toast,ask,accCur,am,fxRate,stripFx,accOwner,accOpts,H,DEBTS,w,merge,putTx,liveById,guard} from './core.js';
+import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch,ownerOf} from './logic.js';
+import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays,plu,dmy} from './util.js';
+import {S,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard} from './core.js';
 import {downloadBlob} from './actions.js';
 import {incById,openSlip} from './salary.js';
-import {markYearPaid} from './savings.js';
+import {markYearPaid,yearUndo} from './savings.js';
 import {dIcon,debtList,debtState,setDebtLeft,fillDebt,updDebtHint,updDebt,fillProj,updProj} from './debts.js';
 import {accN,render} from './app.js';
 import {use,useTx} from './usage.js';
@@ -66,7 +66,7 @@ export function updSaveHint(){if(!SV.mode)return;const amt=calcAmt($('ma').value
   const tx=liveOf(S.tx).filter(t=>t.id!==S.edit),s=saveSplitP(S.cfg,tx,S.debts,acc,td());
   $('msaveHint').textContent=SV.mode=='in'?(sum>amt?`Wpisano ${zl(sum)} – więcej niż cała wpłata.`:amt>sum?`Reszta (${zl(amt-sum)}) zostaje wolna na koncie.`:'Cała wpłata idzie na spłatę.')
     :`Zostaw puste, jeśli bierzesz wolne pieniądze (wolne teraz: ${zl(Math.max(0,s.free))}).`}
-export function autoWho(){const a=S.cfg.accs.find(x=>x.id==$('mc').value),o=a&&accOwner(a);if(o=='Mati'||o=='Wercia')$('mw').value=o}
+export function autoWho(){const a=S.cfg.accs.find(x=>x.id==$('mc').value),o=a&&ownerOf(a);if(o=='Mati'||o=='Wercia')$('mw').value=o}
 
 /* position picker: search, recently used, the note's usual position, category tiles */
 export const P={kind:'exp',cat:null,cb:null,cur:''};
@@ -119,7 +119,7 @@ export function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class
   $('splitRows').querySelectorAll('.pickbtn').forEach(b=>paintPick(b,SP[+b.dataset.i].sub));
   if(!SP.length&&!$('ms').value)$('msHint').textContent='';updSplit()}
 
-/* 📷 receipt photos: shrunk on the phone to a JPEG of at most ~150 KB, one document each in households/main/receipts
+/* 📷 receipt photos: shrunk on the phone to a JPEG of at most ~180 KB (PH_BYTES), one document each in households/main/receipts
    (never listened to as a whole – a photo is read only when its entry is opened); the entry keeps the ids in rcpt[];
    meta/receipts counts photos and bytes for ⚙️. A deleted entry keeps its photos, so „Przywróć” brings them back too. */
 export const RCPT=()=>collection(H,'receipts'),RMETA=()=>doc(H,'meta','receipts'),PH_MAX=3,PH_BYTES=180000;
@@ -153,8 +153,10 @@ export function openTx(id,pre){if(guard())return;
   if(t&&t.payoff){const d=S.debts[t.debt],it=liveOf(S.tx).find(x=>x.payOf===t.id);ask({title:t.note,text:`${accN(t.acc)}: ${am(t.amount,t.acc)} (${t.date.split('-').reverse().join('.')})${it?`\n💸 odsetki i opłaty: ${am(it.amount,it.acc)} – są w Budżecie`:''}\nSpłata ${d?'„'+d.name+'” ':''}nie liczy się w Budżecie. Usunięcie przywróci dług${it?' i usunie odsetki':''}.`,ok:'Pokaż',cancel:'Zamknij',alt:'Usuń wpis'}).then(r=>{if(r=='alt')delTx(id);else if(r){S.tab='acc';S.accView='owe';render()}});return}
   const sp=t&&(t.slip?t:t.slipOf?liveById(t.slipOf):null);
   if(sp&&sp.slip&&incById(sp.slip)){ask({title:'Wpis z paska pensji',text:`${sp.note} – ${sp.date.split('-').reverse().join('.')}\nTen wpis powstał z paska. Zmień go w pasku, a wszystko przeliczy się samo.`,ok:'Otwórz pasek',cancel:'Zamknij',alt:'Usuń wpis'}).then(r=>{if(r=='alt')delTx(id);else if(r)openSlip(sp.slip,sp.date.slice(0,7))});return}
-  if(t&&t.type=='adj'){ask({title:t.int?'💰 Odsetki':'Wyrównanie salda',text:`${accN(t.acc)}: ${t.amount>0?'+':''}${zl(t.amount)} (${t.date})\nUsunąć to wyrównanie?`,ok:'Usuń',danger:true}).then(r=>{if(r)delTx(id)});return}
-  if(t&&t.ppk){ask({title:t.note,text:`${accN(t.acc)}: ${zl(t.amount)} (${t.date.split('-').reverse().join('.')})\nTa wpłata jest powiązana z pensją. Żeby ją zmienić, odznacz i odhacz pensję ponownie w 📌 Stałe.`,ok:'Usuń wpłatę',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
+  /* ⚖️ an adjustment / 📈 value change / 💰 interest and 🏦 PPK: in the account's currency, the date as DD.MM.YYYY */
+  if(t&&t.type=='adj'){const tt=t.int?'💰 Odsetki':t.val?'📈 Zmiana wartości inwestycji':'⚖️ Wyrównanie salda',nt=String(t.note||'').trim();
+    ask({title:tt,text:`${accN(t.acc)}: ${t.amount>0?'+':''}${am(t.amount,t.acc)} · ${dmy(t.date)}${nt&&!tt.toLowerCase().includes(nt.toLowerCase())?'\n'+nt:''}\nUsunąć ten wpis?`,ok:'Usuń',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
+  if(t&&t.ppk){ask({title:'🏦 '+(t.note||'Wpłata PPK'),text:`${accN(t.acc)}: ${am(t.amount,t.acc)} · ${dmy(t.date)}\nTa wpłata jest powiązana z pensją. Żeby ją zmienić, popraw pasek w 💼 Pensje (albo odznacz i odhacz pensję ponownie w 📌 Stałe).`,ok:'Usuń wpłatę',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
   /* an entry of the old investment module (removed in 2026; only very old backups have them) – shown, can be deleted */
   if(t&&(t.type=='inv'||t.type=='invs')){ask({title:t.type=='inv'?'Zakup inwestycji':'Sprzedaż inwestycji',text:`${t.note} – ${zl(t.amount)}\nTo wpis ze starego modułu inwestycji. Dziś instrumenty prowadzi się w 📈 Oszczędnościach. Usunąć ten wpis?`,ok:'Usuń',cancel:'Zamknij',danger:true}).then(r=>{if(r)delTx(id)});return}
   S.edit=t?id:null;S.refEdit=!!t?.refundOf;S.debtOpen=S.projOpen=false;S.autoSub=false;SP=[];
@@ -195,7 +197,7 @@ function dupOf(type,amount,date,note,sub,acc,to){const n=norm(stripFx(note)),lo=
    Shared accounts never ask; a transfer TO the other person's account is normal, so only the source account counts. */
 const OTHER=[['🙀 Ivo','Halo, halo! To konto {o}, nie Twoje. Na pewno wpisujesz z niego?'],['🐾 Bailey','Chwileczkę… to konto należy do {og}. Wpisujesz za {ob}? Upewniam się, żeby salda się zgadzały.'],
   ['😼 Ivo','Psst… to nie Twoja miska! Konto {o}. Mam udawać, że nic nie widziałem?'],['🐱 Bailey','Zauważyłam, że wybrane jest konto {o}. Jeśli to celowe – w porządku, zapiszę.']];
-export async function otherAccOk(acc){const a=S.cfg.accs.find(x=>x.id==acc),o=a&&accOwner(a);if(!o||o=='Wspólne'||o==S.who||S.edit&&liveById(S.edit)?.acc===acc)return true;
+export async function otherAccOk(acc){const a=S.cfg.accs.find(x=>x.id==acc),o=a&&ownerOf(a);if(!o||o=='Wspólne'||o==S.who||S.edit&&liveById(S.edit)?.acc===acc)return true;
   const today=td();let m={};try{m=JSON.parse(ls.get('mw_oth')||'{}')}catch(e){}if(m.d==today&&(m.a||[]).includes(acc))return true;
   const [who,t]=OTHER[Math.floor(Date.now()/1000)%OTHER.length],gen=o=='Wercia'?'Werci':'Matiego';
   const r=await ask({title:who+': to konto '+gen+'!',text:t.replace(/\{og\}/g,gen).replace(/\{ob\}/g,o=='Wercia'?'Wercię':'Matiego').replace(/\{o\}/g,`„${a.name}” (${gen})`),ok:'Tak, wiem, co robię',cancel:'Zmień konto'});
@@ -263,8 +265,8 @@ export async function saveTx(next){if(guard())return;
   if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):''));if(ym!=S.ym){S.ym=ym;render()}}}
 export async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
-  linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));
-  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.payOf)?' razem z odsetkami':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}))}})}
+  linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t);
+  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.payOf)?' razem z odsetkami':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true)}})}
 export async function markRefund(id){const t=liveById(id);if(!t)return;const done=refundsOf(id).reduce((a,x)=>a+x.amount,0),left=t.amount-done;
   if(left<=0)return toast('Ten wydatek jest już w całości zwrócony');
   const r=await ask({title:'↩️ Zwrot: '+(subsMap(S.cfg)[t.sub]?.name||''),text:`Wydatek ${am(t.amount,t.acc)} z ${t.date.split('-').reverse().join('.')}${done?`, zwrócono już ${am(done,t.acc)}`:''}.\nZwrot zmniejszy wydatek w tej samej pozycji – nie liczy się jako przychód.`,

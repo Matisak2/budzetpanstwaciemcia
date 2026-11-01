@@ -4,7 +4,7 @@
    only then it takes over, and the page reloads itself (js/app.js, controllerchange). That is why CACHE must go up with every change
    (the robot checks it – tests/cache.mjs). Other own files: network first. Firebase SDK (versioned URLs) and fonts: cache first.
    Firestore/Auth traffic is never touched. */
-const CACHE = 'budzet-mw-v73';
+const CACHE = 'budzet-mw-v74';
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const SHELL = ['./', './index.html', './style.css', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png',
   './js/app.js', './js/util.js', './js/data.js', './js/art.js', './js/logic.js', './js/charts.js', './js/cats.js', './js/guide.js', './js/pay.js', './js/inv.js', './js/today.js', './js/report.js', './js/close.js',
@@ -60,6 +60,14 @@ async function cacheFirst(req) {
   return res;
 }
 
+/* the demo (/demo/) uses the same js/ files: a demo page always takes them from the network, never from this cache –
+   so an open demo never mixes its own new files with an older offline copy of the app */
+async function demoPage(id) {
+  if (!id) return false;
+  const c = await self.clients.get(id);
+  return !!c && new URL(c.url).pathname.includes('/demo/');
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -68,7 +76,7 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate' || (url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname))) {
     e.respondWith(shellFirst(req, './index.html'));
   } else if (url.origin === location.origin) {
-    e.respondWith(SHELL_URLS.has(url.pathname) ? shellFirst(req, req) : networkFirst(req, req));
+    e.respondWith((async () => await demoPage(e.clientId) ? fetch(req) : SHELL_URLS.has(url.pathname) ? shellFirst(req, req) : networkFirst(req, req))());
   } else if (url.href.startsWith(SDK) || url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(cacheFirst(req));
   }

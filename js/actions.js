@@ -5,9 +5,9 @@ import {CELEBRATE} from './guide.js';
 import {HUES,catHue,freeHue} from './data.js';
 import {wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
 import {ULGI} from './today.js';
-import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod} from './logic.js';
-import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu} from './util.js';
-import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOwner,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,delFixedDb,putTx,putInv,guard} from './core.js';
+import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod,ownerOf} from './logic.js';
+import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu,dmy} from './util.js';
+import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,saveRound,delFixedDb,putTx,putInv,guard} from './core.js';
 import {catColor,RCPT,RMETA,phCache,openTx} from './sheet.js';
 import {incs,gr,openSlip,saveInc} from './salary.js';
 import {saveYear} from './savings.js';
@@ -41,9 +41,10 @@ export async function addAcc(){if(guard())return;const r=await ask({title:'Nowe 
   if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner:r.w,open:0,...(r.c!='PLN'?{cur:r.c}:{})};S.cfg.accs.push(a);S.accTab=r.g;render();saveAcc(a)}
 export async function editAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id);
   const used=liveOf(S.tx).some(t=>t.acc===id||t.to===id);
-  const r=await ask({title:'Edytuj konto',fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:accOwner(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS},...(a.grp=='inv'?[WRAP_F(a)]:[]),{id:'o',label:`Saldo początkowe – przed pierwszą transakcją (${curSym(CUR(a))})`,type:'decimal',value:f2(a.open)}],alt:used?null:'Usuń konto'});
+  const r=await ask({title:'Edytuj konto',fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:ownerOf(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS},...(a.grp=='inv'?[WRAP_F(a)]:[]),{id:'o',label:`Saldo początkowe – przed pierwszą transakcją (${curSym(CUR(a))})`,type:'decimal',value:f2(a.open)}],alt:used?null:'Usuń konto'});
   if(!r)return;
-  if(r=='alt'){if(!await ask({title:'Usunąć konto?',text:a.name,ok:'Usuń',danger:true}))return;S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);render();delAccDb(id);return}
+  if(r=='alt'){if(accRefs(id).length){if(!await reassignAcc(a,'Przenieś i usuń konto'))return}else if(!await ask({title:'Usunąć konto?',text:a.name,ok:'Usuń',danger:true}))return;
+    S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);render();delAccDb(id);saveOrder();return}
   if(r.c!=CUR(a)&&used&&!await ask({title:'Zmienić walutę konta?',text:`${a.name}: ${CUR(a)} → ${r.c}\nKwoty nie zostaną przeliczone – zmieni się tylko waluta, w której są pokazane wszystkie wpisy tego konta.`,ok:'Zmień walutę'}))return;
   if(r.n.trim())a.name=r.n.trim();a.owner=r.w;a.open=pg(r.o);if(r.c!=CUR(a))a.cur=r.c;if(r.x!=null)setWrap(a,r.x);
   if(r.g!=a.grp){a.grp=r.g;S.accTab=r.g;toEndOfKind(a);toast('Konto przeniesione do: '+ACCTAB[r.g])}else saveAcc(a);render()}
@@ -111,15 +112,45 @@ export async function addCat(){if(guard())return;
   if(!r||!r.n.trim())return;const c={id:'c'+rid(),name:cleanCat(r.n),type:r.t,hue:freeHue(S.cfg.cats),subs:[]};S.cfg.cats.push(c);render();saveCat(c);toast('Dodano kategorię – dodaj do niej pozycje')}
 export const ACCTAB={cur:'Konta bieżące',sub:'Subkonta',sav:'Oszczędności',inv:'Inwestycje'};
 /* an account whose kind changed goes to the end of its new kind; every account whose position moved is saved */
-export function toEndOfKind(a){const A=S.cfg.accs,old=A.map(x=>x.id);A.splice(A.indexOf(a),1);
-  let k=-1;A.forEach((x,i)=>{if(x.grp==a.grp)k=i});A.splice(k+1,0,a);
-  A.forEach((x,i)=>{if(old[i]!==x.id||x===a)saveAcc(x)})}
+export function toEndOfKind(a){const A=S.cfg.accs;A.splice(A.indexOf(a),1);
+  let k=-1;A.forEach((x,i)=>{if(x.grp==a.grp)k=i});A.splice(k+1,0,a);saveAcc(a);saveOrder()}
+/* the order of accounts / categories is stored as numbers (o); after a move or a deletion every one whose stored number differs from its place
+   is saved again – otherwise gaps left by a deleted one could make an account jump to another place after the next reload */
+export function saveOrder(){S.cfg.accs.forEach((a,i)=>{if(S.hraw?.accsM?.[a.id]?.o!==i)saveAcc(a)})}
+const saveCatOrder=()=>S.cfg.cats.forEach((c,i)=>{if(S.hraw?.catsM?.[c.id]?.o!==i)saveCat(c)});
 export function setAccTab(k){S.accTab=k;render()}
 /* swap an account with its neighbour of the same kind (archived accounts are skipped) */
 export function moveAcc(id,d){if(guard())return;const A=S.cfg.accs,i=A.findIndex(a=>a.id==id);if(i<0)return;
   let j=i+d;while(j>=0&&j<A.length&&(A[j].grp!=A[i].grp||A[j].archived))j+=d;if(j<0||j>=A.length)return;
-  [A[i],A[j]]=[A[j],A[i]];render();saveAcc(A[i]);saveAcc(A[j])}
-export function moveCat(ci,d){if(guard())return;const j=ci+d;if(j<0||j>=S.cfg.cats.length)return;const a=S.cfg.cats;[a[ci],a[j]]=[a[j],a[ci]];render();saveCat(a[ci]);saveCat(a[j])}
+  [A[i],A[j]]=[A[j],A[i]];render();saveAcc(A[i]);saveAcc(A[j]);saveOrder()}
+export function moveCat(ci,d){if(guard())return;const j=ci+d;if(j<0||j>=S.cfg.cats.length)return;const a=S.cfg.cats;[a[ci],a[j]]=[a[j],a[ci]];render();saveCat(a[ci]);saveCat(a[j]);saveCatOrder()}
+/* 🔗 what still points to an account (besides entries): fixed payments and transfers, income sources, PPK, 🪙 rules, the envelope sub-account, saving up for a payoff,
+   instruments – need: 'inv' = only an investment account fits (PPK, instruments) */
+export function accRefs(id){const R=[],add=(t,need,set)=>R.push({t,need,set});
+  for(const f of S.cfg.fixed||[]){const kn=f.kind=='inc'?'przychód stały':f.kind=='tr'?'stały przelew':'opłata stała';
+    if(f.acc===id)add(`${kn} „${f.name}”`,'any',v=>{f.acc=v;saveFixed(f)});
+    if(f.kind=='tr'&&f.to===id)add(`stały przelew „${f.name}” (na to konto)`,'any',v=>{f.to=v;saveFixed(f)});
+    if(f.ppk&&f.ppk===id)add(`PPK przy „${f.name}”`,'inv',v=>{f.ppk=v;saveFixed(f)})}
+  for(const x of incs()){if(x.acc===id)add(`źródło dochodu „${x.name}”`,'any',v=>{x.acc=v;saveInc(x)});if(x.ppk&&x.ppk===id)add(`PPK – źródło „${x.name}”`,'inv',v=>{x.ppk=v;saveInc(x)})}
+  for(const r of S.cfg.round||[]){if(r.from===id)add('🪙 reguła drobnych (z tego konta)','any',v=>{r.from=v;saveRound(r)});if(r.to===id)add('🪙 reguła drobnych (na to konto)','any',v=>{r.to=v;saveRound(r)})}
+  if(S.hraw?.yearAcc===id)add('📅 subkonto wydatków rocznych','any',v=>{S.hraw={...S.hraw,yearAcc:v};merge(H,{yearAcc:v})});
+  for(const d of debtList())if(d.saveAcc===id)add(`💰 odkładanie na spłatę „${d.name}”`,'any',v=>merge(doc(DEBTS(),d.id),{saveAcc:v}));
+  for(const[hid,h]of Object.entries(S.hold||{}))if(!h.deleted&&h.acc===id)add(`📈 instrument „${h.name}”`,'inv',v=>merge(doc(HOLD(),hid),{acc:v}));
+  return R}
+/* an account to be deleted is still used → one window: what uses it and where to move it (an investment account for PPK and instruments); false = cancelled */
+export async function reassignAcc(a,ok){const R=accRefs(a.id);if(!R.length)return true;const inv=R.some(x=>x.need=='inv'),any=R.some(x=>x.need=='any');
+  const cand=S.cfg.accs.filter(x=>x.id!=a.id&&!x.archived&&CUR(x)==CUR(a)),own=ownerOf(a);
+  const opts=L=>[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']].map(([o,l])=>({group:l,items:L.filter(x=>ownerOf(x)==o).map(x=>[x.id,x.name+' ('+(GRPN[x.grp]||'').toLowerCase()+')'])})).filter(g=>g.items.length);
+  const best=L=>(L.find(x=>ownerOf(x)==own&&x.grp==a.grp)||L.find(x=>ownerOf(x)==own)||L[0])?.id||'';
+  const invL=cand.filter(x=>x.grp=='inv');
+  if((any&&!cand.length)||(inv&&!invL.length)){await ask({title:'Najpierw dodaj inne konto',text:`„${a.name}” jest jeszcze używane:\n• ${R.map(x=>x.t).join('\n• ')}\n\nNie ma innego konta${inv&&!invL.length?' inwestycyjnego':''} w tej samej walucie, na które można to przenieść.`,ok:'OK',cancel:'Zamknij'});return false}
+  const r=await ask({title:'Konto „'+a.name+'” jest używane',text:`Tego konta używa:\n• ${R.map(x=>x.t).join('\n• ')}\n\nWybierz, na które konto to przenieść – potem usunę „${a.name}”. Wpisy w Rejestrze się nie zmieniają.`,
+    fields:[...(any?[{id:'a',label:'Przenieś na konto',type:'select',value:best(cand),options:opts(cand)}]:[]),...(inv?[{id:'i',label:'PPK i instrumenty na konto inwestycyjne',type:'select',value:best(invL),options:opts(invL)}]:[])],ok,danger:true});
+  if(!r)return false;
+  /* a fixed transfer or a 🪙 rule must not end up from and to the same account */
+  const to=x=>x.need=='inv'?r.i:r.a,clash=(S.cfg.fixed||[]).some(f=>f.kind=='tr'&&(f.acc===a.id?r.a:f.acc)===(f.to===a.id?r.a:f.to))||(S.cfg.round||[]).some(x=>(x.from===a.id?r.a:x.from)===(x.to===a.id?r.a:x.to));
+  if(clash){toast('Po przeniesieniu stały przelew albo reguła drobnych szłaby z konta na to samo konto – wybierz inne konto','bad');return false}
+  R.forEach(x=>x.set(to(x)));toast(`Przeniesiono na „${accN(r.a||r.i)}” ✓`);return true}
 /* 🎨 the look of this phone: accent colour (default: Wercia pink, Mati mint) and text size */
 export const ACCENTS=[['mint','Miętowy','#a7f3d0'],['pink','Różowy','#fbcfe8'],['lav','Lawendowy','#ddd6fe'],['sky','Błękitny','#bae6fd'],['peach','Brzoskwiniowy','#fed7aa'],['lemon','Cytrynowy','#fef08a']];
 export const accOf=()=>ls.get('mw_acc')||(S.who=='Wercia'?'pink':'mint');
@@ -170,7 +201,7 @@ export async function editFixed(fid,kind,pre){if(guard())return;
 /* 🔁 a fixed transfer: to savings, but also to the shared account, the other person's account or a sub-account (only transfers to savings count as „odłożone”) */
 export async function editFixedTr(f,pre){const p=f||pre||null,savs=S.cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv'||a.grp=='sub')&&!a.archived),svd=debtList('owe').filter(d=>d.saveAcc&&(debtState(d).left>0||d.id==f?.saveFor));
   const r=await ask({title:f?'Stały przelew':'Nowy stały przelew',text:f?'':'Na oszczędności, na konto wspólne, na konto drugiej osoby albo na subkonto. Jako „odłożone” liczą się tylko przelewy na oszczędności i inwestycje.',fields:[{id:'n',label:'Nazwa',value:p?.name||'',ph:'np. Oszczędności co miesiąc albo Na wspólne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:p?.amount?f2(p.amount):''},
-    {id:'d',label:'Dzień miesiąca (1–31)',type:'int',value:p?.day||10},{id:'c',label:'Z konta',type:'select',value:p?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&accOwner(a)==S.who)?.id||'',options:accOpts()},
+    {id:'d',label:'Dzień miesiąca (1–31)',type:'int',value:p?.day||10},{id:'c',label:'Z konta',type:'select',value:p?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&ownerOf(a)==S.who)?.id||'',options:accOpts()},
     {id:'t',label:'Na konto',type:'select',value:p?.to||savs[0]?.id||'',options:accOpts()},
     {id:'wh',label:'👥 Dotyczy',type:'select',value:p?.who||'',options:[['','Jak konto'],['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},
     ...(svd.length||f?.saveFor?[{id:'sf',label:'💰 Odkładanie na spłatę pożyczki',type:'select',value:f?.saveFor||'',options:[['','— nie —'],...svd.map(d=>[d.id,`${d.name} (na „${accN(d.saveAcc)}”)`])]}]:[])],ok:f?'Zapisz':'Dodaj',alt:f?'Usuń przelew':null});
@@ -182,13 +213,18 @@ export const lastOf=(f,pred)=>liveOf(S.tx).filter(t=>pred(t)&&t.date<S.ym+'-01')
 export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.find(x=>x.id==fid),paid=fixedPaid(fid,S.ym),inc=f.kind=='inc';if(!paid)use('f:fixtick');
   const src=inc&&!paid&&incs().find(x=>x.fixed==fid);if(src)return openSlip(src.id);
   if(paid){const ym=paid.date.slice(0,7),linked=liveOf(S.tx).filter(t=>t.ppkOf===paid.id||t.slipOf===paid.id);
+    /* 9c: unticking always asks first – a tap by mistake never deletes an entry (also one typed through ＋ and linked to this payment) */
+    const extra=linked.some(t=>t.slipOf)?' razem z potrąceniami i wpłatami PPK z paska':linked.length?' razem z wpłatami PPK':'';
+    if(!await ask({title:`Odznaczyć „${f.name}”?`,text:`Usunąć wpis „${paid.note||f.name}” · ${am(paid.amount,paid.acc)} · ${dmy(paid.date)} z Rejestru${extra}?\n„Nie” – wszystko zostaje tak, jak jest.`,ok:'Tak, usuń',cancel:'Nie',danger:true}))return;
     if(await putTx(ym,paid.id,{deleted:true})){linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));
       toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:()=>{putTx(ym,paid.id,{deleted:false});linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}))}})}return}
   const due=fixedDate(f,S.ym),date=td().startsWith(S.ym)?td():due;
   if(f.kind=='tr'){const r=await ask({title:'Przelano: '+f.name,fields:[{id:'a',label:'Kwota (zł)',type:'decimal',value:f2(f.amount)},{id:'d',label:'Data',type:'date',value:date},{id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()},{id:'t',label:'Na konto',type:'select',value:f.to,options:accOpts()}],ok:'Odhacz'});
     if(!r)return;const amt=pg(r.a);if(amt<=0)return toast('Podaj kwotę','bad');if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
-    const sf=f.saveFor&&S.debts[f.saveFor]?.saveAcc==r.t?f.saveFor:'';
-    S.justChecked=f.id;if(await putTx(S.ym,'t'+rid(),{type:'tr',amount:amt,date:r.d,sub:'',acc:r.c,to:r.t,who:S.who,note:'🐷 '+f.name,fixedId:f.id,...(sf?{save:{[sf]:amt}}:{}),deleted:false,ts:Date.now()}))toast('Odłożono: '+zl(amt)+(sf?' na spłatę: '+S.debts[sf].name:'')+' 🐷');return}
+    const sf=f.saveFor&&S.debts[f.saveFor]?.saveAcc==r.t?f.saveFor:'',ta=S.cfg.accs.find(a=>a.id==r.t),sav=ta&&(ta.grp=='sav'||ta.grp=='inv');
+    /* 🐷 only a transfer to savings / investments is „odłożone”; to the shared account, the other person's account or a sub-account it is just a transfer */
+    S.justChecked=f.id;if(await putTx(S.ym,'t'+rid(),{type:'tr',amount:amt,date:r.d,sub:'',acc:r.c,to:r.t,who:S.who,note:(sav?'🐷 ':'🔁 ')+f.name,fixedId:f.id,...(sf?{save:{[sf]:amt}}:{}),deleted:false,ts:Date.now()}))
+      toast(sf?`Odłożono na spłatę „${S.debts[sf].name}”: ${am(amt,r.c)} 💰`:sav?`Odłożono: ${am(amt,r.c)} 🐷`:`Przelano ${am(amt,r.c)} na „${accN(r.t)}” ✓`);return}
   if(!inc){
     /* 📌 already typed through ＋ this month (the same position and a similar amount, or its name in the note) → link that entry, no second expense */
     const tw=fixedTwin(S.cfg,liveOf(S.tx),f,S.ym);
@@ -242,7 +278,7 @@ export const goalAlloc=g=>g.alloc??g.saved??0;
 export const goalOwner=g=>g.owner||'Wspólne';
 /* 🛟 the safety cushion account („Poduszka…”) is not for goals – the same złoty cannot be the cushion and a holiday */
 export const isPod=a=>/poduszk/i.test(a?.name||'');
-export const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||(a.grp=='inv'&&!wrapOf(a)))&&!isPod(a)&&isP(a)&&(!owner||accOwner(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
+export const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||(a.grp=='inv'&&!wrapOf(a)))&&!isPod(a)&&isP(a)&&(!owner||ownerOf(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
 export function goalProgress(g,cfg,tx,today){const saved=goalAlloc(g);
   const pct=g.target?Math.max(0,saved/g.target*100):0,left=Math.max(0,g.target-saved);
   let months=null,perMonth=null;
@@ -306,22 +342,22 @@ export async function addSavAcc(owner){if(guard())return;
   const r=await ask({title:'Nowe konto – '+owner,fields:[{id:'n',label:'Nazwa',ph:owner=='Wspólne'?'np. Fundusz wakacyjny':'np. Konto oszczędnościowe '+owner}, {id:'g',label:'Rodzaj',type:'select',value:'sav',options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'c',label:'Waluta',type:'select',value:'PLN',options:CUR_OPTS}],ok:'Dodaj konto'});
   if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner,open:0,...(r.c!='PLN'?{cur:r.c}:{})};S.cfg.accs.push(a);render();saveAcc(a);toast('Dodano konto: '+a.name)}
 export async function editSavAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id);
-  const r=await ask({title:'Konto: '+a.name,fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'w',label:'Czyje',type:'select',value:accOwner(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS},...(a.grp=='inv'?[WRAP_F(a)]:[])],alt:'Usuń konto'});
+  const r=await ask({title:'Konto: '+a.name,fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'w',label:'Czyje',type:'select',value:ownerOf(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS},...(a.grp=='inv'?[WRAP_F(a)]:[])],alt:'Usuń konto'});
   if(!r)return;if(r=='alt')return removeSavAcc(id);
   if(r.c!=CUR(a)&&liveOf(S.tx).some(t=>t.acc===id||t.to===id)&&!await ask({title:'Zmienić walutę konta?',text:`${a.name}: ${CUR(a)} → ${r.c}\nKwoty nie zostaną przeliczone – zmieni się tylko waluta, w której są pokazane.`,ok:'Zmień walutę'}))return;
   if(r.n.trim())a.name=r.n.trim();a.grp=r.g;a.owner=r.w;if(r.c!=CUR(a))a.cur=r.c;if(r.x!=null)setWrap(a,r.x);render();saveAcc(a)}
-export async function removeSavAcc(id){const a=S.cfg.accs.find(x=>x.id==id),tx=liveOf(S.tx),tom=addDays(td(),1),bal=balance(S.cfg,tx,id,tom),own=accOwner(a);
+export async function removeSavAcc(id){if(accRefs(id).length&&!await reassignAcc(S.cfg.accs.find(x=>x.id==id),'Przenieś'))return;const a=S.cfg.accs.find(x=>x.id==id),tx=liveOf(S.tx),tom=addDays(td(),1),bal=balance(S.cfg,tx,id,tom),own=ownerOf(a);
   const others=S.cfg.accs.filter(x=>x.id!=id&&!x.archived&&(x.grp=='sav'||x.grp=='inv')&&CUR(x)==CUR(a));
-  const pref=others.find(x=>accOwner(x)==own&&x.grp=='sav'&&/oszcz/i.test(x.name))||others.find(x=>accOwner(x)==own&&x.grp=='sav')||others.find(x=>accOwner(x)==own)||others.find(x=>x.grp=='sav');
+  const pref=others.find(x=>ownerOf(x)==own&&x.grp=='sav'&&/oszcz/i.test(x.name))||others.find(x=>ownerOf(x)==own&&x.grp=='sav')||others.find(x=>ownerOf(x)==own)||others.find(x=>x.grp=='sav');
   let target=null;
   if(bal!==0){if(!pref)return ask({title:'Nie można usunąć',text:'Na tym koncie są pieniądze, a nie ma innego konta oszczędnościowego, na które można je przenieść.',ok:'OK',cancel:'Zamknij'});
-    const r=await ask({title:'Usunąć konto „'+a.name+'”?',text:`Na koncie jest ${money(bal,CUR(a))}. Przeniosę tę kwotę na wybrane konto. Historia wpłat zostanie zachowana.`,fields:[{id:'t',label:'Przenieś pieniądze na',type:'select',value:pref.id,options:[...['Mati','Wercia','Wspólne'].map(o=>({group:o,items:others.filter(x=>accOwner(x)==o).map(x=>[x.id,x.name])})).filter(g=>g.items.length)]}],ok:'Przenieś i usuń',danger:true});
+    const r=await ask({title:'Usunąć konto „'+a.name+'”?',text:`Na koncie jest ${money(bal,CUR(a))}. Przeniosę tę kwotę na wybrane konto. Historia wpłat zostanie zachowana.`,fields:[{id:'t',label:'Przenieś pieniądze na',type:'select',value:pref.id,options:[...['Mati','Wercia','Wspólne'].map(o=>({group:o,items:others.filter(x=>ownerOf(x)==o).map(x=>[x.id,x.name])})).filter(g=>g.items.length)]}],ok:'Przenieś i usuń',danger:true});
     if(!r)return;target=r.t}
   else if(!await ask({title:'Usunąć konto „'+a.name+'”?',text:'Konto jest puste. Historia zostanie zachowana.',ok:'Usuń',danger:true}))return;
   const ym=td().slice(0,7);
   if(target)putTx(ym,'t'+rid(),bal>0?{type:'tr',amount:bal,date:td(),sub:'',acc:id,to:target,who:S.who,note:'Zamknięcie konta '+a.name,deleted:false,ts:Date.now()}:{type:'tr',amount:-bal,date:td(),sub:'',acc:target,to:id,who:S.who,note:'Zamknięcie konta '+a.name,deleted:false,ts:Date.now()});
   const used=S.tx.some(t=>t.acc===id||t.to===id)||a.open;
-  if(used){a.archived=true;saveAcc(a)}else{S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);delAccDb(id)}
+  if(used){a.archived=true;saveAcc(a)}else{S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);delAccDb(id);saveOrder()}
   render();toast(target?`Usunięto konto. ${money(Math.abs(bal),CUR(a))} → ${accN(target)}`:'Usunięto konto')}
 
 /* ---------- backup ---------- */
@@ -451,10 +487,13 @@ export function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQu
     h+=`<div class="fsum"><b>${lv.length} ${plu(lv.length,'wpis','wpisy','wpisów')}</b>${e?` · wydatki <b class="t-exp">${e}</b>`:''}${i?` · przychody <b class="t-inc">${i}</b>`:''}</div>`}
   const days={};lv.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));
   const yr=F.scope!='m';
-  h+=Object.entries(days).slice(0,400).map(([d,ts])=>{const dd=new Date(d+'T12:00:00').toLocaleDateString('pl-PL',yr?{weekday:'short',day:'numeric',month:'long',year:'numeric'}:{weekday:'long',day:'numeric',month:'long'});
+  const DE=Object.entries(days),nD=S.txDays||400;
+  h+=DE.slice(0,nD).map(([d,ts])=>{const dd=new Date(d+'T12:00:00').toLocaleDateString('pl-PL',yr?{weekday:'short',day:'numeric',month:'long',year:'numeric'}:{weekday:'long',day:'numeric',month:'long'});
     /* the day's spending (refunds subtract, a full payoff of a loan is not spending) – in each currency */
     const E={};ts.forEach(t=>{const c=accCur(t.acc),v=t.type=='exp'&&!t.payoff?t.amount:t.refundOf?-t.amount:0;if(v)E[c]=(E[c]||0)+v});const es=((E.PLN?zl(E.PLN):'')+fxPlus({...E,PLN:0})).replace(/^ \+ /,'');
     return`<div class="day"><span>${esc(dd)}</span>${es&&Object.values(E).some(v=>v>0)?`<span class="dsum num">−${es}</span>`:''}</div><div class="list">${ts.map(t=>txRowH(t,sm,rf,cn)).join('')}</div>`}).join('');
+  /* a long history: 400 days at a time, „Pokaż starsze” adds the next ones (nothing is cut off silently) */
+  if(DE.length>nD)h+=`<button class="btn sm" style="align-self:center" onclick="S.txDays=${nD+400};render()">Pokaż starsze (jeszcze ${DE.length-nD} ${plu(DE.length-nD,'dzień','dni','dni')} z wpisami)</button>`;
   return h}
 export let qT=null;
 export function setQ(v){S.f.q=v;clearTimeout(qT);qT=setTimeout(()=>{const el=$('txlist');if(el)el.innerHTML=txListH()},150)}

@@ -3,7 +3,8 @@
 name: Automat – kursy i ceny
 on:
   schedule:
-    - cron: '23 16 * * 1-5'   # w dni robocze ok. 18:23 czasu polskiego (po zamknięciu giełd w Europie i tabeli NBP)
+    - cron: '23 16 * * 1-5'   # w dni robocze 18:23 czasu letniego (po zamknięciu giełd w Europie i tabeli NBP)
+    - cron: '23 17 * * 1-5'   # 18:23 czasu zimowego – skrypt sam pomija uruchomienie przed 18:00 i drugie tego samego dnia
   workflow_dispatch: {}        # przycisk „Run workflow” – ręczne uruchomienie
 permissions:
   contents: write   # tylko do miesięcznego „znaku życia” (plik automat-ostatnio.txt)
@@ -25,6 +26,7 @@ jobs:
         run: node scripts/market.mjs
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          RUN: ${{ github.event_name }}
       # GitHub wyłącza zaplanowane automaty po 60 dniach bez zmian w repozytorium – raz w miesiącu dopisujemy datę, żeby tak się nie stało
       - name: Miesięczny znak życia
         run: |

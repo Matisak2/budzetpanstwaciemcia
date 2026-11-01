@@ -9,7 +9,7 @@
 
   /* names: the visitor chooses „dodał” or „dodała” – that decides which of the app's two people they are; the partner gets a random name */
   const F=['Ola','Kasia','Zosia','Ania','Magda','Ewa','Julia','Basia','Natalia','Hania'],M=['Kuba','Tomek','Bartek','Adam','Michał','Kamil','Szymon','Piotr','Janek','Filip'];
-  const gen=n=>/ek$/.test(n)?n.slice(0,-2)+'ka':/(ia|la|ja|ka|ga)$/.test(n)?n.slice(0,-1)+'i':/a$/.test(n)?n.slice(0,-1)+'y':/[iy]$/.test(n)?n+'ego':n+'a';
+  const gen=n=>/ek$/.test(n)?n.slice(0,-2)+'ka':/[sznc]ia$/i.test(n)?n.slice(0,-1):/ia$/i.test(n)?n.slice(0,-1)+'i':/[aeiouy]ja$/i.test(n)?n.slice(0,-2)+'i':/(la|ja|ka|ga)$/.test(n)?n.slice(0,-1)+'i':/a$/.test(n)?n.slice(0,-1)+'y':/[iy]$/.test(n)?n+'ego':n+'a';
   const people=()=>{try{return JSON.parse(LS.get('demo_people')||'null')}catch(e){return null}};
   const names=p=>p.role=='Wercia'?{Mati:p.partner,Wercia:p.me}:{Mati:p.me,Wercia:p.partner};
   let MAP=null;const setMap=p=>{const n=names(p);MAP={Mati:n.Mati,Matiego:gen(n.Mati),Wercia:n.Wercia,Werci:gen(n.Wercia),Weronika:n.Wercia}};
@@ -62,7 +62,7 @@
     [['y1','🛡️ OC i AC samochodu',145000,mOf(2),15,'Ubezpieczenie auta'],['y2','🏠 Ubezpieczenie mieszkania',42000,mOf(5),1,'Ubezpieczenie mieszkania'],['y3','🔧 Przegląd auta',25000,mOf(8),20,'Serwis auta'],['y4','🎁 Prezenty świąteczne',120000,ym0.slice(0,4)+'-12',10,'Święta i okazje']]
       .forEach(([id,name,amount,due,day,s],o)=>{YEAR[id]={name,amount,month:+due.slice(5),day,every:12,sub:sid[s],last:addMonths(due,-12),o}});
     [['r1','💉 Szczepienie kotów',`${mOf(3)}-12`,12],['r2','🛞 Wymiana opon',`${mOf(1)}-05`,6]].forEach(([id,name,next,every],o)=>{REM[id]={name,next,every,o}});
-    const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:INC,yearM:YEAR,yearAcc:'aY',projM:{},remM:REM,invAcc:true,ikeAcc:true,wspAcc:true,ppkAcc:true,zwrotyRen:true,subAcc:true,savTarget:150000,demo:true,
+    const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:INC,yearM:YEAR,yearAcc:'aY',projM:{},remM:REM,savTarget:150000,demo:true,
       /* random shop / restaurant notes must not look like a fixed payment by chance (only „Bilet miesięczny” and „Chmura 200 GB” are meant to) */
       checkIgnore:Object.fromEntries(['Biedronka','Lidl','Żabka','Auchan','Warzywniak','Pizzeria','Sushi','Bistro','Pierogarnia','Kawiarnia','Pyszne','Glovo','Orlen','BP','Shell','Sklep zoologiczny','Drogeria','Kino','Sklep z modelami','Fryzjer','Apteka','Prezent urodzinowy','Sklep odzieżowy','Wizyta prywatna','Opłata za kartę'].map(n=>['rec:'+n.toLowerCase(),true]))}};
     const PLAN={'Zakupy spożywcze':140000,'Restauracje':40000,'Kawa i przekąski':15000,'Jedzenie z dowozem':12000,'Czynsz':185000,'Prąd':20000,'Internet i telefon':9000,'Środki czystości':8000,'Paliwo':50000,

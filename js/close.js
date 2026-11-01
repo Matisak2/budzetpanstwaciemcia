@@ -6,9 +6,9 @@ import {doc,setDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-fi
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {CLOSE_STEPS,CLOSE_SHARED,closeDueP,closeStateP,closeYmP} from './today.js';
-import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds} from './logic.js';
+import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds,ownerOf} from './logic.js';
 import {MN,MNG,addDays,addMonths,esc,td,zl0,money,dmy} from './util.js';
-import {S,toast,CUR,accOwner,H,PLC,merge,guard,celebrate,w,infoH} from './core.js';
+import {S,toast,CUR,H,PLC,merge,guard,celebrate,w,infoH} from './core.js';
 import {goalProgress,goalOwner,unallocated,markRecon} from './actions.js';
 import {cascadeH} from './debts.js';
 import {render} from './app.js';
@@ -19,7 +19,7 @@ export const closeYm=()=>closeDueP(S.hraw,liveOf(S.tx),td(),S.cfg,S.who)?.ym||cl
 const stOf=ym=>closeStateP(S.hraw,ym,S.who);
 const nDone=ym=>stOf(ym).n;
 /* accounts to compare with the bank: own and shared current, sub-accounts and savings (investments are valued by the automat) */
-const bankAccs=()=>S.cfg.accs.filter(a=>!a.archived&&a.grp!='inv'&&['Wspólne',S.who].includes(accOwner(a)));
+const bankAccs=()=>S.cfg.accs.filter(a=>!a.archived&&a.grp!='inv'&&['Wspólne',S.who].includes(ownerOf(a)));
 /* the last time an account was checked with the bank: „✓ Zgadza się” or a reconciliation entry */
 export function lastCheck(id){let d=S.hraw?.reconM?.[id]||'';
   for(const t of liveOf(S.tx))if(t.acc===id&&t.type=='adj'&&!t.val&&t.date>d)d=t.date;return d}
@@ -44,7 +44,7 @@ export function closePlan(sid,val){if(guard())return;const ym=S.close?addMonths(
   if(S.plans[ym])merge(doc(PLC(),ym),{[sid]:val});else{S.autoPlanned[ym]=1;w(setDoc(doc(PLC(),ym),{...(src?S.plans[src]:{}),[sid]:val}))}
   S.plans={...S.plans,[ym]:{...(S.plans[ym]||(src?S.plans[src]:{})),[sid]:val}};render();toast('Plan na '+MN[+ym.slice(5)-1].toLowerCase()+': '+zl0(val))}
 
-/* the card on the Budget screen: big while the month waits, a small line when it is done or not due */
+/* the small button at the bottom of Budżet (the reminder itself is in 🔔 „Na dziś”) */
 export function closeLinkH(){if(S.ym!=td().slice(0,7))return'';const ym=closeYm(),c=stOf(ym);
   return`<button class="btn sm" onclick="openClose()">🗓️ Zamknięcie miesiąca: ${MN[+ym.slice(5)-1].toLowerCase()}${c.done?' ✓':nDone(ym)?` (${nDone(ym)}/5)`:''}</button>`}
 
@@ -61,7 +61,7 @@ export function closePageH(){const ym=S.close,cur=addMonths(ym,1),tx=liveOf(S.tx
   /* 1. bank balances */
   const A=bankAccs(),ok=A.filter(a=>fresh(a.id,ym)).length,tom=addDays(td(),1);
   h+=stepH(1,'bank',`<div class="mini">Otwórz aplikacje banków i porównaj salda (Twoje i wspólne). Zgadza się – „✓”.</div>${infoH('closebank','Nie zgadza się – „Wyrównaj wszystkie salda naraz” i wpisz salda z banku (różnica zapisze się jako przelew albo wyrównanie, nie wydatek). Wspólne konto sprawdzone przez jedno z Was jest sprawdzone u obojga.','ⓘ A jeśli się nie zgadza?')}
-    <div class="list">${A.map(a=>{const lc=lastCheck(a.id),f=fresh(a.id,ym);return`<div class="acc"><div style="min-width:0;flex:1"><b>${esc(a.name)}</b><div class="mini">${esc(accOwner(a))} · ${f?`<span class="t-inc">✓ sprawdzone ${dmy(lc)}</span>`:lc?`sprawdzone ${dmy(lc)}`:'jeszcze nie sprawdzane'}</div></div><div class="r"><b class="num">${money(balance(S.cfg,tx,a.id,tom),CUR(a))}</b>${f?'':`<div class="btns" style="gap:4px;justify-content:flex-end"><button class="chip" aria-label="Zgadza się: ${esc(a.name)}" onclick="reconOk('${a.id}')">✓ Zgadza się</button></div>`}</div></div>`}).join('')}</div>
+    <div class="list">${A.map(a=>{const lc=lastCheck(a.id),f=fresh(a.id,ym);return`<div class="acc"><div style="min-width:0;flex:1"><b>${esc(a.name)}</b><div class="mini">${esc(ownerOf(a))} · ${f?`<span class="t-inc">✓ sprawdzone ${dmy(lc)}</span>`:lc?`sprawdzone ${dmy(lc)}`:'jeszcze nie sprawdzane'}</div></div><div class="r"><b class="num">${money(balance(S.cfg,tx,a.id,tom),CUR(a))}</b>${f?'':`<div class="btns" style="gap:4px;justify-content:flex-end"><button class="chip" aria-label="Zgadza się: ${esc(a.name)}" onclick="reconOk('${a.id}')">✓ Zgadza się</button></div>`}</div></div>`}).join('')}</div>
     ${ok<A.length?`<button class="btn sm" onclick="closeRecAll()">⚖️ Wyrównaj wszystkie salda naraz</button>`:''}
     <div class="mini">${ok} z ${A.length} kont sprawdzonych.</div>`,ok==A.length?'Wszystko sprawdzone':'Gotowe');
 

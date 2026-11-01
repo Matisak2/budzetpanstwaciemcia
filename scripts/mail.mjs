@@ -32,7 +32,7 @@ if(doBackup){const json=JSON.stringify(backupDoc(D)),gz=gzipSync(Buffer.from(jso
   await H.collection('meta').doc('backup').set({at:Date.now(),who:'automat',auto:true});
   if(mode=='auto')await logRef.set({backup:ym,backupAt:today},{merge:true});
   console.log(`✓ kopia wysłana (${Math.round(gz.length/1024)} KB)`)}
-if(doSum){const st=monthStats(D,addMonths(ym,-1));
+if(doSum){const st=monthStats(D,addMonths(ym,-1),today);
   await tr.sendMail({from,to:all,subject:`📊 Budżet M&W – podsumowanie miesiąca`,text:summaryText(st),html:summaryHtml(st)});
   if(mode=='auto')await logRef.set({sum:ym,sumAt:today},{merge:true});
   console.log(`✓ podsumowanie wysłane do ${all.length} ${all.length==1?'osoby':'osób'}`)}

@@ -122,6 +122,18 @@ Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: w
 - [x] 🔎 Stuknięcie pozycji w Budżecie → jej wpisy z miesiąca
 - [x] 🔎 Poprawka: lista wpisów pozycji przewija się w okienku (wcześniej `.list` ją ucinał), a otwarte okienko nie przesuwa strony pod spodem
 
+## Etap X15. Poprawki z trzeciego przeglądu (uzgodnione 1.11.2026)
+- [x] 🏠 PIT-28 za najem: termin 30 kwietnia (przypomnienie od 1 marca)
+- [x] 📅 Edycja wydatku rocznego zachowuje „co miesiąc”; strażnik pokazuje wydatek bez częstotliwości; usunięcie zapłaty cofa kopertę, przywrócenie przesuwa
+- [x] 🖨️ Podsumowanie roku liczy majątek z kontami z archiwum
+- [x] 🏦 Kolejność kont nie przeskakuje po usunięciu konta; usuwane konto, którego coś używa → okno „przenieś na konto”; strażnik: ustawienia na nieistniejące konto
+- [x] ✓ Odznaczenie opłaty stałej pyta „Usunąć wpis?” (9c)
+- [x] 🔁 Stały przelew na konto wspólne = „Przelano”, 🐷 tylko oszczędności
+- [x] 📧 Szczegółowy mail z podsumowaniem miesiąca (porównania z poprzednim miesiącem, średnią i rokiem temu, plan, kategorie, sklepy, oszczędności, nowy miesiąc)
+- [x] ⚖️ Okienka wyrównania i PPK: waluta konta, data DD.MM.RRRR, czytelny tytuł
+- [x] Drobne: autor po przeniesieniu pożyczek, pasek przy wypłacie 31., „Pokaż starsze” w Rejestrze, licznik kart, automat kursów 18:23 cały rok, odmiana imion w demo, Pomoc
+- [x] 🧹 Porządek w kodzie (martwe „Rozumiem, kociaki”, nieużywane style i funkcje, powtórzony kod, demo bez cache aplikacji); 🌸 bez kwiatka przy nazwie miesiąca
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

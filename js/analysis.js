@@ -4,9 +4,9 @@ import {scene} from './cats.js';
 import {isTreat,kotki} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,gainSvg,hbarsH,legendH,lineSvg,pctS} from './charts.js';
 import {OWN,OWN_COL,catHue,catMark} from './data.js';
-import {anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs,yearAgoP} from './logic.js';
+import {anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs,yearAgoP,ownerOf} from './logic.js';
 import {MN,MNG,addMonths,daysIn,esc,ls,p2,td,zl,zl0,fxTxt,plu} from './util.js';
-import {S,catSlides,toast,accCur,isP,accOwner} from './core.js';
+import {S,catSlides,toast,accCur,isP} from './core.js';
 import {norm} from './sheet.js';
 import {downloadBlob,txRowH} from './actions.js';
 import {macro} from './savings.js';
@@ -28,7 +28,7 @@ export function monthSumH(cfg,tx,ym){const act=actuals(cfg,tx,ym),pl=planOf(cfg,
     ${less.length&&!live?`<div>💚 Wyraźnie mniej niż plan: ${esc(lst(less,x=>x.s.name+' −'+zl0(x.p-x.a)))}</div>`:''}
     ${out.length?`<div>⚠️ Poza planem: ${esc(lst(out,x=>x.s.name+' '+zl0(x.a)))}</div>`:''}</div></section>`}
 /* 💑 Mati ↔ Wercia: spending by whose account it came from (a shared account = Wspólne; „Kto” is only who typed it) and what each put aside */
-export function personsH(cfg,tx,prefix){const sm=subsMap(cfg),per={},tot={};OWN.forEach(o=>{per[o]={};tot[o]=0});const ow={};cfg.accs.forEach(a=>ow[a.id]=accOwner(a));
+export function personsH(cfg,tx,prefix){const sm=subsMap(cfg),per={},tot={};OWN.forEach(o=>{per[o]={};tot[o]=0});const ow={};cfg.accs.forEach(a=>ow[a.id]=ownerOf(a));
   tx.filter(t=>t.date.startsWith(prefix)&&(t.type=='exp'||(t.type=='inc'&&t.refundOf))&&sm[t.sub]?.cat.type=='exp'&&accCur(t.acc)=='PLN').forEach(t=>{const c=sm[t.sub].cat,o=ow[t.acc]||'Wspólne',v=t.type=='exp'?t.amount:-t.amount;per[o][c.id]=(per[o][c.id]||0)+v;tot[o]+=v});
   if(!OWN.some(o=>tot[o]))return'';
   const put=o=>savFlow(cfg,tx,savIds(cfg,o),prefix).flow,sum=c=>OWN.reduce((a,o)=>a+(per[o][c.id]||0),0);

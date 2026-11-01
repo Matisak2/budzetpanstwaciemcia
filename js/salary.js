@@ -4,13 +4,14 @@ import {catsEmpty} from './art.js';
 import {C_INC,barsSvg,chartBox} from './charts.js';
 import {ULGI,pitSummaryP} from './today.js';
 import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf,youngLeft,youngUntil,youngPart,baseOf} from './pay.js';
-import {liveOf,subsMap,SUBSCR_RE,subscrOf,fixedWho,seenBy} from './logic.js';
+import {liveOf,subsMap,SUBSCR_RE,subscrOf,fixedWho,seenBy,ownerOf} from './logic.js';
 import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu,ls} from './util.js';
-import {S,toast,ask,accCur,am,accOwner,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard,delFixedDb} from './core.js';
+import {S,toast,ask,accCur,am,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard,delFixedDb} from './core.js';
 import {editFixed} from './actions.js';
 import {txRowH} from './actions.js';
 import {accN,render,goTab} from './app.js';
 import {use} from './usage.js';
+import {yearUndo} from './savings.js';
 
 /* ---------- 💼 salaries (📌 Stałe → Pensje): income sources per person, a payslip per source and month ---------- */
 export const incs=()=>S.cfg.incs||[],incById=id=>incs().find(s=>s.id==id);
@@ -116,8 +117,8 @@ export function deletedH(){const L=deletedList();if(!L.length)return'';const sm=
     return`<div class="r1 delr"><span><b>${esc(nm)}</b> · <span class="num ${t.type=='inc'?'t-inc':t.type=='exp'?'t-exp':''}">${sg}${am(Math.abs(t.amount||0),t.acc)}</span><small class="mini" style="display:block">${t.date.split('-').reverse().join('.')} · usunięto ${f(t.dAt)}${t.dby?' ('+esc(t.dby)+')':''}</small></span><button class="btn sm" onclick="restoreTx('${t.id}')">↩️ Przywróć</button></div>`}).join('')}</div>${L.length>5?`<button class="btn sm" onclick="S.delAll=!S.delAll;render()">${S.delAll?'Pokaż mniej':`Pokaż wszystkie (${L.length})`}</button>`:''}</div>`}
 export async function restoreTx(id){if(guard())return;const t=S.tx.find(x=>x.id===id&&x.deleted===true&&!x.moved);if(!t)return; // an entry moved to another month has a „moved” copy with the same id
   const kids=S.tx.filter(x=>x.deleted===true&&parOf(x)===id&&withParent(x,t)),ym=t.date.slice(0,7);
-  if(!await putTx(ym,id,{deleted:false}))return;kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));
-  toast('Przywrócono '+am(Math.abs(t.amount||0),t.acc)+(kids.length?` (razem z ${kids.length} ${plu(kids.length,'powiązanym wpisem','powiązanymi wpisami','powiązanymi wpisami')})`:''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:true});kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}))}})}
+  if(!await putTx(ym,id,{deleted:false}))return;kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true);
+  toast('Przywrócono '+am(Math.abs(t.amount||0),t.acc)+(kids.length?` (razem z ${kids.length} ${plu(kids.length,'powiązanym wpisem','powiązanymi wpisami','powiązanymi wpisami')})`:''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:true});kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t)}})}
 /* 🕑 recent changes: who added, changed or deleted what (from either phone) */
 export function changesH(){const sm=subsMap(S.cfg),ev=[];
   /* the name and amount are written only for the few events shown (formatting thousands of amounts was slow) */
@@ -132,12 +133,12 @@ export function ulgaInfo(k){const u=ULGI[k]||ULGI.inne;ask({title:'🧾 '+u.n,te
 export async function editInc(id,who){if(guard())return;const s0=id?incById(id):null;who=s0?.who||who||S.who;
   const fixedInc=(S.cfg.fixed||[]).filter(f=>f.kind=='inc'),invAccs=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   const defSub=S.cfg.cats.filter(c=>c.type=='inc').flatMap(c=>c.subs).find(x=>new RegExp('pensja\\s+'+who,'i').test(x.name))?.id||'';
-  const defPpk=S.cfg.accs.find(a=>a.grp=='inv'&&!a.archived&&/ppk/i.test(a.name)&&accOwner(a)==who)?.id||'';
+  const defPpk=S.cfg.accs.find(a=>a.grp=='inv'&&!a.archived&&/ppk/i.test(a.name)&&ownerOf(a)==who)?.id||'';
   const linked=new Set(incs().filter(x=>x!==s0).map(x=>x.fixed).filter(Boolean)),defFix=fixedInc.find(f=>!linked.has(f.id)&&(f.sub==defSub||new RegExp('pensja\\s+'+who,'i').test(f.name)))?.id||'';
   const r=await ask({title:s0?'Źródło dochodu':'Nowe źródło dochodu – '+who,fields:[
     {id:'n',label:'Pracodawca albo zleceniodawca',value:s0?.name||'',ph:'np. Szpital Wojewódzki'},
     {id:'k',label:'Rodzaj umowy',type:'select',value:s0?.kind||'uop',options:Object.entries(KINDS)},
-    {id:'c',label:'Wpływa na konto',type:'select',value:s0?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&accOwner(a)==who)?.id||'',options:accOpts()},
+    {id:'c',label:'Wpływa na konto',type:'select',value:s0?.acc||S.cfg.accs.find(a=>a.grp=='cur'&&ownerOf(a)==who)?.id||'',options:accOpts()},
     {id:'s',label:'Pozycja budżetu (przychód)',type:'select',value:s0?.sub||defSub,options:[['','— wybierz —'],...subOpts('inc')]},
     {id:'d',label:'Wypłata zwykle do dnia (1–31)',type:'int',value:s0?.day||10},
     {id:'p',label:'PPK',type:'select',value:s0?s0.ppk||'':defPpk,options:[['','Bez PPK'],...invAccs.map(a=>[a.id,'Wpłaty na: '+a.name])]},

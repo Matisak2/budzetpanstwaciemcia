@@ -7,6 +7,7 @@ import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixed
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
+import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -119,17 +120,14 @@ const N=' ';
   eq('Na dziś: opłata „Dotyczy: Mati” ze wspólnego → Mati',whoOf('Telefon M'),'Mati');eq('Wspólna opłata → oboje',whoOf('Prąd'),null);eq('Z konta Werci → Wercia',whoOf('Siłownia'),'Wercia');
   eq('Wydatek roczny i przypomnienie z „Dotyczy”',[whoOf('OC auta'),whoOf('Fryzjer')],['Mati','Wercia']);eq('Kopia danych – tylko Mati',whoOf('kopii danych'),'Mati');
 }
-/* ---------- 🐾 kotki: uwaga → „Rozumiem, kociaki” → ciekawostka dnia ---------- */
+/* ---------- 🐾 kotki na Budżecie: tylko rozmowa (uwagi są w 🔔 „Na dziś”), po południu ciekawostka dnia ---------- */
 { eq('366 ciekawostek, każda inna',[FACTS.length,new Set(FACTS).size],[366,366]);
   eq('Ciekawostka: 1 stycznia, 31 grudnia, 29 lutego, 1 marca w roku przestępnym',['2026-01-01','2026-12-31','2028-02-29','2028-03-01','2026-03-01'].map(d=>factOfDay(d).n),[1,365,366,60,60]);
-  const c={name:'Mati',today:'2026-10-20',hour:9,late:['Czynsz'],soon:[],plan:300000,left:-12000,dl:12,coins:0,saved:0,goal:null,backupDays:0,treats:0,jdg:false,births:{}};
-  const g1=greeting(c);eq('Po terminie – uwaga z przyciskiem',[/Po terminie: „Czynsz”/.test(g1.text),g1.k],[true,'late:2026-10:Czynsz']);
-  const g2=greeting({...c,ok:new Set([g1.k])});eq('Po „Rozumiem” – następna uwaga (plan przekroczony)',[/przekroczony o 120/.test(g2.text),g2.k],[true,'over:2026-10']);
-  const g3=greeting({...c,ok:new Set([g1.k,g2.k])});eq('Wszystkie uwagi schowane → ciekawostka dnia',[g3.fact,g3.text.includes(factOfDay('2026-10-20').text)],[true,true]);
-  eq('Kolejna opłata po terminie → uwaga wraca',greeting({...c,late:['Czynsz','Prąd'],ok:new Set([g1.k,g2.k])}).k,'late:2026-10:Czynsz|Prąd');
-  eq('Święto zamiast uwagi i ciekawostki',/Narodowe Święto Niepodległości/.test(greeting({...c,today:'2026-11-11'}).text),true);
-  {const gc=greeting({...c,calm:true});eq('Budżet (calm): uwagi są w 🔔 „Na dziś”, kotki bez ostrzeżeń',[gc.k,/Po terminie|przekroczony|blisko limitu/.test(gc.text)],[undefined,false])}
-  eq('Po południu bez uwag → ciekawostka',greeting({...c,late:[],left:150000,hour:15}).fact,true);
+  const c={name:'Mati',today:'2026-10-20',hour:9,plan:300000,left:-12000,dl:12,coins:0,goal:null,treats:0,births:{}};
+  eq('Kotki nie ostrzegają (przekroczony plan jest w „Na dziś”)',/Po terminie|przekroczony|blisko limitu/.test(greeting(c).text),false);
+  eq('Po południu → ciekawostka dnia',[greeting({...c,hour:15}).fact,greeting({...c,hour:15}).text.includes(factOfDay('2026-10-20').text)],[true,true]);
+  eq('Święto zamiast zwykłej rozmowy',/Narodowe Święto Niepodległości/.test(greeting({...c,today:'2026-11-11'}).text),true);
+  eq('Urodziny osoby telefonu',greeting({...c,births:{Mati:'1996-10-20'}}).bday,true);
 }
 /* ---------- ⏳ trwający miesiąc: poprzedni miesiąc do tego samego dnia ---------- */
 { const cfg={accs:[{id:'a',grp:'cur'}],cats:[{id:'c',type:'exp',name:'Dom',subs:[{id:'s',name:'Jedzenie'}]}]},E=(d,a)=>({id:d,type:'exp',sub:'s',acc:'a',amount:a,date:d});
@@ -318,7 +316,9 @@ const N=' ';
   eq('Najem co kwartał – w marcu nic',D([{...naj,najem:'q'}],rent,'2027-03-05').some(x=>/Ryczałt/.test(x.text)),false);
   // kwartał styczeń–marzec: 3 000 + 3 000 zł → 8,5% = 510 zł
   eq('Najem co kwartał – w kwietniu za styczeń–marzec',/510,00/.test(D([{...naj,najem:'q'}],[...rent,{...rent[0],date:'2027-01-10'}],'2027-04-05').find(x=>/Ryczałt/.test(x.text))?.text||''),true);
-  eq('Najem – PIT-28 w lutym',D([naj],rent,'2027-02-03').some(x=>/PIT-28/.test(x.text)),true);
+  eq('Najem – PIT-28 w lutym jeszcze nie',D([naj],rent,'2027-02-03').some(x=>/PIT-28/.test(x.text)),false);
+  {const p28=D([naj],rent,'2027-03-01').find(x=>/PIT-28/.test(x.text));eq('Najem – PIT-28 od 1 marca, termin 30 kwietnia',[/30 kwietnia/.test(p28?.text||''),p28?.later,p28?.quiet],[true,true,false]);
+   eq('Najem – PIT-28 20 kwietnia na dziś',D([naj],rent,'2027-04-20').find(x=>/PIT-28/.test(x.text))?.later,false)}
   const pit=D([],[],'2027-03-01').filter(x=>x.key?.startsWith('pit:'));eq('PIT – w marcu dla obojga',pit.map(x=>x.who),['Mati','Wercia']);eq('PIT – 1 marca powiadomienie',pit[0].quiet,false);
   eq('PIT – 5 marca bez powiadomienia (tylko w „Na dziś”)',D([],[],'2027-03-05').find(x=>x.key?.startsWith('pit:')).quiet,true);eq('PIT – w maju już nie',D([],[],'2027-05-02').some(x=>x.key?.startsWith('pit:')),false);
 }
@@ -416,6 +416,28 @@ const N=' ';
   eq('Zapis w euro',money(450000,'EUR'),'4'+N+'500,00'+N+'€');eq('Liczba z odstępem',fmtN(1234567.8,1),'1'+N+'234'+N+'567,8');
   priv.on=true;eq('Tryb dyskretny',zl(544918),'•••'+N+'zł');priv.on=false;
   eq('Data + 1 dzień (koniec roku)',addDays('2026-12-31',1),'2027-01-01');
+}
+
+/* ---------- 📧 mail z podsumowaniem miesiąca: porównania z poprzednim miesiącem, średnią i rokiem temu ---------- */
+{const cfg={accs:[{id:'a',name:'Konto',grp:'cur',owner:'Mati'},{id:'w',name:'Konto W',grp:'cur',owner:'Wercia'},{id:'s',name:'Oszczędności',grp:'sav',owner:'Wspólne'}],
+    cats:[{id:'ci',name:'1. ZAROBKI',type:'inc',subs:[{id:'p',name:'Pensja'}]},{id:'cj',name:'2. JEDZENIE',type:'exp',hue:30,subs:[{id:'j',name:'Zakupy'}]},{id:'cd',name:'3. DOM',type:'exp',hue:200,subs:[{id:'d',name:'Czynsz'}]}],
+    fixed:[{id:'f',name:'Czynsz',amount:200000,day:10,sub:'d',acc:'a',kind:'exp'}],years:[],round:[],incs:[],projs:[],rems:[]};
+  const T=(id,date,type,amount,sub,acc='a',x={})=>({id,date,type,amount,sub,acc,note:'',...x});
+  const tx=[T('i1','2025-10-10','inc',800000,'p'),T('e1','2025-10-05','exp',100000,'j',undefined,{note:'Biedronka'}),
+    ...['2026-07','2026-08','2026-09'].flatMap((m,k)=>[T('i'+m,m+'-10','inc',1000000,'p'),T('j'+m,m+'-05','exp',150000,'j',undefined,{note:'Biedronka'}),T('d'+m,m+'-10','exp',200000,'d',undefined,{fixedId:'f'})]),
+    T('io','2026-10-10','inc',1000000,'p'),T('jo','2026-10-05','exp',300000,'j','w',{note:'Biedronka'}),T('jo2','2026-10-06','exp',60000,'j',undefined,{note:'Lidl'}),T('do','2026-10-10','exp',200000,'d',undefined,{fixedId:'f'}),
+    T('so','2026-10-11','tr',100000,'',undefined,{to:'s'})];
+  const st=monthStats({cfg,tx,plans:{'2026-10':{j:250000,d:200000}},goals:{},debts:{},hraw:{savTarget:200000}},'2026-10','2026-11-01');
+  eq('Mail: ten miesiąc',[st.inc,st.exp,st.put],[1000000,560000,100000]);
+  eq('Mail: poprzedni miesiąc i średnia 3 mies.',[st.cmp.prev.exp,st.cmp.a3.exp,st.cmp.a3.n],[350000,350000,3]);
+  eq('Mail: rok temu',st.cmp.ya.exp,100000);
+  eq('Mail: przekroczona pozycja',st.over.map(x=>[x.s.name,x.a-x.p]),[['Zakupy',110000]]);
+  eq('Mail: kategoria z porównaniem',[st.cats[0].n,st.cats[0].prev,st.cats[0].a3,st.cats[0].ya],['Jedzenie',150000,150000,100000]);
+  eq('Mail: Mati ↔ Wercia według konta',st.persons.map(p=>p.exp),[260000,300000,0]);
+  eq('Mail: sklepy z notatek (bez opłat stałych)',st.shops.map(x=>[x.n,x.v]),[['Biedronka',300000],['Lidl',60000]]);
+  eq('Mail: wnioski na górze',st.notes.length>=3&&/wyższe niż średnio/.test(st.notes[0]),true);
+  const h=summaryHtml(st);eq('Mail: części maila',['Na tle innych miesięcy','Plan a rzeczywistość','Na co poszło','Gdzie wydajecie','Mati ↔ Wercia','Oszczędności i majątek','Na nowy miesiąc','rok temu','1 pozycja przekroczyła'].map(x=>h.includes(x)),Array(9).fill(true));
+  eq('Mail: wersja tekstowa',/Rok temu: wydatki 1\s000\szł/.test(summaryText(st)),true);
 }
 
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);

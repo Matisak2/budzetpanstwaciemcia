@@ -81,10 +81,18 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
     if(((t.type=='exp'&&!t.payoff)||(t.type=='inc'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.slip))&&!sm[t.sub])add('sub:'+t.id,'🏷️',`${t.type=='exp'?'Wydatek':'Przychód'} ${money(t.amount,cm[t.acc])} z ${dmy(t.date)} nie ma pozycji budżetu`,{a:'tx',id:t.id})}
   /* settings that point to a budget position that no longer exists (e.g. deleted before merging moved everything) */
   const gone=id=>id&&!sm[id];
+  for(const y of cfg.years||[])if(!(+y.every>0))add('ref:ye:'+y.id,'📅',`Wydatek roczny „${y.name}” nie ma ustawionej częstotliwości – liczę go jak co rok. Sprawdź w „Edytuj”.`,{a:'year'});
   for(const y of cfg.years||[])if(gone(y.sub))add('ref:y:'+y.id+':'+y.sub,'🏷️',`Wydatek roczny „${y.name}” ma usuniętą pozycję budżetu – wybierz nową.`,{a:'year'});
   for(const x of cfg.incs||[])if(gone(x.sub)||(x.deds||[]).some(d=>gone(d.sub)))add('ref:i:'+x.id+':'+x.sub,'🏷️',`Źródło dochodu „${x.name}” ma usuniętą pozycję budżetu (wpływ albo potrącenie) – popraw ją.`,{a:'pay'});
   for(const f of cfg.fixed||[])if(f.kind!='tr'&&gone(f.sub))add('ref:f:'+f.id+':'+f.sub,'🏷️',`${f.kind=='inc'?'Przychód stały':'Opłata stała'} „${f.name}” ma usuniętą pozycję budżetu – wybierz nową.`,{a:'fixEdit',id:f.id});
   for(const[id,d]of Object.entries(D.debts||{}))if(!d.deleted&&gone(d.sub))add('ref:d:'+id+':'+d.sub,'🏷️',`Zobowiązanie „${d.name}” ma usuniętą pozycję budżetu – nowa ustawi się przy następnej racie.`,{a:'owe'});
+  /* settings that point to an account that is gone or in the archive (e.g. deleted before the „move and delete” window existed) */
+  const accOk=id=>!id||cfg.accs.some(a=>a.id==id&&!a.archived),accTxt=id=>cfg.accs.some(a=>a.id==id)?'konto w archiwum':'konto, którego już nie ma';
+  for(const f of cfg.fixed||[])for(const id of [f.acc,f.kind=='tr'?f.to:'',f.ppk])if(!accOk(id))add('refa:f:'+f.id+':'+id,'❓',`${f.kind=='inc'?'Przychód stały':f.kind=='tr'?'Stały przelew':'Opłata stała'} „${f.name}” ma ${accTxt(id)} – wybierz inne.`,{a:'fixEdit',id:f.id});
+  for(const x of cfg.incs||[])for(const id of [x.acc,x.ppk])if(!accOk(id))add('refa:i:'+x.id+':'+id,'❓',`Źródło dochodu „${x.name}” ma ${accTxt(id)} – wybierz inne.`,{a:'pay'});
+  for(const r of cfg.round||[])for(const id of [r.from,r.to])if(!accOk(id))add('refa:r:'+r.id+':'+id,'❓',`Reguła drobnych ma ${accTxt(id)} – zmień ją w ⚙️ → 🗂️ Kategorie i drobne.`,{a:'round'});
+  if(!accOk(hraw?.yearAcc)&&(cfg.years||[]).length)add('refa:y:'+hraw.yearAcc,'❓',`Subkonto wydatków rocznych to ${accTxt(hraw.yearAcc)} – wybierz inne w 📅 Roczne i terminy.`,{a:'year'});
+  for(const[id,d]of Object.entries(D.debts||{}))if(!d.deleted&&!accOk(d.saveAcc))add('refa:d:'+id+':'+d.saveAcc,'❓',`„${d.name}”: odkładanie na spłatę ma ${accTxt(d.saveAcc)} – wybierz inne.`,{a:'owe'});
   for(const a of cfg.accs.filter(a=>!a.archived)){const s=saveSplitP(cfg,tx,D.debts,a.id,today);if(s.L.length&&s.free<=-100)
     add('save:'+a.id+':'+s.sum+':'+s.bal,'💰',`${a.name}: na koncie ${money(s.bal,a.cur)}, a odłożone na spłatę pożyczek to ${zl(s.sum)} – brakuje ${zl(-s.free)}. Może wypłata albo płatność z tego konta bez wybrania pożyczki?`,{a:'owe'})}
   for(const a of cfg.accs.filter(a=>a.grp=='cur'&&!a.archived)){const b=balance(cfg,tx,a.id,addDays(today,1));if(b<0)add('neg:'+a.id+':'+today.slice(0,7),'➖',`Ujemne saldo: ${a.name} ${money(b,a.cur)} – coś nie wpisane albo wyrównanie?`,{a:'acc'})}
@@ -192,7 +200,7 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
     for(const x of shortP(cfg,tx,today)){const a=accOf(x.acc),f=(cfg.fixed||[]).find(f=>f.id==x.fid),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+ym;if(hraw?.checkIgnore?.[key])continue;
       out.push({key,icon:'⚠️',text:`${a.name}: ${money(x.bal,cm[x.acc])}, a ${n<=0?'dziś':n==1?'jutro':dmy(x.date)} „${x.name}” ${money(x.amount,cm[x.acc])} – zabraknie ${money(x.miss,cm[x.acc])}. Przelej wcześniej na to konto.`,go:{a:'tr',to:x.acc,amount:x.miss},label:'Przelej',k:n<=1?'bad':'short',n,who:person(ownerOf(a))||(f?person(fixedWho(cfg,f)):null),quiet:!(n==1||!before.has(x.acc+':'+x.fid+':'+x.date.slice(0,7)))})}}
   const live=new Set(tx.map(t=>t.id));
-  for(const s of incs)if(day>=(s.day||10)){const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata zwykle do ${s.day||10}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}
+  for(const s of incs)if(day>=Math.min(+s.day||10,daysIn(ym))){/* paid on the 31st → in a shorter month the last day */const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata zwykle do ${s.day||10}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}
   /* 🎓 the end of ulga dla młodych: from a month before the 26th birthday – later payslips are taxed; the drop estimated from the last payslip of each source */
   for(const w of ['Mati','Wercia']){const un=youngUntil(hraw?.birth?.[w]),n=un?dd(today,un):-1,L=incs.filter(s=>s.who==w&&youngKind(s.kind)),key='young:'+w+':'+un;
     if(n<0||n>31||!L.length||hraw?.checkIgnore?.[key])continue;
@@ -239,13 +247,13 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   if(today.slice(5)>='03-01'&&today.slice(5)<='04-30'){const y=String(+today.slice(0,4)-1);for(const w of ['Mati','Wercia']){const key='pit38:'+y+':'+w;if(hraw?.checkIgnore?.[key])continue;
     const L=tx.filter(t=>t.int&&t.date.startsWith(y)&&(()=>{const a=accOf(t.acc);return a&&intTax(a)=='self'&&ownerOf(a)==w})()),s=L.reduce((x,t)=>x+t.amount,0);
     if(s>0)out.push({key,icon:'🧾',text:`${w}: do PIT-38 za ${y} – odsetki bez pobranego podatku ${zl(s)}, podatek 19% ≈ ${zl(Math.round(s*0.19/100)*100)}.`,go:{a:'sav'},label:'Zobacz',k:'pit38',later:today.slice(5)<'04-20',who:w,quiet:!(today.slice(5)=='03-01'||today.slice(5)=='04-20')})}}
-  /* 🏠 rent (a fixed income marked „najem”): the flat-rate tax (ryczałt 8,5% up to 100 000 zł a year) by the 20th after the month or the quarter; PIT-28 by the end of February */
+  /* 🏠 rent (a fixed income marked „najem”): the flat-rate tax (ryczałt 8,5% up to 100 000 zł a year) by the 20th after the month or the quarter; PIT-28 by 30 April (since 2023; the December ryczałt is due by 20 January) */
   for(const f of (cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'))){const q=f.najem=='q',mo0=+ym.slice(5);if(q&&![1,4,7,10].includes(mo0))continue;if(day>25)continue;
     const per=q?[3,2,1].map(k=>addMonths(ym,-k)):[addMonths(ym,-1)],got=per.reduce((a,m)=>a+inPeriod(tx,m).filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((b,t)=>b+t.amount,0),0);if(!got)continue;
     const key='najem:'+f.id+':'+per[0],tax=Math.round(got*0.085/100)*100;if(hraw?.checkIgnore?.[key])continue;
     out.push({key,icon:'🏠',text:`Ryczałt od najmu („${f.name}”) za ${q?'kwartał '+per.map(m=>MN[+m.slice(5)-1].slice(0,3).toLowerCase()).join('–'):MN[+per[0].slice(5)-1].toLowerCase()}: ok. ${zl(tax)} (8,5% z ${zl(got)}) – zapłać do 20. ${MNG[mo0-1]} na mikrorachunek podatkowy.`,go:{a:'fixed'},label:'Zobacz',k:day>20?'bad':'najem',who:person(fixedWho(cfg,f)),quiet:!(day==10||day==18)})}
-  {const mo0=+ym.slice(5),ny=(cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'));if(ny.length&&(mo0==2||(mo0==1&&day>=15))){const key='pit28:'+(+y-1),ws=[...new Set(ny.map(f=>person(fixedWho(cfg,f))))];
-    if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🏠',text:`PIT-28 za najem w ${+y-1} r. – złóż do końca lutego (Twój e-PIT na podatki.gov.pl).`,go:{a:'fixed'},label:'Zobacz',k:'pit',later:!(mo0==2&&day>=20),who:ws.length==1?ws[0]:null,quiet:!((mo0==2&&(day==1||day==20)))})}}
+  {const ny=(cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'));if(ny.length&&(mo==3||mo==4)){const key='pit28:'+(+y-1),ws=[...new Set(ny.map(f=>person(fixedWho(cfg,f))))];
+    if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🏠',text:`PIT-28 za najem w ${+y-1} r. – złóż do 30 kwietnia (Twój e-PIT na podatki.gov.pl).`,go:{a:'fixed'},label:'Zobacz',k:mo==4&&day>=20?'bad':'pit',later:!(mo==4&&day>=20),who:ws.length==1?ws[0]:null,quiet:!((mo==3&&day==1)||(mo==4&&day==20))})}}
   /* 🧾 the yearly PIT: from 1 March until „✓ Złożone” (each of you apart), deadline 30 April; a phone notification on 1 March, 1 and 20 April */
   if(mo==3||mo==4)for(const w of ['Mati','Wercia']){const key='pit:'+(+y-1)+':'+w;if(hraw?.checkIgnore?.[key])continue;
     out.push({key,icon:'🧾',text:`${w}: PIT za ${+y-1} r. – termin 30 kwietnia. Twój e-PIT jest już gotowy, a zestawienie ulg i IKZE masz w aplikacji.`,go:{a:'pit',y:String(+y-1)},label:'Zestawienie',k:mo==4&&day>=20?'bad':'pit',later:!(mo==4&&day>=20),who:w,quiet:!((mo==3&&day==1)||(mo==4&&(day==1||day==20)))})}

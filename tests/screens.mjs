@@ -54,10 +54,13 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ['rok-temu',"closeAll();{S.ym=new Date().toISOString().slice(0,7);S.tx=S.tx.concat(S.tx.filter(t=>!t.deleted&&t.type=='exp'&&t.date.startsWith(S.ym)).map(t=>({...t,id:'ya'+t.id,date:(+t.date.slice(0,4)-1)+t.date.slice(4),amount:Math.round(t.amount*0.8)})));goTab('ana');setAnaMode('basic');setAna('m')}"]];
 const CASES=[{w:390,size:'0',role:'Wercia'},{w:360,size:'2',role:'Mati'},{w:320,size:'0',role:'Mati'},{w:390,size:'1',role:'Wercia'}];
 
+const MID=(d=>new Date(d.getFullYear(),d.getMonth(),15,12))(new Date());
 for(const C of CASES){
   const tag=`${C.w}px-A${['','+','++'][C.size]}-${C.role}`;
   const ctx=await browser.newContext({viewport:{width:C.w,height:800},deviceScaleFactor:1,locale:'pl-PL',timezoneId:'Europe/Warsaw'});
   const p=await ctx.newPage();
+  /* „today” = the 15th of this month: the demo data follow today's date, and on the 1st–2nd the month is almost empty (no „Rok temu”, no entries of a position) */
+  await p.clock.setFixedTime(MID);
   p.on('pageerror',e=>fail(`${tag}: błąd JavaScript: ${e.message}`));
   p.on('console',m=>{if(m.type()=='error'&&!/Failed to load resource|net::|ERR_/.test(m.text()))fail(`${tag}: błąd w konsoli: ${m.text()}`)});
   await p.addInitScript(([C])=>{if(sessionStorage.getItem('robot'))return;sessionStorage.setItem('robot','1');localStorage.clear();
