@@ -7,9 +7,6 @@ export function parseNbpTable(j){const t=Array.isArray(j)?j[0]:j,fx={};for(const
 export function parseNbpRef(xml){const tags=String(xml).match(/<pozycja\b[^>]*>/gi)||[];
   for(const t of tags){if(/\bid="ref"/i.test(t)||/referencyjna/i.test(t)){const m=t.match(/oprocentowanie="([\d.,]+)"/i);if(m)return+m[1].replace(',','.')}}
   const m=String(xml).match(/referencyjna[\s\S]{0,200}?(\d+[.,]\d+)/i);return m?+m[1].replace(',','.'):null}
-// Eurostat JSON-stat (prc_hicp_manr, one geo, one item): {value:{idx:v}, dimension:{time:{category:{index:{'2026-09':0}}}}}
-export function parseEurostat(j){const idx=j?.dimension?.time?.category?.index||{},per=Object.keys(idx).sort().pop();if(!per)return null;
-  const v=j.value?.[String(idx[per])]??j.value?.[idx[per]];return v==null?null:{infl:+v,per}}
 // stooq quote CSV with a header: Symbol,Date,Time,Open,High,Low,Close,Volume
 export function parseStooq(csv){const L=String(csv).trim().split(/\r?\n/);if(L.length<2)return null;const H=L[0].split(',').map(s=>s.trim().toLowerCase()),R=L[1].split(',');
   const c=+R[H.indexOf('close')],d=R[H.indexOf('date')];return c>0&&/^\d{4}-\d\d-\d\d$/.test(d||'')?{p:c,d}:null}
@@ -49,3 +46,12 @@ export function parseFundPage(html){const t=String(html).replace(/<script[\s\S]*
   if(!m)return null;const p=+m[1].replace(/[  ]/g,'').replace(',','.');return p>0?{p,cur:m[2],d:`${m[5]}-${m[4]}-${m[3]}`}:null}
 // fund pages link to other PPK funds (competitors, the same family): [id, slug]
 export const fundLinks=html=>[...String(html).matchAll(/\/fundusze-ppk\/([A-Z]{2,6}\d+)\/([a-z0-9-]+)/g)].map(m=>[m[1],m[2]]);
+/* a source that did not answer today keeps its last known value (with its old date – an older price never wins over one typed later):
+   prices of instruments still held, gold, NBP exchange rates and the NBP rate. ok = the last day the NBP rates came (automatStale counts from it) */
+export function keepPrev(out,prev,want=[],gold=false){const p=prev||{},fxToday=Object.keys(out.fx||{}).length>0;let kept=0;
+  out.ok=fxToday?out.date:(p.ok||p.date||out.date);
+  for(const t of want)if(!out.prices[t]&&p.prices?.[t]){out.prices[t]=p.prices[t];kept++}
+  if(gold&&!out.gold&&p.gold){out.gold=p.gold;out.goldDate=p.goldDate||p.date;kept++}
+  if(!fxToday&&p.fx&&Object.keys(p.fx).length){out.fx=p.fx;out.fxDate=p.fxDate||p.date;if(p.src?.fx)out.src.fx=p.src.fx;kept++}
+  if(out.nbp==null&&p.nbp!=null){out.nbp=p.nbp;kept++}
+  return kept}

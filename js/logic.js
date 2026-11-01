@@ -60,7 +60,7 @@ export function status(type,plan,act){
    so copying a plan to the next month never carries it on. Due: every 12 / 6 / 4 / 3 / 2 / 1 months counted from its month; every 24 months from
    the last payment (before the first one – its month every year). Paid in this month (📅 „Zapłacone”) – the amount paid; paid up to 3 months early – not again
    (less for short periods: every 3 months – up to 2 months early, every month – only in that month, so the previous payment is never taken for this one). */
-const earlyN=it=>Math.min(3,Math.max(1,+it.every||12)-1);
+export const earlyN=it=>Math.min(3,Math.max(1,+it.every||12)-1);
 const ymN=ym=>+ym.slice(0,4)*12+(+ym.slice(5,7))-1;
 export function yearDueIn(it,ym){const e=Math.max(1,+it.every||12),m=+ym.slice(5,7)-1,m0=(+it.month||1)-1;
   if(12%e==0)return((m-m0)%e+e)%e==0;if(it.last){const d=ymN(ym)-ymN(it.last);return d>=0&&d%e==0}return m==m0}

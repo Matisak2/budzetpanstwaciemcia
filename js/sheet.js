@@ -78,8 +78,7 @@ export function recentSubs(kind,n){const sm=subsMap(S.cfg),seen=new Map();
   liveOf(S.tx).filter(t=>sm[t.sub]&&!hidS(sm[t.sub])&&sm[t.sub].cat.type==kind&&(t.type=='exp'||t.type=='inc')&&!t.fixedId&&!t.refundOf).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,80)
     .forEach((t,i)=>{const x=seen.get(t.sub)||{n:0,i};x.n++;seen.set(t.sub,x)});
   return[...seen].sort((a,b)=>b[1].n-a[1].n||a[1].i-b[1].i).slice(0,n).map(([id])=>sm[id])}
-/* the position usually chosen with this note: the same note first, then the same first word */
-export /* ✍️ note suggestions: notes used in the last year for this kind of entry, most used first – one tap fills the note
+/* ✍️ note suggestions: notes used in the last year for this kind of entry, most used first – one tap fills the note
    (the same shop name every time also makes „🏪 Gdzie wydajemy” more exact) */
 function noteSugs(q,kind){const k=norm(q),since=addDays(td(),-365),G={};
   for(const t of liveOf(S.tx)){if(t.type!=kind||t.date<since||t.fixedId||t.roundOf||t.slip||t.slipOf||t.ppk)continue;const raw=stripFx(t.note).trim();if(raw.length<2||/^[🪙↩]/u.test(raw))continue;
@@ -88,6 +87,7 @@ function noteSugs(q,kind){const k=norm(q),since=addDays(td(),-365),G={};
     .sort((a,b)=>b[1].c-a[1].c||b[1].last.localeCompare(a[1].last)).slice(0,4).map(([,g])=>Object.entries(g.names).sort((a,b)=>b[1]-a[1])[0][0])}
 function renderNoteSug(){const box=$('mnSug');if(!box)return;const on=document.activeElement===$('mn')&&S.etype!='tr'&&!S.refEdit,L=on?noteSugs($('mn').value,S.etype):[];
   box.hidden=!L.length;box.innerHTML=L.map(n=>`<button type="button" class="chip" data-note="${esc(n)}">${esc(n)}</button>`).join('')}
+/* the position usually chosen with this note: the same note first, then the same first word */
 function noteSub(note,kind){const k=norm(note);if(k.length<2)return null;const w=k.split(/\s+/)[0],sm=subsMap(S.cfg),ex={},fw={};
   for(const t of liveOf(S.tx)){if(!t.note||!sm[t.sub]||hidS(sm[t.sub])||sm[t.sub].cat.type!=kind||t.refundOf)continue;const n=norm(t.note);
     if(n==k)ex[t.sub]=(ex[t.sub]||0)+1;else if(w.length>=3&&n.split(/\s+/)[0]==w)fw[t.sub]=(fw[t.sub]||0)+1}
@@ -273,11 +273,12 @@ export async function markRefund(id){const t=liveById(id);if(!t)return;const don
     fields:[{id:'a',label:`Ile wróciło (${curSym(accCur(t.acc))})`,type:'decimal',value:f2(left)},{id:'d',label:'Data zwrotu',type:'date',value:td()},{id:'c',label:'Na konto',type:'select',value:t.acc,options:accOpts()}],ok:'Zapisz zwrot'});
   if(!r)return;const amt=pg(r.a);
   if(amt<=0)return toast('Podaj kwotę zwrotu','bad');
-  if(amt>left)return toast('Zwrot może wynieść najwyżej '+zl(left),'bad');
+  if(amt>left)return toast('Zwrot może wynieść najwyżej '+am(left,t.acc),'bad');
   if(!isDate(r.d))return toast('Wybierz datę zwrotu','bad');
+  if(accCur(r.c)!=accCur(t.acc))return toast(`Zwrot musi wpłynąć na konto w tej samej walucie co wydatek (${curSym(accCur(t.acc))})`,'bad');
   closeSheet();const rym=r.d.slice(0,7),tid='t'+rid();
   if(await putTx(rym,tid,{type:'inc',amount:amt,date:r.d,sub:t.sub,acc:r.c,to:'',who:t.who||S.who,note:t.note||'',refundOf:id,deleted:false,ts:Date.now()}))
-    toast('Zapisano zwrot '+zl(amt),'',{label:'Cofnij',fn:()=>putTx(rym,tid,{deleted:true})})}
+    toast('Zapisano zwrot '+am(amt,r.c),'',{label:'Cofnij',fn:()=>putTx(rym,tid,{deleted:true})})}
 /* event wiring of this part – app.js calls it once at start (it used to run while app.js was loading) */
 export function wireSheet(){
 $('mn').addEventListener('input',renderNoteSug);$('mn').addEventListener('focus',renderNoteSug);$('mn').addEventListener('blur',()=>setTimeout(renderNoteSug,150));

@@ -2,7 +2,7 @@
 // the list of PPK funds once a month and the month-end valuation of accounts with instruments.
 // Needs the secret FIREBASE_SA (service account JSON). Logs only counts – never amounts, names or symbols (the repository is public).
 import {db as fdb,ensureVapid,household,warsaw} from './common.mjs';
-import {CRYPTO_IDS,OZ,bondLinks,fundLinks,gusCsvLink,parseBondPage,parseEurostatAll,parseFundPage,parseGusCpi,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym} from './market-lib.mjs';
+import {CRYPTO_IDS,OZ,bondLinks,fundLinks,gusCsvLink,keepPrev,parseBondPage,parseEurostatAll,parseFundPage,parseGusCpi,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym} from './market-lib.mjs';
 import {holdAt,instDiffP,macroP} from '../js/inv.js';
 import {ownerOf} from '../js/today.js';
 import {daysIn} from '../js/util.js';
@@ -52,7 +52,9 @@ for(const[t,v]of want){if(v.kind=='krypto')continue;
   const y=await tryIt('cena (zapasowo)',async()=>parseYahoo(await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym(t))}?range=5d&interval=1d`)));
   if(y)out.prices[t]={p:y.p,d:y.d||today,cur:y.cur,src:'yahoo'}}
 if(gold){const g=await tryIt('złoto',async()=>parseStooq(await get('https://stooq.pl/q/l/?s=xaupln&f=sd2t2ohlcv&h&e=csv','text')));if(g){out.gold=Math.round(g.p/OZ*100)/100;out.goldDate=g.d}}
-console.log(`✓ ceny: ${Object.keys(out.prices).length} z ${want.size}${gold?(out.gold?' + złoto':' (złoto: brak)'):''}`);
+const goldToday=!!out.gold;console.log(`✓ ceny: ${Object.keys(out.prices).length} z ${want.size}${gold?(goldToday?' + złoto':' (złoto: brak)'):''}`);
+/* 4b. what did not come today keeps yesterday's value (a valuation never falls back to the purchase price because a site was down for a day) */
+const kept=keepPrev(out,prev,[...want.keys()],gold);if(kept)console.log(`– bez odpowiedzi dziś, zostają ostatnie znane: ${kept}`);
 // 4a. unit values of TFI / PPK funds (analizy.pl; a page address with any name redirects to the fund)
 let nf=0;for(const[id,path]of fundsWant){const f=await tryIt('fundusz',async()=>parseFundPage(await get('https://www.analizy.pl/'+path,'text')));if(f){out.funds[id]={...f,src:'analizy'};nf++}}
 for(const id of Object.keys(out.funds))if(!fundsWant.has(id))delete out.funds[id];

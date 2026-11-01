@@ -134,6 +134,13 @@ Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: w
 - [x] Drobne: autor po przeniesieniu pożyczek, pasek przy wypłacie 31., „Pokaż starsze” w Rejestrze, licznik kart, automat kursów 18:23 cały rok, odmiana imion w demo, Pomoc
 - [x] 🧹 Porządek w kodzie (martwe „Rozumiem, kociaki”, nieużywane style i funkcje, powtórzony kod, demo bez cache aplikacji); 🌸 bez kwiatka przy nazwie miesiąca
 
+## Etap X16. Poprawki z czwartego przeglądu (uzgodnione 1.11.2026)
+- [x] 📅 Przypomnienie o wydatku rocznym płaconym co kwartał / co miesiąc (wcześniejsza zapłata ukrywała następny termin)
+- [x] 📈 Automat kursów zachowuje ostatnią znaną cenę, kurs NBP, stopę i złoto, gdy źródło nie odpowie (wycena nie spada do ceny zakupu); „Automat nie pobiera danych” liczy od ostatnich kursów NBP
+- [x] 🌍 Zwrot: waluta konta, tylko konto tej samej waluty; okienka odhaczania w walucie konta
+- [x] ✍️ Jedna reguła „czy dziś coś wpisano” (Na dziś, dymek o 20:00, powiadomienie)
+- [x] 🧹 Porządek: nieużywane `parseEurostat`, zmienne kolorów, pola stanu `S.inv`/`S.ro`, zdublowany import, przesunięty komentarz, literówka `--mut`
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

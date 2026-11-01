@@ -3,7 +3,7 @@
 // Shared matters go to both phones, personal ones (payslip, IKZE, JDG…) only to their owner. Logs contain only counts.
 import webpush from 'web-push';
 import {db,ensureVapid,household,warsaw} from './common.mjs';
-import {todayItems} from '../js/today.js';
+import {todayItems,typedToday} from '../js/today.js';
 const H=db().doc('households/main'),{today,hour,weekday}=warsaw(),mode=process.env.MODE||'auto';
 const keys=await ensureVapid(H);
 webpush.setVapidDetails('https://matisak2.github.io/budzetpanstwaciemcia/',keys.pub,keys.priv);
@@ -16,7 +16,7 @@ if(slot!='test'&&log[slot]==today){console.log('– dziś już wysłane');proces
 const D=await household(H);
 const msgFor=who=>{
   if(slot=='test')return{title:'🔔 Próba powiadomień',body:'Działa! Bailey i Ivo będą przypominać rano i wieczorem. 🐾',url:'./#go=today',tag:'test'};
-  if(slot=='e'){const any=D.tx.some(t=>t.date==today&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val));
+  if(slot=='e'){const any=typedToday(D.tx,today);
     return any?null:{title:'✍️ Wpiszcie dzisiejsze wydatki',body:'Dziś nic jeszcze nie ma w budżecie. Wystarczy minuta 🐾',url:'./#go=add',tag:'evening'}}
   const L=todayItems(D,{today,hour:8,checks:weekday=='Mon'}).filter(x=>x.go?.a!='add'&&!x.quiet&&(!x.who||x.who==who));if(!L.length)return null;
   const bad=L.filter(x=>x.k=='bad'),first=[...bad,...L.filter(x=>x.k!='bad')].slice(0,3);

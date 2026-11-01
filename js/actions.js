@@ -219,7 +219,7 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
     if(await putTx(ym,paid.id,{deleted:true})){linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));
       toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:()=>{putTx(ym,paid.id,{deleted:false});linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}))}})}return}
   const due=fixedDate(f,S.ym),date=td().startsWith(S.ym)?td():due;
-  if(f.kind=='tr'){const r=await ask({title:'Przelano: '+f.name,fields:[{id:'a',label:'Kwota (zł)',type:'decimal',value:f2(f.amount)},{id:'d',label:'Data',type:'date',value:date},{id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()},{id:'t',label:'Na konto',type:'select',value:f.to,options:accOpts()}],ok:'Odhacz'});
+  if(f.kind=='tr'){const r=await ask({title:'Przelano: '+f.name,fields:[{id:'a',label:`Kwota (${curSym(accCur(f.acc))})`,type:'decimal',value:f2(f.amount)},{id:'d',label:'Data',type:'date',value:date},{id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()},{id:'t',label:'Na konto',type:'select',value:f.to,options:accOpts()}],ok:'Odhacz'});
     if(!r)return;const amt=pg(r.a);if(amt<=0)return toast('Podaj kwotę','bad');if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
     const sf=f.saveFor&&S.debts[f.saveFor]?.saveAcc==r.t?f.saveFor:'',ta=S.cfg.accs.find(a=>a.id==r.t),sav=ta&&(ta.grp=='sav'||ta.grp=='inv');
     /* 🐷 only a transfer to savings / investments is „odłożone”; to the shared account, the other person's account or a sub-account it is just a transfer */
@@ -231,7 +231,7 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
     if(tw){const who=tw.by||tw.who,r=await ask({title:'Ten rachunek już jest wpisany?',text:`W Rejestrze jest ${tw.note?'„'+tw.note+'” ':''}${am(tw.amount,tw.acc)} z ${tw.date.split('-').reverse().join('.')}${who?` (${who=='Wercia'?'dodała':'dodał'} ${who})`:''}. Jeśli to ten sam rachunek, połączę go z „${f.name}” – bez drugiego wydatku.`,ok:'Połącz z tym wpisem',cancel:'Anuluj',alt:'To inny – dodaj nowy wpis'});
       if(!r)return;if(r!=='alt'){S.justChecked=f.id;if(await putTx(tw.date.slice(0,7),tw.id,{fixedId:f.id,...(f.debt&&!tw.debt?{debt:f.debt}:{})}))toast('Połączono: '+f.name+' ✓');return}}
     const r=await ask({title:'Zapłacono: '+f.name,text:'Kwotę możesz zmienić, jeśli w tym miesiącu rachunek był inny.',fields:[
-      {id:'a',label:'Kwota (zł)',type:'decimal',value:f2(f.amount)},
+      {id:'a',label:`Kwota (${curSym(accCur(f.acc))})`,type:'decimal',value:f2(f.amount)},
       {id:'d',label:'Data zapłaty',type:'date',value:date},
       {id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()}],ok:'Odhacz'});
     if(!r)return;const amt=pg(r.a);
@@ -247,12 +247,12 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
   // income: suggest last month's actual amount; PPK contributions from the payslip
   const last=lastOf(f,t=>t.fixedId===f.id),lastOwn=f.ppk?lastOf(f,t=>t.ppk=='own'&&t.acc===f.ppk&&t.fixedRef===f.id):null,lastEmp=f.ppk?lastOf(f,t=>t.ppk=='emp'&&t.acc===f.ppk&&t.fixedRef===f.id):null;
   const sug=f.vary?'':f2(last?last.amount:f.amount);
-  const fields=[{id:'a',label:'Kwota, która wpłynęła (zł)',type:'decimal',value:sug,ph:'z aplikacji banku'},
+  const fields=[{id:'a',label:`Kwota, która wpłynęła (${curSym(accCur(f.acc))})`,type:'decimal',value:sug,ph:'z aplikacji banku'},
     {id:'d',label:'Data wpływu',type:'date',value:date},
     {id:'c',label:'Na konto',type:'select',value:f.acc,options:accOpts()}];
   if(f.ppk){fields.push({id:'o',label:'PPK – moja wpłata (zł, z paska wypłaty)',type:'decimal',value:lastOwn?f2(lastOwn.amount):'',ph:'np. 180'});
     fields.push({id:'e',label:'PPK – wpłata pracodawcy (zł)',type:'decimal',value:lastEmp?f2(lastEmp.amount):'',ph:'np. 135'})}
-  const r=await ask({title:'Wpłynęło: '+f.name,text:(last?`W poprzednim wpływie: ${zl(last.amount)}. `:'')+'Wpisz dokładną kwotę z banku.'+(f.ppk?'\nWpłaty PPK nie liczą się do budżetu – trafiają na konto „'+accN(f.ppk)+'”.':''),fields,ok:'Odhacz'});
+  const r=await ask({title:'Wpłynęło: '+f.name,text:(last?`W poprzednim wpływie: ${am(last.amount,last.acc)}. `:'')+'Wpisz dokładną kwotę z banku.'+(f.ppk?'\nWpłaty PPK nie liczą się do budżetu – trafiają na konto „'+accN(f.ppk)+'”.':''),fields,ok:'Odhacz'});
   if(!r)return;const amt=pg(r.a);
   if(amt<=0)return toast('Podaj kwotę, która wpłynęła','bad');
   if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');

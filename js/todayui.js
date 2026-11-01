@@ -2,7 +2,7 @@
 import {doc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
-import {recurringP,automatStale,todayItems as todayItemsP,todayRank} from './today.js';
+import {recurringP,automatStale,todayItems as todayItemsP,todayRank,typedToday} from './today.js';
 import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap} from './logic.js';
 import {$,esc,ls,pg,td,zl0,plu,daysIn} from './util.js';
 import {DEMO,S,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
@@ -94,5 +94,5 @@ export async function maybeToday(){await S.pushReady;if(ls.get('mw_today')==td()
 /* event wiring of this part – app.js calls it once at start (it used to run while app.js was loading) */
 export function wireToday(){
 /* while the app stays open: at 20:00 a gentle nudge when nothing was entered today */
-window.setInterval(()=>{if(!S.cfg)return;updToday();const today=td();if(!(S.pushOk&&!automatStale(S.market,today))&&new Date().getHours()>=20&&ls.get('mw_eve')!=today&&!liveOf(S.tx).some(t=>t.date==today&&!t.fixedId)){ls.set('mw_eve',today);toast((kotki.mode=='off'?'':'🐱 ')+'Już 20:00 – wpiszesz dzisiejsze wydatki?','',{label:'Wpisz',fn:()=>openTx()})}},60000);
+window.setInterval(()=>{if(!S.cfg)return;updToday();const today=td();if(!(S.pushOk&&!automatStale(S.market,today))&&new Date().getHours()>=20&&ls.get('mw_eve')!=today&&!typedToday(liveOf(S.tx),today)){ls.set('mw_eve',today);toast((kotki.mode=='off'?'':'🐱 ')+'Już 20:00 – wpiszesz dzisiejsze wydatki?','',{label:'Wpisz',fn:()=>openTx()})}},60000);
 }

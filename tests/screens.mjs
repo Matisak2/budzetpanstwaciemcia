@@ -6,7 +6,7 @@ const pw=await import('playwright').catch(()=>import('/opt/node-tools/node_modul
 const {chromium}=pw.default||pw;
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),OUT=path.join(ROOT,'tests','out');
 fs.rmSync(OUT,{recursive:true,force:true});fs.mkdirSync(OUT,{recursive:true});
-const fails=[],warns=[];const fail=m=>{fails.push(m);console.log('❌ '+m)};
+const fails=[];const fail=m=>{fails.push(m);console.log('❌ '+m)};
 
 /* 1. the transaction sheet must be the same in the app and in the demo (CLAUDE.md: „zmieniaj oba”) */
 const body=f=>{const s=fs.readFileSync(path.join(ROOT,f),'utf8').replaceAll('../','');const a=s.indexOf('<body');return s.slice(a,s.slice(a).search(/<script|<!-- demo/)+a)};

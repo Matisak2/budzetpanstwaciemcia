@@ -2,12 +2,13 @@
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
-import {debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
+import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
+import {keepPrev} from '../scripts/market-lib.mjs';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -310,6 +311,12 @@ const N=' ';
   eq('Termin rocznego – za wcześnie (23 dni)',yearPayP(oc,[],'2027-02-20'),null);
   eq('Termin rocznego – po terminie, niezapłacone',yearPayP(oc,[],'2027-04-10')?.n,-26);
   eq('Termin rocznego – zapłacone',yearPayP(oc,[{type:'exp',amount:120000,date:'2027-03-02',yearId:'oc'}],'2027-03-05'),null);
+  /* every 3 months / every month: the payment of the previous quarter / month does not hide this one (earlyN) */
+  {const q={id:'q3',name:'Kwartalne',amount:30000,month:1,day:15,every:3},m1={id:'m1',name:'Miesięczne',amount:5000,month:1,day:20,every:1};
+   eq('Termin kwartalnego – styczniowa zapłata nie ukrywa kwietnia',yearPayP(q,[{type:'exp',amount:30000,date:'2026-01-14',yearId:'q3'}],'2026-04-05'),{m:'2026-04',due:'2026-04-15',n:10});
+   eq('Termin kwartalnego – zapłacone w marcu za kwiecień',yearPayP(q,[{type:'exp',amount:30000,date:'2026-03-20',yearId:'q3'}],'2026-04-05'),null);
+   eq('Termin miesięcznego – październikowa zapłata nie ukrywa listopada',yearPayP(m1,[{type:'exp',amount:5000,date:'2026-10-20',yearId:'m1'}],'2026-11-10'),{m:'2026-11',due:'2026-11-20',n:10});
+   eq('Termin miesięcznego – zapłacone w tym miesiącu',yearPayP(m1,[{type:'exp',amount:5000,date:'2026-11-08',yearId:'m1'}],'2026-11-10'),null)}
   const D=(fixed,tx,today)=>todayItems({cfg:{accs:[{id:'a',grp:'cur',owner:'Wercia'}],cats:[],fixed,years:[]},tx,slips:{},hold:{},debts:{},market:{},backup:{at:new Date(today+'T12:00:00').getTime()},hraw:{}},{today,checks:false});
   const naj={id:'fn',name:'Najem',kind:'inc',amount:300000,day:10,sub:'x',acc:'a',najem:'m'},rent=[{type:'inc',amount:300000,date:'2027-02-10',acc:'a',sub:'x',fixedId:'fn'}];
   const it=D([naj],rent,'2027-03-05').find(x=>x.icon=='🏠'&&/Ryczałt/.test(x.text));eq('Najem – ryczałt 8,5% z 3 000 zł',/255,00/.test(it?.text||''),true);eq('Najem – czyje (właściciel konta)',it?.who,'Wercia');
@@ -440,5 +447,15 @@ const N=' ';
   eq('Mail: wersja tekstowa',/Rok temu: wydatki 1\s000\szł/.test(summaryText(st)),true);
 }
 
+/* 🤖 the automat: a site that did not answer today keeps yesterday's value; „stopped” counts from the last day NBP rates came */
+{const prev={date:'2026-10-29',ok:'2026-10-29',fx:{EUR:4.3},fxDate:'2026-10-29',src:{fx:'NBP'},nbp:5,gold:410,goldDate:'2026-10-29',prices:{'IWDA.UK':{p:100,d:'2026-10-29',src:'stooq'},'OLD.US':{p:1,d:'2026-01-01'}}};
+ const out={date:'2026-10-30',fx:{},prices:{'CDR':{p:120,d:'2026-10-30'}},src:{}};
+ eq('Automat – brak odpowiedzi: zostają 4 ostatnie wartości',keepPrev(out,prev,['IWDA.UK','CDR'],true),4);
+ eq('Automat – stara cena ze starą datą, sprzedanych nie przenosi',out.prices,{CDR:{p:120,d:'2026-10-30'},'IWDA.UK':{p:100,d:'2026-10-29',src:'stooq'}});
+ eq('Automat – kursy, stopa i złoto z wczoraj',[out.fx.EUR,out.fxDate,out.nbp,out.gold,out.ok],[4.3,'2026-10-29',5,410,'2026-10-29']);
+ const o2={date:'2026-10-30',fx:{EUR:4.31},fxDate:'2026-10-30',prices:{},src:{fx:'NBP'}};keepPrev(o2,prev,[],false);
+ eq('Automat – kursy przyszły dziś',[o2.fx.EUR,o2.ok],[4.31,'2026-10-30']);
+ eq('Automat – działa, ale nic nie przychodzi od 3 dni roboczych',automatStale({rates:{date:'2026-11-05',ok:'2026-11-02'}},'2026-11-05'),3);
+ eq('Automat – stary zapis bez ok',automatStale({rates:{date:'2026-11-04'}},'2026-11-05'),0)}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

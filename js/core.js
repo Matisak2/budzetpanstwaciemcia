@@ -23,7 +23,7 @@ export function applySeason(){const m=+S.ym.slice(5)-1,[c,l]=SEASON[m];const r=d
 /* ---------- state ---------- */
 /* the demo version (/demo/): sample data in this browser only, no Firebase, no notifications or e-mails */
 export const DEMO=window.MW_DEMO||null;
-export const S={sub:'all',bf:'all',fold:{},showEmpty:{},showCat:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},hold:{},debts:{},market:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},inv:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati',ro:false};
+export const S={sub:'all',bf:'all',fold:{},showEmpty:{},showCat:{},accSub:'all',accTab:'cur',savTarget:0,goals:{},slips:{},hold:{},debts:{},market:{},backup:null,plansSrv:false,autoPlanned:{},f:{q:'',type:'',who:'',acc:'',cat:'',scope:'m'},ana:'m',cfg:null,tx:[],plans:{},months:new Set(),ym:td().slice(0,7),tab:'dash',open:{},pend:false,edit:null,etype:'exp',last:'',who:ls.get('mw_who')||'Mati'};
 
 /* ---------- labels ---------- */
 export const catL=c=>(S.cfg.cats.findIndex(x=>x.id===c.id)+1)+'. '+cleanCat(c.name);

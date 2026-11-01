@@ -2,7 +2,7 @@
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy} from './util.js';
-import {balance,carStats,dueAlerts,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP} from './logic.js';
+import {balance,carStats,dueAlerts,earlyN,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 export {ownerOf};
@@ -14,10 +14,11 @@ export function yearStateP(cfg,tx,hraw,ym,today){const id=hraw?.yearAcc,years=cf
   const dep=tx.filter(t=>t.type=='tr'&&t.to===id&&t.date.startsWith(ym)).reduce((a,t)=>a+(t.amount2??t.amount),0);
   return{id,now,list:yearPlan(years,now,ym),need,dep,left:Math.max(0,need-dep),soon:base.filter(x=>x.months<=2&&x.fill<x.it.amount)}}
 /* 📅 the payment date of a yearly expense close to today (last, this or next month) that is not paid yet – paid = a 📅 „Zapłacone” entry
-   from 3 months before that month on; day = it.day (1 when not set) */
+   from 3 months before that month on (less for short periods – earlyN: every 3 months – 2 months before, every month – that month only,
+   so the payment of the previous quarter / month never hides this one); day = it.day (1 when not set) */
 export function yearPayP(it,tx,today){const ym=today.slice(0,7);
   for(const m of [addMonths(ym,-1),ym,addMonths(ym,1)]){if(!yearDueIn(it,m))continue;const due=m+'-'+String(Math.min(Math.max(1,+it.day||1),new Date(Date.UTC(+m.slice(0,4),+m.slice(5),0)).getUTCDate())).padStart(2,'0'),n=dd(today,due);
-    if(n>14||n<-31)continue;const from=addMonths(m,-3)+'-01';if(tx.some(t=>t.yearId===it.id&&t.type=='exp'&&t.date>=from))continue;return{m,due,n}}
+    if(n>14||n<-31)continue;const from=addMonths(m,-earlyN(it))+'-01';if(tx.some(t=>t.yearId===it.id&&t.type=='exp'&&t.date>=from))continue;return{m,due,n}}
   return null}
 /* 🔻 interest of a liability: a monthly rate from the nominal yearly % (not RRSO) */
 const mRate=d=>d?.dir=='owe'&&+d.rate>0?d.rate/1200:0;
@@ -67,8 +68,9 @@ export function maturitiesP(cfg,hold,today,days){const lim=addDays(today,days),o
 /* a limits proposal from the automat that has not been answered yet */
 export function limitPropP(market,hraw){const L=market?.limits;if(!L?.year||!L.ike)return null;const cur={...(LIMITS[L.year]||{}),...((hraw?.limits||{})[L.year]||{})};
   if(cur.ike==L.ike&&cur.ikze==L.ikze&&cur.ikzeB==L.ikzeB)return null;if((hraw?.limitsSeen||{})[L.year]==L.found)return null;return L}
-/* the automat stopped: no prices for 3 working days (only once it has worked at least once) */
-export function automatStale(market,today){const d=market?.rates?.date;if(!d)return 0;let n=0;for(let x=addDays(d,1);x<=today;x=addDays(x,1)){const w=new Date(x+'T12:00:00').getDay();if(w&&w<6)n++}return n>=3?dd(d,today):0}
+/* the automat stopped: no prices for 3 working days (only once it has worked at least once) – counted from the last day the NBP rates came
+   (rates.ok; it runs but every source fails = stopped too), older readings without ok – from their date */
+export function automatStale(market,today){const d=market?.rates?.ok||market?.rates?.date;if(!d)return 0;let n=0;for(let x=addDays(d,1);x<=today;x=addDays(x,1)){const w=new Date(x+'T12:00:00').getDay();if(w&&w<6)n++}return n>=3?dd(d,today):0}
 /* 🧹 tidiness guard: possible duplicates, entries without a position or account, negative current accounts, payslips that do not add up */
 export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnore||{},sm=subsMap(cfg),acc=new Set(cfg.accs.map(a=>a.id)),cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const out=[];
   const add=(key,icon,text,go)=>{if(!ign[key])out.push({key,icon,text,go,k:'check',who:null,label:go.a=='tx'?'Zobacz':'Pokaż'})};
@@ -185,6 +187,9 @@ export function closeStateP(hraw,ym,who){const c=hraw?.closeM?.[ym]||{},mine=c.p
 export function closeDueP(hraw,tx,today,cfg,who){const w=cfg&&who?closeWinP(cfg,tx,who,today):+today.slice(8)<=10?{start:today.slice(0,8)+'01',ym:addMonths(today.slice(0,7),-1)}:null;if(!w)return null;
   const ym=w.ym,ig=hraw?.checkIgnore||{},st=who?closeStateP(hraw,ym,who):{n:CLOSE_STEPS.filter(k=>hraw?.closeM?.[ym]?.steps?.[k]).length,done:hraw?.closeM?.[ym]?.done};
   if(st.done||ig['close:'+ym]||ig['close:'+ym+':'+who]||!inPeriod(tx,ym).length)return null;return{ym,n:st.n,start:w.start,pay:w.pay||null}}
+/* ✍️ was anything typed today? (automatic entries – fixed payments ticked, PPK, drobne, value changes of investments – do not count);
+   one rule for „Na dziś” after 20:00, the evening nudge in the app and the evening notification of the automat */
+export const typedToday=(tx,today)=>tx.some(t=>t.date==today&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val));
 /* everything that needs attention today; n = days until the deadline (−1 late, 0 today, 1 tomorrow), later:true = not for today („Wkrótce” – collapsed, no number on the bell) */
 export const todayRank=x=>x.k=='bad'?0:x.n!=null&&x.n<=0?1:x.n==1?2:3;
 export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,hold,debts,market,backup,hraw}=D;if(!cfg)return[];
@@ -207,7 +212,7 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
     const tax=L.reduce((a,s)=>{const m=Object.keys(slips||{}).filter(m=>slips[m]?.[s.id]).sort().pop();return a+(m?suggest(s,slips[m][s.id]).tax:0)},0);
     out.push({key,icon:'🎓',text:`${w}: ${dmy(un)} – 26. urodziny i koniec ulgi dla młodych. Wypłaty po tym dniu będą z podatkiem${tax?` – na konto ok. ${zl(tax)} mniej co miesiąc`:''}. Warto to uwzględnić w planie.`,go:{a:'pay'},label:'Pensje',k:'young',n,later:n>7,who:w,quiet:!(n==31||n==7)})}
   if(day>=14&&day<=20)for(const s of incs.filter(s=>s.kind=='b2b'))add('🧾',`JDG (${s.name}): do 20. zapłać ZUS, zdrowotną i podatek.`,{a:'pay'},'Pensje','',person(s.who));
-  if(hour>=20&&!tx.some(t=>t.date==today&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val)))add('✍️','Po 20:00 – dziś nic jeszcze nie wpisano. Były jakieś wydatki?',{a:'add'},'Wpisz');
+  if(hour>=20&&!typedToday(tx,today))add('✍️','Po 20:00 – dziś nic jeszcze nie wpisano. Były jakieś wydatki?',{a:'add'},'Wpisz');
   const ys=yearStateP(cfg,tx,hraw,ym,today);if(ys){if(ys.left)add('📅',`Wydatki roczne: w tym miesiącu odłóż jeszcze ${zl(ys.left)}.`,{a:'year'},'Odłóż');
     ys.soon.filter(x=>!yearPayP(x.it,tx,today)).forEach(x=>add('⏰',`Wkrótce: ${x.it.name} (${zl(x.it.amount)}) – ${MN[+x.due.slice(5)-1].toLowerCase()}, w kopercie ${zl(x.fill)}.`,{a:'year'},'Zobacz','',person(x.it.who),{later:true}))}
   for(const r of cfg.rems||[]){const s=remStateP(r,cfg,tx,today);if(s.due||s.late)add('🔔',`${r.name}${r.next?' – '+dmy(r.next):''}${s.kmLeft!=null?` · zostało ${s.kmLeft.toLocaleString('pl-PL')} km`:''}`,{a:'rem'},'Zobacz',s.late?'bad':'',person(r.who),{n:s.days??undefined,later:s.days!=null&&s.days>7&&!(s.kmLeft!=null&&s.kmLeft<=500)})}

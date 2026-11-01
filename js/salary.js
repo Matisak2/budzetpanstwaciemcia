@@ -7,8 +7,7 @@ import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,sugge
 import {liveOf,subsMap,SUBSCR_RE,subscrOf,fixedWho,seenBy,ownerOf} from './logic.js';
 import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu,ls} from './util.js';
 import {S,toast,ask,accCur,am,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard,delFixedDb} from './core.js';
-import {editFixed} from './actions.js';
-import {txRowH} from './actions.js';
+import {editFixed,txRowH} from './actions.js';
 import {accN,render,goTab} from './app.js';
 import {use} from './usage.js';
 import {yearUndo} from './savings.js';
