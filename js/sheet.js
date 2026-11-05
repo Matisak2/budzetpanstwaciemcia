@@ -7,7 +7,7 @@ import {addM} from './inv.js';
 import {ULGI,savedP,saveSplitP} from './today.js';
 import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch,ownerOf,balDrop} from './logic.js';
 import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays,plu,dmy} from './util.js';
-import {S,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard,negStop} from './core.js';
+import {S,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard,negStop,txOk} from './core.js';
 import {downloadBlob} from './actions.js';
 import {incById,openSlip} from './salary.js';
 import {markYearPaid,yearUndo} from './savings.js';
@@ -224,10 +224,10 @@ export async function saveTx(next){if(guard())return;
   if(parts.some(x=>x.amount<=0))return toast('Podaj kwotę w każdym wierszu paragonu','bad');
   const main=amount-parts.reduce((a,x)=>a+x.amount,0);
   if(main<=0)return toast('Pozycje paragonu przekraczają jego kwotę','bad');
-  /* 🚫 no minus: an expense or transfer (also a changed one, and a changed transfer into an account) the account cannot pay is not saved;
-     🪙 drobne the account cannot pay are just left out */
+  /* 🚫 no minus: an expense or transfer (also a changed one, a changed transfer into an account and a changed income – less, later, another account)
+     the account cannot pay is not saved; 🪙 drobne the account cannot pay are just left out */
   const old0=S.edit?liveById(S.edit):null,tx0=liveOf(S.tx),acc0=$('mc').value;let chk=[];
-  if(type!='inc'||old0?.type=='tr'){chk=[{...(old0||{}),id:old0?old0.id:'+new',type,date,amount:main,acc:acc0,to:type=='tr'?$('mto').value:'',amount2:two?amount2:undefined},...parts.map((x,i)=>({id:'+p'+i,type,date,amount:x.amount,acc:acc0,to:''}))];
+  if(type!='inc'||old0){chk=[{...(old0||{}),id:old0?old0.id:'+new',type,date,amount:main,acc:acc0,to:type=='tr'?$('mto').value:'',amount2:two?amount2:undefined},...parts.map((x,i)=>({id:'+p'+i,type,date,amount:x.amount,acc:acc0,to:''}))];
     const v=balDrop(S.cfg,tx0,chk);if(v)return negStop(v)}
   let coin=!old0&&type=='exp'&&S.coinOn&&S.coin,coinOut=false;
   if(coin&&balDrop(S.cfg,tx0,[...chk,{id:'+coin',type:'tr',date,amount:coin.v,acc:coin.r.from,to:coin.r.to}])){coin=null;coinOut=true}
@@ -270,9 +270,11 @@ export async function saveTx(next){if(guard())return;
   if(ok)useTx(body,{old,parts:parts.length,coin,next:next===true});
   if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):'')+(coinOut?' · 🪙 drobne pominięte – za mało na koncie':''));if(ym!=S.ym){S.ym=ym;render()}}}
 export async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id);
+  /* 🚫 deleting an income or a transfer in must not leave the account with a minus (later spending was paid with it) */
+  if(!await txOk([t,...linked].map(x=>({...x,deleted:true}))))return;
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
   linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t);
-  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.payOf)?' razem z odsetkami':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true)}})}
+  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.payOf)?' razem z odsetkami':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:async()=>{if(!await txOk([t,...linked].map(x=>({...x,deleted:false}))))return;putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true)}})}
 export async function markRefund(id){const t=liveById(id);if(!t)return;const done=refundsOf(id).reduce((a,x)=>a+x.amount,0),left=t.amount-done;
   if(left<=0)return toast('Ten wydatek jest już w całości zwrócony');
   const r=await ask({title:'↩️ Zwrot: '+(subsMap(S.cfg)[t.sub]?.name||''),text:`Wydatek ${am(t.amount,t.acc)} z ${t.date.split('-').reverse().join('.')}${done?`, zwrócono już ${am(done,t.acc)}`:''}.\nZwrot zmniejszy wydatek w tej samej pozycji – nie liczy się jako przychód.`,
@@ -284,7 +286,7 @@ export async function markRefund(id){const t=liveById(id);if(!t)return;const don
   if(accCur(r.c)!=accCur(t.acc))return toast(`Zwrot musi wpłynąć na konto w tej samej walucie co wydatek (${curSym(accCur(t.acc))})`,'bad');
   closeSheet();const rym=r.d.slice(0,7),tid='t'+rid();
   if(await putTx(rym,tid,{type:'inc',amount:amt,date:r.d,sub:t.sub,acc:r.c,to:'',who:t.who||S.who,note:t.note||'',refundOf:id,deleted:false,ts:Date.now()}))
-    toast('Zapisano zwrot '+am(amt,r.c),'',{label:'Cofnij',fn:()=>putTx(rym,tid,{deleted:true})})}
+    toast('Zapisano zwrot '+am(amt,r.c),'',{label:'Cofnij',fn:async()=>{const x=liveById(tid);if(x&&!await txOk([{...x,deleted:true}]))return;putTx(rym,tid,{deleted:true})}})}
 /* event wiring of this part – app.js calls it once at start (it used to run while app.js was loading) */
 export function wireSheet(){
 $('mn').addEventListener('input',renderNoteSug);$('mn').addEventListener('focus',renderNoteSug);$('mn').addEventListener('blur',()=>setTimeout(renderNoteSug,150));

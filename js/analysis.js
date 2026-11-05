@@ -4,7 +4,7 @@ import {scene} from './cats.js';
 import {isTreat,kotki} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,gainSvg,hbarsH,legendH,lineSvg,pctS} from './charts.js';
 import {OWN,OWN_COL,catHue,catMark} from './data.js';
-import {anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs,yearAgoP,ownerOf} from './logic.js';
+import {anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs,yearAgoP,ownerOf,ytdSpanP} from './logic.js';
 import {MN,MNG,addMonths,daysIn,esc,ls,p2,td,zl,zl0,fxTxt,plu} from './util.js';
 import {S,catSlides,toast,accCur,isP} from './core.js';
 import {norm} from './sheet.js';
@@ -50,13 +50,13 @@ export function wealthH(y){const cur=td().slice(0,7),ms=Array.from({length:12},(
 export function catGridH(cfg,M){const cats=cfg.cats.filter(c=>c.type=='exp'&&M.some(a=>(a.cat[c.id]||0)>0));if(!cats.length)return'';
   return`<section class="chart"><div class="ct"><b>Kategorie przez 12 miesięcy</b><span class="mini">im ciemniej, tym więcej w tym miesiącu</span></div><div class="cgrid">${cats.map(c=>{const vals=M.map(a=>Math.max(0,a.cat[c.id]||0)),mx=Math.max(1,...vals),col=markOf(c);
     return`<div class="cgl">${esc(cleanCat(c.name))}</div><div class="cgr">${vals.map((v,i)=>`<i style="background:${col};opacity:${v?(0.15+0.85*v/mx).toFixed(2):0.05}" data-tip="${esc(MN[i]+': '+zl(v))}" class="hit"></i>`).join('')}</div>`}).join('')}<div class="cgl"></div><div class="cgr cgm">${'SLMKMCLSWPLG'.split('').map(x=>`<span>${x}</span>`).join('')}</div></div></section>`}
-export function inflationH(cfg,tx,y){const cur=td().slice(0,7),last=y<cur.slice(0,4)?12:+cur.slice(5),py=String(+y-1);
-  const sum=(yy,id)=>{let s=0;for(let i=1;i<=last;i++){const a=agg(cfg,tx,yy+'-'+p2(i));s+=id?(a.cat[id]||0):a.exp}return s};
-  const prevTot=sum(py);if(!prevTot)return`<section class="chart"><div class="ct"><b>📈 Wasza inflacja</b></div><div class="mini">Porównanie rok do roku pojawi się, gdy w aplikacji będą wydatki z ${py} roku.</div></section>`;
-  const curTot=sum(y),your=(curTot/prevTot-1)*100,gus=macro().infl;
-  const rows=cfg.cats.filter(c=>c.type=='exp').map(c=>({c,a:sum(y,c.id),b:sum(py,c.id)})).filter(x=>x.b>0&&x.a>0).map(x=>({...x,d:(x.a/x.b-1)*100})).sort((a,b)=>b.d-a.d);
+/* the year that lasts: 1 January – today against the same days a year earlier (ytdSpanP – the current month up to the same day) */
+export function inflationH(cfg,tx,y){const sp=ytdSpanP(cfg,tx,y,td()),last=sp.last,py=String(+y-1);
+  const sum=(P,id)=>id?(P.cat[id]||0):P.exp,prevTot=sum(sp.prev);if(!prevTot)return`<section class="chart"><div class="ct"><b>📈 Wasza inflacja</b></div><div class="mini">Porównanie rok do roku pojawi się, gdy w aplikacji będą wydatki z ${py} roku.</div></section>`;
+  const curTot=sum(sp.cur),your=(curTot/prevTot-1)*100,gus=macro().infl;
+  const rows=cfg.cats.filter(c=>c.type=='exp').map(c=>({c,a:sum(sp.cur,c.id),b:sum(sp.prev,c.id)})).filter(x=>x.b>0&&x.a>0).map(x=>({...x,d:(x.a/x.b-1)*100})).sort((a,b)=>b.d-a.d);
   const f=x=>(x>=0?'+':'')+x.toFixed(1).replace('.',',')+'%';
-  return`<section class="chart"><div class="ct"><b>📈 Wasza inflacja</b><span class="mini">${last==12?'cały rok':`styczeń–${MN[last-1].toLowerCase()}`} ${y} wobec ${py}</span></div>
+  return`<section class="chart"><div class="ct"><b>📈 Wasza inflacja</b><span class="mini">${sp.live?`1 stycznia – ${sp.day} ${MNG[last-1]}`:'cały rok'} ${y} wobec ${sp.live?'tych samych dni ':''}${py}</span></div>
     <div class="kpis" style="gap:8px"><div class="kpi k-ro"><div class="l">Wasze wydatki</div><div class="v num">${f(your)}</div><div class="s">${zl0(curTot)} wobec ${zl0(prevTot)}</div></div><div class="kpi k-sk"><div class="l">Inflacja GUS</div><div class="v num">${gus!=null?f(+gus):'—'}</div><div class="s">${gus!=null?(S.market?.rates?.inflPer?'automat, '+S.market.rates.inflPer:'wpisana ręcznie'):'wpisze ją automat'}</div></div></div>
     ${rows.slice(0,8).map(x=>`<div class="r1"><span>${esc(cleanCat(x.c.name))}</span><b class="num ${x.d>0?'t-exp':'t-inc'}">${x.d>0?'▲':'▼'} ${f(x.d)}</b></div>`).join('')}</section>`}
 /* CSV for Excel: semicolons, decimal comma, UTF-8 with BOM */

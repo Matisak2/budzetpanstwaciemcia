@@ -1,12 +1,12 @@
 /* 🖨️ the year summary – the same numbers and the same page in the app (Analiza → Rok → „Podsumowanie roku”, save as PDF / print)
    and in the January e-mail from the automat. Pure functions; inline styles, so e-mail apps show it the same way. */
 import {MN,zl,zl0,esc,plu} from './util.js';
-import {agg,balance,cleanCat,savFlow,savIds} from './logic.js';
+import {agg,balance,cleanCat,savFlow,savIds,ytdSpanP} from './logic.js';
 import {limitOf,paidInYear,wrapOf} from './inv.js';
 import {ULGI,pitSummaryP} from './today.js';
 const isPln=a=>!a.cur||a.cur=='PLN';
 /* D = {cfg, tx (live entries), hraw}; today limits the current year to the months that already started */
-export function yearStats(D,year,today='9999-12-31'){const{cfg,tx,hraw}=D,y=String(year),A=agg(cfg,tx,y),P=agg(cfg,tx,String(+y-1));
+export function yearStats(D,year,today='9999-12-31'){const{cfg,tx,hraw}=D,y=String(year),A=agg(cfg,tx,y),SP=ytdSpanP(cfg,tx,y,today);
   const last=today.slice(0,4)==y?+today.slice(5,7):12;
   let months=Array.from({length:last},(_,i)=>{const ym=`${y}-${String(i+1).padStart(2,'0')}`,M=agg(cfg,tx,ym);return{ym,inc:M.inc,exp:M.exp}});
   const first=months.findIndex(m=>m.inc||m.exp);months=first<0?[]:months.slice(first);
@@ -20,10 +20,10 @@ export function yearStats(D,year,today='9999-12-31'){const{cfg,tx,hraw}=D,y=Stri
   const withData=months.filter(m=>m.exp>0),maxM=withData.slice().sort((a,b)=>b.exp-a.exp)[0]||null;
   const wraps=cfg.accs.filter(a=>a.grp=='inv'&&!a.archived&&['ike','ikze','ppk','oki'].includes(wrapOf(a))).map(a=>({n:a.name,w:wrapOf(a),paid:paidInYear(tx,a.id,y),lim:limitOf(a,y,hraw?.limits),value:bal(a,end)})).filter(x=>x.paid||x.value);
   const pit=['Mati','Wercia'].map(w=>({w,...pitSummaryP(cfg,tx,y,w,hraw)})).filter(p=>p.n||p.ikze.length);
-  return{year:y,inc:A.inc,exp:A.exp,who:A.who,own:A.own,gain,prev:{inc:P.inc,exp:P.exp},months,saved,wealth0,wealth1,cats,top,maxM,avgExp:withData.length?Math.round(withData.reduce((a,m)=>a+m.exp,0)/withData.length):0,
+  return{year:y,inc:A.inc,exp:A.exp,who:A.who,own:A.own,gain,/* the year before – over the same days while this one lasts (a few months against a whole year was misleading) */prev:{inc:SP.prev.inc,exp:SP.prev.exp,now:SP.cur.exp,same:SP.live},months,saved,wealth0,wealth1,cats,top,maxM,avgExp:withData.length?Math.round(withData.reduce((a,m)=>a+m.exp,0)/withData.length):0,
     wraps,pit,n:tx.filter(t=>t.date.startsWith(y)).length,partial:last<12}}
 /* the page itself (a <div> – the app shows it, the e-mail wraps it) */
-export function yearBody(st,app=''){const bal=st.inc-st.exp,pc=(a,b)=>b?Math.round((a/b-1)*100):null,dE=pc(st.exp,st.prev.exp);
+export function yearBody(st,app=''){const bal=st.inc-st.exp,pc=(a,b)=>b?Math.round((a/b-1)*100):null,dE=pc(st.prev.now??st.exp,st.prev.exp);
   const row=(l,v,c='#334155')=>`<tr><td style="padding:6px 0;color:#64748b">${l}</td><td style="padding:6px 0;text-align:right;font-weight:800;color:${c}">${v}</td></tr>`;
   const box=(t,body,bg)=>`<div style="background:${bg};border-radius:16px;padding:14px 16px;margin:10px 0;break-inside:avoid"><div style="font-weight:800;margin-bottom:8px;font-size:16px">${t}</div>${body}</div>`;
   const bar=(v,max,col)=>`<div style="background:rgba(15,23,42,.06);border-radius:6px;height:10px;overflow:hidden"><div style="width:${max?Math.max(2,Math.round(v/max*100)):0}%;height:10px;background:${col};border-radius:6px"></div></div>`;
@@ -41,7 +41,7 @@ export function yearBody(st,app=''){const bal=st.inc-st.exp,pc=(a,b)=>b?Math.rou
  <div style="text-align:center;padding:8px 0 4px">${app?`<img src="${app}icon-192.png" width="64" height="64" alt="" style="border-radius:16px">`:''}<div style="font-size:22px;font-weight:900;margin-top:6px">Podsumowanie roku ${st.year} ${good?'🎉':'🐾'}</div>
  <div style="color:#64748b;font-size:14px">${st.n} ${plu(st.n,'wpis','wpisy','wpisów')} w budżecie${st.partial?' · rok jeszcze trwa':''}</div></div>
  ${box('🐾 '+(good?`Ivo: Odłożyliście ${zl0(st.saved)}. Brawo, należy się smaczek! 😺`:st.partial?`Bailey: W tym roku jeszcze nic nie odłożyliście – nawet małe kwoty się liczą.`:`Bailey: To był rok bez odkładania – w nowym zacznijmy od małych kwot.`),'',good?'#dcfce7':'#fef3c7')}
- ${box('W liczbach',`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('Przychody',zl(st.inc),'#15803d')}${row('Wydatki',zl(st.exp)+(dE!=null?` <span style="color:#64748b;font-weight:600">(${dE>0?'+':''}${dE}% wobec ${+st.year-1})</span>`:''),'#be123c')}${row('Zostało',zl(bal),bal>=0?'#15803d':'#be123c')}${row('Odłożone (wpłaty na oszczędności i inwestycje)',zl(st.saved),st.saved>=0?'#15803d':'#be123c')}${st.gain?row('Inwestycje – zmiana kursów',(st.gain>0?'+':'')+zl(st.gain),st.gain>=0?'#15803d':'#be123c'):''}${row('Średnio wydatki na miesiąc',zl(st.avgExp))}</table>`,'#ffffff')}
+ ${box('W liczbach',`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('Przychody',zl(st.inc),'#15803d')}${row('Wydatki',zl(st.exp)+(dE!=null?` <span style="color:#64748b;font-weight:600">(${dE>0?'+':''}${dE}% wobec ${st.prev.same?'tych samych dni ':''}${+st.year-1})</span>`:''),'#be123c')}${row('Zostało',zl(bal),bal>=0?'#15803d':'#be123c')}${row('Odłożone (wpłaty na oszczędności i inwestycje)',zl(st.saved),st.saved>=0?'#15803d':'#be123c')}${st.gain?row('Inwestycje – zmiana kursów',(st.gain>0?'+':'')+zl(st.gain),st.gain>=0?'#15803d':'#be123c'):''}${row('Średnio wydatki na miesiąc',zl(st.avgExp))}</table>`,'#ffffff')}
  ${st.months.length?box('Miesiąc po miesiącu',monthsT,'#ffffff'):''}
  ${st.cats.length?box('Na co poszło',catsT+topT,'#ffffff'):''}
  ${box('Majątek',`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('Na początku roku',zl(st.wealth0))}${row(st.partial?'Teraz':'Na koniec roku',zl(st.wealth1))}${row('Zmiana',(dW>=0?'+':'')+zl(dW),dW>=0?'#15803d':'#be123c')}</table><div style="font-size:12px;color:#64748b">wszystkie konta w złotych (bez zobowiązań i należności)</div>`,'#eef2ff')}

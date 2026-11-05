@@ -6,7 +6,7 @@ import {scene} from './cats.js';
 import {NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
 import {CURS,SEASON,tint} from './data.js';
 import {wrapOf} from './inv.js';
-import {actuals,agg,cleanCat,liveOf,planOf} from './logic.js';
+import {actuals,agg,balDrop,cleanCat,liveOf,planOf} from './logic.js';
 import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus,dmy} from './util.js';
 import {goalAlloc,askWhoLock} from './actions.js';
 import {runGo,maybeToday} from './todayui.js';
@@ -129,6 +129,10 @@ export function ask({title,text='',fields=[],ok='Zapisz',cancel='Anuluj',danger=
 /* 🚫 an expense or transfer the account cannot pay (balDrop in logic.js): nothing is saved, only the information to look through the accounts */
 export function negStop(v){const a=S.cfg.accs.find(x=>x.id==v.acc);
   return ask({title:`🙀 Za mało na koncie „${a?.name||'konto'}”`,text:`Po tym wpisie saldo spadłoby do ${money(v.bal,CUR(a))} (${dmy(v.date)}). Na prawdziwym koncie nie może być minusa, więc tego nie zapiszę.\n\nPrzeanalizuj konta: może brakuje wpisanego wpływu albo przelewu, wybrane jest nie to konto albo saldo w aplikacji różni się od banku (💰 Majątek → 👛 Konta → ⚖️ Wyrównaj wszystkie salda naraz).`,ok:'Rozumiem',cancel:null})}
+/* 🚫 the same check before taking money away from an account in another way: deleting an income or a transfer in, unticking a fixed income,
+   bringing back a deleted expense („Przywróć”, „Cofnij”). changes = the entries as they would be ({...t,deleted:true} / {...t,deleted:false});
+   true = fine, false = stopped (the cats said why, nothing is changed) */
+export async function txOk(changes){const v=balDrop(S.cfg,liveOf(S.tx),changes);if(!v)return true;await negStop(v);return false}
 /* currencies: every account keeps its own; złoty sums stay złoty, other currencies are added as " + 45,00 €" */
 export const CUR=a=>a?.cur||'PLN',accCur=id=>CUR(S.cfg.accs.find(a=>a.id==id)),isP=a=>CUR(a)=='PLN';
 export const am=(n,id)=>money(n,accCur(id));

@@ -6,7 +6,7 @@ import {ULGI,pitSummaryP} from './today.js';
 import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf,youngLeft,youngUntil,youngPart,baseOf} from './pay.js';
 import {liveOf,subsMap,SUBSCR_RE,subscrOf,fixedWho,seenBy,ownerOf} from './logic.js';
 import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu,ls} from './util.js';
-import {S,toast,ask,accCur,am,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard,delFixedDb} from './core.js';
+import {S,toast,ask,accCur,am,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard,delFixedDb,txOk} from './core.js';
 import {editFixed,txRowH} from './actions.js';
 import {accN,render,goTab} from './app.js';
 import {use} from './usage.js';
@@ -116,8 +116,10 @@ export function deletedH(){const L=deletedList();if(!L.length)return'';const sm=
     return`<div class="r1 delr"><span><b>${esc(nm)}</b> · <span class="num ${t.type=='inc'?'t-inc':t.type=='exp'?'t-exp':''}">${sg}${am(Math.abs(t.amount||0),t.acc)}</span><small class="mini" style="display:block">${t.date.split('-').reverse().join('.')} · usunięto ${f(t.dAt)}${t.dby?' ('+esc(t.dby)+')':''}</small></span><button class="btn sm" onclick="restoreTx('${t.id}')">↩️ Przywróć</button></div>`}).join('')}</div>${L.length>5?`<button class="btn sm" onclick="S.delAll=!S.delAll;render()">${S.delAll?'Pokaż mniej':`Pokaż wszystkie (${L.length})`}</button>`:''}</div>`}
 export async function restoreTx(id){if(guard())return;const t=S.tx.find(x=>x.id===id&&x.deleted===true&&!x.moved);if(!t)return; // an entry moved to another month has a „moved” copy with the same id
   const kids=S.tx.filter(x=>x.deleted===true&&parOf(x)===id&&withParent(x,t)),ym=t.date.slice(0,7);
+  /* 🚫 bringing back a deleted expense / transfer must not leave the account with a minus (the money may already be spent) */
+  if(!await txOk([t,...kids].map(x=>({...x,deleted:false}))))return;
   if(!await putTx(ym,id,{deleted:false}))return;kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true);
-  toast('Przywrócono '+am(Math.abs(t.amount||0),t.acc)+(kids.length?` (razem z ${kids.length} ${plu(kids.length,'powiązanym wpisem','powiązanymi wpisami','powiązanymi wpisami')})`:''),'',{label:'Cofnij',fn:()=>{putTx(ym,id,{deleted:true});kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t)}})}
+  toast('Przywrócono '+am(Math.abs(t.amount||0),t.acc)+(kids.length?` (razem z ${kids.length} ${plu(kids.length,'powiązanym wpisem','powiązanymi wpisami','powiązanymi wpisami')})`:''),'',{label:'Cofnij',fn:async()=>{if(!await txOk([t,...kids].map(x=>({...x,deleted:true}))))return;putTx(ym,id,{deleted:true});kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t)}})}
 /* 🕑 recent changes: who added, changed or deleted what (from either phone) */
 export function changesH(){const sm=subsMap(S.cfg),ev=[];
   /* the name and amount are written only for the few events shown (formatting thousands of amounts was slow) */

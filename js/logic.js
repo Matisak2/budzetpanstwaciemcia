@@ -20,13 +20,14 @@ export function balance(cfg,tx,id,before){const open=cfg.accs.find(a=>a.id===id)
     ix=new Map();for(const[a,L]of per){L.sort((x,y)=>x[0]<y[0]?-1:x[0]>y[0]?1:0);const ds=L.map(x=>x[0]),cum=[0];for(const x of L)cum.push(cum[cum.length-1]+x[1]);ix.set(a,{ds,cum})}BAL.set(tx,ix)}
   const e=ix.get(id);if(!e)return open;let lo=0,hi=e.ds.length;while(lo<hi){const mid=(lo+hi)>>1;if(e.ds[mid]<before)lo=mid+1;else hi=mid}
   return open+e.cum[lo]}
-/* 🚫 no minus (a real account cannot have one): add = new or changed entries (a changed one keeps its id, it replaces the old one).
+/* 🚫 no minus (a real account cannot have one): add = new or changed entries (a changed one keeps its id, it replaces the old one;
+   one with deleted:true is taken away – a deleted income / transfer in, an unticked fixed income; deleted:false brings one back – „Przywróć”, „Cofnij”).
    Every account they touch – current, sub-account, savings (not investments: their value moves with prices) – is checked day by day
    from the earliest date of the change on (later and future-dated entries too): the end-of-day balance must not go below zero.
    An account that already shows a minus (old data) may still get entries that do not make that day worse.
    → {acc,date,bal} of the first such day, or null */
 export const NEG_GRPS=['cur','sub','sav'];
-export function balDrop(cfg,tx,add){const ids=new Set(add.map(t=>t.id)),old=tx.filter(t=>ids.has(t.id)),nw=tx.filter(t=>!ids.has(t.id)).concat(add),from={};
+export function balDrop(cfg,tx,add){const ids=new Set(add.map(t=>t.id)),old=tx.filter(t=>ids.has(t.id)),nw=tx.filter(t=>!ids.has(t.id)).concat(add.filter(t=>!t.deleted)),from={};
   const put=(a,d)=>{if(a&&(!from[a]||d<from[a]))from[a]=d};for(const t of [...old,...add])if(isDate(t.date)){put(t.acc,t.date);if(t.type=='tr')put(t.to,t.date)}
   for(const[id,d]of Object.entries(from)){const a=cfg.accs.find(x=>x.id===id);if(!a||!NEG_GRPS.includes(a.grp))continue;
     const days=[...new Set([...tx,...add].filter(t=>t.date>=d&&(t.acc===id||(t.type=='tr'&&t.to===id))).map(t=>t.date))].sort();
@@ -181,6 +182,12 @@ export function yearAgoP(cfg,tx,ym,today){const yym=addMonths(ym,-12),live=today
   const ytx=live?upToDay(tx,yym,day):tx,Y=agg(cfg,ytx,yym);if(!Y.inc&&!Y.exp)return null;const A=agg(cfg,tx,ym),SV=savIds(cfg);
   const cats=cfg.cats.filter(c=>c.type=='exp').map(c=>({id:c.id,name:c.name,d:(A.cat[c.id]||0)-(Y.cat[c.id]||0)})).filter(x=>Math.abs(x.d)>=100).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,3);
   return{ym:yym,day,now:{inc:A.inc,exp:A.exp,put:savFlow(cfg,tx,SV,ym).flow},then:{inc:Y.inc,exp:Y.exp,put:savFlow(cfg,ytx,SV,yym).flow},cats}}
+/* 📅 the same part of a year and of the year before (Analiza → Rok „Wasza inflacja”, 🖨️ Podsumowanie roku): a year that is over – whole;
+   the year that lasts (today in it) – 1 January to today, the current month up to the same day in both years (not a few days against a whole month) */
+export function ytdSpanP(cfg,tx,y,today){y=String(y);const live=today.slice(0,4)==y,last=live?+today.slice(5,7):12,day=live?+today.slice(8):null;
+  const part=yy=>{const r={inc:0,exp:0,cat:{}};for(let i=1;i<=last;i++){const ym=yy+'-'+p2(i),A=live&&i==last?agg(cfg,upToDay(tx,ym,Math.min(day,daysIn(ym))),ym):agg(cfg,tx,ym);
+    r.inc+=A.inc;r.exp+=A.exp;for(const[k,v]of Object.entries(A.cat))r.cat[k]=(r.cat[k]||0)+v}return r};
+  return{cur:part(y),prev:part(String(+y-1)),last,day,live}}
 /* 📋 subscriptions = fixed payments in a category of subscriptions / abonaments / apps / streaming (the same rule as „Opłaty stałe w roku”) */
 export const SUBSCR_RE=/subskryp|abonament|aplikacj|streaming/i;
 export const subscrOf=cfg=>{const sm=subsMap(cfg);return(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&SUBSCR_RE.test(sm[f.sub]?.cat?.name||''))};

@@ -3,7 +3,8 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP} from '../js/logic.js';
+import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP} from '../js/logic.js';
+import {yearStats} from '../js/report.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
@@ -417,13 +418,12 @@ const N=' ';
 }
 
 /* ---------- 🔢 wpisywanie i pokazywanie kwot ---------- */
-{ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',pg('1 234,56 zł'),123456);eq('Kwota „12,5”',pg('12,5'),1250);eq('Kwota „1,234.56”',pg('1,234.56'),123456);
+eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',pg('1 234,56 zł'),123456);eq('Kwota „12,5”',pg('12,5'),1250);eq('Kwota „1,234.56”',pg('1,234.56'),123456);
   eq('Kwota ujemna',pg('-20'),-2000);eq('Liczba',pnum('3,5'),3.5);
   eq('Zapis 5 449,18 zł',zl(544918),'5'+N+'449,18'+N+'zł');eq('Zapis 14 109 zł',zl0(1410900),'14'+N+'109'+N+'zł');eq('Zapis 999,99 zł',zl(99999),'999,99'+N+'zł');
   eq('Zapis w euro',money(450000,'EUR'),'4'+N+'500,00'+N+'€');eq('Liczba z odstępem',fmtN(1234567.8,1),'1'+N+'234'+N+'567,8');
   priv.on=true;eq('Tryb dyskretny',zl(544918),'•••'+N+'zł');priv.on=false;
   eq('Data + 1 dzień (koniec roku)',addDays('2026-12-31',1),'2027-01-01');
-}
 
 /* ---------- 📧 mail z podsumowaniem miesiąca: porównania z poprzednim miesiącem, średnią i rokiem temu ---------- */
 {const cfg={accs:[{id:'a',name:'Konto',grp:'cur',owner:'Mati'},{id:'w',name:'Konto W',grp:'cur',owner:'Wercia'},{id:'s',name:'Oszczędności',grp:'sav',owner:'Wspólne'}],
@@ -484,6 +484,27 @@ const N=' ';
   eq('Minus – stary minus: kolejny wydatek nie',balDrop(cfg,txm,[{id:'n',type:'exp',amount:5000,date:'2026-11-22',acc:'k'}]),{acc:'k',date:'2026-11-22',bal:-25000});
   eq('Minus – stary minus: mniejszy wydatek przechodzi',balDrop(cfg,txm,[{...txm[2],amount:50000}]),null);
   // pożyczka dla kogoś (lend) zmniejsza saldo jak wydatek
-  eq('Minus – pożyczka dla kogoś',balDrop(cfg,tx,[{id:'n',type:'lend',amount:50000,date:'2026-11-25',acc:'k'}]),{acc:'k',date:'2026-11-25',bal:-10000})}
+  eq('Minus – pożyczka dla kogoś',balDrop(cfg,tx,[{id:'n',type:'lend',amount:50000,date:'2026-11-25',acc:'k'}]),{acc:'k',date:'2026-11-25',bal:-10000});
+  // wpływ zabrany inaczej: usunięty (300 − 900 = −600 zł 20.11), zmniejszony do 500 zł (−100 zł), przesunięty na 21.11 (−600 zł 20.11); usunięty wydatek – bez blokady
+  eq('Minus – usunięty wpływ',balDrop(cfg,tx,[{...tx[0],deleted:true}]),{acc:'k',date:'2026-11-20',bal:-60000});
+  eq('Minus – mniejszy wpływ',balDrop(cfg,tx,[{...tx[0],amount:50000}]),{acc:'k',date:'2026-11-20',bal:-10000});
+  eq('Minus – wpływ na późniejszy dzień',balDrop(cfg,tx,[{...tx[0],date:'2026-11-21'}]),{acc:'k',date:'2026-11-20',bal:-60000});
+  eq('Minus – usunięty wydatek przechodzi',balDrop(cfg,tx,[{...tx[1],deleted:true}]),null);
+  // przywrócony („Przywróć”, „Cofnij”) wydatek 500 zł z 25.11, gdy zostało 400 zł → −100 zł; 300 zł przechodzi
+  eq('Minus – przywrócony wydatek',balDrop(cfg,tx,[{id:'d',type:'exp',amount:50000,date:'2026-11-25',acc:'k',deleted:false}]),{acc:'k',date:'2026-11-25',bal:-10000});
+  eq('Minus – przywrócony mały wydatek przechodzi',balDrop(cfg,tx,[{id:'d',type:'exp',amount:30000,date:'2026-11-25',acc:'k',deleted:false}]),null)}
+
+/* ---------- 📅 ten sam okres roku: trwający rok (5.11.2026) porównany z 1.01–5.11.2025, listopad do tego samego dnia ---------- */
+{const cfg={accs:[{id:'k',name:'Konto',grp:'cur'}],cats:[{id:'ce',name:'1. JEDZENIE',type:'exp',subs:[{id:'j',name:'Zakupy'}]},{id:'ci',name:'2. ZAROBKI',type:'inc',subs:[{id:'p',name:'Pensja'}]}],fixed:[],years:[],projs:[]};
+  const T=(id,date,amount,type='exp',sub='j')=>({id,date,type,amount,sub,acc:'k'});
+  const tx=[T('a','2025-01-10',100000),T('b','2025-11-03',20000),T('c','2025-11-20',50000),T('d','2026-01-10',110000),T('e','2026-11-04',30000),T('f','2026-11-02',500000,'inc','p'),T('g','2025-11-28',400000,'inc','p')];
+  const sp=ytdSpanP(cfg,tx,'2026','2026-11-05');
+  eq('Ten sam okres – wydatki 2026 i 2025 do 5.11',[sp.cur.exp,sp.prev.exp,sp.live,sp.day],[140000,120000,true,5]);
+  eq('Ten sam okres – przychody (wpływ z 28.11.2025 jeszcze się nie liczy)',[sp.cur.inc,sp.prev.inc],[500000,0]);
+  eq('Ten sam okres – kategoria',[sp.cur.cat.ce,sp.prev.cat.ce],[140000,120000]);
+  eq('Ten sam okres – skończony rok liczy się cały',ytdSpanP(cfg,tx,'2025','2026-11-05').cur.exp,170000);
+  const st=yearStats({cfg,tx,hraw:{}},'2026','2026-11-05');
+  eq('Podsumowanie trwającego roku – porównanie z tymi samymi dniami',[st.prev.exp,st.prev.now,st.prev.same],[120000,140000,true]);
+  eq('Podsumowanie skończonego roku – cały poprzedni rok',yearStats({cfg,tx,hraw:{}},'2026','2027-01-01').prev.exp,170000)}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);
