@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {balance,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP} from '../js/logic.js';
+import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP} from '../js/logic.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
@@ -457,5 +457,33 @@ const N=' ';
  eq('Automat – kursy przyszły dziś',[o2.fx.EUR,o2.ok],[4.31,'2026-10-30']);
  eq('Automat – działa, ale nic nie przychodzi od 3 dni roboczych',automatStale({rates:{date:'2026-11-05',ok:'2026-11-02'}},'2026-11-05'),3);
  eq('Automat – stary zapis bez ok',automatStale({rates:{date:'2026-11-04'}},'2026-11-05'),0)}
+/* ---------- 🚫 bez minusa: wydatek / przelew, na który konta nie stać, nie zapisze się (balDrop) ---------- */
+{const cfg={accs:[{id:'k',name:'Konto',grp:'cur',open:30000},{id:'s',name:'Oszczędności',grp:'sav',open:0},{id:'i',name:'IKE',grp:'inv',open:0},{id:'e',name:'Euro',grp:'cur',cur:'EUR',open:0}]};
+  const tx=[{id:'t1',type:'inc',amount:100000,date:'2026-11-10',acc:'k'},{id:'t2',type:'exp',amount:90000,date:'2026-11-20',acc:'k'}];
+  // na koncie: 300 zł, 10.11 +1 000 → 1 300, 20.11 −900 → 400 zł
+  eq('Minus – wydatek 400 zł 25.11 przechodzi (zostaje 0)',balDrop(cfg,tx,[{id:'n',type:'exp',amount:40000,date:'2026-11-25',acc:'k'}]),null);
+  eq('Minus – wydatek 400,01 zł 25.11 zablokowany',balDrop(cfg,tx,[{id:'n',type:'exp',amount:40001,date:'2026-11-25',acc:'k'}]),{acc:'k',date:'2026-11-25',bal:-1});
+  // wpis wstecz: 500 zł 5.11 (przed wpływem: 300 − 500 = −200 zł)
+  eq('Minus – wpis wstecz robi minus w swoim dniu',balDrop(cfg,tx,[{id:'n',type:'exp',amount:50000,date:'2026-11-05',acc:'k'}]),{acc:'k',date:'2026-11-05',bal:-20000});
+  // 300 zł 12.11: tego dnia 1 000, ale 20.11 po −900 zostałoby 100 − 300… = 400 − 300 = 100 → przechodzi; 500 zł 12.11 → 20.11 −100 zł
+  eq('Minus – późniejszy wpis zrobiłby minus',balDrop(cfg,tx,[{id:'n',type:'exp',amount:50000,date:'2026-11-12',acc:'k'}]),{acc:'k',date:'2026-11-20',bal:-10000});
+  // przelew 400 zł na oszczędności przechodzi; z pustych oszczędności 1 zł – nie
+  eq('Minus – przelew w granicach salda',balDrop(cfg,tx,[{id:'n',type:'tr',amount:40000,date:'2026-11-25',acc:'k',to:'s'}]),null);
+  eq('Minus – przelew z pustych oszczędności',balDrop(cfg,tx,[{id:'n',type:'tr',amount:100,date:'2026-11-25',acc:'s',to:'k'}]),{acc:'s',date:'2026-11-25',bal:-100});
+  // zmiana wpisu: wydatek 20.11 z 900 na 1 300 zł → 0, na 1 400 → −100 zł; zmiana wpływu-przelewu na mniejszy też się liczy
+  eq('Minus – zmiana kwoty do zera przechodzi',balDrop(cfg,tx,[{...tx[1],amount:130000}]),null);
+  eq('Minus – zmiana kwoty ponad saldo',balDrop(cfg,tx,[{...tx[1],amount:140000}]),{acc:'k',date:'2026-11-20',bal:-10000});
+  const tx2=[...tx,{id:'t3',type:'tr',amount:20000,date:'2026-11-21',acc:'k',to:'s'},{id:'t4',type:'tr',amount:15000,date:'2026-11-22',acc:'s',to:'k'}];
+  eq('Minus – mniejszy przelew na oszczędności, z których już wypłacono',balDrop(cfg,tx2,[{...tx2[2],amount:10000}]),{acc:'s',date:'2026-11-22',bal:-5000});
+  // konto inwestycyjne nie jest sprawdzane (wartość zmienia się z kursami); konto w euro – w euro
+  eq('Minus – inwestycje bez blokady',balDrop(cfg,tx,[{id:'n',type:'tr',amount:100,date:'2026-11-25',acc:'i',to:'k'}]),null);
+  eq('Minus – konto w euro',balDrop(cfg,[{id:'x',type:'tr',amount:40000,amount2:10000,date:'2026-11-01',acc:'k',to:'e'}],[{id:'n',type:'exp',amount:10001,date:'2026-11-02',acc:'e'}]),{acc:'e',date:'2026-11-02',bal:-1});
+  // konto, które już ma minus ze starych danych: wpływ przechodzi, kolejny wydatek – nie
+  const txm=[...tx,{id:'t5',type:'exp',amount:60000,date:'2026-11-21',acc:'k'}]; // 400 − 600 = −200 zł
+  eq('Minus – stary minus: wpływ przechodzi',balDrop(cfg,txm,[{id:'n',type:'inc',amount:5000,date:'2026-11-22',acc:'k'}]),null);
+  eq('Minus – stary minus: kolejny wydatek nie',balDrop(cfg,txm,[{id:'n',type:'exp',amount:5000,date:'2026-11-22',acc:'k'}]),{acc:'k',date:'2026-11-22',bal:-25000});
+  eq('Minus – stary minus: mniejszy wydatek przechodzi',balDrop(cfg,txm,[{...txm[2],amount:50000}]),null);
+  // pożyczka dla kogoś (lend) zmniejsza saldo jak wydatek
+  eq('Minus – pożyczka dla kogoś',balDrop(cfg,tx,[{id:'n',type:'lend',amount:50000,date:'2026-11-25',acc:'k'}]),{acc:'k',date:'2026-11-25',bal:-10000})}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

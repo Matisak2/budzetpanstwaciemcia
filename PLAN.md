@@ -141,6 +141,10 @@ Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: w
 - [x] ✍️ Jedna reguła „czy dziś coś wpisano” (Na dziś, dymek o 20:00, powiadomienie)
 - [x] 🧹 Porządek: nieużywane `parseEurostat`, zmienne kolorów, pola stanu `S.inv`/`S.ro`, zdublowany import, przesunięty komentarz, literówka `--mut`
 
+## Poprawka: bez minusa na koncie (uzgodnione 5.11.2026)
+- [x] 🚫 Wydatek / przelew, po którym konto (bieżące, subkonto, oszczędności) zeszłoby poniżej zera w dniu wpisu albo później, się nie zapisuje – tylko informacja „przeanalizuj konta” (bez przycisku przelewu i bez „zapisz mimo to”); też odhaczanie opłat i stałych przelewów, wydatek roczny, spłata długu, pożyczka dla kogoś; 🪙 drobne bez pieniędzy – pominięte
+- [ ] Do decyzji Matiego (z przeglądu 5.11): B – mocniejsze ostrzeżenie „Ujemne saldo” (wszystkie konta, pilne, codzienne powiadomienie), C – „Nie starczy na rachunki” 7 dni w przód z wydatkami rocznymi i ratami, D – ujemne saldo na czerwono w Kontach
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

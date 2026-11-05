@@ -42,6 +42,7 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
   ['stale-polacz-pytanie',"toggleFixed(window.__tw)"],
   ['plan-oplaty',"closeAll();{const f=S.cfg.fixed.find(f=>(f.kind||'exp')=='exp'&&f.sub);S.plans={...S.plans,[S.ym]:{...(S.plans[S.ym]||{}),[f.sub]:Math.max(0,f.amount-5000)}};goTab('dash');showToday()}"],
   ['wpis-oplata-pytanie',"closeAll();{const f=S.cfg.fixed.find(x=>x.id==window.__tw);S.tx=S.tx.map(t=>t.id=='ttw'?{...t,deleted:true}:t);openTx();setTimeout(()=>{$('ma').value=String(f.amount/100).replace('.',',');$('ms').value=f.sub;$('shSave').click()},150)}"],
+  ['bez-minusa',"closeAll();{const a=S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived&&a.owner==S.who&&!a.cur);openTx();$('mc').value=a.id;$('ma').value='999 999';$('ms').value=S.cfg.cats.find(c=>c.type=='exp').subs[0].id;$('shSave').click()}"],
   ['pasek-mlodzi',"closeAll();{S.hraw={...S.hraw,birth:{Mati:'2001-05-12',Wercia:'2001-05-12'}};if(!S.cfg.incs.some(x=>x.id=='iy'))S.cfg.incs.push({id:'iy',name:'Szpital',who:S.who,kind:'uop',acc:S.cfg.accs[0].id,sub:'',day:10});goTab('fix');setFixSub('pay');openSlip('iy');setTimeout(()=>{document.querySelector('.slip [data-c=\"0\"][data-f=\"a\"]').value='8000';slipSuggest()},100)}"],
   ['kaskada-osoba',"closeAll();goTab('sav');setSub('Mati')"],['nowy-staly-przelew',"closeAll();goTab('fix');setFixSub('fix');editFixed(null,'tr')"],
   ['nie-starczy',"closeAll();{const a=S.cfg.accs.find(a=>a.grp=='cur'&&a.owner=='Wspólne')||S.cfg.accs.find(a=>a.grp=='cur');S.cfg.fixed=[...S.cfg.fixed,{id:'fbig',name:'Wielki rachunek',amount:9999900,day:28,acc:a.id,kind:'exp',sub:S.cfg.cats.find(c=>c.type=='exp').subs[0].id}];showToday()}"],
@@ -114,6 +115,7 @@ for(const C of CASES){
     if(name=='stale-osoba'&&!await p.evaluate(async()=>{const{fixedWho}=await import('/js/logic.js');const names=[...document.querySelectorAll('#app .fx .info b')].map(b=>b.textContent);const want=S.cfg.fixed.filter(f=>fixedWho(S.cfg,f)==S.who).map(f=>f.name);return names.length==want.length&&names.every(n=>want.includes(n))}))fail(`${tag}: filtr osoby w 📌 Opłatach pokazuje cudze opłaty`);
     if(name=='ustawienia'&&!await p.evaluate(()=>document.querySelectorAll('#app .stile').length==6&&!document.querySelector('#app .spage')&&!/Saldo początkowe|saldo początkowe/.test(document.getElementById('app').innerText)))fail(`${tag}: ⚙️ – nie 6 kafelków albo coś rozwinięte samo`);
     if(name=='ust-acc'&&!await p.evaluate(()=>{const ok=/saldo początkowe/.test(document.getElementById('app').innerText);document.querySelector('#app .sback').click();return ok&&document.querySelectorAll('#app .stile').length==6}))fail(`${tag}: kafelek Konta nie pokazuje kont albo „‹ Ustawienia” nie wraca`);
+    if(name=='bez-minusa'&&!await p.evaluate(()=>{const d=document.getElementById('dlg');return !d.hidden&&/Za mało na koncie/.test(d.innerText)&&/Przeanalizuj konta/.test(d.innerText)&&d.querySelectorAll('button').length==1&&!document.getElementById('sheet').hidden}))fail(`${tag}: wydatek ponad saldo – brak okienka „Za mało na koncie”`);
     if(name=='usuniete'&&!await p.evaluate(()=>/Ostatnio usunięte/.test(document.getElementById('app').innerText)))fail(`${tag}: brak karty „Ostatnio usunięte”`);
     await p.screenshot({path:path.join(OUT,`${tag}-${name}.png`),fullPage:true});
   }
@@ -143,6 +145,15 @@ for(const C of CASES){
     if(res=='zle')fail(`${tag}: wpis z konta drugiej osoby – brak pytania kotków albo „Zmień konto” zapisało wpis`);
     await p.evaluate(()=>{closeAll();localStorage.setItem('demo_mw_oth',JSON.stringify({d:new Date().toISOString().slice(0,10),a:'aM aW aJ aG aS aP aI aK aO'.split(' ')}))});
   }catch(e){fail(`${tag}: test cudzego konta – ${e.message.split('\n')[0]}`)}}
+  /* 🚫 no minus: an expense above the balance is not saved – the cats ask to look through the accounts (one button), the sheet stays open */
+  if(C===CASES[0]){try{await p.evaluate(()=>closeAll());
+    const res=await p.evaluate(async()=>{const{balance,liveOf}=await import('/js/logic.js');const a=S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived&&a.owner==S.who&&!a.cur);if(!a)return'brak';
+      const b=balance(S.cfg,liveOf(S.tx),a.id,'9999-12-31'),n0=S.tx.length;openTx();$('mc').value=a.id;$('ma').value=String((Math.max(b,0)+100000)/100).replace('.',',');$('ms').value=S.cfg.cats.find(c=>c.type=='exp').subs[0].id;$('shSave').click();
+      await new Promise(r=>setTimeout(r,400));const t=document.getElementById('dlg').innerText,shown=!document.getElementById('dlg').hidden&&/Za mało na koncie/.test(t)&&/Przeanalizuj konta/.test(t)&&document.querySelectorAll('#dlg button').length==1;
+      document.getElementById('dlgOk')?.click();await new Promise(r=>setTimeout(r,300));return shown&&S.tx.length==n0&&!document.getElementById('sheet').hidden&&document.getElementById('dlg').hidden?'ok':'zle'});
+    if(res!='ok')fail(`${tag}: wydatek ponad saldo – brak okienka „Za mało na koncie” albo wpis się zapisał (${res})`);
+    await p.evaluate(()=>closeAll());
+  }catch(e){fail(`${tag}: test bez minusa – ${e.message.split('\n')[0]}`)}}
   /* 🔔 plan exceeded: the warning is in „Na dziś” (not in the cats' bubble on Budżet), „Co przekroczone” opens Budżet with the filter */
   if(C===CASES[0]){try{await p.evaluate(()=>{closeAll();window.__pl=S.plans;const pl={};S.cfg.cats.filter(c=>c.type=='exp').forEach(c=>c.subs.forEach(x=>pl[x.id]=100));S.plans={...S.plans,[S.ym]:pl};goTab('dash')});await p.waitForTimeout(300);
     if(await p.evaluate(()=>/przekroczony|Do odhaczenia|Zamknij |Do zaplanowania/.test(document.getElementById('app').innerText)))fail(`${tag}: na Budżecie zostały uwagi – miały być tylko w 🔔`);

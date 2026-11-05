@@ -20,6 +20,18 @@ export function balance(cfg,tx,id,before){const open=cfg.accs.find(a=>a.id===id)
     ix=new Map();for(const[a,L]of per){L.sort((x,y)=>x[0]<y[0]?-1:x[0]>y[0]?1:0);const ds=L.map(x=>x[0]),cum=[0];for(const x of L)cum.push(cum[cum.length-1]+x[1]);ix.set(a,{ds,cum})}BAL.set(tx,ix)}
   const e=ix.get(id);if(!e)return open;let lo=0,hi=e.ds.length;while(lo<hi){const mid=(lo+hi)>>1;if(e.ds[mid]<before)lo=mid+1;else hi=mid}
   return open+e.cum[lo]}
+/* 🚫 no minus (a real account cannot have one): add = new or changed entries (a changed one keeps its id, it replaces the old one).
+   Every account they touch – current, sub-account, savings (not investments: their value moves with prices) – is checked day by day
+   from the earliest date of the change on (later and future-dated entries too): the end-of-day balance must not go below zero.
+   An account that already shows a minus (old data) may still get entries that do not make that day worse.
+   → {acc,date,bal} of the first such day, or null */
+export const NEG_GRPS=['cur','sub','sav'];
+export function balDrop(cfg,tx,add){const ids=new Set(add.map(t=>t.id)),old=tx.filter(t=>ids.has(t.id)),nw=tx.filter(t=>!ids.has(t.id)).concat(add),from={};
+  const put=(a,d)=>{if(a&&(!from[a]||d<from[a]))from[a]=d};for(const t of [...old,...add])if(isDate(t.date)){put(t.acc,t.date);if(t.type=='tr')put(t.to,t.date)}
+  for(const[id,d]of Object.entries(from)){const a=cfg.accs.find(x=>x.id===id);if(!a||!NEG_GRPS.includes(a.grp))continue;
+    const days=[...new Set([...tx,...add].filter(t=>t.date>=d&&(t.acc===id||(t.type=='tr'&&t.to===id))).map(t=>t.date))].sort();
+    for(const x of days){const b=balance(cfg,nw,id,addDays(x,1));if(b<0&&b<balance(cfg,tx,id,addDays(x,1)))return{acc:id,date:x,bal:b}}}
+  return null}
 /* whose an account is: Mati / Wercia / Wspólne (older accounts without owner – by the name) */
 /* whose a fixed payment / income / transfer is: „Dotyczy” set by hand (f.who), otherwise the owner of its account */
 export const fixedWho=(cfg,f)=>f.who||ownerOf(cfg.accs.find(a=>a.id===f.acc));

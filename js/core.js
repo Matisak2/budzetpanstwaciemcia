@@ -7,7 +7,7 @@ import {NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
 import {CURS,SEASON,tint} from './data.js';
 import {wrapOf} from './inv.js';
 import {actuals,agg,cleanCat,liveOf,planOf} from './logic.js';
-import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus} from './util.js';
+import {$,addDays,daysIn,esc,ls,rid,td,money,curSym,fxPlus,dmy} from './util.js';
 import {goalAlloc,askWhoLock} from './actions.js';
 import {runGo,maybeToday} from './todayui.js';
 import {accN,render} from './app.js';
@@ -115,17 +115,20 @@ export function ask({title,text='',fields=[],ok='Zapisz',cancel='Anuluj',danger=
       fields.map(f=>`<label class="fld"><span>${esc(f.label)}</span>${f.type=='select'
         ?`<select id="f_${f.id}">${f.options.map(opt).join('')}</select>`
         :`<input id="f_${f.id}" value="${esc(f.value??'')}"${f.type=='decimal'?' inputmode="decimal"':''}${f.type=='date'?' type="date"':''}${f.type=='month'?' type="month"':''}${f.type=='int'?' inputmode="numeric"':''}${f.ph?` placeholder="${esc(f.ph)}"`:''} autocomplete="off">`}</label>`).join('')+
-      `<div class="g2"><button class="btn" id="dlgNo">${esc(cancel)}</button><button class="btn ${danger?'danger':'primary'}" id="dlgOk">${esc(ok)}</button></div>`+
+      (cancel===null?`<div class="btns"><button class="btn primary" id="dlgOk" style="flex:1">${esc(ok)}</button></div>`:`<div class="g2"><button class="btn" id="dlgNo">${esc(cancel)}</button><button class="btn ${danger?'danger':'primary'}" id="dlgOk">${esc(ok)}</button></div>`)+
       (alt?`<button class="btn sm" id="dlgAlt" style="align-self:center;background:none;color:var(--exp)">${esc(alt)}</button>`:'');
     fields.forEach(f=>{if(f.type=='select')$('f_'+f.id).value=f.value??''});
     d.hidden=false;const first=d.querySelector('input:not([type=date])');if(first&&!first.value)setTimeout(()=>first.focus(),60);
     const done=v=>{d.hidden=true;d.onkeydown=null;res(v)};
-    $('dlgNo').onclick=()=>done(null);
+    if($('dlgNo'))$('dlgNo').onclick=()=>done(null);
     if(alt)$('dlgAlt').onclick=()=>done('alt');
     $('dlgOk').onclick=()=>{const o={};fields.forEach(f=>o[f.id]=$('f_'+f.id).value);done(fields.length?o:true)};
     d.onclick=e=>{if(e.target===d)done(null)};
     d.onkeydown=e=>{if(e.key=='Enter'&&e.target.tagName=='INPUT'){e.preventDefault();$('dlgOk').click()}if(e.key=='Escape')done(null)};
   })}
+/* 🚫 an expense or transfer the account cannot pay (balDrop in logic.js): nothing is saved, only the information to look through the accounts */
+export function negStop(v){const a=S.cfg.accs.find(x=>x.id==v.acc);
+  return ask({title:`🙀 Za mało na koncie „${a?.name||'konto'}”`,text:`Po tym wpisie saldo spadłoby do ${money(v.bal,CUR(a))} (${dmy(v.date)}). Na prawdziwym koncie nie może być minusa, więc tego nie zapiszę.\n\nPrzeanalizuj konta: może brakuje wpisanego wpływu albo przelewu, wybrane jest nie to konto albo saldo w aplikacji różni się od banku (💰 Majątek → 👛 Konta → ⚖️ Wyrównaj wszystkie salda naraz).`,ok:'Rozumiem',cancel:null})}
 /* currencies: every account keeps its own; złoty sums stay złoty, other currencies are added as " + 45,00 €" */
 export const CUR=a=>a?.cur||'PLN',accCur=id=>CUR(S.cfg.accs.find(a=>a.id==id)),isP=a=>CUR(a)=='PLN';
 export const am=(n,id)=>money(n,accCur(id));

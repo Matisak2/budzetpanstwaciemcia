@@ -5,9 +5,9 @@ import {CELEBRATE} from './guide.js';
 import {HUES,catHue,freeHue} from './data.js';
 import {wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
 import {ULGI} from './today.js';
-import {balance,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod,ownerOf} from './logic.js';
+import {balance,balDrop,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod,ownerOf} from './logic.js';
 import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu,dmy} from './util.js';
-import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,saveRound,delFixedDb,putTx,putInv,guard} from './core.js';
+import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,saveRound,delFixedDb,putTx,putInv,guard,negStop} from './core.js';
 import {catColor,RCPT,RMETA,phCache,openTx} from './sheet.js';
 import {incs,gr,openSlip,saveInc} from './salary.js';
 import {saveYear} from './savings.js';
@@ -221,6 +221,7 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
   const due=fixedDate(f,S.ym),date=td().startsWith(S.ym)?td():due;
   if(f.kind=='tr'){const r=await ask({title:'Przelano: '+f.name,fields:[{id:'a',label:`Kwota (${curSym(accCur(f.acc))})`,type:'decimal',value:f2(f.amount)},{id:'d',label:'Data',type:'date',value:date},{id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()},{id:'t',label:'Na konto',type:'select',value:f.to,options:accOpts()}],ok:'Odhacz'});
     if(!r)return;const amt=pg(r.a);if(amt<=0)return toast('Podaj kwotę','bad');if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
+    {const v=balDrop(S.cfg,liveOf(S.tx),[{id:'+fix',type:'tr',date:r.d,amount:amt,acc:r.c,to:r.t}]);if(v)return negStop(v)}
     const sf=f.saveFor&&S.debts[f.saveFor]?.saveAcc==r.t?f.saveFor:'',ta=S.cfg.accs.find(a=>a.id==r.t),sav=ta&&(ta.grp=='sav'||ta.grp=='inv');
     /* 🐷 only a transfer to savings / investments is „odłożone”; to the shared account, the other person's account or a sub-account it is just a transfer */
     S.justChecked=f.id;if(await putTx(S.ym,'t'+rid(),{type:'tr',amount:amt,date:r.d,sub:'',acc:r.c,to:r.t,who:S.who,note:(sav?'🐷 ':'🔁 ')+f.name,fixedId:f.id,...(sf?{save:{[sf]:amt}}:{}),deleted:false,ts:Date.now()}))
@@ -237,6 +238,7 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
     if(!r)return;const amt=pg(r.a);
     if(amt<=0)return toast('Podaj kwotę większą od zera','bad');
     if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');
+    {const v=balDrop(S.cfg,liveOf(S.tx),[{id:'+fix',type:'exp',date:r.d,amount:amt,acc:r.c}]);if(v)return negStop(v)}
     S.justChecked=f.id;
     if(await putTx(S.ym,'t'+rid(),{type:'exp',amount:amt,date:r.d,sub:f.sub,acc:r.c,to:'',who:S.who,note:f.name,fixedId:f.id,...(f.debt?{debt:f.debt}:{}),deleted:false,ts:Date.now()})){
       const exps=S.cfg.fixed.filter(x=>(x.kind||'exp')=='exp'),all=exps.every(x=>x.id==f.id||fixedPaid(x.id,S.ym));

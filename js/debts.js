@@ -5,9 +5,9 @@ import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
 import {addM,limitOf,paidInYear,wrapOf} from './inv.js';
 import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
-import {avgActuals,carStats,balance,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf} from './logic.js';
+import {avgActuals,carStats,balance,balDrop,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf} from './logic.js';
 import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0,plu} from './util.js';
-import {S,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard,infoH} from './core.js';
+import {S,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard,infoH,negStop} from './core.js';
 import {calcAmt} from './sheet.js';
 import {fixedPaid,isPod,txRowH} from './actions.js';
 import {gr,segL} from './salary.js';
@@ -63,6 +63,7 @@ export async function editDebt(id,dir){if(guard())return;const d0=id?S.debts[id]
   const start=gr(r.a);if(!r.n.trim()||start<=0)return toast('Podaj nazwę i kwotę','bad');if(!isDate(r.d))return toast('Wybierz datę','bad');
   const body={dir,kind:r.k,name:r.n.trim(),party:r.p.trim(),payer:r.w,start,date:r.d,until:isDate(r.u)?r.u:'',note:r.t.trim(),deleted:false,ts:Date.now()};
   if(owe){body.mode=r.m;body.inst=gr(r.i);body.day=Math.round(pnum(r.dy))||0;body.rate=r.r.trim()?pn(r.r):null;body.rtype=r.rt;body.amort=r.am;body.saveAcc=r.sa||''}
+  if(!d0&&r.c&&!owe){const v=balDrop(S.cfg,liveOf(S.tx),[{id:'+lend',type:'lend',date:r.d,amount:start,acc:r.c}]);if(v)return negStop(v)}
   const did=id||'d'+rid();merge(doc(DEBTS(),did),body);
   if(!d0&&r.c){const ym=r.d.slice(0,7);putTx(ym,'t'+rid(),owe?{type:'inc',amount:start,date:r.d,sub:'',acc:r.c,to:'',who:S.who,note:'🔻 Pożyczka od '+(body.party||body.name),debtIn:did,deleted:false,ts:Date.now()}
     :{type:'lend',amount:start,date:r.d,sub:'',acc:r.c,to:'',who:S.who,note:'🔺 Pożyczka dla '+(body.party||body.name),lendId:did,deleted:false,ts:Date.now()})}
@@ -76,6 +77,7 @@ export async function payoffDebt(id){if(guard())return;const d=dById(id);if(!d)r
       {id:'s',label:'Pozycja na odsetki',type:'select',value:isub,options:[['','— wybierz —'],...subOpts('exp')]},
       {id:'c',label:'Z konta',type:'select',value:d.saveAcc||S.cfg.accs.find(a=>a.grp=='cur'&&!a.archived&&ownerOf(a)==S.who)?.id||'',options:accOpts()},{id:'d',label:'Data',type:'date',value:td()}],ok:'Zapisz spłatę'});
   if(!r)return;const P=gr(r.a),I=gr(r.i);if(P<=0)return toast('Podaj spłacony kapitał','bad');if(I<0)return toast('Odsetki nie mogą być ujemne','bad');if(!isDate(r.d))return toast('Wybierz datę','bad');if(I&&!r.s)return toast('Wybierz pozycję na odsetki','bad');
+  {const v=balDrop(S.cfg,liveOf(S.tx),[{id:'+pay',type:'exp',date:r.d,amount:P+I,acc:r.c}]);if(v)return negStop(v)}
   const full=P>=st.left,here=r.c==d.saveAcc,use=Math.max(0,full?saved:here?Math.min(saved,P+I):0),ui=here?Math.min(I,use):0,up=use-ui;
   const ym=r.d.slice(0,7),pid='t'+rid(),who=d.payer=='Mati'||d.payer=='Wercia'?d.payer:S.who,base={date:r.d,acc:r.c,to:'',who,deleted:false,ts:Date.now()};
   if(!await putTx(ym,pid,{...base,type:'exp',amount:P,sub:'',note:'Spłata całości: '+d.name,debt:id,payoff:true,...(up?{save:{[id]:-up}}:{})}))return;

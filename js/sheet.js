@@ -5,9 +5,9 @@ import {isTreat,kotki,treatJoke} from './guide.js';
 import {CURS,catHue,pastel} from './data.js';
 import {addM} from './inv.js';
 import {ULGI,savedP,saveSplitP} from './today.js';
-import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch,ownerOf} from './logic.js';
+import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch,ownerOf,balDrop} from './logic.js';
 import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays,plu,dmy} from './util.js';
-import {S,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard} from './core.js';
+import {S,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard,negStop} from './core.js';
 import {downloadBlob} from './actions.js';
 import {incById,openSlip} from './salary.js';
 import {markYearPaid,yearUndo} from './savings.js';
@@ -224,6 +224,13 @@ export async function saveTx(next){if(guard())return;
   if(parts.some(x=>x.amount<=0))return toast('Podaj kwotę w każdym wierszu paragonu','bad');
   const main=amount-parts.reduce((a,x)=>a+x.amount,0);
   if(main<=0)return toast('Pozycje paragonu przekraczają jego kwotę','bad');
+  /* 🚫 no minus: an expense or transfer (also a changed one, and a changed transfer into an account) the account cannot pay is not saved;
+     🪙 drobne the account cannot pay are just left out */
+  const old0=S.edit?liveById(S.edit):null,tx0=liveOf(S.tx),acc0=$('mc').value;let chk=[];
+  if(type!='inc'||old0?.type=='tr'){chk=[{...(old0||{}),id:old0?old0.id:'+new',type,date,amount:main,acc:acc0,to:type=='tr'?$('mto').value:'',amount2:two?amount2:undefined},...parts.map((x,i)=>({id:'+p'+i,type,date,amount:x.amount,acc:acc0,to:''}))];
+    const v=balDrop(S.cfg,tx0,chk);if(v)return negStop(v)}
+  let coin=!old0&&type=='exp'&&S.coinOn&&S.coin,coinOut=false;
+  if(coin&&balDrop(S.cfg,tx0,[...chk,{id:'+coin',type:'tr',date,amount:coin.v,acc:coin.r.from,to:coin.r.to}])){coin=null;coinOut=true}
   if(!S.edit){const d=dupOf(type,amount,date,$('mn').value,type=='tr'?'':$('ms').value,$('mc').value,$('mto').value);
     if(d&&!await ask({title:'Taki wpis już jest',text:`${d.label}\n\nCzy to ten sam zakup? Jeśli tak, nie zapisuj go drugi raz.`,ok:'Zapisz mimo to',cancel:'Nie zapisuj'}))return}
   /* 📌 a typed bill that is an unpaid fixed payment (or a 📅 yearly expense) – linked, so it is not reminded about or booked again when ticked */
@@ -249,7 +256,6 @@ export async function saveTx(next){if(guard())return;
   if(old&&old.date.slice(0,7)!=date.slice(0,7)){const{id:_i,deleted:_d,moved:_m,dby:_b,dAt:_a,...rest}=old;for(const[k,v]of Object.entries(rest))if(!(k in body))body[k]=v;
     body.moved=false} // moved there and back: the old document of this month still says „moved” – without this, deleting it later hid it from 🗑️ Ostatnio usunięte
   const g=parts.length?'g'+rid():'';if(g)body.split=g;Object.assign(body,link);
-  const coin=!old&&type=='exp'&&S.coinOn&&S.coin;
   const phKeep=type=='tr'?[]:PH.filter(p=>!p.removed),phDel=PH.filter(p=>!p.isNew&&(p.removed||type=='tr'));if(phKeep.length||old?.rcpt?.length)body.rcpt=phKeep.map(p=>p.id);
   closeSheet();
   const ym=date.slice(0,7),ok=await putTx(ym,id,body);
@@ -262,7 +268,7 @@ export async function saveTx(next){if(guard())return;
   if(ok&&debt&&S.debts[debt]?.mode=='bank'&&!old)setTimeout(()=>toast('Rata zapisana. Wpisz, ile zostało wg banku.','',{label:'✎ Pozostało',fn:()=>setDebtLeft(debt)}),1500);
   if(ok&&next===true){openTx(null,{type:keep.type});$('mc').value=keep.acc;$('md').value=keep.date;$('mw').value=keep.who;updX()}
   if(ok)useTx(body,{old,parts:parts.length,coin,next:next===true});
-  if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):''));if(ym!=S.ym){S.ym=ym;render()}}}
+  if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):'')+(coinOut?' · 🪙 drobne pominięte – za mało na koncie':''));if(ym!=S.ym){S.ym=ym;render()}}}
 export async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id);
   closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
   linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t);

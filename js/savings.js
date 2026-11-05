@@ -5,9 +5,9 @@ import {kotki} from './guide.js';
 import {gainSvg} from './charts.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue,intOf,intPeriod,intCalc,intTax,intMonthly,intLabel} from './inv.js';
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
-import {seasonal,agg,balance,liveOf,carStats,yearDueNear,ownerOf} from './logic.js';
+import {seasonal,agg,balance,balDrop,liveOf,carStats,yearDueNear,ownerOf} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym,plu} from './util.js';
-import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard} from './core.js';
+import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard,negStop} from './core.js';
 import {openTx} from './sheet.js';
 import {gr} from './salary.js';
 import {remsH,warrantiesH,rems,saveRem,projs} from './debts.js';
@@ -276,6 +276,7 @@ export async function payYear(id){if(guard())return;const it=years().find(x=>x.i
      if(!r)return;if(r!=='alt'){if(await putTx(tw.date.slice(0,7),tw.id,{yearId:id})){const due=markYearPaid(it,tw.date);toast('Zapłacone: '+it.name+' ✓ – kolejny termin: '+MN[+yearDue(it,due).slice(5)-1].toLowerCase())}return}}}
   const r=await ask({title:'Zapłacone: '+it.name,fields:[{id:'a',label:'Kwota (zł)',type:'decimal',value:f2(it.amount)},{id:'d',label:'Data',type:'date',value:td()},{id:'c',label:'Z konta',type:'select',value:yearAccId()||'',options:accOpts()}],ok:'Zapisz'});
   if(!r)return;const amt=gr(r.a);if(amt<=0||!isDate(r.d))return toast('Podaj kwotę i datę','bad');
+  {const v=balDrop(S.cfg,liveOf(S.tx),[{id:'+year',type:'exp',date:r.d,amount:amt,acc:r.c}]);if(v)return negStop(v)}
   if(await putTx(r.d.slice(0,7),'t'+rid(),{type:'exp',amount:amt,date:r.d,sub:it.sub,acc:r.c,to:'',who:S.who,note:'📅 '+it.name,yearId:id,deleted:false,ts:Date.now()})){
     const due=markYearPaid(it,r.d);toast('Zapłacone: '+it.name+' ✓ – kolejny termin: '+MN[+yearDue(it,due).slice(5)-1].toLowerCase())}}/* 💰 interest: book what the bank added (the estimate filled in – correct it from the statement); one id per account and period, so two phones never book it twice */
 export async function bookInt(accId,key){if(guard())return;const a=accById(accId);const I=a&&intOf(a);if(!I)return;const P=intPeriod(I,key),tx=liveOf(S.tx);
