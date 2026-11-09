@@ -3,11 +3,11 @@ import {doc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {recurringP,automatStale,todayItems as todayItemsP,todayRank,typedToday} from './today.js';
-import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap,personBudP} from './logic.js';
+import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap} from './logic.js';
 import {$,esc,ls,pg,td,zl0,plu,daysIn} from './util.js';
 import {DEMO,S,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
-import {editFixed,goFixed,exportJson,editInt,planToFixed} from './actions.js';
+import {editFixed,goFixed,exportJson,editInt,planToFixed,pbudOf,pbudBad} from './actions.js';
 import {openSlip,openSubs} from './salary.js';
 import {openClose} from './close.js';
 import {fillAvg} from './debts.js';
@@ -57,7 +57,7 @@ export function planTodo(){const today=td(),ym=today.slice(0,7),tx=liveOf(S.tx),
   if(L.length){const tot=L.filter(y=>y.c.type=='exp').reduce((a,y)=>a+avg[y.x.id],0);add('toplan:'+ym,'📝',`Do zaplanowania: ${L.length} ${plu(L.length,'pozycja','pozycje','pozycji')} bez planu, które w ostatnich miesiącach miały wpisy${tot?` (wydatki średnio ${zl0(tot)}/mies.)`:''}.`,{a:'fillAvg'},'Wypełnij średnimi')}
   const G=fixedPlanGap(S.cfg,pl).filter(y=>!y.sub.hidden&&!y.sub.cat.hidden);
   /* 👥 by the plan someone (or the shared accounts) will not make it to the end of the month */
-  for(const r of personBudP(S.cfg,{plans:S.plans,tx,hraw:S.hraw},ym))if(r.out&&r.left<0)add('pbud:'+r.who+':'+ym,'👥',`${r.who=='Wspólne'?'Na wspólnych kontach':r.who+':'} według planu zabraknie ${zl0(-r.left)} w tym miesiącu (wpływa ${zl0(r.inc)}, wychodzi ${zl0(r.out)}).`,{a:'pbud'},'Pokaż',r.who=='Wspólne'?null:r.who);
+  for(const r of pbudOf(ym)){const bad=pbudBad(r);if(bad)add('pbud:'+r.who+':'+ym,'👥',`${r.who=='Wspólne'?'Wspólne konta':r.who}: według planu ${bad}.`,{a:'pbud'},'Pokaż',r.who=='Wspólne'?null:r.who)}
   if(G.length)add('gap:'+ym,'📌',`Plan niższy niż opłaty stałe: ${G.map(y=>`${y.sub.name} – plan ${zl0(y.plan)}, opłaty ${zl0(y.fix)}`).join(' · ')}.`,{a:'planFix'},'Podnieś plan');
   return out}
 /* where a tap on an item (or on a notification) leads */

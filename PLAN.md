@@ -158,7 +158,8 @@ Mati: wspólne konto = osobny, trzeci budżet; podział domyślnie 50/50; „kto
 - [x] 👥 Karta „Czy starczy?” na dole Budżetu: Mati, Wercia, Wspólne – wpływa (pensje, przychody stałe, przelewy od innych) / wychodzi (opłaty stałe, część planu, przelewy na wspólne, do drugiej osoby, na oszczędności) / zostaje; szczegóły po stuknięciu
 - [x] 🔔 Cichy punkt w „Na dziś”, gdy według planu komuś zabraknie; to samo zestawienie w kroku „Plan” zamknięcia miesiąca
 - [x] 🧪 Demo: przelewy „Na wspólne” jako stałe przelewy; robot: ekrany „kto płaci” i „czy starczy”, testy obliczeń, kopia z `payM`
-- [ ] Etap 2 (na komendę Matiego): plan a rzeczywistość dla każdej osoby (ile kto już wydał ze swoich kont), podpowiedź kwoty przelewu na wspólne (po połowie)
+- [x] 💰 „Czy starczy?” od tego, co na kontach (wariant B, 9.11): saldo kont bieżących i subkont teraz + to, co jeszcze wpłynie − to, co jeszcze wyjdzie (reszta planu minus to, co dana osoba już wydała); zapas jak w kaskadzie (250 zł na konto bieżące); „najmniej” – dzień z najniższym stanem (np. przed wypłatą); przyszły miesiąc od przewidywanego końca bieżącego
+- [ ] Etap 2 (na komendę Matiego): plan a rzeczywistość dla każdej osoby (czy ktoś nie zapłacił ze swojego konta za coś wspólnego), podpowiedź kwoty przelewu na wspólne (po połowie)
 
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.

@@ -5,7 +5,7 @@ import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
 import {addM,limitOf,paidInYear,wrapOf} from './inv.js';
 import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
-import {avgActuals,carStats,balance,balDrop,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf} from './logic.js';
+import {avgActuals,carStats,balance,balDrop,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf,CASC_BUF} from './logic.js';
 import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0,plu} from './util.js';
 import {S,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard,infoH,negStop} from './core.js';
 import {calcAmt} from './sheet.js';
@@ -192,7 +192,7 @@ export async function doneRem(id){const r=rems().find(x=>x.id==id);if(!r)return;
    then the current accounts hold what is really left from the last salary. Surplus = balance − buffer (250 zł by default) − unpaid fixed payments
    due before the pay day − the new salary when it already came (it is for the next month, not a surplus). Shared accounts: the earliest pay day
    of the two of you, money transferred in since then is new money too. Never to PPK / OKI, never from cash, not above the IKE / IKZE limit. ---------- */
-const CASC_BUF=25000;
+
 export const cascTargets=o=>S.cfg.accs.filter(a=>!a.archived&&isP(a)&&ownerOf(a)==o&&(a.grp=='sav'||(a.grp=='inv'&&!['ppk','oki'].includes(wrapOf(a)))));
 const dmyC=d=>d.split('-').reverse().join('.');
 /* the pay window of a person (shared accounts: of whoever is paid first) – only a real pay day, not the „first 10 days” of a month without income sources */

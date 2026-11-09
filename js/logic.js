@@ -215,37 +215,59 @@ export function payAuto(cfg,tx,ym){const cm=curMap(cfg),ow={},by={},out={};cfg.a
 export function payOf(cfg,hraw,s,ym,auto){const m=hraw?.payM?.[ym]?.[s.id];if(payOk(m))return{v:m,src:'m'};if(payOk(s.pay))return{v:s.pay,src:'s'};return{v:auto?.[s.id]??'Wspólne',src:'a'}}
 /* a salary entry = an income from a payslip (slip = source id) or from the fixed income linked to the source (incM.fixed) */
 export const isSal=(src,t)=>t.type=='inc'&&(t.slip===src.id||(!!src.fixed&&t.fixedId===src.fixed));
-/* 👥 „Czy starczy?” – the month of each person and of the shared accounts, by the plan.
+/* 👥 „Czy starczy?” – what each person (and the shared accounts) will have at the end of the month and at the lowest point, by the plan.
    Money of a person = their current accounts and subkonta in zł (the 📅 envelope subkonto is not spending money – it is put aside).
-   In: salaries (this month's, or the last one as a guess), fixed incomes, other incomes already in, transfers from the other person / Wspólne / savings.
-   Out: fixed payments by their account, the rest of the plan of each position by „who pays”, transfers to the other person / Wspólne / savings
-   (fixed transfers not done yet + every transfer already made). Yearly expenses due this month are paid from the envelope (when there is one). */
+   The current month starts from what is on the accounts now (all entries of the month already in) and adds only what is still to come:
+   salaries not in yet (the last one as a guess, on the expected pay day – o.payDate), fixed incomes / payments / transfers not ticked yet,
+   and the rest of each person's part of the plan (the plan of a position minus its fixed payments, by „who pays”, minus what that person
+   already spent on it from their accounts) – spread evenly over the days left. A later month starts from the end of the month before
+   and counts the whole month. Yearly expenses due are paid from the envelope (when there is one). At the end the reserve is kept back:
+   cascade[osoba].buf (default 250 zł, like the cascade) on every current account. Without o.today – only the flows of the whole month (no balances).
+   → [{who,start,inc,out,buf,end,left,low,lowDate,L[{k,dir:'start'|'inc'|'out',txt,a,est}]}] */
+export const CASC_BUF=25000;
 const catNm=c=>{const n=cleanCat(c.name);return n.charAt(0)+n.slice(1).toLowerCase()};
-export function personBudP(cfg,{plans,tx,hraw},ym){const yAcc=hraw?.yearAcc&&cfg.accs.some(a=>a.id==hraw.yearAcc)?hraw.yearAcc:null,acc={};cfg.accs.forEach(a=>acc[a.id]=a);
+export function personBudP(cfg,D,ym,o={}){const today=o.today,cur=today?.slice(0,7);
+  if(!today||ym<=cur)return budMonth(cfg,D,ym,today&&ym==cur?today:null,null,o);
+  let st=budMonth(cfg,D,cur,today,null,o);for(let m=addMonths(cur,1);;m=addMonths(m,1)){const nx=budMonth(cfg,D,m,null,Object.fromEntries(st.map(r=>[r.who,r.end])),o);if(m>=ym)return nx;st=nx}}
+function budMonth(cfg,{plans,tx,hraw},ym,today,start0,o){const yAcc=hraw?.yearAcc&&cfg.accs.some(a=>a.id==hraw.yearAcc)?hraw.yearAcc:null,acc={};cfg.accs.forEach(a=>acc[a.id]=a);
   const pool=id=>{const a=acc[id];return!a||id==yAcc||(a.cur&&a.cur!='PLN')||(a.grp!='cur'&&a.grp!='sub')?null:ownerOf(a)};
-  const R={};for(const p of PAYERS)R[p]={who:p,inc:0,out:0,est:false,L:{}};
-  const add=(p,dir,k,txt,v,est)=>{if(!R[p]||!v)return;const r=R[p],x=r.L[k]=r.L[k]||{k,dir,txt,a:0,est:false};x.a+=v;r[dir]+=v;if(est){x.est=est;r.est=true}};
+  const live=!!today,from=today||ym+'-01',bal=!!(live||start0),R={},ev=[];for(const p of PAYERS)R[p]={who:p,inc:0,out:0,start:0,L:{},plan:0};
+  const when=d=>d<from?from:d;
+  const add=(p,dir,k,txt,v,est,d)=>{if(!R[p]||!v)return;const r=R[p],x=r.L[k]=r.L[k]||{k,dir,txt,a:0,est:''};x.a+=v;r[dir]+=v;if(est)x.est=est;if(d)ev.push({p,d:when(d),v:dir=='inc'?v:-v})};
+  /* start: on the accounts now (the current month) or the end of the month before (a later month) */
+  if(live)for(const a of cfg.accs){const p=pool(a.id);if(p){const v=balance(cfg,tx,a.id,ym+'-32');R[p].start+=v}}
+  else if(start0)for(const p of PAYERS)R[p].start=start0[p]||0;
   const M=inPeriod(tx,ym),incs=cfg.incs||[],linked=new Set(incs.map(s=>s.fixed).filter(Boolean)),fx=cfg.fixed||[],sm=subsMap(cfg);
   /* in: salaries */
-  for(const s of incs){const p=pool(s.acc);if(!p)continue;const real=M.filter(t=>isSal(s,t)&&t.acc==s.acc).reduce((a,t)=>a+t.amount,0);
-    if(real){add(p,'inc','sal:'+s.id,'💼 '+(s.name||'Pensja'),real);continue}
-    const last=tx.filter(t=>isSal(s,t)&&t.acc==s.acc&&t.date<ym).sort((x,y)=>y.date.localeCompare(x.date))[0];if(last)add(p,'inc','sal:'+s.id,'💼 '+(s.name||'Pensja'),last.amount,'jak ostatnio')}
-  /* in: fixed incomes (rent…) – the real one when ticked */
+  for(const s of incs){const p=pool(s.acc);if(!p)continue;const real=M.filter(t=>isSal(s,t)&&t.acc==s.acc).reduce((a,t)=>a+t.amount,0),nm='💼 '+(s.name||'Pensja');
+    if(real){if(!live)add(p,'inc','sal:'+s.id,nm,real,'',M.find(t=>isSal(s,t))?.date);continue}
+    const last=tx.filter(t=>isSal(s,t)&&t.acc==s.acc&&t.date<ym).sort((x,y)=>y.date.localeCompare(x.date))[0];
+    if(last)add(p,'inc','sal:'+s.id,nm,last.amount,'jak ostatnio',o.payDate?.(s,ym)||fixedDate({day:s.day||10},ym))}
+  /* in: fixed incomes (rent…) */
   for(const f of fx.filter(f=>f.kind=='inc'&&!linked.has(f.id))){const p=pool(f.acc);if(!p)continue;const real=M.filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((a,t)=>a+t.amount,0);
-    add(p,'inc','fi:'+f.id,'📌 '+(f.name||'Przychód stały'),real||(+f.amount||0),!real&&'stały, jeszcze nie wpłynął')}
-  /* in: other incomes already in (not refunds, loans or PPK) */
-  for(const t of M)if(t.type=='inc'&&!t.fixedId&&!t.slip&&!t.refundOf&&!t.lendOf&&!t.debtIn&&!t.ppkOf&&!t.ppk&&sm[t.sub]&&!incs.some(s=>isSal(s,t))){const p=pool(t.acc);if(p)add(p,'inc','oth','➕ Inne wpływy',t.amount)}
-  /* transfers: made this month + fixed ones not made yet */
-  const trf=(from,to,v,est)=>{const P=pool(from),Q=pool(to);if(P==Q||!v)return;
+    if(real){if(!live)add(p,'inc','fi:'+f.id,'📌 '+(f.name||'Przychód stały'),real,'',fixedDate(f,ym));continue}add(p,'inc','fi:'+f.id,'📌 '+(f.name||'Przychód stały'),+f.amount||0,'stały, jeszcze nie wpłynął',fixedDate(f,ym))}
+  /* in: other incomes (not refunds, loans or PPK) – already on the accounts in the current month */
+  if(!live)for(const t of M)if(t.type=='inc'&&!t.fixedId&&!t.slip&&!t.refundOf&&!t.lendOf&&!t.debtIn&&!t.ppkOf&&!t.ppk&&sm[t.sub]&&!incs.some(s=>isSal(s,t))){const p=pool(t.acc);if(p)add(p,'inc','oth','➕ Inne wpływy',t.amount,'',t.date)}
+  /* transfers: fixed ones not made yet (+ in a later month those already typed) */
+  const trf=(from,to,v,est,d)=>{const P=pool(from),Q=pool(to);if(P==Q||!v)return;
     const a=acc[to],sv=!Q&&(to==yAcc||a?.grp=='sav'||a?.grp=='inv');
-    if(P)add(P,'out',Q?'to:'+Q:sv?'save':'tro',Q?'🔁 '+(Q=='Wspólne'?'Na wspólne':'Dla: '+Q):sv?(to==yAcc?'🐷 Odłożone (też na 📅 roczne)':'🐷 Odłożone'):'🔁 Inne przelewy',v,est);
-    if(Q)add(Q,'inc',P?'from:'+P:'fromx',P?'🔁 '+(P=='Wspólne'?'Ze wspólnego':'Od: '+P):'🔁 Z oszczędności / innych kont',v,est)};
-  for(const t of M)if(t.type=='tr')trf(t.acc,t.to,t.amount,false);
-  for(const f of fx.filter(f=>f.kind=='tr'))if(!M.some(t=>t.fixedId===f.id))trf(f.acc,f.to,+f.amount||0,'stały, jeszcze nie było');
-  /* out: fixed payments by their account; the rest of the plan of a position by „who pays” */
-  const fixBy={};for(const f of fx.filter(f=>(f.kind||'exp')=='exp')){const v=+f.amount||0;if(f.sub)fixBy[f.sub]=(fixBy[f.sub]||0)+v;const p=pool(f.acc);if(p)add(p,'out','fix','📌 Opłaty stałe',v)}
-  const pl=planOf(cfg,plans,tx,ym),yp=yAcc?yearPlanOf(cfg,tx,ym).sub:{},auto=payAuto(cfg,tx,ym),sub={};
+    if(P)add(P,'out',Q?'to:'+Q:sv?'save':'tro',Q?'🔁 '+(Q=='Wspólne'?'Na wspólne':'Dla: '+Q):sv?(to==yAcc?'🐷 Odłożone (też na 📅 roczne)':'🐷 Odłożone'):'🔁 Inne przelewy',v,est,d);
+    if(Q)add(Q,'inc',P?'from:'+P:'fromx',P?'🔁 '+(P=='Wspólne'?'Ze wspólnego':'Od: '+P):'🔁 Z oszczędności / innych kont',v,est,d)};
+  if(!live)for(const t of M)if(t.type=='tr')trf(t.acc,t.to,t.amount,'',t.date);
+  for(const f of fx.filter(f=>f.kind=='tr'))if(!M.some(t=>t.fixedId===f.id))trf(f.acc,f.to,+f.amount||0,'stały, jeszcze nie było',fixedDate(f,ym));
+  /* out: fixed payments not ticked yet, by their account */
+  const fixBy={};for(const f of fx.filter(f=>(f.kind||'exp')=='exp')){const v=+f.amount||0;if(f.sub)fixBy[f.sub]=(fixBy[f.sub]||0)+v;const p=pool(f.acc);
+    if(p&&!(live&&M.some(t=>t.fixedId===f.id)))add(p,'out','fix','📌 Opłaty stałe',v,live?'jeszcze nie odhaczone':'',fixedDate(f,ym))}
+  /* out: the rest of the plan of each position by „who pays” (in the current month minus what that person already spent on it) */
+  const spent={};if(live)for(const t of M){if(!t.sub||t.fixedId)continue;const p=pool(t.acc);if(!p)continue;const v=t.type=='exp'?t.amount:t.type=='inc'&&t.refundOf?-t.amount:0;if(v){const m=spent[p]=spent[p]||{};m[t.sub]=(m[t.sub]||0)+v}}
+  const pl=planOf(cfg,plans,tx,ym),yp=yAcc?yearPlanOf(cfg,tx,ym).sub:{},auto=payAuto(cfg,tx,ym);
   for(const c of cfg.cats.filter(c=>c.type=='exp'))for(const s of c.subs){const rest=Math.max(0,(pl[s.id]||0)-(yp[s.id]||0)-(fixBy[s.id]||0));if(!rest)continue;
-    const{v}=payOf(cfg,hraw,s,ym,auto);for(const[p,a]of Object.entries(payShare(v,rest))){if(!a)continue;add(p,'out','c:'+c.id,catNm(c),a);(sub[p]=sub[p]||{})[s.id]=a}}
+    const{v}=payOf(cfg,hraw,s,ym,auto);for(const[p,a0]of Object.entries(payShare(v,rest))){const a=Math.max(0,a0-(spent[p]?.[s.id]||0));if(!a||!R[p])continue;add(p,'out','c:'+c.id,catNm(c),a,live?'zostało z planu':'');R[p].plan+=a}}
+  /* day by day: the lowest point of the month (the plan spread evenly over the days left) */
+  const last=ym+'-'+p2(daysIn(ym)),days=[];for(let d=from;d<=last;d=addDays(d,1))days.push(d);
   const has=p=>p!='Wspólne'||cfg.accs.some(a=>!a.archived&&pool(a.id)=='Wspólne');
-  return PAYERS.filter(p=>has(p)||R[p].inc||R[p].out).map(p=>{const r=R[p],L=Object.values(r.L).sort((a,b)=>(a.dir==b.dir?0:a.dir=='inc'?-1:1)||b.a-a.a);return{...r,L,left:r.inc-r.out,sub:sub[p]||{}}})}
+  return PAYERS.filter(p=>has(p)||R[p].inc||R[p].out||R[p].start).map(p=>{const r=R[p],E=ev.filter(e=>e.p==p),rate=days.length?r.plan/days.length:0;
+    let b=r.start,low=Infinity,lowDate=null;if(bal)for(const d of days){for(const e of E)if(e.d==d)b+=e.v;b-=rate;if(b<low-.5){low=b;lowDate=d}}
+    const nCur=cfg.accs.filter(a=>!a.archived&&a.grp=='cur'&&pool(a.id)==p).length,buf=bal?nCur*(hraw?.cascade?.[p]?.buf??CASC_BUF):0;
+    const L=Object.values(r.L).sort((a,b)=>(a.dir==b.dir?0:a.dir=='inc'?-1:1)||b.a-a.a);if(bal)L.unshift({k:'start',dir:'start',txt:live?'💰 Na kontach teraz':'💰 Na kontach na początek miesiąca',a:r.start,est:live?'':'przewidywane'});
+    const end=r.start+r.inc-r.out;return{who:p,start:r.start,inc:r.inc,out:r.out,buf,end,left:end-buf,low:bal&&lowDate?Math.round(low)-buf:end-buf,lowDate:bal?lowDate:null,L}})}

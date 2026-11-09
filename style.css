@@ -713,3 +713,4 @@ section.pbud{gap:8px}
 .pbr .pbl{padding:0 12px 10px;display:flex;flex-direction:column;gap:3px;font-size:13px}
 .pbr .pbl .r1{justify-content:space-between;gap:8px}
 .pbr .pbh{margin-top:4px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
+.pbr .pbt{border-top:1px solid var(--line);padding-top:4px;margin-top:2px;font-weight:800}

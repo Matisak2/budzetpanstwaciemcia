@@ -4,7 +4,7 @@ import {catIcon,catsEmpty} from './art.js';
 import {CELEBRATE} from './guide.js';
 import {HUES,OWN_COL,catHue,freeHue} from './data.js';
 import {wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
-import {ULGI} from './today.js';
+import {ULGI,payDateP} from './today.js';
 import {balance,balDrop,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod,ownerOf,PAYERS,payAuto,payOf,payOk,payShare,payLabel,personBudP} from './logic.js';
 import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu,dmy} from './util.js';
 import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,saveRound,delFixedDb,putTx,putInv,guard,negStop,txOk,infoH} from './core.js';
@@ -545,14 +545,23 @@ export function setPay(sid){if(guard())return;const sm=subsMap(S.cfg),s0=sm[sid]
     if(!payOk(val))return;if(one)setM(val);else{s.pay=val;saveSub(c,s);if(payOk(S.hraw?.payM?.[ym]?.[sid]))setM('')}
     render();toast(`${s.name}: ${payLabel(val)}${one?' – tylko '+mon:''}`)};
   draw();d.hidden=false;$('dlgBody').scrollTop=0;d.onclick=e=>{if(e.target===d)close()}}
+/* the month of each person from what is on the accounts now (actions + 🔔 planTodo use the same numbers); salaries come on the expected pay day */
+export function pbudOf(ym){const tx=liveOf(S.tx);return personBudP(S.cfg,{plans:S.plans,tx,hraw:S.hraw},ym,{today:td(),payDate:(s,m)=>payDateP(tx,s,m)?.date})}
+const sg=x=>(x<0?'−':'+')+zl0(Math.abs(x));
+/* is it tight? → the text for the card and for „Na dziś” (null = fine) */
+export function pbudBad(r){if(r.left<0)return`na koniec miesiąca zabraknie ${zl0(-r.left)} do zapasu`;if(r.low<0&&r.lowDate)return`ok. ${dmy(r.lowDate).slice(0,5)} może zabraknąć ${zl0(-r.low)} do zapasu (zanim wpłyną pieniądze)`;return null}
 /* the card at the bottom of the Budżet (and in step 4 of the closing – rows only); the own person first */
-export function pbudH(ym,rowsOnly){const R=personBudP(S.cfg,{plans:S.plans,tx:liveOf(S.tx),hraw:S.hraw},ym);if(!R.some(r=>r.out))return'';
-  R.sort((a,b)=>(b.who==S.who)-(a.who==S.who));const sg=x=>(x<0?'−':'+')+zl0(Math.abs(x));
-  const rows=R.map(r=>{const In=r.L.filter(x=>x.dir=='inc'),Out=r.L.filter(x=>x.dir=='out'),ln=x=>`<div class="r1"><span>${esc(x.txt)}${x.est?` <span class="mini">(${esc(x.est)})</span>`:''}</span><b class="num">${x.dir=='inc'?'+':'−'}${zl0(x.a)}</b></div>`;
-    return`<details class="pbr" style="--oc:${OWN_COL[r.who]}"><summary><span class="pbn">${esc(r.who)}</span><b class="num ${r.left<0?'t-exp':'t-inc'}">${sg(r.left)} ${r.left<0?'⚠️':'✅'}</b><span class="mini pbs">wpływa ${zl0(r.inc)} · wychodzi ${zl0(r.out)}</span></summary>
-      <div class="pbl">${In.length?`<div class="mini pbh">Wpływa</div>${In.map(ln).join('')}`:`<div class="mini pbh">Wpływa: nic${r.who=='Wspólne'?' – dodaj stałe przelewy na wspólne konto w 📌 Stałe':''}</div>`}
-      ${Out.length?`<div class="mini pbh">Wychodzi</div>${Out.map(ln).join('')}`:''}
-      ${r.left<0?`<div class="mini t-exp">Według planu zabraknie ${zl0(-r.left)}. Można zmniejszyć plan, zmienić „kto płaci” przy pozycjach albo kwotę przelewu.</div>`:''}</div></details>`}).join('');
+export function pbudH(ym,rowsOnly){const R=pbudOf(ym);if(!R.some(r=>r.out||r.start))return'';const live=ym==td().slice(0,7);
+  R.sort((a,b)=>(b.who==S.who)-(a.who==S.who));
+  const rows=R.map(r=>{const In=r.L.filter(x=>x.dir=='inc'&&x.a>=50),Out=r.L.filter(x=>x.dir=='out'&&x.a>=50),St=r.L.find(x=>x.dir=='start'),bad=pbudBad(r),dip=r.lowDate&&r.low<r.left-10000;
+    const ln=x=>`<div class="r1"><span>${esc(x.txt)}${x.est?` <span class="mini">(${esc(x.est)})</span>`:''}</span><b class="num">${x.dir=='start'?'':x.dir=='inc'?'+':'−'}${zl0(x.a)}</b></div>`;
+    return`<details class="pbr" style="--oc:${OWN_COL[r.who]}"><summary><span class="pbn">${esc(r.who)}</span><b class="num ${bad?'t-exp':'t-inc'}">${sg(r.left)} ${bad?'⚠️':'✅'}</b>
+      <span class="mini pbs">${live?'teraz':'na start ok.'} ${zl0(r.start)} · wpłynie ${zl0(r.inc)} · wyjdzie ${zl0(r.out)}${dip?` · <b class="${r.low<0?'t-exp':''}">najmniej ${sg(r.low)} ok. ${dmy(r.lowDate).slice(0,5)}</b>`:''}</span></summary>
+      <div class="pbl">${St?ln(St):''}<div class="mini pbh">${live?'Jeszcze wpłynie':'Wpłynie'}</div>${In.length?In.map(ln).join(''):`<div class="mini">nic${r.who=='Wspólne'?' – dodaj stałe przelewy na wspólne konto w 📌 Stałe':''}</div>`}
+      ${Out.length?`<div class="mini pbh">${live?'Jeszcze wyjdzie':'Wyjdzie'}</div>${Out.map(ln).join('')}`:''}
+      ${r.buf?`<div class="r1"><span>🛟 Zapas na koncie <span class="mini">(jak w kaskadzie)</span></span><b class="num">−${zl0(r.buf)}</b></div>`:''}
+      <div class="r1 pbt"><span>${r.left<0?'Brakuje':'Zostanie'} na koniec miesiąca</span><b class="num ${r.left<0?'t-exp':'t-inc'}">${sg(r.left)}</b></div>
+      ${bad?`<div class="mini t-exp">Według planu ${esc(bad)}. Można zmniejszyć plan, zmienić „Płaci” przy pozycjach albo kwotę przelewu.</div>`:dip?`<div class="mini">Najmniej będzie ok. ${dmy(r.lowDate).slice(0,5)}: ${sg(r.low)} ponad zapas – potem wpłyną pieniądze.</div>`:''}</div></details>`}).join('');
   if(rowsOnly)return`<div class="pbud">${rows}</div>`;
-  return`<section class="chart pbud" id="pbud"><div class="ct"><b>👥 Czy starczy? – ${esc(MN[+ym.slice(5)-1])}</b><span class="mini">każde z Was i wspólne konta, według planu · stuknij, żeby zobaczyć szczegóły</span></div>${rows}
-    ${infoH('pbud',`<b>Wpływa</b>: pensje (z tego miesiąca, a zanim wpłyną – kwota ostatniej wypłaty), przychody stałe, inne wpływy i przelewy od drugiej osoby, ze wspólnego konta albo z oszczędności.<br><b>Wychodzi</b>: opłaty stałe – temu, z czyjego konta schodzą; reszta planu każdej pozycji – według „Płaci” w Budżecie (z „?” = podpowiedź z ostatnich 3 miesięcy, stuknij, żeby ustawić); przelewy na wspólne, do drugiej osoby i na oszczędności (stałe z 📌 Stałe, których jeszcze nie było, i te już zrobione).<br>Liczą się konta bieżące i subkonta w złotych. ${S.hraw?.yearAcc?'Wydatki roczne płaci subkonto kopert, więc się tu nie liczą – liczy się przelew na nie (🐷).':''}`)}</section>`}
+  return`<section class="chart pbud" id="pbud"><div class="ct"><b>👥 Czy starczy? – ${esc(MN[+ym.slice(5)-1])}</b><span class="mini">${live?'ile zostanie każdemu na koniec miesiąca: to, co jest teraz na kontach, plus to, co jeszcze wpłynie i wyjdzie według planu':'od przewidywanego stanu kont na koniec poprzedniego miesiąca, według planu'} · stuknij, żeby zobaczyć szczegóły</span></div>${rows}
+    ${infoH('pbud',`<b>Na kontach</b>: konta bieżące i subkonta w złotych (bez subkonta kopert na wydatki roczne).<br><b>Jeszcze wpłynie</b>: pensje, których w tym miesiącu jeszcze nie było (kwota ostatniej wypłaty, w zwykłym dniu wypłaty), przychody stałe i stałe przelewy od innych, których jeszcze nie było.<br><b>Jeszcze wyjdzie</b>: opłaty stałe jeszcze nieodhaczone – temu, z czyjego konta schodzą; reszta planu każdej pozycji według „Płaci” (z „?” = podpowiedź z ostatnich 3 miesięcy) minus to, co ta osoba już na nią wydała ze swoich kont; stałe przelewy, których jeszcze nie było (na wspólne, do drugiej osoby, na oszczędności).<br><b>Zapas</b>: kwota, która ma zostać na każdym koncie bieżącym (ta sama co w kaskadzie nadwyżek, domyślnie 250 zł).<br><b>Najmniej</b>: dzień, w którym na kontach będzie najmniej – wydatki z planu rozłożone równo na dni, opłaty i wypłaty w swoich dniach.`)}</section>`}

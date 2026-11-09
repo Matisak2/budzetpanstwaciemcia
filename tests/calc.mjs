@@ -534,6 +534,19 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Czy starczy – pensja Werci to szacunek z ostatniej wypłaty',personBudP(cfg,{plans,tx,hraw},'2026-11').find(r=>r.who=='Wercia').L.find(x=>x.k=='sal:i2').est,'jak ostatnio');
   /* bez subkonta kopert: OC 1 200 jest w planie (bez historii → Wspólne), a przelew Werci na to subkonto to wpływ na wspólne */
   const R2=Object.fromEntries(personBudP(cfg,{plans,tx,hraw:{payM:hraw.payM}},'2026-11').map(r=>[r.who,[r.inc,r.out]]));
-  eq('Czy starczy – bez koperty roczne liczą się w planie',R2['Wspólne'],[300000,530000])}
+  eq('Czy starczy – bez koperty roczne liczą się w planie',R2['Wspólne'],[300000,530000])
+  /* od tego, co jest na kontach (15.11; otwarcie: Mati 1 000, Wercia 500, wspólne 4 000; w listopadzie Mati wydał 100 na „Na mieście”, wspólne 500 na jedzenie):
+     Mati: teraz 14 700 – 500 na oszczędności – 200 reszty „Na mieście” = 14 000, zapas 250 → 13 750
+     Wercia: teraz 5 800 + pensja 6 000 (28.11) – 1 200 – 300 – 800 planu = 9 500 → 9 250; najmniej 27.11: 5 800 – 1 500 – 12 dni × 50 = 3 650 → 3 400
+     Wspólne: teraz 4 000 – 3 000 jedzenia (sierpień–październik) + 1 500 od Matiego – 500 = 2 000; + 1 200 – czynsz 2 500 – jedzenie 1 000 – mieszkanie 100 = −400 → −650; grudzień: start z końca listopada */
+  accs[0].open=100000;accs[1].open=50000;accs[2].open=400000;
+  const tx2=[...tx,T('n3',{type:'exp',sub:'n',acc:'mc',amount:10000,date:'2026-11-05'}),T('j3',{type:'exp',sub:'j',acc:'sc',amount:50000,date:'2026-11-06'})];
+  const o={today:'2026-11-15',payDate:s=>s.id=='i2'?'2026-11-28':'2026-11-10'};
+  const L=Object.fromEntries(personBudP(cfg,{plans,tx:tx2,hraw},'2026-11',o).map(r=>[r.who,r]));
+  eq('Czy starczy teraz – Mati (na kontach, zostanie ponad zapas)',[L.Mati.start,L.Mati.inc,L.Mati.out,L.Mati.buf,L.Mati.left],[1470000,0,70000,25000,1375000]);
+  eq('Czy starczy teraz – Wercia (pensja 28.11, najmniej 27.11)',[L.Wercia.start,L.Wercia.inc,L.Wercia.out,L.Wercia.left,L.Wercia.low,L.Wercia.lowDate],[580000,600000,230000,925000,340000,'2026-11-27']);
+  eq('Czy starczy teraz – Wspólne (brakuje)',[L['Wspólne'].start,L['Wspólne'].inc,L['Wspólne'].out,L['Wspólne'].left],[200000,120000,360000,-65000]);
+  const Dc=Object.fromEntries(personBudP(cfg,{plans,tx:tx2,hraw},'2026-12',o).map(r=>[r.who,[r.start,r.left]]));
+  eq('Czy starczy – grudzień od przewidywanego końca listopada',[Dc.Mati,Dc.Wercia,Dc['Wspólne']],[[1400000,1995000],[950000,1375000],[-40000,-45000]])}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);
