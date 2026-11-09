@@ -690,3 +690,26 @@ body.wf{
 .wf .cslide{background:var(--wf-petals) no-repeat left 4px top 0/60px 30px,var(--wf-petals) no-repeat right 4px top 40px/48px 24px}
 .confetti.petals i{width:12px;height:12px;border-radius:80% 0 80% 0;animation-name:petal;animation-timing-function:ease-in}
 @keyframes petal{25%{margin-left:18px}50%{margin-left:-14px}75%{margin-left:16px}to{transform:translateY(105vh) rotate(400deg);margin-left:0;opacity:.8}}
+/* 👥 Płaci (who pays a position) and „Czy starczy?” */
+.trio.t3{grid-template-columns:1fr 1fr auto}
+.trio .tpay{align-items:flex-end}
+.sub .trio .tpay{justify-content:flex-end}
+.paych{border-radius:999px;padding:3px 10px;min-height:28px;font-size:12px;font-weight:800;color:#334155;background:var(--og,#fff);border:1.5px solid var(--oc,#cbd5e1);white-space:nowrap;cursor:pointer}
+.paych.auto{border-style:dashed;color:#475569;font-weight:700;opacity:.85}
+.paygrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.paygrid .btn{padding:9px 4px;font-size:14px;border:1.5px solid var(--line)}
+.paygrid .btn.on{background:color-mix(in srgb,var(--oc) 40%,#fff);border-color:var(--oc);color:#1e293b}
+.paysum{font-size:13px}
+.dlg .fld input.payr,.payr{-webkit-appearance:none;appearance:none;width:100%;height:12px;padding:0;border:0;border-radius:999px;margin:10px 0;background:linear-gradient(90deg,#7fb0ec var(--v),#f0a3c3 var(--v))}
+.payr::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;border:2px solid #cbd5e1;box-shadow:0 1px 4px rgb(15 23 42 / .15)}
+.payr::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;border:2px solid #cbd5e1}
+.pbud details.pbr{border:1px solid var(--line);border-left:5px solid var(--oc);border-radius:12px;background:#fff}
+div.pbud{display:flex;flex-direction:column;gap:6px}
+section.pbud{gap:8px}
+.pbr summary{list-style:none;display:grid;grid-template-columns:1fr auto;gap:0 8px;padding:9px 12px;cursor:pointer}
+.pbr summary::-webkit-details-marker{display:none}
+.pbr .pbn{font-weight:800}
+.pbr .pbs{grid-column:1/-1}
+.pbr .pbl{padding:0 12px 10px;display:flex;flex-direction:column;gap:3px;font-size:13px}
+.pbr .pbl .r1{justify-content:space-between;gap:8px}
+.pbr .pbh{margin-top:4px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:11px}

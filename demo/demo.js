@@ -56,7 +56,7 @@
       iW:{comp:[{n:'Wynagrodzenie zasadnicze',a:940000,h:0}],zus:128874,health:73001,kup:25000,tax:66000,ppkOwn:18800,ppkEmp:14100,costs:0,ded:[{n:'Ubezpieczenie grupowe',a:6000,sub:sid['Inne wydatki']}],net:647325,base:800200}};
     const payDay=(ym,last)=>{let d=new Date(+ym.slice(0,4),+ym.slice(5)-1,last?daysIn(ym):10);while(d.getDay()==0||d.getDay()==6)d.setDate(d.getDate()-1);return d.getDate()};
     const ppkLots={};
-    const fixedM={};FIX.forEach(([id,name,amount,day,s,acc,kind],o)=>{fixedM[id]={name,amount,day,sub:sid[s],acc,kind,o}});fixedM.f8={name:'Na oszczędności',amount:100000,day:11,sub:'',acc:'aJ',to:'aS',kind:'tr',o:8};
+    const fixedM={};FIX.forEach(([id,name,amount,day,s,acc,kind],o)=>{fixedM[id]={name,amount,day,sub:sid[s],acc,kind,o}});fixedM.f8={name:'Na oszczędności',amount:100000,day:11,sub:'',acc:'aJ',to:'aS',kind:'tr',o:8};fixedM.f9={name:'Na wspólne',amount:300000,day:11,sub:'',acc:'aM',to:'aJ',kind:'tr',o:9};fixedM.f10={name:'Na wspólne',amount:300000,day:11,sub:'',acc:'aW',to:'aJ',kind:'tr',o:10};
     /* 📅 yearly expenses (envelopes on the shared sub-account aY) and dates without an amount – months counted from today, so the demo always has something coming */
     const mOf=k=>addMonths(ym0,k),YEAR={},REM={};
     [['y1','🛡️ OC i AC samochodu',145000,mOf(2),15,'Ubezpieczenie auta'],['y2','🏠 Ubezpieczenie mieszkania',42000,mOf(5),1,'Ubezpieczenie mieszkania'],['y3','🔧 Przegląd auta',25000,mOf(8),20,'Serwis auta'],['y4','🎁 Prezenty świąteczne',120000,ym0.slice(0,4)+'-12',10,'Święta i okazje']]
@@ -81,7 +81,7 @@
         slips[id]={...sl,date,young:null,booked:iid,name:src.name,kind:src.kind,who:src.who,est:false,estNet:false,ts:new Date(date+'T12:00:00').getTime()}}
       if(Object.keys(slips).length)st['households/main/slips/'+ym]={s:slips};
       if(mi==-1)add(18,{type:'inc',amount:45000,sub:sid['Zwroty i inne'],acc:'aW',note:'Sprzedaż na Vinted'});
-      add(11,{type:'tr',amount:300000,sub:'',acc:'aM',to:'aJ',note:'Na wspólne'});add(11,{type:'tr',amount:300000,sub:'',acc:'aW',to:'aJ',note:'Na wspólne'});
+      add(11,{type:'tr',amount:300000,sub:'',acc:'aM',to:'aJ',fixedId:'f9',note:'Na wspólne'});add(11,{type:'tr',amount:300000,sub:'',acc:'aW',to:'aJ',fixedId:'f10',note:'Na wspólne'});
       for(let i=0;i<9;i++)add(r(1,28),{amount:r(4000,26000),sub:sid['Zakupy spożywcze'],acc:'aJ',note:pick(['Biedronka','Lidl','Żabka','Auchan','Warzywniak'])});
       for(let i=0;i<3;i++)add(r(1,28),{amount:r(6000,22000),sub:sid['Restauracje'],acc:pick(['aM','aW']),note:pick(['Pizzeria','Sushi','Bistro','Pierogarnia'])});
       for(let i=0;i<6;i++)add(r(1,28),{amount:r(1200,2800),sub:sid['Kawa i przekąski'],acc:pick(['aM','aW']),note:'Kawiarnia'});

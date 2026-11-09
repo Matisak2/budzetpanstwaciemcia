@@ -171,7 +171,7 @@ export function carStats(cfg,tx,pid,odo0=0){const sm=subsMap(cfg),L=tx.filter(t=
   return{cost,byCat,km,odo:odos.length?Math.max(...odos):odo0,l100:span>0&&after>0?after/span*100:null,litre:litSum>0?litCost/litSum:null,perKm:km>0?cost/km:null,n:L.length}}
 /* 💾 the backup file – one function for ⚙️ „Pobierz kopię” and the monthly e-mail (scripts/mail-lib.mjs), so the two never differ.
    BACKUP_KEYS = settings kept in households/main next to the maps of cfg; „Wczytaj kopię” puts them back */
-export const BACKUP_KEYS=['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen'];
+export const BACKUP_KEYS=['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen','payM'];
 export function backupDoc(D,now=new Date(),extra={}){const h=D.hraw||{};
   return{format:'budzet-mw-2',exported:now.toISOString(),cfg:D.cfg,savTarget:D.savTarget??h.savTarget??0,
     ...Object.fromEntries(BACKUP_KEYS.map(k=>[k,h[k]??(k=='yearAcc'?'':{})])),
@@ -195,3 +195,57 @@ export const subscrOf=cfg=>{const sm=subsMap(cfg);return(cfg.fixed||[]).filter(f
 export function subsReviewP(cfg,hraw,who,today){const L=subscrOf(cfg).filter(f=>seenBy(fixedWho(cfg,f),who));if(!L.length)return null;const ym=today.slice(0,7),ig=hraw?.checkIgnore||{};
   const last=Object.keys(ig).filter(k=>ig[k]&&k.startsWith('subs:'+who+':')).map(k=>k.split(':')[2]).sort().pop();if(last&&ym<addMonths(last,12))return null;
   return{key:'subs:'+who+':'+ym,list:L,month:L.reduce((a,f)=>a+(+f.amount||0),0),last:last||null}}
+/* 👥 Who pays a position of the plan: 'Mati' | 'Wercia' | 'Wspólne' or a number 1–99 = Mati's % (the rest Wercia; 50 = po połowie).
+   Set for good on the position (catsM…subsM[id].pay), a single month can differ (payM[YYYY-MM][id]); nothing set = guessed from the last 3 months. */
+export const PAYERS=['Mati','Wercia','Wspólne'];
+export const payOk=v=>PAYERS.includes(v)||(typeof v=='number'&&v>0&&v<100);
+export const payShare=(v,amt)=>typeof v=='number'?{Mati:Math.round(amt*v/100),Wercia:amt-Math.round(amt*v/100)}:{[v]:amt};
+export const payLabel=v=>typeof v=='number'?(v==50?'Po połowie':`Mati ${v}% · Wercia ${100-v}%`):v;
+/* the guess: spending on the position in the 3 months before (without fixed payments – they always count by their account) by whose account paid;
+   one owner with ≥ 75% → that one, Wspólne the biggest → Wspólne, otherwise Mati and Wercia in proportion (to 10%); no history → Wspólne (no shared account → po połowie) */
+export function payAuto(cfg,tx,ym){const cm=curMap(cfg),ow={},by={},out={};cfg.accs.forEach(a=>ow[a.id]=ownerOf(a));
+  for(let k=1;k<=3;k++)for(const t of inPeriod(tx,addMonths(ym,-k))){if(!t.sub||t.fixedId||(cm[t.acc]||'PLN')!='PLN'||!ow[t.acc])continue;
+    const v=t.type=='exp'?t.amount:t.type=='inc'&&t.refundOf?-t.amount:0;if(!v)continue;const m=by[t.sub]=by[t.sub]||{Mati:0,Wercia:0,'Wspólne':0};m[ow[t.acc]]=(m[ow[t.acc]]||0)+v}
+  const shared=cfg.accs.some(a=>!a.archived&&(a.grp=='cur'||a.grp=='sub')&&ownerOf(a)=='Wspólne');
+  for(const c of cfg.cats)for(const s of c.subs){const m=by[s.id],tot=m?Math.max(0,m.Mati)+Math.max(0,m.Wercia)+Math.max(0,m['Wspólne']):0;
+    if(!tot){out[s.id]=shared?'Wspólne':50;continue}const top=PAYERS.find(p=>m[p]>=tot*.75);
+    if(top){out[s.id]=top;continue}if(m['Wspólne']>=m.Mati&&m['Wspólne']>=m.Wercia){out[s.id]='Wspólne';continue}
+    const pm=Math.round(Math.max(0,m.Mati)/(Math.max(0,m.Mati)+Math.max(0,m.Wercia))*10)*10;out[s.id]=pm<=0?'Wercia':pm>=100?'Mati':pm}
+  return out}
+export function payOf(cfg,hraw,s,ym,auto){const m=hraw?.payM?.[ym]?.[s.id];if(payOk(m))return{v:m,src:'m'};if(payOk(s.pay))return{v:s.pay,src:'s'};return{v:auto?.[s.id]??'Wspólne',src:'a'}}
+/* a salary entry = an income from a payslip (slip = source id) or from the fixed income linked to the source (incM.fixed) */
+export const isSal=(src,t)=>t.type=='inc'&&(t.slip===src.id||(!!src.fixed&&t.fixedId===src.fixed));
+/* 👥 „Czy starczy?” – the month of each person and of the shared accounts, by the plan.
+   Money of a person = their current accounts and subkonta in zł (the 📅 envelope subkonto is not spending money – it is put aside).
+   In: salaries (this month's, or the last one as a guess), fixed incomes, other incomes already in, transfers from the other person / Wspólne / savings.
+   Out: fixed payments by their account, the rest of the plan of each position by „who pays”, transfers to the other person / Wspólne / savings
+   (fixed transfers not done yet + every transfer already made). Yearly expenses due this month are paid from the envelope (when there is one). */
+const catNm=c=>{const n=cleanCat(c.name);return n.charAt(0)+n.slice(1).toLowerCase()};
+export function personBudP(cfg,{plans,tx,hraw},ym){const yAcc=hraw?.yearAcc&&cfg.accs.some(a=>a.id==hraw.yearAcc)?hraw.yearAcc:null,acc={};cfg.accs.forEach(a=>acc[a.id]=a);
+  const pool=id=>{const a=acc[id];return!a||id==yAcc||(a.cur&&a.cur!='PLN')||(a.grp!='cur'&&a.grp!='sub')?null:ownerOf(a)};
+  const R={};for(const p of PAYERS)R[p]={who:p,inc:0,out:0,est:false,L:{}};
+  const add=(p,dir,k,txt,v,est)=>{if(!R[p]||!v)return;const r=R[p],x=r.L[k]=r.L[k]||{k,dir,txt,a:0,est:false};x.a+=v;r[dir]+=v;if(est){x.est=est;r.est=true}};
+  const M=inPeriod(tx,ym),incs=cfg.incs||[],linked=new Set(incs.map(s=>s.fixed).filter(Boolean)),fx=cfg.fixed||[],sm=subsMap(cfg);
+  /* in: salaries */
+  for(const s of incs){const p=pool(s.acc);if(!p)continue;const real=M.filter(t=>isSal(s,t)&&t.acc==s.acc).reduce((a,t)=>a+t.amount,0);
+    if(real){add(p,'inc','sal:'+s.id,'💼 '+(s.name||'Pensja'),real);continue}
+    const last=tx.filter(t=>isSal(s,t)&&t.acc==s.acc&&t.date<ym).sort((x,y)=>y.date.localeCompare(x.date))[0];if(last)add(p,'inc','sal:'+s.id,'💼 '+(s.name||'Pensja'),last.amount,'jak ostatnio')}
+  /* in: fixed incomes (rent…) – the real one when ticked */
+  for(const f of fx.filter(f=>f.kind=='inc'&&!linked.has(f.id))){const p=pool(f.acc);if(!p)continue;const real=M.filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((a,t)=>a+t.amount,0);
+    add(p,'inc','fi:'+f.id,'📌 '+(f.name||'Przychód stały'),real||(+f.amount||0),!real&&'stały, jeszcze nie wpłynął')}
+  /* in: other incomes already in (not refunds, loans or PPK) */
+  for(const t of M)if(t.type=='inc'&&!t.fixedId&&!t.slip&&!t.refundOf&&!t.lendOf&&!t.debtIn&&!t.ppkOf&&!t.ppk&&sm[t.sub]&&!incs.some(s=>isSal(s,t))){const p=pool(t.acc);if(p)add(p,'inc','oth','➕ Inne wpływy',t.amount)}
+  /* transfers: made this month + fixed ones not made yet */
+  const trf=(from,to,v,est)=>{const P=pool(from),Q=pool(to);if(P==Q||!v)return;
+    const a=acc[to],sv=!Q&&(to==yAcc||a?.grp=='sav'||a?.grp=='inv');
+    if(P)add(P,'out',Q?'to:'+Q:sv?'save':'tro',Q?'🔁 '+(Q=='Wspólne'?'Na wspólne':'Dla: '+Q):sv?(to==yAcc?'🐷 Odłożone (też na 📅 roczne)':'🐷 Odłożone'):'🔁 Inne przelewy',v,est);
+    if(Q)add(Q,'inc',P?'from:'+P:'fromx',P?'🔁 '+(P=='Wspólne'?'Ze wspólnego':'Od: '+P):'🔁 Z oszczędności / innych kont',v,est)};
+  for(const t of M)if(t.type=='tr')trf(t.acc,t.to,t.amount,false);
+  for(const f of fx.filter(f=>f.kind=='tr'))if(!M.some(t=>t.fixedId===f.id))trf(f.acc,f.to,+f.amount||0,'stały, jeszcze nie było');
+  /* out: fixed payments by their account; the rest of the plan of a position by „who pays” */
+  const fixBy={};for(const f of fx.filter(f=>(f.kind||'exp')=='exp')){const v=+f.amount||0;if(f.sub)fixBy[f.sub]=(fixBy[f.sub]||0)+v;const p=pool(f.acc);if(p)add(p,'out','fix','📌 Opłaty stałe',v)}
+  const pl=planOf(cfg,plans,tx,ym),yp=yAcc?yearPlanOf(cfg,tx,ym).sub:{},auto=payAuto(cfg,tx,ym),sub={};
+  for(const c of cfg.cats.filter(c=>c.type=='exp'))for(const s of c.subs){const rest=Math.max(0,(pl[s.id]||0)-(yp[s.id]||0)-(fixBy[s.id]||0));if(!rest)continue;
+    const{v}=payOf(cfg,hraw,s,ym,auto);for(const[p,a]of Object.entries(payShare(v,rest))){if(!a)continue;add(p,'out','c:'+c.id,catNm(c),a);(sub[p]=sub[p]||{})[s.id]=a}}
+  const has=p=>p!='Wspólne'||cfg.accs.some(a=>!a.archived&&pool(a.id)=='Wspólne');
+  return PAYERS.filter(p=>has(p)||R[p].inc||R[p].out).map(p=>{const r=R[p],L=Object.values(r.L).sort((a,b)=>(a.dir==b.dir?0:a.dir=='inc'?-1:1)||b.a-a.a);return{...r,L,left:r.inc-r.out,sub:sub[p]||{}}})}

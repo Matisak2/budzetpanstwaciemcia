@@ -3,7 +3,7 @@ import {doc,deleteDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {recurringP,automatStale,todayItems as todayItemsP,todayRank,typedToday} from './today.js';
-import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap} from './logic.js';
+import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap,personBudP} from './logic.js';
 import {$,esc,ls,pg,td,zl0,plu,daysIn} from './util.js';
 import {DEMO,S,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
@@ -49,13 +49,15 @@ export function todayItems(){if(!S.cfg)return[];const L=[...todayItemsP(todayD()
 export const todayNow=()=>todayItems().filter(x=>!x.later);
 /* 📊 the plan of the current month (only in the app – plans are not read by the automat, so no phone notification): it used to be banners and cats' warnings on Budżet */
 export function planTodo(){const today=td(),ym=today.slice(0,7),tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),ig=S.hraw?.checkIgnore||{},out=[];
-  const add=(key,icon,text,go,label)=>{if(!ig[key])out.push({key,icon,text,go,label,k:'plan',who:null,quiet:true})};
+  const add=(key,icon,text,go,label,who=null)=>{if(!ig[key])out.push({key,icon,text,go,label,k:'plan',who,quiet:true})};
   const pexp=S.cfg.cats.filter(c=>c.type=='exp').reduce((a,c)=>a+c.subs.reduce((b,x)=>b+(pl[x.id]||0),0),0),left=pexp-agg(S.cfg,tx,ym).exp,dl=daysIn(ym)-(+today.slice(8))+1;
   if(pexp>0&&left<0)add('over:'+ym,'📊',`Plan wydatków na ten miesiąc przekroczony o ${zl0(-left)}.`,{a:'dash',bf:'over'},'Co przekroczone');
   else if(pexp>0&&left<pexp*.15)add('near:'+ym,'📊',`W budżecie zostało ${zl0(left)} na ${dl} ${plu(dl,'dzień','dni','dni')} – mniej niż 15% planu.`,{a:'dash'},'Budżet');
   const{avg}=avgActuals(S.cfg,tx,ym,3),YS=yearSubs(S.cfg),L=S.cfg.cats.filter(c=>!c.hidden).flatMap(c=>c.subs.filter(x=>!x.hidden&&!pl[x.id]&&avg[x.id]>0&&!YS.has(x.id)).map(x=>({c,x})));
   if(L.length){const tot=L.filter(y=>y.c.type=='exp').reduce((a,y)=>a+avg[y.x.id],0);add('toplan:'+ym,'📝',`Do zaplanowania: ${L.length} ${plu(L.length,'pozycja','pozycje','pozycji')} bez planu, które w ostatnich miesiącach miały wpisy${tot?` (wydatki średnio ${zl0(tot)}/mies.)`:''}.`,{a:'fillAvg'},'Wypełnij średnimi')}
   const G=fixedPlanGap(S.cfg,pl).filter(y=>!y.sub.hidden&&!y.sub.cat.hidden);
+  /* 👥 by the plan someone (or the shared accounts) will not make it to the end of the month */
+  for(const r of personBudP(S.cfg,{plans:S.plans,tx,hraw:S.hraw},ym))if(r.out&&r.left<0)add('pbud:'+r.who+':'+ym,'👥',`${r.who=='Wspólne'?'Na wspólnych kontach':r.who+':'} według planu zabraknie ${zl0(-r.left)} w tym miesiącu (wpływa ${zl0(r.inc)}, wychodzi ${zl0(r.out)}).`,{a:'pbud'},'Pokaż',r.who=='Wspólne'?null:r.who);
   if(G.length)add('gap:'+ym,'📌',`Plan niższy niż opłaty stałe: ${G.map(y=>`${y.sub.name} – plan ${zl0(y.plan)}, opłaty ${zl0(y.fix)}`).join(' · ')}.`,{a:'planFix'},'Podnieś plan');
   return out}
 /* where a tap on an item (or on a notification) leads */
@@ -69,6 +71,7 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
   if(a=='round'){goTab('set');return setPage('cat')}if(a=='close')return openClose();if(a=='subs')return openSubs();
+  if(a=='pbud'){S.ym=td().slice(0,7);goTab('dash');setTimeout(()=>{const e=$('pbud');if(e){e.scrollIntoView({block:'start',behavior:'smooth'});e.querySelector('details.pbr .t-exp')?.closest('details')?.setAttribute('open','')}},60);return}
   if(a=='dash'||a=='fillAvg'||a=='planFix'){S.ym=td().slice(0,7);if(g.bf)S.bf=g.bf;goTab('dash');if(a=='fillAvg')return fillAvg();if(a=='planFix')return planToFixed();return}
   if(a=='int')return bookInt(g.acc,g.key);if(a=='accInt')return editInt(g.id);
   if(a=='tx'){const t=liveById(g.id);if(t){S.ym=t.date.slice(0,7);openTx(g.id)}}}

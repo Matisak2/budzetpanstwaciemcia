@@ -9,7 +9,7 @@ import {CLOSE_STEPS,CLOSE_SHARED,closeDueP,closeStateP,closeYmP} from './today.j
 import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds,ownerOf} from './logic.js';
 import {MN,MNG,addDays,addMonths,esc,td,zl0,money,dmy} from './util.js';
 import {S,toast,CUR,H,PLC,merge,guard,celebrate,w,infoH} from './core.js';
-import {goalProgress,goalOwner,unallocated,markRecon} from './actions.js';
+import {goalProgress,goalOwner,unallocated,markRecon,pbudH} from './actions.js';
 import {cascadeH} from './debts.js';
 import {render} from './app.js';
 
@@ -79,7 +79,7 @@ export function closePageH(){const ym=S.close,cur=addMonths(ym,1),tx=liveOf(S.tx
 
   /* 4. the plan of the new month */
   const pn=planOf(S.cfg,S.plans,tx,cur),sum=t=>S.cfg.cats.filter(c=>c.type==t).reduce((a,c)=>a+c.subs.reduce((b,s)=>b+(pn[s.id]||0),0),0),pi=sum('inc'),pe=sum('exp'),gap=fixedPlanGap(S.cfg,pn).filter(x=>!x.sub.hidden&&!x.sub.cat.hidden),tg=S.savTarget||0;
-  h+=stepH(4,'plan',pe||pi?`<div class="mini">${esc(mnc)}: przychody w planie ${zl0(pi)} · wydatki ${zl0(pe)} · zostaje ${zl0(pi-pe)}${tg?` · cel odkładania ${zl0(tg)}${pi-pe<tg?' – <b class="t-exp">plan nie zostawia tyle</b>':''}`:''}</div>${gap.length?`<div class="mini t-exp">📌 Plan niższy niż opłaty stałe: ${gap.map(x=>esc(x.sub.name)).join(', ')}</div><button class="btn sm" onclick="planToFixed('${cur}')">Podnieś plan do opłat stałych</button>`:''}`
+  h+=stepH(4,'plan',pe||pi?`<div class="mini">${esc(mnc)}: przychody w planie ${zl0(pi)} · wydatki ${zl0(pe)} · zostaje ${zl0(pi-pe)}${tg?` · cel odkładania ${zl0(tg)}${pi-pe<tg?' – <b class="t-exp">plan nie zostawia tyle</b>':''}`:''}</div>${gap.length?`<div class="mini t-exp">📌 Plan niższy niż opłaty stałe: ${gap.map(x=>esc(x.sub.name)).join(', ')}</div><button class="btn sm" onclick="planToFixed('${cur}')">Podnieś plan do opłat stałych</button>`:''}${(()=>{const pb=pbudH(cur,1);return pb?`<div class="mini"><b>👥 Czy każdemu starczy na ${esc(mnc.toLowerCase())}?</b> Kto płaci którą pozycję – przycisk „Płaci” przy pozycjach w Budżecie.</div>${pb}`:''})()}`
     :`<div class="mini">${esc(mnc)} nie ma jeszcze planu.</div><div class="btns" style="gap:6px"><button class="btn sm" onclick="copyPlan('${cur}')">Skopiuj z poprzedniego miesiąca</button><button class="btn sm" onclick="fillAvg('${cur}')">Wypełnij średnimi</button></div>`,'Plan gotowy');
 
   /* 5. goals: what to put into each this month */

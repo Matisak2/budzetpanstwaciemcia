@@ -2,12 +2,12 @@
 import {doc,collection,setDoc,deleteDoc,updateDoc,deleteField,getDocs} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {catIcon,catsEmpty} from './art.js';
 import {CELEBRATE} from './guide.js';
-import {HUES,catHue,freeHue} from './data.js';
+import {HUES,OWN_COL,catHue,freeHue} from './data.js';
 import {wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
 import {ULGI} from './today.js';
-import {balance,balDrop,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod,ownerOf} from './logic.js';
+import {balance,balDrop,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod,ownerOf,PAYERS,payAuto,payOf,payOk,payShare,payLabel,personBudP} from './logic.js';
 import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu,dmy} from './util.js';
-import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,saveRound,delFixedDb,putTx,putInv,guard,negStop,txOk} from './core.js';
+import {S,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,saveRound,delFixedDb,putTx,putInv,guard,negStop,txOk,infoH} from './core.js';
 import {catColor,RCPT,RMETA,phCache,openTx} from './sheet.js';
 import {incs,gr,openSlip,saveInc} from './salary.js';
 import {saveYear} from './savings.js';
@@ -513,3 +513,46 @@ export function subTx(sid){const sm=subsMap(S.cfg),s=sm[sid];if(!s)return;use('f
   $('stAdd').onclick=()=>{close();openTx(null,{type:c.type,sub:sid})};
   $('stReg').onclick=()=>{close();S.f={q:s.name,type:'',who:'',acc:'',cat:c.id,scope:'m'};goTab('tx')}}
 export function clearF(){S.f={q:'',type:'',who:'',acc:'',cat:'',scope:'m'};if(document.activeElement?.id=='fq')document.activeElement.blur();render()}
+/* ---------- 👥 Who pays a position and „Czy starczy?” (the month of each person and of the shared accounts, by the plan) ---------- */
+const tint=c=>`color-mix(in srgb,${c} 40%,#fff)`,payShort=v=>typeof v=='number'?(v==50?'Po połowie':`Mati ${v}%`):v;
+/* fixed payments of a position and whose accounts pay them (they always count by the account) */
+function fixOfSub(sid){const L=(S.cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&f.sub==sid&&+f.amount>0);
+  return{sum:L.reduce((a,f)=>a+(+f.amount),0),who:[...new Set(L.map(f=>ownerOf(S.cfg.accs.find(a=>a.id==f.acc))))]}}
+/* the little „Płaci” button in a row of the Budżet (only expense positions with a plan or a fixed payment) */
+export function payChipH(s,ym,pl,auto){const fx=fixOfSub(s.id),rest=Math.max(0,pl-fx.sum);if(!pl&&!fx.sum)return'';
+  if(!rest&&fx.sum){const w=fx.who.length==1?fx.who[0]:'kilka kont';return`<button class="paych" style="--oc:${OWN_COL[w]||'#cbd5e1'};--og:${tint(OWN_COL[w]||'#cbd5e1')}" onclick="setPay('${s.id}')" aria-label="Kto płaci: ${esc(s.name)}">📌 ${esc(w)}</button>`}
+  const{v,src}=payOf(S.cfg,S.hraw,s,ym,auto),col=typeof v=='number'?`linear-gradient(90deg,${tint(OWN_COL.Mati)} ${v}%,${tint(OWN_COL.Wercia)} ${v}%)`:tint(OWN_COL[v]);
+  return`<button class="paych${src=='a'?' auto':''}" style="--oc:${OWN_COL[typeof v=='number'?'Mati':v]};--og:${col}" onclick="setPay('${s.id}')" aria-label="Kto płaci: ${esc(s.name)}"${src=='a'?' title="Podpowiedź z ostatnich 3 miesięcy – stuknij, żeby ustawić"':''}>${src=='m'?'🗓️ ':''}${esc(payShort(v))}${src=='a'?' ?':''}</button>`}
+export function setPay(sid){if(guard())return;const sm=subsMap(S.cfg),s0=sm[sid];if(!s0)return;use('f:pay');const c=s0.cat,s=c.subs.find(x=>x.id==sid),ym=S.ym,tx=liveOf(S.tx);
+  const auto=payAuto(S.cfg,tx,ym),cur=payOf(S.cfg,S.hraw,s,ym,auto),pl=planOf(S.cfg,S.plans,tx,ym)[sid]||0,fx=fixOfSub(sid),rest=Math.max(0,pl-fx.sum),mon=MN[+ym.slice(5)-1].toLowerCase();
+  let v=cur.v,only=cur.src=='m';const d=$('dlg');
+  const draw=()=>{const sh=payShare(v,rest),pct=typeof v=='number'?v:50;
+    $('dlgBody').innerHTML=`<h2>👥 Kto płaci: ${esc(s.name)}</h2>
+      <p class="dtext">${esc(MN[+ym.slice(5)-1])}: plan ${zl(pl)}${fx.sum?`. W tym opłaty stałe ${zl(fx.sum)} – liczą się temu, z czyjego konta schodzą (${esc(fx.who.join(', '))}). Niżej wybierasz, kto płaci resztę: <b>${zl(rest)}</b>.`:'.'}</p>
+      <div class="paygrid">${[...PAYERS.map(p=>[p,p]),['50','Po połowie'],['x','Inaczej']].map(([k,l])=>{const on=k=='x'?typeof v=='number'&&v!=50:k=='50'?v===50:v===k;return`<button class="btn${on?' on':''}" data-p="${k}" aria-pressed="${on}" style="--oc:${OWN_COL[k]||'#c4b5fd'}">${esc(l)}</button>`}).join('')}</div>
+      ${typeof v=='number'?`<label class="fld"><span>Podział: Mati ${pct}% · Wercia ${100-pct}%</span><input type="range" class="payr" id="payR" min="5" max="95" step="5" value="${pct}" style="--v:${pct}%"></label>`:''}
+      ${rest?`<div class="mini paysum">${Object.entries(sh).filter(([,a])=>a).map(([p,a])=>`<b style="color:${OWN_COL[p]}">●</b> ${esc(p)} ${zl(a)}`).join(' · ')}</div>`:''}
+      <div class="seg seg2" style="margin-top:4px"><button id="pyAll" aria-pressed="${!only}">Na stałe</button><button id="pyOne" aria-pressed="${only}">Tylko ${esc(mon)}</button></div>
+      <div class="mini">Podpowiedź z ostatnich 3 miesięcy (z czyich kont szły wydatki): <b>${esc(payLabel(auto[sid]??'Wspólne'))}</b>${cur.src!='a'?` · <button class="lnk" id="pyAuto">↺ wróć do podpowiedzi</button>`:''}</div>
+      <div class="stfoot"><div class="g2"><button class="btn" id="pyNo">Anuluj</button><button class="btn primary" id="pyOk">Zapisz</button></div></div>`;
+    $('dlgBody').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const k=b.dataset.p;v=k=='50'?50:k=='x'?(typeof v=='number'&&v!=50?v:60):k;draw()});
+    const r=$('payR');if(r)r.oninput=()=>{v=+r.value;r.style.setProperty('--v',v+'%');const L=r.previousElementSibling;if(L)L.textContent=`Podział: Mati ${v}% · Wercia ${100-v}%`;const ps=$('dlgBody').querySelector('.paysum');if(ps){const q=payShare(v,rest);ps.innerHTML=`<b style="color:${OWN_COL.Mati}">●</b> Mati ${zl(q.Mati)} · <b style="color:${OWN_COL.Wercia}">●</b> Wercia ${zl(q.Wercia)}`}};
+    $('pyAll').onclick=()=>{only=false;draw()};$('pyOne').onclick=()=>{only=true;draw()};$('pyNo').onclick=close;
+    const a=$('pyAuto');if(a)a.onclick=()=>{save('',false,true)};$('pyOk').onclick=()=>save(v,only)};
+  const close=()=>{d.hidden=true;d.onclick=null};
+  const setM=val=>{const pm={...(S.hraw?.payM||{})};pm[ym]={...(pm[ym]||{}),[sid]:val};S.hraw={...S.hraw,payM:pm};merge(H,{payM:{[ym]:{[sid]:val}}})};
+  const save=(val,one,reset)=>{close();if(reset){if(s.pay!=null&&s.pay!==''){s.pay='';saveSub(c,s)}if(payOk(S.hraw?.payM?.[ym]?.[sid]))setM('');render();return toast('Wraca podpowiedź: '+payLabel(auto[sid]??'Wspólne'))}
+    if(!payOk(val))return;if(one)setM(val);else{s.pay=val;saveSub(c,s);if(payOk(S.hraw?.payM?.[ym]?.[sid]))setM('')}
+    render();toast(`${s.name}: ${payLabel(val)}${one?' – tylko '+mon:''}`)};
+  draw();d.hidden=false;$('dlgBody').scrollTop=0;d.onclick=e=>{if(e.target===d)close()}}
+/* the card at the bottom of the Budżet (and in step 4 of the closing – rows only); the own person first */
+export function pbudH(ym,rowsOnly){const R=personBudP(S.cfg,{plans:S.plans,tx:liveOf(S.tx),hraw:S.hraw},ym);if(!R.some(r=>r.out))return'';
+  R.sort((a,b)=>(b.who==S.who)-(a.who==S.who));const sg=x=>(x<0?'−':'+')+zl0(Math.abs(x));
+  const rows=R.map(r=>{const In=r.L.filter(x=>x.dir=='inc'),Out=r.L.filter(x=>x.dir=='out'),ln=x=>`<div class="r1"><span>${esc(x.txt)}${x.est?` <span class="mini">(${esc(x.est)})</span>`:''}</span><b class="num">${x.dir=='inc'?'+':'−'}${zl0(x.a)}</b></div>`;
+    return`<details class="pbr" style="--oc:${OWN_COL[r.who]}"><summary><span class="pbn">${esc(r.who)}</span><b class="num ${r.left<0?'t-exp':'t-inc'}">${sg(r.left)} ${r.left<0?'⚠️':'✅'}</b><span class="mini pbs">wpływa ${zl0(r.inc)} · wychodzi ${zl0(r.out)}</span></summary>
+      <div class="pbl">${In.length?`<div class="mini pbh">Wpływa</div>${In.map(ln).join('')}`:`<div class="mini pbh">Wpływa: nic${r.who=='Wspólne'?' – dodaj stałe przelewy na wspólne konto w 📌 Stałe':''}</div>`}
+      ${Out.length?`<div class="mini pbh">Wychodzi</div>${Out.map(ln).join('')}`:''}
+      ${r.left<0?`<div class="mini t-exp">Według planu zabraknie ${zl0(-r.left)}. Można zmniejszyć plan, zmienić „kto płaci” przy pozycjach albo kwotę przelewu.</div>`:''}</div></details>`}).join('');
+  if(rowsOnly)return`<div class="pbud">${rows}</div>`;
+  return`<section class="chart pbud" id="pbud"><div class="ct"><b>👥 Czy starczy? – ${esc(MN[+ym.slice(5)-1])}</b><span class="mini">każde z Was i wspólne konta, według planu · stuknij, żeby zobaczyć szczegóły</span></div>${rows}
+    ${infoH('pbud',`<b>Wpływa</b>: pensje (z tego miesiąca, a zanim wpłyną – kwota ostatniej wypłaty), przychody stałe, inne wpływy i przelewy od drugiej osoby, ze wspólnego konta albo z oszczędności.<br><b>Wychodzi</b>: opłaty stałe – temu, z czyjego konta schodzą; reszta planu każdej pozycji – według „Płaci” w Budżecie (z „?” = podpowiedź z ostatnich 3 miesięcy, stuknij, żeby ustawić); przelewy na wspólne, do drugiej osoby i na oszczędności (stałe z 📌 Stałe, których jeszcze nie było, i te już zrobione).<br>Liczą się konta bieżące i subkonta w złotych. ${S.hraw?.yearAcc?'Wydatki roczne płaci subkonto kopert, więc się tu nie liczą – liczy się przelew na nie (🐷).':''}`)}</section>`}

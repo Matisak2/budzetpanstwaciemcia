@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP} from '../js/logic.js';
+import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
@@ -506,5 +506,34 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   const st=yearStats({cfg,tx,hraw:{}},'2026','2026-11-05');
   eq('Podsumowanie trwającego roku – porównanie z tymi samymi dniami',[st.prev.exp,st.prev.now,st.prev.same],[120000,140000,true]);
   eq('Podsumowanie skończonego roku – cały poprzedni rok',yearStats({cfg,tx,hraw:{}},'2026','2027-01-01').prev.exp,170000)}
+
+/* 👥 Kto płaci i „Czy starczy?” – liczone ręcznie:
+   Mati: pensja 8 200 (już wpłynęła) + 200 od Werci = 8 400; wychodzi 1 500 na wspólne (zrobiony), 500 na oszczędności (stały), Na mieście 60% z 500 = 300 → 2 300; zostaje 6 100
+   Wercia: pensja 6 000 (jak ostatnio) = 6 000; wychodzi 200 Matiemu, 1 200 na wspólne, 300 na kopertę roczną, paliwo 400 (tylko w listopadzie), Na mieście 200, kosmetyki 200 (na stałe) → 2 500; zostaje 3 500
+   Wspólne: 1 500 + 1 200 = 2 700; wychodzi czynsz 2 500 (opłata stała), jedzenie 1 500, mieszkanie – reszta ponad czynsz 100 → 4 100; brakuje 1 400 (OC 1 200 płaci koperta) */
+{const accs=[{id:'mc',grp:'cur',owner:'Mati'},{id:'wc',grp:'cur',owner:'Wercia'},{id:'sc',grp:'cur',owner:'Wspólne'},{id:'ms',grp:'sav',owner:'Mati'},{id:'ya',grp:'sub',owner:'Wspólne'}];
+  const cats=[{id:'k1',type:'exp',name:'Dom',subs:[{id:'j'},{id:'p'},{id:'m'},{id:'n'},{id:'k',pay:'Wercia'},{id:'r'}]},{id:'k2',type:'inc',name:'Przychody',subs:[{id:'pen'}]}];
+  const cfg={accs,cats,incs:[{id:'i1',who:'Mati',acc:'mc',sub:'pen',name:'Pensja M'},{id:'i2',who:'Wercia',acc:'wc',sub:'pen',name:'Pensja W'}],
+    fixed:[{id:'f1',kind:'exp',name:'Czynsz',sub:'m',acc:'sc',amount:250000},{id:'f2',kind:'tr',acc:'mc',to:'sc',amount:150000},{id:'f3',kind:'tr',acc:'wc',to:'sc',amount:120000},{id:'f4',kind:'tr',acc:'mc',to:'ms',amount:50000},{id:'f5',kind:'tr',acc:'wc',to:'ya',amount:30000}],
+    years:[{id:'y1',name:'OC',amount:120000,month:11,every:12,sub:'r'}]};
+  const T=(id,o)=>({id,deleted:false,...o});
+  const tx=[T('a',{type:'inc',slip:'i1',sub:'pen',acc:'mc',amount:800000,date:'2026-10-10'}),T('b',{type:'inc',slip:'i2',sub:'pen',acc:'wc',amount:600000,date:'2026-10-28'}),
+    ...['08','09','10'].map((m,i)=>T('j'+i,{type:'exp',sub:'j',acc:'sc',amount:100000,date:`2026-${m}-05`})),
+    T('p1',{type:'exp',sub:'p',acc:'mc',amount:50000,date:'2026-10-03'}),T('p2',{type:'exp',sub:'p',acc:'wc',amount:10000,date:'2026-09-03'}),
+    T('n1',{type:'exp',sub:'n',acc:'mc',amount:60000,date:'2026-10-07'}),T('n2',{type:'exp',sub:'n',acc:'wc',amount:40000,date:'2026-10-08'}),
+    T('c1',{type:'inc',slip:'i1',sub:'pen',acc:'mc',amount:820000,date:'2026-11-10'}),T('c2',{type:'tr',acc:'mc',to:'sc',amount:150000,date:'2026-11-10',fixedId:'f2'}),T('c3',{type:'tr',acc:'wc',to:'mc',amount:20000,date:'2026-11-04'})];
+  const plans={'2026-11':{j:150000,p:40000,m:260000,n:50000,k:20000}},hraw={yearAcc:'ya',payM:{'2026-11':{p:'Wercia'}}};
+  const A=payAuto(cfg,tx,'2026-11');
+  eq('Kto płaci – podpowiedź z historii (wspólne konto / Mati 83% / 60:40 / bez historii)',[A.j,A.p,A.n,A.k],['Wspólne','Mati',60,'Wspólne']);
+  eq('Kto płaci – na stałe wygrywa z podpowiedzią, miesiąc wygrywa z „na stałe”',[payOf(cfg,hraw,cats[0].subs[4],'2026-11',A).v,payOf(cfg,hraw,cats[0].subs[1],'2026-11',A).v,payOf(cfg,hraw,cats[0].subs[1],'2026-12',A).v],['Wercia','Wercia','Mati']);
+  eq('Kto płaci – podział 60% z 333,33 zł bez zgubionego grosza',payShare(60,33333),{Mati:20000,Wercia:13333});
+  const R=Object.fromEntries(personBudP(cfg,{plans,tx,hraw},'2026-11').map(r=>[r.who,[r.inc,r.out,r.left]]));
+  eq('Czy starczy – Mati',R.Mati,[840000,230000,610000]);
+  eq('Czy starczy – Wercia',R.Wercia,[600000,250000,350000]);
+  eq('Czy starczy – Wspólne (brakuje 1 400 zł)',R['Wspólne'],[270000,410000,-140000]);
+  eq('Czy starczy – pensja Werci to szacunek z ostatniej wypłaty',personBudP(cfg,{plans,tx,hraw},'2026-11').find(r=>r.who=='Wercia').L.find(x=>x.k=='sal:i2').est,'jak ostatnio');
+  /* bez subkonta kopert: OC 1 200 jest w planie (bez historii → Wspólne), a przelew Werci na to subkonto to wpływ na wspólne */
+  const R2=Object.fromEntries(personBudP(cfg,{plans,tx,hraw:{payM:hraw.payM}},'2026-11').map(r=>[r.who,[r.inc,r.out]]));
+  eq('Czy starczy – bez koperty roczne liczą się w planie',R2['Wspólne'],[300000,530000])}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

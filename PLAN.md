@@ -151,6 +151,15 @@ Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: w
 - [x] 🖨️ Podsumowanie trwającego roku: wydatki wobec tych samych dni poprzedniego roku
 - [x] 🧹 Drobiazgi w kodzie (przecinek zamiast klamer w `actions.js`, zbędny blok w testach); testy calc (12 nowych)
 
+## Etap X17. Każde ma swój budżet (uzgodnione 9.11.2026)
+Mati: wspólne konto = osobny, trzeci budżet; podział domyślnie 50/50; „kto płaci” na stałe z możliwością zmiany w miesiącu; przelew na własne oszczędności = wydane; oboje widzą wszystkie trzy budżety; karta na dole Budżetu.
+- [x] 👥 „Płaci” przy każdej pozycji wydatków w Budżecie: Mati / Wercia / Wspólne / po połowie / inny podział (suwak); na stałe albo tylko w tym miesiącu; bez ustawienia – podpowiedź z ostatnich 3 miesięcy (z czyich kont szły wydatki)
+- [x] 📌 Opłaty stałe liczą się same temu, z czyjego konta schodzą; „Płaci” dotyczy reszty planu pozycji; 📅 wydatki roczne płaci subkonto kopert (liczy się przelew na nie)
+- [x] 👥 Karta „Czy starczy?” na dole Budżetu: Mati, Wercia, Wspólne – wpływa (pensje, przychody stałe, przelewy od innych) / wychodzi (opłaty stałe, część planu, przelewy na wspólne, do drugiej osoby, na oszczędności) / zostaje; szczegóły po stuknięciu
+- [x] 🔔 Cichy punkt w „Na dziś”, gdy według planu komuś zabraknie; to samo zestawienie w kroku „Plan” zamknięcia miesiąca
+- [x] 🧪 Demo: przelewy „Na wspólne” jako stałe przelewy; robot: ekrany „kto płaci” i „czy starczy”, testy obliczeń, kopia z `payM`
+- [ ] Etap 2 (na komendę Matiego): plan a rzeczywistość dla każdej osoby (ile kto już wydał ze swoich kont), podpowiedź kwoty przelewu na wspólne (po połowie)
+
 ## Rezygnujemy
 Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przyciski „Dziś/Wczoraj”, kreska „gdzie powinniśmy być dziś”, przenoszenie niewydanego planu, rozliczenia Mati ↔ Wercia, symulator „Co jeśli?”, oznaczanie „zbędny”, Face ID, powiadomienia w kalendarzu, własna chmura zamiast Firebase, aplikacja ze sklepu, „Ile możemy dziś wydać”, własna klawiatura do kwot, przycisk ➕ na środku paska zakładek.
 

@@ -2,7 +2,7 @@
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy} from './util.js';
-import {balance,carStats,dueAlerts,earlyN,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP} from './logic.js';
+import {balance,carStats,dueAlerts,earlyN,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP,isSal} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 export {ownerOf};
@@ -138,7 +138,6 @@ export function pitSummaryP(cfg,tx,year,who,hraw){const L=tx.filter(t=>t.date.st
 export const CLOSE_STEPS=['bank','prev','casc','plan','goals'];
 /* 💼 pay days – learned from the salaries entered (paski), so nothing has to be set up.
    A salary entry = an income from a payslip (slip = source id) or from the fixed income linked to the source (incM.fixed). */
-const isSal=(src,t)=>t.type=='inc'&&(t.slip===src.id||(!!src.fixed&&t.fixedId===src.fixed));
 export const salaryTxP=(cfg,t)=>(cfg?.incs||[]).some(s=>isSal(s,t));
 const isWknd=iso=>{const w=new Date(iso+'T12:00:00').getDay();return w==0||w==6};
 const firstSal=(tx,src,ym)=>{let d='';for(const t of inPeriod(tx,ym))if(isSal(src,t)&&(!d||t.date<d))d=t.date;return d};

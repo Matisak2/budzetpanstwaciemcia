@@ -27,7 +27,7 @@ if(!file||file=='--demo'){const{ctx,p}=await page(false);
   /* settings kept beside the maps (hidden hints, cascade, yearly subaccount, inflation, limits, birthdays, month closing, bank checks) – made up here, so the test sees them come back */
   const b=await p.evaluate(async()=>{const{backupDoc}=await import('/js/logic.js');const a=S.cfg.accs.find(a=>a.grp=='sav')||S.cfg.accs[0];
     S.hraw={...S.hraw,checkIgnore:{'rec:Netflix':true,'pit:2026:Mati':true},cascade:{Mati:{buf:30000,to:a.id}},yearAcc:a.id,macro:{infl:4.2,inflAt:'2026-10-01'},limits:{2026:{ike:2804000,ikze:1121600,ikzeB:1682400}},limitsSeen:{2026:'x'},
-      birth:{Mati:'1995-05-12',Wercia:'1996-07-01'},closeM:{'2026-09':{steps:{plan:{by:'Mati',at:1}}}},reconM:{[a.id]:'2026-10-01'}};
+      birth:{Mati:'1995-05-12',Wercia:'1996-07-01'},closeM:{'2026-09':{steps:{plan:{by:'Mati',at:1}}}},reconM:{[a.id]:'2026-10-01'},payM:{'2026-11':{x1:'Mati',x2:60}}};
     return backupDoc(S)});
   file=path.join(OUT,'demo-kopia.json');fs.writeFileSync(file,JSON.stringify(b));await ctx.close()}
 let raw=fs.readFileSync(file);if(raw[0]==0x1f&&raw[1]==0x8b)raw=zlib.gunzipSync(raw);const B=JSON.parse(raw.toString('utf8'));
@@ -46,9 +46,9 @@ const R=await p.evaluate(async B=>{const{balance}=await import('/js/logic.js');c
   return{tx:bt.length,txApp:S.tx.length,miss,diff,acc:[B.cfg.accs.length,S.cfg.accs.length],subs:[subs(B.cfg),subs(S.cfg)],fixed:[(B.cfg.fixed||[]).length,(S.cfg.fixed||[]).length],
     plans:[n(B.plans),n(S.plans)],slips:[n(B.slips),n(S.slips)],debts:[live(B.debts),live(S.debts)],hold:[live(B.hold),live(S.hold)],goals:[n(B.goals),n(S.goals)],bal,accN:B.cfg.accs.length,
     /* settings beside the maps: every one in the file must come back (old files without them – nothing to compare) */
-    set:['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen'].filter(k=>{const v=B[k];if(!v||(typeof v=='object'&&!Object.keys(v).length))return false;
+    set:['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen','payM'].filter(k=>{const v=B[k];if(!v||(typeof v=='object'&&!Object.keys(v).length))return false;
       const x=S.hraw?.[k];return typeof v=='object'?Object.keys(v).some(i=>JSON.stringify(v[i])!==JSON.stringify(x?.[i])):v!==x}),
-    setN:['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen'].filter(k=>B[k]&&(typeof B[k]!='object'||Object.keys(B[k]).length)).length}},B);
+    setN:['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen','payM'].filter(k=>B[k]&&(typeof B[k]!='object'||Object.keys(B[k]).length)).length}},B);
 await ctx.close();await browser.close();srv.close();
 
 const pairs=['acc','subs','fixed','plans','slips','debts','hold','goals'].filter(k=>R[k][0]!==R[k][1]);
