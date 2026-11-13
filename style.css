@@ -715,3 +715,4 @@ section.pbud{gap:8px}
 .pbr .pbh{margin-top:4px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
 .pbr .pbt{border-top:1px solid var(--line);padding-top:4px;margin-top:2px;font-weight:800}
 .t-tight{color:#c2780a}
+.pbr .phint{background:#fefce8;border-radius:10px;padding:6px 8px;margin-top:4px;color:#713f12}

@@ -547,6 +547,14 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Czy starczy teraz – Wercia (pensja 28.11, najmniej 27.11)',[L.Wercia.start,L.Wercia.inc,L.Wercia.out,L.Wercia.left,L.Wercia.low,L.Wercia.lowDate],[580000,600000,230000,950000,365000,'2026-11-27']);
   eq('Czy starczy teraz – Wspólne (brakuje)',[L['Wspólne'].start,L['Wspólne'].inc,L['Wspólne'].out,L['Wspólne'].left],[200000,120000,360000,-40000]);
   const Dc=Object.fromEntries(personBudP(cfg,{plans,tx:tx2,hraw},'2026-12',o).map(r=>[r.who,[r.start,r.left]]));
-  eq('Czy starczy – grudzień od przewidywanego końca listopada',[Dc.Mati,Dc.Wercia,Dc['Wspólne']],[[1400000,2020000],[950000,1400000],[-40000,-20000]])}
+  eq('Czy starczy – grudzień od przewidywanego końca listopada',[Dc.Mati,Dc.Wercia,Dc['Wspólne']],[[1400000,2020000],[950000,1400000],[-40000,-20000]])
+  /* etap 2: Mati zapłacił swoją kartą 300 zł za jedzenie (wspólne), Wercia wydała 300 zł na kosmetyki przy swojej części 200 zł:
+     wspólnym zostaje z jedzenia 1 000 – 300 = 700 → wspólne −400 + 300 = −100; Mati 14 400 – 700 = 13 700; Wercia 5 500 + 6 000 – 2 100 = 9 400 */
+  const tx3=[...tx2,T('j4',{type:'exp',sub:'j',acc:'mc',amount:30000,date:'2026-11-12'}),T('k1',{type:'exp',sub:'k',acc:'wc',amount:30000,date:'2026-11-12'})];
+  const E=Object.fromEntries(personBudP(cfg,{plans,tx:tx3,hraw},'2026-11',o).map(r=>[r.who,r]));
+  eq('Etap 2 – zapłacone za wspólne zmniejsza resztę wspólnych',[E.Mati.left,E.Wercia.left,E['Wspólne'].left],[1370000,940000,-10000]);
+  eq('Etap 2 – podpowiedź: Mati zapłacił 300 zł za wspólne',E.Mati.paidFor,{'Wspólne':30000});
+  eq('Etap 2 – część planu i wydane (Mati / Wercia)',[E.Mati.mine.plan,E.Mati.mine.spent,E.Wercia.mine.plan,E.Wercia.mine.spent],[30000,10000,80000,30000]);
+  eq('Etap 2 – ponad swoją część: kosmetyki 300 z 200 zł',E.Wercia.mine.over.map(x=>[x.sub,x.spent,x.plan]),[['k',30000,20000]]);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

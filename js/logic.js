@@ -223,7 +223,8 @@ export const isSal=(src,t)=>t.type=='inc'&&(t.slip===src.id||(!!src.fixed&&t.fix
    already spent on it from their accounts) – spread evenly over the days left. A later month starts from the end of the month before
    and counts the whole month. Yearly expenses due are paid from the envelope (when there is one). Real money – no reserve kept back
    (the reserve of the cascade is only for the cascade). Without o.today – only the flows of the whole month (no balances).
-   → [{who,start,inc,out,end,left,low,lowDate,L[{k,dir:'start'|'inc'|'out',txt,a,est}]}] */
+      mine = {plan,spent,over[{sub,name,spent,plan}]} (current month), paidFor = {who:grosze} paid for the shared / the other person's part.
+   → [{who,start,inc,out,end,left,low,lowDate,mine,paidFor,L[{k,dir:'start'|'inc'|'out',txt,a,est}]}] */
 export const CASC_BUF=25000;
 const catNm=c=>{const n=cleanCat(c.name);return n.charAt(0)+n.slice(1).toLowerCase()};
 export function personBudP(cfg,D,ym,o={}){const today=o.today,cur=today?.slice(0,7);
@@ -261,12 +262,20 @@ function budMonth(cfg,{plans,tx,hraw},ym,today,start0,o){const yAcc=hraw?.yearAc
   /* out: the rest of the plan of each position by „who pays” (in the current month minus what that person already spent on it) */
   const spent={};if(live)for(const t of M){if(!t.sub||t.fixedId)continue;const p=pool(t.acc);if(!p)continue;const v=t.type=='exp'?t.amount:t.type=='inc'&&t.refundOf?-t.amount:0;if(v){const m=spent[p]=spent[p]||{};m[t.sub]=(m[t.sub]||0)+v}}
   const pl=planOf(cfg,plans,tx,ym),yp=yAcc?yearPlanOf(cfg,tx,ym).sub:{},auto=payAuto(cfg,tx,ym);
-  for(const c of cfg.cats.filter(c=>c.type=='exp'))for(const s of c.subs){const rest=Math.max(0,(pl[s.id]||0)-(yp[s.id]||0)-(fixBy[s.id]||0));if(!rest)continue;
-    const{v}=payOf(cfg,hraw,s,ym,auto);for(const[p,a0]of Object.entries(payShare(v,rest))){const a=Math.max(0,a0-(spent[p]?.[s.id]||0));if(!a||!R[p])continue;add(p,'out','c:'+c.id,catNm(c),a,live?'zostało z planu':'');R[p].plan+=a}}
+  /* 🧾 each person's part of the plan and what they already spent on it; spending beyond one's own part first covers what is left of the shared part,
+     then of the other person's part („paid for” – a hint to give it back, nothing is moved) – that part is no longer to be spent */
+  const mine={},paidFor={},OTH={Mati:'Wercia',Wercia:'Mati'};for(const p of PAYERS){mine[p]={plan:0,spent:0,over:[]};paidFor[p]={}}
+  for(const c of cfg.cats.filter(c=>c.type=='exp'))for(const s of c.subs){const rest=Math.max(0,(pl[s.id]||0)-(yp[s.id]||0)-(fixBy[s.id]||0)),sp={};
+    for(const p of PAYERS)sp[p]=Math.max(0,spent[p]?.[s.id]||0);
+    if(!rest){for(const p of PAYERS)if(sp[p]&&!yp[s.id]&&!fixBy[s.id]){mine[p].spent+=sp[p];mine[p].over.push({sub:s.id,name:s.name,spent:sp[p],plan:0})}continue}
+    const{v}=payOf(cfg,hraw,s,ym,auto),sh={Mati:0,Wercia:0,'Wspólne':0,...payShare(v,rest)},left={};for(const p of PAYERS)left[p]=Math.max(0,sh[p]-sp[p]);
+    const cov={};for(const p of ['Mati','Wercia']){let ex=Math.max(0,sp[p]-sh[p]);for(const q of ['Wspólne',OTH[p]]){const x=Math.min(ex,left[q]);if(x>0){left[q]-=x;ex-=x;cov[p]=(cov[p]||0)+x;paidFor[p][q]=(paidFor[p][q]||0)+x}}}
+    for(const p of PAYERS){const own=sp[p]-(cov[p]||0);mine[p].plan+=sh[p];mine[p].spent+=own;if(own>sh[p])mine[p].over.push({sub:s.id,name:s.name,spent:own,plan:sh[p]});
+      if(left[p]&&R[p]){add(p,'out','c:'+c.id,catNm(c),left[p],live?'zostało z planu':'');R[p].plan+=left[p]}}}
   /* day by day: the lowest point of the month (the plan spread evenly over the days left) */
   const last=ym+'-'+p2(daysIn(ym)),days=[];for(let d=from;d<=last;d=addDays(d,1))days.push(d);
   const has=p=>p!='Wspólne'||cfg.accs.some(a=>!a.archived&&pool(a.id)=='Wspólne');
   return PAYERS.filter(p=>has(p)||R[p].inc||R[p].out||R[p].start).map(p=>{const r=R[p],E=ev.filter(e=>e.p==p),rate=days.length?r.plan/days.length:0;
     let b=r.start,low=Infinity,lowDate=null;if(bal)for(const d of days){for(const e of E)if(e.d==d)b+=e.v;b-=rate;if(b<low-.5){low=b;lowDate=d}}
     const L=Object.values(r.L).sort((a,b)=>(a.dir==b.dir?0:a.dir=='inc'?-1:1)||b.a-a.a);if(bal)L.unshift({k:'start',dir:'start',txt:live?'💰 Na kontach teraz':'💰 Na kontach na początek miesiąca',a:r.start,est:live?'':'przewidywane'});
-    const end=r.start+r.inc-r.out;return{who:p,start:r.start,inc:r.inc,out:r.out,end,left:end,low:bal&&lowDate?Math.round(low):end,lowDate:bal?lowDate:null,L}})}
+    const end=r.start+r.inc-r.out;mine[p].over.sort((x,y)=>(y.spent-y.plan)-(x.spent-x.plan));return{who:p,start:r.start,inc:r.inc,out:r.out,end,left:end,low:bal&&lowDate?Math.round(low):end,lowDate:bal?lowDate:null,L,mine:mine[p],paidFor:paidFor[p]}})}
