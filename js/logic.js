@@ -221,9 +221,9 @@ export const isSal=(src,t)=>t.type=='inc'&&(t.slip===src.id||(!!src.fixed&&t.fix
    salaries not in yet (the last one as a guess, on the expected pay day – o.payDate), fixed incomes / payments / transfers not ticked yet,
    and the rest of each person's part of the plan (the plan of a position minus its fixed payments, by „who pays”, minus what that person
    already spent on it from their accounts) – spread evenly over the days left. A later month starts from the end of the month before
-   and counts the whole month. Yearly expenses due are paid from the envelope (when there is one). At the end the reserve is kept back:
-   cascade[osoba].buf (default 250 zł, like the cascade) on every current account. Without o.today – only the flows of the whole month (no balances).
-   → [{who,start,inc,out,buf,end,left,low,lowDate,L[{k,dir:'start'|'inc'|'out',txt,a,est}]}] */
+   and counts the whole month. Yearly expenses due are paid from the envelope (when there is one). Real money – no reserve kept back
+   (the reserve of the cascade is only for the cascade). Without o.today – only the flows of the whole month (no balances).
+   → [{who,start,inc,out,end,left,low,lowDate,L[{k,dir:'start'|'inc'|'out',txt,a,est}]}] */
 export const CASC_BUF=25000;
 const catNm=c=>{const n=cleanCat(c.name);return n.charAt(0)+n.slice(1).toLowerCase()};
 export function personBudP(cfg,D,ym,o={}){const today=o.today,cur=today?.slice(0,7);
@@ -268,6 +268,5 @@ function budMonth(cfg,{plans,tx,hraw},ym,today,start0,o){const yAcc=hraw?.yearAc
   const has=p=>p!='Wspólne'||cfg.accs.some(a=>!a.archived&&pool(a.id)=='Wspólne');
   return PAYERS.filter(p=>has(p)||R[p].inc||R[p].out||R[p].start).map(p=>{const r=R[p],E=ev.filter(e=>e.p==p),rate=days.length?r.plan/days.length:0;
     let b=r.start,low=Infinity,lowDate=null;if(bal)for(const d of days){for(const e of E)if(e.d==d)b+=e.v;b-=rate;if(b<low-.5){low=b;lowDate=d}}
-    const nCur=cfg.accs.filter(a=>!a.archived&&a.grp=='cur'&&pool(a.id)==p).length,buf=bal?nCur*(hraw?.cascade?.[p]?.buf??CASC_BUF):0;
     const L=Object.values(r.L).sort((a,b)=>(a.dir==b.dir?0:a.dir=='inc'?-1:1)||b.a-a.a);if(bal)L.unshift({k:'start',dir:'start',txt:live?'💰 Na kontach teraz':'💰 Na kontach na początek miesiąca',a:r.start,est:live?'':'przewidywane'});
-    const end=r.start+r.inc-r.out;return{who:p,start:r.start,inc:r.inc,out:r.out,buf,end,left:end-buf,low:bal&&lowDate?Math.round(low)-buf:end-buf,lowDate:bal?lowDate:null,L}})}
+    const end=r.start+r.inc-r.out;return{who:p,start:r.start,inc:r.inc,out:r.out,end,left:end,low:bal&&lowDate?Math.round(low):end,lowDate:bal?lowDate:null,L}})}
