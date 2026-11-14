@@ -22,6 +22,8 @@ Podstawa: wymagania Matiego z rozmowy 13–14.11.2026 oraz pełna lektura ok. 90
 12. **Proporcje całego majątku** (np. 50% nieruchomości / 50% aktywa), jeśli tak ustalicie w ankiecie. Zakup nieruchomości to plan na przyszłość: kotki **podsuwają „może warto pomyśleć o zakupie” tylko wtedy, gdy Was stać** (warunki w 15.4); gdy nie stać – nie proponują.
 13. **Doradca = kotki** (Bailey i Ivo prowadzą ankietę, komentują koło i wyniki).
 14. **Ankieta rozbudowana** na podstawie lektury bloga (punkt 4.1, ok. 64 pytania z pytaniami warunkowymi). Czy własne mieszkanie liczyć do proporcji – pytanie 31 w ankiecie (podpowiedź: nie).
+15. **Własne mieszkanie liczy się do wartości i do proporcji majątku** (odpowiedź na pytanie 31 – domyślnie „tak”), ale doradca zawsze pamięta, że **nie zarabia** (brak czynszu, rentowność 0, nie jest pieniędzmi na cele ani na poduszkę, w kryzysie nie do sprzedania – w teście kryzysu osobno, „bez zmiany”).
+16. **Jeden główny wykres**: 🏠 nieruchomości / 📈 aktywa. Stuknięcie w kawałek przechodzi do szczegółów tej kategorii (nieruchomości: lista z wartością, kredytem, netto, czynszem albo „🏡 mieszkamy – nie zarabia”; aktywa: koło grup z punktu 14 → klasy → instrumenty). „‹ Wróć” do głównego. Zastępuje „dwa pierścienie” z 15.2.
 
 ---
 
@@ -132,7 +134,7 @@ Zasady ankiety:
 **E. Nieruchomości** (cała część nieobowiązkowa – „Pomiń, nie dotyczy nas” jednym stuknięciem; szczegóły w punkcie 15)
 29. [W] Czy macie nieruchomość? → przycisk „🏠 Dodaj nieruchomość” (wartość, mieszkamy / wynajmujemy / stoi puste, czynsz, kredyt – punkt 15.1); można dodać kilka.
 30. [W] Czy chcecie, żeby nieruchomości były częścią Waszego majątku na stałe? Jaki udział w całym majątku ma być docelowo? (suwak 0–70%, podpowiedź z lektury: wielu długoterminowych inwestorów ma ok. połowę; 0% też jest dobrą odpowiedzią)
-31. [W] **Czy mieszkanie, w którym mieszkacie, liczyć do tego udziału?** (podpowiedź doradcy: „nie – pokazujemy je w majątku, ale do proporcji liczymy tylko nieruchomości na wynajem, bo własnego mieszkania nie sprzedacie w kryzysie i nie daje czynszu”; do wyboru: tak / nie)
+31. [W] **Czy mieszkanie, w którym mieszkacie, liczyć do tego udziału?** (domyślnie **tak** – decyzja 15: liczy się do wartości, ale doradca pamięta, że nie zarabia; można zmienić na „nie”)
 32. [W] → bez własnego mieszkania: czy planujecie kupić mieszkanie dla siebie? Za ile lat, w jakim mieście (duże / małe), ile pokoi / m², ile chcecie w nim mieszkać (sens ekonomiczny dopiero przy ≥ 5–10 latach), czy to pierwsze mieszkanie (podatek PCC, programy dla pierwszego mieszkania).
 33. [W] → przy planie zakupu: szacowana cena (albo cena za m² – kotki pokażą średnią z raportu NBP, jeśli automat ją pobierze), wkład 10% czy 20%, ile już odłożone na wkład.
 34. [W] → przy celu „na wynajem”: czy jesteście gotowi być wynajmującym (szukanie najemców, naprawy, remont co 5–7 lat, 1–2 miesiące pustostanu w roku)? Ile godzin w miesiącu chcecie na to poświęcić? Czy wolicie gotówkę, czy dopuszczacie kredyt (dźwignia działa w obie strony)?
@@ -329,7 +331,7 @@ Na co termometr **wpływa**: (1) czy dużą kwotę w akcje rozłożyć na transz
 
 Każdy etap działa samodzielnie i jest fundamentem dla następnego.
 
-**D1 – Klasy aktywów i koło „jak jest”.** Każdy instrument (`hold`) i konto oszczędnościowe/inwestycyjne dostaje klasę: akcje (z podziałem: świat / rozwinięte / wschodzące / Polska / pojedyncze spółki), obligacje (detaliczne / rynkowe), złoto, gotówka. Domyślnie z rodzaju i z listy znanych ETF-ów, z możliwością zmiany. **PPK wyłączone.** Lista znanych ETF-ów (punkt 13) w kodzie z danymi (ISIN, indeks, koszt, Acc, rejestracja, replikacja, data sprawdzenia). Nowy instrument spoza listy po dodaniu: automatycznie śledzony (automat już pobiera ceny) + karta analizy (kryteria, dublowanie z posiadanymi, flagi). Wykres kołowy w 💰 Majątku → Oszczędności („Inwestycje”), stuknięcie w kawałek = lista instrumentów. **Dodatkowo (decyzje 10–11):** pełna lista klas i grup z punktu 14, „＋ Własna klasa”, „＋ Dodaj inne aktywo”, przycisk „🏠 Dodaj nieruchomość” (15.1) i dwa pierścienie koła: cały majątek / same aktywa (15.2).
+**D1 – Klasy aktywów i koło „jak jest”.** Każdy instrument (`hold`) i konto oszczędnościowe/inwestycyjne dostaje klasę: akcje (z podziałem: świat / rozwinięte / wschodzące / Polska / pojedyncze spółki), obligacje (detaliczne / rynkowe), złoto, gotówka. Domyślnie z rodzaju i z listy znanych ETF-ów, z możliwością zmiany. **PPK wyłączone.** Lista znanych ETF-ów (punkt 13) w kodzie z danymi (ISIN, indeks, koszt, Acc, rejestracja, replikacja, data sprawdzenia). Nowy instrument spoza listy po dodaniu: automatycznie śledzony (automat już pobiera ceny) + karta analizy (kryteria, dublowanie z posiadanymi, flagi). Wykres kołowy w 💰 Majątku → Oszczędności („Inwestycje”), stuknięcie w kawałek = lista instrumentów. **Dodatkowo (decyzje 10–11):** pełna lista klas i grup z punktu 14, „＋ Własna klasa”, „＋ Dodaj inne aktywo”, przycisk „🏠 Dodaj nieruchomość” (15.1) i jeden główny wykres nieruchomości / aktywa ze szczegółami po stuknięciu (15.2, decyzja 16).
 **D2 – Ankieta i plan.** Ankieta (punkt 4, bez pytań o PPK), „plan na jednej kartce”, proporcje docelowe z widełkami → widełki na kole; **kotki przy kole**: „akcje 41% (plan 30–40%) – przy następnej wpłacie dokup obligacji”; kafelki diagnozy (poduszka, długi, limity IKE/IKZE/OKI).
 **D3 – „Gdzie”.** Kwota, krótka ankieta, bramki (dług, poduszka, termin), koszyki celów, wybór pokrowca z wyliczeniem (IKE/IKZE wg progu, OKI, zwykły rachunek, nadpłata hipoteki), „na pewno nie tu”, tryb „wspólnie”.
 **D4 – „W co”.** Niedobory względem planu, konkretne instrumenty z listy, kalkulator obligacji na N miesięcy, koszt zakupu w XTB (0,5% waluta), liczba jednostek (ułamki), transze, „co po zakupie”, zapis porady, odhaczanie po wpisaniu zakupu.
@@ -412,8 +414,8 @@ Przy kole w 💰 Majątku i w ankiecie. Okienko (jedna przewijana kartka), pytan
 Zapis: `assetM` (punkt 14) z polami `real:{use:'my'|'rent'|'empty'|'other',rent?,fixed?,costs?,months?,debt?,buy?,buyY?,m2?,share?}`. Usunięcie = `deleted:true` (do przywrócenia). Bez nieruchomości wszystko działa jak dotąd.
 
 ### 15.2 Na kole i w majątku
-- Pierwsze koło: **cały majątek** = 🏠 nieruchomości (wartość netto) / 📈 aktywa rynkowe; drugie: same aktywa (punkt 14).
-- Do proporcji planu liczy się własne mieszkanie **tylko, jeśli tak wybraliście w ankiecie** (pytanie 31; podpowiedź: nie – jest w majątku, osobnym kawałkiem „🏡 mieszkamy”, ale poza proporcjami).
+- **Jeden główny wykres** (decyzja 16): 🏠 nieruchomości (wartość netto) / 📈 aktywa. Stuknięcie → szczegóły kategorii: nieruchomości – lista (wartość, kredyt, netto, czynsz / „🏡 mieszkamy – nie zarabia”); aktywa – koło grup (punkt 14) → klasy → instrumenty i konta. „‹ Wróć” do głównego.
+- Własne mieszkanie **liczy się do wartości i proporcji** (decyzja 15), oznaczone „🏡 mieszkamy – nie zarabia”: rentowność 0, nie wchodzi do pieniędzy na cele, poduszkę ani wkład, w teście kryzysu osobno.
 - W 👛 Konta: osobna linijka „🏠 nieruchomości” obok zobowiązań; salda kont się nie zmieniają.
 
 ### 15.3 Mieszkanie na wynajem – liczby (fakty, nie prognozy)
