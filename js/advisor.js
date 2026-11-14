@@ -4,6 +4,7 @@
 import {addDays} from './util.js';
 import {balance,ownerOf} from './logic.js';
 import {BONDS,instValue,instDiffP,wrapOf} from './inv.js';
+import {debtStateP} from './today.js';
 
 /* groups = the first ring of the wheel; c = pastel colour */
 export const AGRP={cash:{n:'Gotówka i bezpieczne',i:'💵',c:'hsl(160 48% 70%)'},bond:{n:'Obligacje',i:'🧾',c:'hsl(208 62% 74%)'},stock:{n:'Akcje',i:'📈',c:'hsl(272 50% 76%)'},
@@ -67,7 +68,7 @@ export const accClsOf=(a,custom={})=>a?.cls&&clsAll(custom)[a.cls]?a.cls:'cash';
 /* 🥧 „z czego składa się majątek”: savings and investment accounts (no PPK, no archived, owner = filter or all), every instrument at today's value
    and the cash left on an investment account (balance + not yet booked valuation − instruments), other currencies at the NBP mid rate.
    result {rows[{key,kind:'h'|'a',id,acc,accName,owner,name,cls,grp,v}],groups[{g,v,cls[{c,v,rows}]}],total,skipped[{name,cur}],neg[accName]} */
-export function allocP(cfg,tx,hold,today,macro={},mkt=null,{owner=null,custom={}}={}){
+export function allocP(cfg,tx,hold,today,macro={},mkt=null,{owner=null,custom={},assets={},debts={}}={}){
   const all=clsAll(custom),tom=addDays(today,1),fx=c=>!c||c=='PLN'?1:(mkt?.fx?.[c]||null),rows=[],skipped=[],neg=[];
   for(const a of cfg.accs){if(a.archived||(a.grp!='sav'&&a.grp!='inv')||wrapOf(a)=='ppk')continue;if(owner&&ownerOf(a)!=owner)continue;
     const r=fx(a.cur);const bal=balance(cfg,tx,a.id,tom),items=Object.entries(hold||{}).filter(([,x])=>x&&x.acc==a.id&&!x.deleted).map(([id,x])=>({id,...x}));
@@ -77,6 +78,8 @@ export function allocP(cfg,tx,hold,today,macro={},mkt=null,{owner=null,custom={}
     const diff=items.length?(instDiffP(a,items,tx,today,macro,mkt)||0):0,cash=bal+diff-inst;
     if(cash<0&&items.length)neg.push(a.name);
     if(cash>0){const c=accClsOf(a,custom);rows.push({key:'a:'+a.id,kind:'a',id:a.id,acc:a.id,accName:a.name,owner:ownerOf(a),name:items.length?a.name+' – gotówka':a.name,cls:c,grp:all[c].g,v:Math.round(cash*r)})}}
+  /* other assets (not real estate) from assetM – the owner's share */
+  for(const x of assetsP(assets,debts,tx,today,{owner,custom}))if(!x.real)rows.push({key:'x:'+x.id,kind:'x',id:x.id,acc:'',accName:'',owner:x.owner,name:x.name,cls:x.cls,grp:all[x.cls].g,v:x.net,old:x.old});
   const G={};for(const x of rows){const g=G[x.grp]||(G[x.grp]={g:x.grp,v:0,cls:{}});g.v+=x.v;const k=g.cls[x.cls]||(g.cls[x.cls]={c:x.cls,v:0,rows:[]});k.v+=x.v;k.rows.push(x)}
   const groups=AGRP_ORDER.filter(g=>G[g]).map(g=>({...G[g],cls:Object.values(G[g].cls).sort((a,b)=>b.v-a.v).map(k=>({...k,rows:k.rows.sort((a,b)=>b.v-a.v)}))}));
   return{rows,groups,total:rows.reduce((s,x)=>s+x.v,0),skipped,neg}}
@@ -100,3 +103,24 @@ export function etfDup(held){const E=[...new Map(held.map(it=>etfOf(it)).filter(
   if(m.length>1)out.push(`Dwa fundusze rynków wschodzących (${nm(m)}) – wystarczy jeden.`);
   if(!w.length&&d.length&&m.length&&new Set([...d,...m].map(e=>e.fam)).size>1)out.push(`Para z dwóch rodzin indeksów (${nm(d)} + ${nm(m)}): MSCI i FTSE inaczej dzielą kraje (np. Korea Płd.) – w parze lepiej trzymać się jednej rodziny.`);
   return out}
+
+/* 🏠 real estate and other assets typed by hand (assetM{id:{name,cls,owner,mp,value,valAt,every,note,o,deleted,real?{use,rent,months,debt,buy,buyY,m2}}}).
+   mp = Mati's % of a Wspólne asset (default 50 – as in the deed); the debt shares the value's proportion (decision 18).
+   owner filter: null = everything in full; 'Wspólne' = joint ones in full; 'Mati'/'Wercia' = own ones + their share of the joint ones (widok „Ja”) */
+export const REAL_USE={my:'🏡 mieszkamy',rent:'🔑 wynajmujemy',empty:'🚪 stoi puste',other:'inne'};
+export function assetShare(x,owner){const o=x.owner||'Wspólne';if(!owner)return 1;if(owner=='Wspólne')return o=='Wspólne'?1:0;if(o==owner)return 1;
+  if(o!='Wspólne')return 0;const mp=Math.min(100,Math.max(0,+(x.mp??50)));return(owner=='Mati'?mp:100-mp)/100}
+export function assetsP(assets,debts,tx,today,{owner=null,custom={},exact=false}={}){const all=clsAll(custom),out=[];
+  for(const[id,x]of Object.entries(assets||{}).sort((a,b)=>(a[1].o??0)-(b[1].o??0))){if(!x||x.deleted)continue;
+    const sh=exact?((x.owner||'Wspólne')==owner||!owner?1:0):assetShare(x,owner);if(!sh)continue;
+    const cls=all[x.cls]?x.cls:'todo',d=x.real?.debt&&debts?.[x.real.debt]&&!debts[x.real.debt].deleted?debtStateP({id:x.real.debt,...debts[x.real.debt]},tx,today).left:0;
+    const value=Math.round((+x.value||0)*sh),debt=Math.round(d*sh),every=+x.every||(all[cls].g=='real'?24:12),age=x.valAt?Math.floor((Date.parse(today)-Date.parse(x.valAt))/(30.44*864e5)):null;
+    out.push({id,name:x.name||'Aktywo',cls,grp:all[cls].g,real:all[cls].g=='real',home:x.real?.use?x.real.use=='my':cls=='r_home',use:x.real?.use||'',rent:Math.round((+x.real?.rent||0)*sh),owner:x.owner||'Wspólne',
+      share:sh,value,debt,net:value-debt,valAt:x.valAt||'',age,old:age!=null&&age>=every,every})}
+  return out}
+/* 🏠 / 📈 the main wheel: working real estate (net) vs market assets; the home we live in apart – in the wealth, never in the proportions (decision 25) */
+export function realP(assets,debts,tx,today,opt={}){const L=assetsP(assets,debts,tx,today,opt).filter(x=>x.real),sum=F=>L.filter(F).reduce((a,x)=>({value:a.value+x.value,debt:a.debt+x.debt,net:a.net+x.net}),{value:0,debt:0,net:0});
+  return{list:L,home:sum(x=>x.home),work:sum(x=>!x.home)}}
+/* asset valuations to renew (🔔 Na dziś, quietly): older than „every” months */
+export const assetOldP=(assets,today)=>Object.entries(assets||{}).filter(([,x])=>x&&!x.deleted&&x.valAt).map(([id,x])=>({id,...x})).filter(x=>{const ev=+x.every||(String(x.cls||'').startsWith('r_')?24:12);
+  return(Date.parse(today)-Date.parse(x.valAt))/(30.44*864e5)>=ev});

@@ -194,9 +194,10 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .arow .an,.acls .an{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:700}
 .acls .an i{margin-right:6px;vertical-align:-1px}
 .arow .an small{font-weight:600;color:#64748b}
+.areal .an small{display:block;margin-top:2px;white-space:normal;line-height:1.35}
 .arow em,.acls em{font-style:normal;color:#64748b;font-size:12.5px;font-weight:700}
 .arow .ar{color:#94a3b8;font-weight:800}
-.arow.sub{background:#fff;border:1px solid #eef0f4;font-size:13px;min-height:38px;padding:7px 10px}
+.arow.asub{background:#fff;border:1px solid #eef0f4;font-size:13px;min-height:38px;padding:7px 10px}
 .acls{display:flex;flex-direction:column;gap:4px;padding:6px 0;border-top:1px solid #eef0f4}.acls:first-child{border-top:0}
 .aetf{display:flex;flex-direction:column;gap:3px;padding:8px 0;border-top:1px solid #eef0f4}.aetf .chip{align-self:flex-start}
 .aetf b small{font-weight:600;color:#64748b}

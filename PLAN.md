@@ -174,7 +174,7 @@ Każdy etap dopiero na komendę Matiego, po kopii.
 
 - [x] Analiza, pełna lektura źródeł, kompletny plan, odpowiedzi Matiego (PPK poza doradcą, XTB, lista 8 ETF-ów, koło z widełkami)
 - [x] Etap D1a. Klasy aktywów (każdy rodzaj + własne klasy), lista ETF-ów z analizą, auto-śledzenie nowych instrumentów, wykres kołowy „jak jest” dla kont i instrumentów
-- [ ] Etap D1b. 🏠 „Dodaj nieruchomość”, „＋ Dodaj inne aktywo”, udziały %, jeden główny wykres 🏠 / 📈 ze szczegółami
+- [x] Etap D1b. 🏠 „Dodaj nieruchomość”, „＋ Dodaj inne aktywo”, udziały %, jeden główny wykres 🏠 / 📈 ze szczegółami
 - [ ] Etap D2. Ankieta i plan: proporcje z widełkami na kole, kotki podpowiadają wyrównanie, diagnoza (poduszka, długi, limity)
 - [ ] Etap D3. „Gdzie”: kwota → bramki → pokrowce z wyliczeniem (IKE/IKZE wg progu, OKI, nadpłata), „na pewno nie tu”, „wspólnie”
 - [ ] Etap D4. „W co”: niedobory, konkretne ETF-y/obligacje, koszty XTB, transze, zapis porady

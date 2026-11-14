@@ -14,6 +14,7 @@ import {fillAvg} from './debts.js';
 import {openInst,editLimits,goYear,bookInt} from './savings.js';
 import {render,goTab,setPage} from './app.js';
 import {use} from './usage.js';
+import {editAsset} from './advisorui.js';
 
 /* ---------- 🔔 real notifications (Web Push); the automat sends them, keys are made by the automat ---------- */
 export const pushCan=()=>!DEMO&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
@@ -67,7 +68,7 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='pit'){S.fixSub='pay';S.payView='y';S.ym=(g.y||String(+td().slice(0,4)-1))+'-12';return goTab('fix')}if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);
   if(a=='pay'){S.fixSub='pay';return goTab('fix')}if(a=='year')return goYear();if(a=='rem'){S.fixSub='year';return goTab('fix')}
   if(a=='lent'||a=='owe'){S.accView=a;return goTab('acc')}if(a=='rata')return openTx(null,{type:'exp',debt:g.id});if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
-  if(a=='tr')return openTx(null,{type:'tr',to:g.to,...(+g.amount>0?{amount:+g.amount}:{})});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='limits'){goTab('sav');return editLimits()}
+  if(a=='tr')return openTx(null,{type:'tr',to:g.to,...(+g.amount>0?{amount:+g.amount}:{})});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='asset'){S.sub='all';goTab('sav');return editAsset(g.id)}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
   if(a=='round'){goTab('set');return setPage('cat')}if(a=='close')return openClose();if(a=='subs')return openSubs();

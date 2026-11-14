@@ -63,6 +63,9 @@
       .forEach(([id,name,amount,due,day,s],o)=>{YEAR[id]={name,amount,month:+due.slice(5),day,every:12,sub:sid[s],last:addMonths(due,-12),o}});
     [['r1','💉 Szczepienie kotów',`${mOf(3)}-12`,12],['r2','🛞 Wymiana opon',`${mOf(1)}-05`,6]].forEach(([id,name,next,every],o)=>{REM[id]={name,next,every,o}});
     const st={'households/main':{v:2,accsM,catsM,fixedM,roundM:{},incM:INC,yearM:YEAR,yearAcc:'aY',projM:{},remM:REM,savTarget:150000,demo:true,
+      assetM:{as1:{name:'Nasze mieszkanie',cls:'r_home',value:72000000,valAt:addMonths(ym0,-5)+'-10',owner:'Wspólne',mp:50,every:24,o:0,deleted:false,real:{use:'my',rent:0,debt:'',buy:52000000,buyY:2021,m2:54}},
+        as2:{name:'Kawalerka na wynajem',cls:'r_rent',value:38500000,valAt:addMonths(ym0,-8)+'-01',owner:'Wspólne',mp:60,every:24,o:1,deleted:false,real:{use:'rent',rent:220000,debt:'',buy:0,buyY:0,m2:27}},
+        as3:{name:'Kolekcja LEGO',cls:'x_coll',value:450000,valAt:addMonths(ym0,-26)+'-10',owner:'Mati',mp:50,every:12,o:2,deleted:false}},
       /* random shop / restaurant notes must not look like a fixed payment by chance (only „Bilet miesięczny” and „Chmura 200 GB” are meant to) */
       checkIgnore:Object.fromEntries(['Biedronka','Lidl','Żabka','Auchan','Warzywniak','Pizzeria','Sushi','Bistro','Pierogarnia','Kawiarnia','Pyszne','Glovo','Orlen','BP','Shell','Sklep zoologiczny','Drogeria','Kino','Sklep z modelami','Fryzjer','Apteka','Prezent urodzinowy','Sklep odzieżowy','Wizyta prywatna','Opłata za kartę'].map(n=>['rec:'+n.toLowerCase(),true]))}};
     const PLAN={'Zakupy spożywcze':140000,'Restauracje':40000,'Kawa i przekąski':15000,'Jedzenie z dowozem':12000,'Czynsz':185000,'Prąd':20000,'Internet i telefon':9000,'Środki czystości':8000,'Paliwo':50000,

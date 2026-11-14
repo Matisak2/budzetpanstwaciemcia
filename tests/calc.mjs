@@ -10,7 +10,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {keepPrev} from '../scripts/market-lib.mjs';
-import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck} from '../js/advisor.js';
+import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -578,5 +578,17 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Koło: tylko Mati (IKE + dolary)',allocP(cfg,[],hold,'2026-11-14',{},{fx:{USD:4}},{owner:'Mati'}).total,1440000);
   const cfg2={accs:cfg.accs.map(a=>a.id=='p'?{...a,cls:'uz'}:a)};
   eq('Koło: własna klasa konta trafia do swojej grupy',allocP(cfg2,[],hold,'2026-11-14',{},{fx:{USD:4}},{custom:{uz:{name:'Zegarki',grp:'alt'}}}).groups.find(g=>g.g=='alt')?.v,1800000);}
+
+/* ---------- 🧭 doradca D1b: nieruchomości i inne aktywa, udziały ---------- */
+{ // dom wspólny 600 000 zł, kredyt 300 000 zł (bez rat), udział Matiego 50%; kawalerka wspólna 400 000 zł, udział Matiego 60%; LEGO Matiego 5 000 zł wycenione 2 lata temu
+  const as={H:{name:'Dom',cls:'r_home',value:60000000,valAt:'2026-06-01',owner:'Wspólne',mp:50,real:{use:'my',debt:'d1'}},R:{name:'Kawalerka',cls:'r_rent',value:40000000,valAt:'2026-01-01',owner:'Wspólne',mp:60,real:{use:'rent',rent:200000}},
+    X:{name:'LEGO',cls:'x_coll',value:500000,valAt:'2024-10-01',owner:'Mati',every:12},Z:{name:'Stare',cls:'r_land',value:100,owner:'Mati',deleted:true}},debts={d1:{dir:'owe',start:30000000,mode:'auto'}};
+  const all=realP(as,debts,[],'2026-11-14'),M=realP(as,debts,[],'2026-11-14',{owner:'Mati'}),W=realP(as,debts,[],'2026-11-14',{owner:'Wercia'});
+  eq('Nieruchomości razem: dom (wartość, kredyt, netto) i pracujące',[all.home,all.work],[{value:60000000,debt:30000000,net:30000000},{value:40000000,debt:0,net:40000000}]);
+  eq('Udział Matiego: połowa domu i kredytu, 60% kawalerki',[M.home.net,M.home.debt,M.work.net],[15000000,15000000,24000000]);
+  eq('Udział Werci: 40% kawalerki, czynsz w tej proporcji',[W.work.net,W.list.find(x=>x.id=='R').rent],[16000000,80000]);
+  eq('Udział: własne 100%, cudze 0, Wspólne w widoku Wspólne w całości',[assetShare({owner:'Mati'},'Mati'),assetShare({owner:'Mati'},'Wercia'),assetShare({owner:'Wspólne',mp:70},'Wspólne'),assetShare({owner:'Wspólne'},'Wercia')],[1,0,1,0.5]);
+  eq('Inne aktywo na kole (bez nieruchomości): LEGO u Matiego, u Werci nic',[allocP({accs:[]},[],{},'2026-11-14',{},null,{owner:'Mati',assets:as,debts}).groups.map(g=>[g.g,g.v]),allocP({accs:[]},[],{},'2026-11-14',{},null,{owner:'Wercia',assets:as,debts}).total],[[['alt',500000]],0]);
+  eq('Stara wycena (ponad rok przy rocznym przypomnieniu)',assetOldP(as,'2026-11-14').map(x=>x.id),['X']);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);
