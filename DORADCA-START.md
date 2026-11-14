@@ -23,6 +23,7 @@ Ten plik zastępuje długą rozmowę z 13–14.11.2026, w której powstał plan.
 - **Koło** (wykres kołowy) w Inwestycjach z widełkami planu; **kotki** przy kole podpowiadają wyrównanie.
 - Lista ETF-ów Matiego: punkt 13 planu (8 funduszy z XTB). Każdy instrument spoza listy: po wpisaniu zakupu sam trafia do śledzenia i analizy. ISIN-y i koszty z tabeli **sprawdź u dostawcy** przed wpisaniem do kodu (wpisz datę sprawdzenia); jeśli sieć nie pozwala – zapytaj Matiego o zgodę na dodanie hosta (narzędzia środowiska) albo zostaw pole „do sprawdzenia”.
 - Ankieta: każda osoba na swoim telefonie (`S.who`); tryb „wspólnie” łączy.
+- **Uzupełnienie 14.11 (decyzje 10–14):** nieobowiązkowe „🏠 Dodaj nieruchomość” (wartość, mieszkamy/wynajem, czynsz, kredyt) – na kole (punkt 15 planu); koło przyjmuje **każdy rodzaj aktywa** + własne klasy i „＋ Dodaj inne aktywo” (punkt 14); proporcje całego majątku (np. 50% nieruchomości / 50% aktywa) – sugestia zakupu tylko, gdy stać (15.4); **doradcą są kotki**; ankieta rozbudowana do ok. 64 pytań warunkowych (4.1).
 
 ## 3. Jak pracować przy każdym etapie (z `CLAUDE.md`, w skrócie)
 - Kod: czyste obliczenia w nowym `js/advisor.js` (bez importu UI; testowalne), interfejs w `js/advisorui.js`; nowe pliki do `SHELL` w `sw.js`; zasada modułów (na górze pliku tylko deklaracje, start w `wire…()`); funkcje z `onclick` wystawić na `window` na końcu `app.js`.

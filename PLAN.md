@@ -173,10 +173,10 @@ Kopia zapasowa na domowy NAS (5–10 TB) – Mati odezwie się, gdy kupi sprzęt
 Każdy etap dopiero na komendę Matiego, po kopii.
 
 - [x] Analiza, pełna lektura źródeł, kompletny plan, odpowiedzi Matiego (PPK poza doradcą, XTB, lista 8 ETF-ów, koło z widełkami)
-- [ ] Etap D1. Klasy aktywów, lista ETF-ów z analizą, auto-śledzenie nowych instrumentów, wykres kołowy „jak jest”
+- [ ] Etap D1. Klasy aktywów, lista ETF-ów z analizą, auto-śledzenie nowych instrumentów, wykres kołowy „jak jest” (każdy rodzaj aktywa + własne klasy, 🏠 „Dodaj nieruchomość”, inne aktywa)
 - [ ] Etap D2. Ankieta i plan: proporcje z widełkami na kole, kotki podpowiadają wyrównanie, diagnoza (poduszka, długi, limity)
 - [ ] Etap D3. „Gdzie”: kwota → bramki → pokrowce z wyliczeniem (IKE/IKZE wg progu, OKI, nadpłata), „na pewno nie tu”, „wspólnie”
 - [ ] Etap D4. „W co”: niedobory, konkretne ETF-y/obligacje, koszty XTB, transze, zapis porady
-- [ ] Etap D5. Cele: emerytura, mieszkanie (+ wartość w majątku), test kryzysu, strażnik kosztów
+- [ ] Etap D5. Cele: emerytura, mieszkanie (+ wartość w majątku, najem, proporcje nieruchomości, sugestia zakupu tylko gdy stać), test kryzysu, strażnik kosztów
 - [ ] Etap D6. Termometr, reguły na spadki, przypomnienia w „Na dziś”
 - [ ] Etap D7. Piaskownica: analiza wpisanej spółki / ETF-u

@@ -1,6 +1,6 @@
 # 🧭 Doradca inwestycyjny – kompletny plan
 
-Stan: **plan zaakceptowany przez Matiego 14.11.2026 (decyzje w punkcie 0 – są nadrzędne wobec reszty tekstu). W aplikacji nic jeszcze nie zmieniono.** Budowa dopiero na komendę, etapami, przed każdym etapem kopia (⚙️ → Pobierz kopię).
+Stan: **plan zaakceptowany przez Matiego 14.11.2026, uzupełniony tego samego dnia o nieruchomości, wszystkie klasy aktywów i rozbudowaną ankietę (decyzje w punkcie 0 – są nadrzędne wobec reszty tekstu). W aplikacji nic jeszcze nie zmieniono.** Budowa dopiero na komendę, etapami, przed każdym etapem kopia (⚙️ → Pobierz kopię).
 Podstawa: wymagania Matiego z rozmowy 13–14.11.2026 oraz pełna lektura ok. 90 artykułów z bloga Marcina Iwucia (notatki: `DORADCA-notatki.md`, sekcje A–G).
 
 ---
@@ -15,6 +15,13 @@ Podstawa: wymagania Matiego z rozmowy 13–14.11.2026 oraz pełna lektura ok. 90
 7. **Lista ETF-ów Matiego** (zrzuty z XTB, 14.11.2026) – punkt 13. Każdy instrument kupiony spoza listy ma po wpisaniu zakupu w aplikacji **automatycznie trafić do śledzenia i do analizy**; analizowane są też najpopularniejsze ETF-y. (Aplikacja nie łączy się z XTB – zakup trzeba raz wpisać.)
 8. **Etapy** uporządkowane tak, żeby całość powstawała krok po kroku – punkt 10 (nowa kolejność D1–D7).
 9. Ankieta: każda osoba wypełnia swoją na swoim telefonie (osoba telefonu); „wspólnie” łączy obie.
+
+**Uzupełnienie 14.11.2026 (druga rozmowa):**
+10. **🏠 „Dodaj nieruchomość” – nieobowiązkowe.** Okienko: szacowana wartość, mieszkamy / wynajmujemy / stoi puste, czynsz przy wynajmie, kredyt z 🔻. Nieruchomości trafiają na koło (punkt 15). Zastępuje decyzję 3 w części „wartość w majątku” (nadal ręcznie, co 1–3 lata). Dawna notatka „Mati nie chce nieruchomości jako inwestycji” – nieaktualna: nieruchomość może być celem **i** częścią majątku.
+11. **Koło aktywów – każdy rodzaj aktywa**, nie tylko akcje / obligacje / złoto: pełna lista klas + **własne klasy** i „＋ Dodaj inne aktywo” (punkt 14).
+12. **Proporcje całego majątku** (np. 50% nieruchomości / 50% aktywa), jeśli tak ustalicie w ankiecie. Zakup nieruchomości to plan na przyszłość: kotki **podsuwają „może warto pomyśleć o zakupie” tylko wtedy, gdy Was stać** (warunki w 15.4); gdy nie stać – nie proponują.
+13. **Doradca = kotki** (Bailey i Ivo prowadzą ankietę, komentują koło i wyniki).
+14. **Ankieta rozbudowana** na podstawie lektury bloga (punkt 4.1, ok. 64 pytania z pytaniami warunkowymi). Czy własne mieszkanie liczyć do proporcji – pytanie 31 w ankiecie (podpowiedź: nie).
 
 ---
 
@@ -74,60 +81,103 @@ Wygląd: pastelowo, kafelki jak w reszcie aplikacji; kotki komentują krótko (�
 
 ## 4. Ankieta
 
-### 4.1 Pierwsza ankieta – 36 pytań (raz, potem przegląd raz w roku i po dużej zmianie w życiu)
+### 4.1 Pierwsza ankieta – rozbudowana (wersja 14.11.2026, zastępuje dawne 36 pytań)
 
-Oznaczenia: **[A]** = aplikacja już to wie, pokaże do potwierdzenia jednym stuknięciem; **[?]** = trzeba zapytać.
-Każda osoba wypełnia swoją część (ok. 8–10 minut). Część „wspólne” wypełnia się raz.
+**Prowadzą ją kotki** (Bailey i Ivo zadają pytania w dymkach, jedno–dwa na ekranie, z paskiem postępu i „Wróć”). Raz w całości, potem przegląd raz w roku i po dużej zmianie w życiu.
+
+Zasady ankiety:
+- Oznaczenia: **[A]** = aplikacja już to wie, pokazuje do potwierdzenia jednym stuknięciem; **[?]** = trzeba zapytać; **[W]** = pytanie wspólne – odpowiada jedna osoba, druga widzi odpowiedź i może ją zmienić.
+- **Pytania warunkowe** (→): pokazują się tylko, gdy mają sens (np. bez kredytu nie ma pytań o kredyt, bez mieszkania na wynajem – o najem). Dzięki temu przy ok. 70 pytaniach w katalogu jedna osoba widzi zwykle 35–50 (ok. 12–15 minut).
+- Każda osoba wypełnia swoją część na swoim telefonie (`S.who`); można przerwać i wrócić (odpowiedzi zapisują się na bieżąco).
+- **Bez pytań o PPK** (decyzja 5).
+- Przy każdym pytaniu krótkie „po co pytamy” (ⓘ), np. „żeby wiedzieć, ile akcji to dla Ciebie za dużo”. Odpowiedzi w złotych liczone z Waszego majątku, nie same procenty.
+- Każde pytanie ma „Nie wiem” – wtedy doradca bierze ostrożniejsze założenie i mówi o tym.
 
 **A. Ty i Twoje dochody**
-1. [A] Data urodzenia (jest w aplikacji) → wiek, lata do 60 i 65.
-2. [A] Forma dochodu (etat / zlecenie / działalność: skala, liniowy, ryczałt i jego stawka) – z 💼 Pensji.
-3. [A/?] **Próg podatkowy w tym roku**: 0% (ulga dla młodych, dochód do 30 tys.) / 12% / 32% / liniowy 19% / ryczałt X%. Aplikacja policzy z pasków i pokaże „wychodzi nam 32% od ok. września – zgadza się?”.
-4. [?] Czy w ciągu 3–5 lat spodziewasz się zmiany progu (np. wejście w 32%, przejście na działalność, urlop wychowawczy)?
-5. [?] Czy rozliczasz się wspólnie z małżonkiem? (ulgę IKZE da się wtedy wykorzystać na wyższej stawce)
-6. [A/?] Jak stabilny jest Twój dochód? (etat bezterminowy / działalność / nieregularny) → wielkość poduszki.
-7. [?] Ile osób jest na Waszym utrzymaniu? (wspólne)
+1. [A] Data urodzenia → wiek, lata do 60 i 65.
+2. [A] Forma dochodu (etat / zlecenie / dzieło / działalność: skala, liniowy, ryczałt i jego stawka) – z 💼 Pensji.
+3. [A/?] **Próg podatkowy w tym roku**: 0% (ulga dla młodych, dochód do 30 tys.) / 12% / 32% / liniowy 19% / ryczałt X%. Aplikacja liczy z pasków: „wychodzi 32% od ok. września – zgadza się?”.
+4. [?] Czy w ciągu 3–5 lat spodziewasz się zmiany progu lub formy (wejście w 32%, działalność, urlop rodzicielski, przerwa w pracy, emigracja)? → rok i kierunek.
+5. [?] Czy rozliczasz się wspólnie z małżonkiem?
+6. [A/?] Jak stabilny jest dochód? (etat bezterminowy / umowa na czas określony / działalność / nieregularny) → wielkość poduszki.
+7. [?] Czy spodziewasz się wyraźnego wzrostu zarobków w kilka lat (specjalizacja, awans)? – bo „najważniejsze aktywo to Ty” (inwestycja w siebie bywa lepsza niż giełda).
+8. [?] Jak dzielisz podwyżki i premie? (wszystko na życie / pół na pół / większość odkładam) – zabezpieczenie przed „inflacją stylu życia”.
+9. [W] Ile osób jest na Waszym utrzymaniu? Czy planujecie dzieci → w którym roku (mniej więcej)?
+10. [W] → przy dzieciach: czy chcecie odkładać na ich edukację / start? (kwota, rok)
 
-**B. Bezpieczeństwo**
-8. [A] Miesięczne wydatki (średnia z Budżetu z 6 miesięcy) – do potwierdzenia.
-9. [A] Poduszka: ile jest i na którym koncie (konto „poduszka”) – do potwierdzenia; [?] na ile miesięcy chcecie ją mieć (podpowiedź: 6; 9–12 przy działalności lub jednym żywicielu).
-10. [A] Długi inne niż hipoteka (karta, raty, pożyczki) – z 🔻 zobowiązań, z oprocentowaniem.
-11. [A/?] Kredyt hipoteczny: ile zostało, oprocentowanie [A]; stała czy zmienna stopa i do kiedy stała, czy bank bierze prowizję za nadpłatę i do kiedy [?].
-12. [?] Czy macie ubezpieczenie na życie / od utraty dochodu? (tylko przypomnienie, bez doradzania produktów)
+**B. Wartość netto i nawyki** (krok 1–2 z „10 kroków” – aplikacja zna już majątek i budżet)
+11. [A] Majątek netto teraz (konta + instrumenty + nieruchomości − długi) – do potwierdzenia.
+12. [A] Średnia miesięczna nadwyżka z 6 miesięcy (przychody − wydatki z Budżetu) i stopa oszczędzania w % – do potwierdzenia.
+13. [?] Ile chcesz odkładać miesięcznie na inwestycje? (podpowiedź z nadwyżki; „zapłać najpierw sobie” – po ankiecie propozycja stałego przelewu w dniu wypłaty)
+14. [?] Jak często będziesz dopłacać: co miesiąc / co kwartał / nieregularnie (premie, zwrot podatku)?
 
-**C. Cele (można wybrać kilka; każdy dostaje kwotę i termin)**
-13. [?] Na co odkładasz tę i przyszłe kwoty? Emerytura / nieprzewidziane wydatki (poduszka) / mieszkanie / inny cel z terminem.
-14. [?] Emerytura: w jakim wieku chcesz przestać pracować? Ile chcesz mieć „na rękę” miesięcznie w dzisiejszych złotych?
-15. [?] Prognoza emerytury z ZUS (kwota brutto z kalkulatora na koncie ZUS – z instrukcją, gdzie ją znaleźć); można pominąć – wtedy ostrożny szacunek.
-16. [?] Mieszkanie: za ile lat, w jakiej cenie, wkład 10% czy 20%, ile już odłożone, czy to pierwsze mieszkanie.
-17. [?] Czy w ciągu 5 lat planujecie inny duży wydatek (auto, remont, dziecko)? Kwota i rok.
+**C. Bezpieczeństwo**
+15. [A] Miesięczne wydatki (średnia z Budżetu z 6 miesięcy) – do potwierdzenia; [?] które z nich są „niezbędne” (minimum przy utracie pracy).
+16. [A] Poduszka: ile jest i na którym koncie (`isPod`) – do potwierdzenia.
+17. [?] Na ile miesięcy chcecie poduszkę? (podpowiedź: 6; 3–4 przy bardzo stabilnym etacie; 9–12 przy działalności, jednym żywicielu, kredycie i dzieciach)
+18. [?] Co dla Ciebie jest „awarią”, na którą idzie poduszka? (niezbędne i nieprzewidziane – kotki pokazują przykłady; to, co przewidywalne, idzie do kopert rocznych)
+19. [A] Długi inne niż hipoteka (karta, raty, raty 0%, „kup teraz zapłać później”, pożyczki) – z 🔻, z oprocentowaniem.
+20. [A/?] Kredyt hipoteczny: ile zostało, oprocentowanie [A]; stała czy zmienna stopa i do kiedy stała, prowizja za nadpłatę i do kiedy [?].
+21. [?] Ubezpieczenia: na życie / od utraty dochodu / mieszkania (do wartości rynkowej) – tylko przypomnienie, bez polecania produktów.
+22. [?] Ile % Waszych pieniędzy jest w jednym banku? Czy wiecie o gwarancji 100 tys. euro na bank i osobę? (informacyjnie)
 
-**D. Konta, które już masz**
-18. [A] PPK: czy jesteś zapisany (z pasków); [?] jeśli nie – dlaczego / czy pracodawca prowadzi PPK lub PPE.
-19. [A/?] IKE: czy masz [A]; jakiego rodzaju: dom maklerski / IKE-Obligacje / fundusze TFI / inne [?]; ile wpłacone w tym roku [A].
-20. [A/?] IKZE: to samo; czy masz prawo do wyższego limitu (działalność w dniu wpłaty) [A].
-21. [?] Roczne koszty Twoich IKE/IKZE, jeśli to fundusze (łączne koszty z dokumentu KID) – z instrukcją.
-22. [?] Gdzie masz (albo chcesz mieć) konto maklerskie: prowizja minimalna, prowizja %, koszt wymiany walut, czy można kupować ułamki (podpowiedzi dla najpopularniejszych domów maklerskich, z datą „stan na…”).
-23. [?] Czy od 2027 chcesz korzystać z OKI? (tak / nie / nie wiem – wyjaśnij)
-24. [?] Czy dostajecie 800+ i ile dotąd wykorzystaliście na obligacje rodzinne? (wspólne)
+**D. Cele (można kilka; każdy dostaje kwotę i termin)**
+23. [?] Na co odkładasz? Emerytura / poduszka / mieszkanie dla siebie / nieruchomość na wynajem / dziecko / auto / remont / podróż / inny cel.
+24. [?] Emerytura: w jakim wieku chcesz przestać pracować (albo pracować mniej)? Ile chcesz mieć „na rękę” miesięcznie w dzisiejszych złotych?
+25. [?] Prognoza emerytury z ZUS (kwota brutto z kalkulatora na PUE/eZUS – kotki pokazują, gdzie ją znaleźć); „Pomiń” = ostrożny szacunek.
+26. [?] Do ilu lat liczyć pieniądze na emeryturę? (podpowiedź 95 – ryzykiem jest długie życie, nie krótkie)
+27. [?] → przy każdym innym celu: kwota, rok, czy termin jest sztywny (ślub, studia) czy elastyczny (auto).
+28. [?] Czy w ciągu 5 lat planujecie inny duży wydatek, którego nie ma wyżej?
 
-**E. Ryzyko – zdolność i skłonność (do planu trafia ostrożniejsza odpowiedź)**
-25. [?] Za ile lat **najwcześniej** możesz potrzebować pieniędzy z części długoterminowej?
-26. [?] Sytuacja: masz w akcjach 100 000 zł, po roku jest 70 000 zł. Co robisz? (dokupuję / nic nie robię / sprzedaję część / sprzedaję wszystko)
-27. [?] Jaki największy przejściowy spadek **całego** portfela jesteś w stanie znieść bez sprzedawania? Odpowiedzi w złotych policzone z Twojego majątku (np. „do 15 000 zł”, „do 40 000 zł”, „do 80 000 zł”).
-28. [?] Czy kiedyś przeżyłeś duży spadek swoich inwestycji? Jak się zachowałeś?
-29. [?] Co jest dla Ciebie ważniejsze: jak największy zysk za 20 lat / spokojny sen po drodze / coś pomiędzy.
-30. [?] Ile czasu chcesz poświęcać inwestycjom? (kwadrans na kwartał / godzinę w miesiącu / lubię się tym zajmować)
+**E. Nieruchomości** (cała część nieobowiązkowa – „Pomiń, nie dotyczy nas” jednym stuknięciem; szczegóły w punkcie 15)
+29. [W] Czy macie nieruchomość? → przycisk „🏠 Dodaj nieruchomość” (wartość, mieszkamy / wynajmujemy / stoi puste, czynsz, kredyt – punkt 15.1); można dodać kilka.
+30. [W] Czy chcecie, żeby nieruchomości były częścią Waszego majątku na stałe? Jaki udział w całym majątku ma być docelowo? (suwak 0–70%, podpowiedź z lektury: wielu długoterminowych inwestorów ma ok. połowę; 0% też jest dobrą odpowiedzią)
+31. [W] **Czy mieszkanie, w którym mieszkacie, liczyć do tego udziału?** (podpowiedź doradcy: „nie – pokazujemy je w majątku, ale do proporcji liczymy tylko nieruchomości na wynajem, bo własnego mieszkania nie sprzedacie w kryzysie i nie daje czynszu”; do wyboru: tak / nie)
+32. [W] → bez własnego mieszkania: czy planujecie kupić mieszkanie dla siebie? Za ile lat, w jakim mieście (duże / małe), ile pokoi / m², ile chcecie w nim mieszkać (sens ekonomiczny dopiero przy ≥ 5–10 latach), czy to pierwsze mieszkanie (podatek PCC, programy dla pierwszego mieszkania).
+33. [W] → przy planie zakupu: szacowana cena (albo cena za m² – kotki pokażą średnią z raportu NBP, jeśli automat ją pobierze), wkład 10% czy 20%, ile już odłożone na wkład.
+34. [W] → przy celu „na wynajem”: czy jesteście gotowi być wynajmującym (szukanie najemców, naprawy, remont co 5–7 lat, 1–2 miesiące pustostanu w roku)? Ile godzin w miesiącu chcecie na to poświęcić? Czy wolicie gotówkę, czy dopuszczacie kredyt (dźwignia działa w obie strony)?
+35. [W] → przy mieszkaniu na wynajem: wszystkie koszty miesięczne i roczne (administracja, fundusz remontowy, media w pustostanie, podatek od nieruchomości, ubezpieczenie, ryczałt 8,5%) – podpowiedź z 📌 Stałe i z wpisów, jeśli są.
 
-**F. Preferencje**
-31. [?] Czy chcesz mieć złoto w portfelu? (nie / do 5% / do 10% / do 15%) – z wyjaśnieniem roli „polisy”.
-32. [?] Czy chcesz inwestować też w pojedyncze spółki albo „tematy”? Jeśli tak – jaki maksymalny kawałek portfela (podpowiedź: do 10%, „piaskownica”).
-33. [?] Akcje: cały świat jednym funduszem (podpowiedź) / chcę więcej Polski / chcę sam dobierać regiony.
-34. [?] Jak często będziesz dopłacać: co miesiąc / co kwartał / nieregularnie. Jaka kwota jest dla Ciebie zwykła?
-35. [?] Hipoteka a inwestowanie – suwak „nadpłacam ↔ inwestuję” (doradca podpowie ustawienie z wyliczenia; pytania pomocnicze: „dobrze się czuję z nadpłaconym kredytem i małymi oszczędnościami?”).
-36. [?] Czy pozwalasz, żeby w spadkach doradca przypominał Ci Twój plan („list do siebie” – 2–3 zdania wpisane własnymi słowami)?
+**F. Konta i instytucje**
+36. [A/?] IKE: czy masz [A]; rodzaj: maklerskie (XTB) / IKE-Obligacje / fundusze / inne [?]; ile wpłacone w tym roku [A].
+37. [A/?] IKZE: to samo; prawo do wyższego limitu (działalność) [A].
+38. [?] → przy IKE/IKZE w funduszach lub ubezpieczeniu: roczny koszt (z dokumentu KID – kotki pokazują, gdzie go znaleźć).
+39. [A/?] Konta maklerskie: XTB (koszty zapisane z datą „stan na”), inne? Czy chcesz przenieść drogie IKE/IKZE (wypłata transferowa – bez utraty ulg)?
+40. [?] Od 2027 – czy chcesz korzystać z OKI? (tak / nie / nie wiem – kotki wyjaśniają)
+41. [W] 800+: czy dostajecie i ile dotąd wykorzystaliście na obligacje rodzinne?
 
-Po ankiecie doradca pokazuje **„Twój plan na jednej kartce”**: cele, proporcje docelowe, które konto do czego, reguły. Trzeba go zatwierdzić (albo przesunąć suwaki proporcji – z natychmiastowym pokazaniem, ile wtedy można stracić w kryzysie).
+**G. Ryzyko – zdolność i skłonność (do planu trafia ostrożniejsza odpowiedź)**
+42. [?] Za ile lat **najwcześniej** możesz potrzebować pieniędzy z części długoterminowej?
+43. [?] Sytuacja: masz w akcjach 100 000 zł, po roku jest 70 000 zł. Co robisz? (dokupuję / nic / sprzedaję część / sprzedaję wszystko)
+44. [?] Jaki największy przejściowy spadek **całego** portfela zniesiesz bez sprzedawania? Odpowiedzi w złotych z Waszego majątku (np. „do 15 000 zł”, „do 40 000 zł”, „do 80 000 zł”).
+45. [?] Jak długo zniesiesz, że portfel jest „pod kreską”? (rok / 3 lata / 5 lat / 10 lat – akcje bywały pod kreską ponad 12 lat)
+46. [?] Czy przeżyłeś duży spadek swoich inwestycji? Jak się zachowałeś?
+47. [?] Ile wiesz o inwestowaniu? (początkujący / znam podstawy / swobodnie) – od tego zależy, ile wyjaśnień pokażą kotki.
+48. [?] Co ważniejsze: jak największy zysk za 20 lat / spokojny sen / coś pomiędzy.
+49. [?] Jakiego zysku się spodziewasz rocznie ponad inflację? (0–2 / 2–4 / 4–6 / więcej) – kotki „studzą oczekiwania”: realnie 2–4 punkty ponad inflację to dobry wynik dla spokojnego portfela.
+50. [?] Ile czasu chcesz poświęcać inwestycjom? (kwadrans na kwartał / godzina w miesiącu / lubię się tym zajmować)
+51. [?] Czy wolisz kupować co miesiąc, czy zbierać i kupować raz na kwartał?
+
+**H. Świat i waluty („jaki scenariusz obstawiasz?”)**
+52. [?] Czego się najbardziej boisz: wysokiej inflacji / krachu na giełdzie / słabego złotego / utraty pracy / wojny – można kilka (to nie zmienia planu „na ślepo”, tylko pokazuje, czy obecny portfel jest na to przygotowany).
+53. [?] Czy część majątku ma być poza złotym? (wszystko w zł / trochę / sporo) – kotki pokazują, ile dziś macie w obcych walutach przez fundusze.
+
+**I. Preferencje (co ma być w portfelu)**
+54. [?] Złoto: nie / do 5% / do 10% / do 15% – z wyjaśnieniem roli „polisy”; fizyczne czy „papierowe” (ETC)?
+55. [?] Akcje: cały świat jednym funduszem (podpowiedź) / rozwinięte + wschodzące osobno / więcej Polski / sam dobieram regiony.
+56. [?] Inne aktywa, które chcesz mieć w portfelu (lista z punktu 14: obligacje rynkowe, surowce, krypto, nieruchomości przez fundusze, przedmioty kolekcjonerskie, własne…) – każda z maksymalnym udziałem. Kotki uczciwie mówią, co jest dla rdzenia portfela „raczej nie” (np. surowce bez złota, krypto) – wtedy trafia do piaskownicy.
+57. [?] Pojedyncze spółki i „tematy”: tak / nie; maksymalny kawałek (podpowiedź do 10% – piaskownica).
+58. [?] Czy chcesz mieć „suchy proch” – gotówkę lub obligacje odłożone na okazje w czasie przeceny? (ile %)
+59. [W] Hipoteka a inwestowanie – suwak „nadpłacam ↔ inwestuję” (podpowiedź z wyliczenia; „czy dobrze się czuję z nadpłaconym kredytem i małymi oszczędnościami?”).
+
+**J. Trzymanie kursu i wspólny plan**
+60. [?] „List do siebie” na spadki – 2–3 zdania własnymi słowami; czy kotki mają Ci go pokazywać, gdy rynek spadnie?
+61. [?] Twoja reguła na duży spadek, zapisana z góry (np. „gdy akcje świata spadną o 25%, dokupię akcji ze złota/obligacji”) – albo „bez reguły, trzymam plan”.
+62. [?] Kiedy wolno zmienić plan? (tylko przy zmianie w życiu / raz w roku / po pełnym cyklu 7–10 lat) – kotki przypomną tę odpowiedź, gdy zechcesz coś zmienić w nerwach.
+63. [W] Czy druga osoba umiałaby poprowadzić plan sama? → po ankiecie powstaje „instrukcja dla drugiej osoby”.
+64. [W] Gdy Wasze odpowiedzi o ryzyku się różnią: wspólny portfel według ostrożniejszej osoby (podpowiedź), czy osobne części?
+
+Po ankiecie kotki pokazują **„Wasz plan na jednej kartce”**: cele z kwotami i terminami, proporcje docelowe całego majątku (🏠 nieruchomości / 📈 aktywa) i części rynkowej (każda klasa z widełkami), które konto do czego, ile i kiedy odkładać, reguły, list do siebie. Trzeba go zatwierdzić (albo przesunąć suwaki – z natychmiastowym pokazaniem, ile wtedy można stracić w kryzysie w złotych).
 
 ### 4.2 Krótka ankieta przy każdej kwocie (4–6 pytań, pół minuty)
 1. Kwota.
@@ -266,6 +316,7 @@ Na co termometr **wpływa**: (1) czy dużą kwotę w akcje rozłożyć na transz
 
 ## 9. Dane i technika (dla Claude przy budowie)
 - Nowy moduł czystych obliczeń `js/advisor.js` (bez zapisu, testowalny w `tests/calc.mjs`) + interfejs `js/advisorui.js`; oba do `SHELL` w `sw.js`; nowy widok w `majSegH`; ekran w `SCREENS` robota; `USAGE_CAT`; `NEWS` + `HELP`; okienka zgodnie z zasadą jednej przewijanej kartki; demo – przykładowe odpowiedzi ankiety w `demo/demo.js`.
+- Nowe (decyzje 10–12): `assetCls` (własne klasy), `assetM` (inne aktywa i nieruchomości), pole `cls` w `hold` i `accsM` – punkty 14–15; do `BACKUP_KEYS`.
 - Dane w `households/main`: `advM{osoba:{ank{…},at,plan{…},list}}`, `advW{…}` (wspólne: cele, 800+, kredyt), `advLog{id:{at,who,amount,rows[]}}`, `brok{osoba:{min,pct,fx,frac,at}}` → dopisać do `BACKUP_KEYS` (kopia i przywracanie, test `restore.mjs`). Żadnych zmian w istniejących wpisach – nowe pola, bez migracji starych danych.
 - Opcjonalne nowe pola w istniejących rzeczach (puste = nic się nie zmienia): przy zobowiązaniu – rodzaj stopy i prowizja za nadpłatę; przy koncie – rodzaj IKE/IKZE, bank; przy instrumencie – klasa aktywów do planu (domyślnie z `kind`).
 - Automat (`market.mjs`): historia ceny funduszu świata do termometru; ewentualnie wskaźniki wyceny (jeśli źródło). Reszta danych już jest (NBP, GUS, oferta obligacji, złoto, ceny posiadanych, fundusze PPK).
@@ -278,11 +329,11 @@ Na co termometr **wpływa**: (1) czy dużą kwotę w akcje rozłożyć na transz
 
 Każdy etap działa samodzielnie i jest fundamentem dla następnego.
 
-**D1 – Klasy aktywów i koło „jak jest”.** Każdy instrument (`hold`) i konto oszczędnościowe/inwestycyjne dostaje klasę: akcje (z podziałem: świat / rozwinięte / wschodzące / Polska / pojedyncze spółki), obligacje (detaliczne / rynkowe), złoto, gotówka. Domyślnie z rodzaju i z listy znanych ETF-ów, z możliwością zmiany. **PPK wyłączone.** Lista znanych ETF-ów (punkt 13) w kodzie z danymi (ISIN, indeks, koszt, Acc, rejestracja, replikacja, data sprawdzenia). Nowy instrument spoza listy po dodaniu: automatycznie śledzony (automat już pobiera ceny) + karta analizy (kryteria, dublowanie z posiadanymi, flagi). Wykres kołowy w 💰 Majątku → Oszczędności („Inwestycje”), stuknięcie w kawałek = lista instrumentów.
+**D1 – Klasy aktywów i koło „jak jest”.** Każdy instrument (`hold`) i konto oszczędnościowe/inwestycyjne dostaje klasę: akcje (z podziałem: świat / rozwinięte / wschodzące / Polska / pojedyncze spółki), obligacje (detaliczne / rynkowe), złoto, gotówka. Domyślnie z rodzaju i z listy znanych ETF-ów, z możliwością zmiany. **PPK wyłączone.** Lista znanych ETF-ów (punkt 13) w kodzie z danymi (ISIN, indeks, koszt, Acc, rejestracja, replikacja, data sprawdzenia). Nowy instrument spoza listy po dodaniu: automatycznie śledzony (automat już pobiera ceny) + karta analizy (kryteria, dublowanie z posiadanymi, flagi). Wykres kołowy w 💰 Majątku → Oszczędności („Inwestycje”), stuknięcie w kawałek = lista instrumentów. **Dodatkowo (decyzje 10–11):** pełna lista klas i grup z punktu 14, „＋ Własna klasa”, „＋ Dodaj inne aktywo”, przycisk „🏠 Dodaj nieruchomość” (15.1) i dwa pierścienie koła: cały majątek / same aktywa (15.2).
 **D2 – Ankieta i plan.** Ankieta (punkt 4, bez pytań o PPK), „plan na jednej kartce”, proporcje docelowe z widełkami → widełki na kole; **kotki przy kole**: „akcje 41% (plan 30–40%) – przy następnej wpłacie dokup obligacji”; kafelki diagnozy (poduszka, długi, limity IKE/IKZE/OKI).
 **D3 – „Gdzie”.** Kwota, krótka ankieta, bramki (dług, poduszka, termin), koszyki celów, wybór pokrowca z wyliczeniem (IKE/IKZE wg progu, OKI, zwykły rachunek, nadpłata hipoteki), „na pewno nie tu”, tryb „wspólnie”.
 **D4 – „W co”.** Niedobory względem planu, konkretne instrumenty z listy, kalkulator obligacji na N miesięcy, koszt zakupu w XTB (0,5% waluta), liczba jednostek (ułamki), transze, „co po zakupie”, zapis porady, odhaczanie po wpisaniu zakupu.
-**D5 – Cele.** Luka emerytalna (bez PPK), cel „mieszkanie” + wartość mieszkania w majątku, test kryzysu w złotych, strażnik kosztów.
+**D5 – Cele.** Luka emerytalna (bez PPK), cel „mieszkanie” + wartość mieszkania w majątku, test kryzysu w złotych, strażnik kosztów. **Dodatkowo (decyzja 12):** liczby najmu (15.3), proporcje nieruchomości w planie, sugestia zakupu tylko gdy Was stać (15.4), ewentualnie ceny mieszkań z raportów NBP w automacie.
 **D6 – Pilnowanie planu.** Termometr, własne reguły na spadki, list do siebie, przypomnienia w 🔔 „Na dziś” (limity do 31.12, zwrot z IKZE, przegląd kwartalny, poduszka o inflację, coroczny przegląd listy ETF-ów i kosztów XTB).
 **D7 – Piaskownica.** Analiza wpisanej spółki / ETF-u, limit 10%, lista życzeń z ceną.
 
@@ -325,3 +376,56 @@ Wnioski do analizy (dla doradcy):
 - To są **3 rodziny tego samego**: „cały świat w jednym” (VWCE, FWIA, ALLW, ISAC) albo „rozwinięte + wschodzące” (SWDA lub VHVE + EMIM lub VFEA ≈ ok. 88/12). Wystarczy **jeden** fundusz świata albo **jedna** para – kupowanie kilku „całych światów” to dublowanie (bez szkody, ale bez korzyści; trudniej pilnować proporcji). Analiza ma to wykrywać i pokazywać.
 - Waluta notowania nie zmienia ryzyka walutowego (liczy się, w co fundusz inwestuje); w XTB każda waluta kosztuje tak samo: 0,5% przy wymianie.
 - Rodzina Vanguard FTSE (VWCE / VHVE+VFEA) i iShares MSCI (ISAC / SWDA+EMIM) – w parze lepiej trzymać się jednej rodziny indeksów (te same zasady podziału na kraje).
+
+---
+
+## 14. Klasy aktywów – każdy rodzaj, także własne (decyzja 11)
+Koło „Aktywa” nie jest ograniczone do akcji / obligacji / złota. Każda rzecz w majątku dostaje **klasę**, a klasy należą do **grup** (pierwszy pierścień koła), stuknięcie w grupę rozwija klasy, w klasę – listę instrumentów i kont.
+
+| Grupa | Klasy wbudowane (domyślne) |
+|---|---|
+| 💵 Gotówka i bezpieczne | konta i gotówka, lokaty, fundusze krótkoterminowych papierów skarbowych |
+| 🧾 Obligacje | skarbowe detaliczne stałe (OTS, ROR, DOR, TOS), skarbowe detaliczne indeksowane (COI, EDO, ROS, ROD), skarbowe rynkowe / ETF obligacji, korporacyjne, fundusze dłużne inne |
+| 📈 Akcje | cały świat, kraje rozwinięte, rynki wschodzące, Polska, USA, Europa, inne regiony, pojedyncze spółki, tematyczne / sektorowe, dywidendowe |
+| 🥇 Złoto i surowce | złoto fizyczne, złoto „papierowe” (ETC), srebro i inne metale, surowce (indeks) |
+| 🏠 Nieruchomości | mieszkanie własne, mieszkanie na wynajem, działka, garaż / komórka, lokal użytkowy, fundusze nieruchomości (REIT) |
+| 🧪 Alternatywne | kryptowaluty, przedmioty kolekcjonerskie (sztuka, zegarki, LEGO, wino…), udziały w firmie, pożyczki prywatne udzielone jako inwestycja |
+| ✨ Własne | dowolne – patrz niżej |
+
+- **„＋ Własna klasa”**: nazwa, ikonka, pastelowy kolor, grupa (albo nowa grupa) i **rodzaj ryzyka** do testu kryzysu (bezpieczne / jak obligacje / jak akcje / jak złoto / bardzo ryzykowne – bez tego test kryzysu przyjmuje ostrożnie „jak akcje”). Zapis w `assetCls{id:{name,icon,hue,grp,risk,o}}` (w `BACKUP_KEYS`). Klasy wbudowane są w kodzie (`advisor.js`), własne nie nadpisują wbudowanych.
+- Klasa przypisuje się sama: instrument z listy ETF-ów (punkt 13) – z listy; reszta z `kind` (etf spoza listy → **„do przypisania”** – kotki pytają, co to za fundusz, i podpowiadają z nazwy, akcje → pojedyncze spółki, obl → wg typu obligacji, zloto → złoto fizyczne, krypto → kryptowaluty, lokata → lokaty, tfi → wg funduszu albo „do przypisania”); konto oszczędnościowe → konta i gotówka. Zawsze można zmienić (pole `cls` w `hold/{id}` i w `accsM` – nowe pole, puste = domyślne; stare dane bez zmian).
+- **„＋ Dodaj inne aktywo”** (poza kontami i instrumentami – np. kolekcja, udziały, działka): nazwa, klasa, właściciel (Mati / Wercia / Wspólne), wartość i data wyceny; kotki przypominają o nowej wycenie raz w roku (ustawialne). Zapis w `assetM{id:{name,cls,owner,value,valAt,every,note,o,deleted}}`. Takie aktywa **nie są kontami**: nie zmieniają sald, Budżetu ani „odłożonych” (`savFlow`); w 👛 Konta pokazane obok, jak zobowiązania („🏠🧪 inne aktywa”, „po rozliczeniu wszystkiego”).
+- Ceny automatu: wszystko, co ma ticker / fundusz / obligację – automat wycenia sam (jak dziś). Aktywa ręczne – tylko wpisana wartość (z datą, przy starej wycenie kotki mówią „wycena sprzed 3 lat”).
+- Plan (D2) może mieć widełki **dla grup i dla wybranych klas** (np. akcje 30–40%, w tym rynki wschodzące 8–15%); klasy bez widełek liczą się tylko do grupy.
+- Analiza (D1/D7) zna dla każdej klasy krótkie fakty z lektury: rola w portfelu, typowe obsunięcie, podatek, „czy do rdzenia” (np. surowce poza złotem i krypto – tylko piaskownica). Bez prognoz.
+
+## 15. 🏠 Nieruchomości (decyzje 10 i 12; nieobowiązkowe)
+
+### 15.1 Przycisk „🏠 Dodaj nieruchomość”
+Przy kole w 💰 Majątku i w ankiecie. Okienko (jedna przewijana kartka), pytania zadają kotki:
+1. Nazwa (np. „Mieszkanie Kraków”), rodzaj (klasa z grupy 🏠), właściciel (Mati / Wercia / Wspólne, ewentualnie udział %).
+2. **Szacowana wartość** i data wyceny. Podpowiedź z lektury: wyceniać ostrożnie (najniższa z kilku wycen minus 5%), aktualizować co 1–3 lata – kotki przypominają w 🔔 „Na dziś” (cicho, bez powiadomienia).
+3. **Mieszkamy / wynajmujemy / stoi puste / inne.**
+4. → wynajmujemy: **czynsz miesięczny** (jeśli w 📌 Stałe jest przychód z `najem` – kotki proponują połączenie, wtedy czynsz bierze się z prawdziwych wpływów), opłaty i koszty (administracja, fundusz remontowy, podatek od nieruchomości, ubezpieczenie; podpowiedź z 📌 Stałe), ile miesięcy w roku zwykle wynajęte (podpowiedź 10–11).
+5. **Kredyt** na tej nieruchomości – wybór z 🔻 zobowiązań (albo „brak”) → wartość netto = wartość − pozostało do spłaty.
+6. Opcjonalnie: cena zakupu i rok (do policzenia zysku), metraż.
+Zapis: `assetM` (punkt 14) z polami `real:{use:'my'|'rent'|'empty'|'other',rent?,fixed?,costs?,months?,debt?,buy?,buyY?,m2?,share?}`. Usunięcie = `deleted:true` (do przywrócenia). Bez nieruchomości wszystko działa jak dotąd.
+
+### 15.2 Na kole i w majątku
+- Pierwsze koło: **cały majątek** = 🏠 nieruchomości (wartość netto) / 📈 aktywa rynkowe; drugie: same aktywa (punkt 14).
+- Do proporcji planu liczy się własne mieszkanie **tylko, jeśli tak wybraliście w ankiecie** (pytanie 31; podpowiedź: nie – jest w majątku, osobnym kawałkiem „🏡 mieszkamy”, ale poza proporcjami).
+- W 👛 Konta: osobna linijka „🏠 nieruchomości” obok zobowiązań; salda kont się nie zmieniają.
+
+### 15.3 Mieszkanie na wynajem – liczby (fakty, nie prognozy)
+- Rentowność netto: (czynsz × miesiące najmu − wszystkie koszty − ryczałt 8,5%) ÷ wartość, liczona **na kapitale całkowitym** (także przy kredycie – osobno pokazany zwrot na własnym wkładzie i rata).
+- Porównanie z obligacjami indeksowanymi (bieżąca oferta z automatu) i z inflacją; przypomnienie o remoncie co 5–7 lat i rezerwie na niego.
+- Rebalancing między nieruchomościami a częścią rynkową **tylko nowymi pieniędzmi** (np. nadwyżki z najmu do części rynkowej, gdy nieruchomości są ponad plan). Doradca **nigdy nie proponuje sprzedaży mieszkania** dla wyrównania proporcji.
+
+### 15.4 Kiedy kotki podsuną „może warto pomyśleć o zakupie”
+Tylko gdy plan ma udział nieruchomości > 0 i obecny udział jest wyraźnie poniżej dolnej granicy widełek, **i jednocześnie** wszystkie warunki są spełnione:
+1. Wkład własny (wg ankiety 10/20%; podpowiedź 20%) **+ koszty zakupu** (PCC 2% – przy pierwszym mieszkaniu z rynku wtórnego zwolnienie, notariusz, prowizja, wykończenie – razem ok. 3–5% ceny, liczone dokładnie przy budowie) **z aktywów, które da się na to przeznaczyć** (bez poduszki; IKE/IKZE tylko z jasnym kosztem wypłaty – domyślnie wcale).
+2. **Poduszka zostaje nietknięta** i jest liczona już z nową ratą (6 miesięcy wydatków z ratą).
+3. **Rata ≤ 30% dochodów netto** (z pasków i Budżetu), kredyt ≤ 20 lat (zasada 30/20/20), sprawdzona też z buforem banku **+2,5 punktu** stopy; przy wynajmie dodatkowo: czynsz z 10 miesięcy pokrywa ratę i koszty albo nadwyżka budżetu pokrywa różnicę.
+4. Nie ma długów konsumenckich, a cele z bliskim terminem (do 3 lat) są zabezpieczone.
+5. → mieszkanie dla siebie: plan mieszkania tam ≥ 5–10 lat.
+Cena: z ankiety (cena albo m² × cena za m²); jeśli automat będzie pobierał średnie ceny z kwartalnych raportów NBP dla dużych miast – podpowiedź z datą (do sprawdzenia przy budowie D5, czy źródło jest pewne). Gdy któryś warunek nie jest spełniony – kotki nic nie proponują, w karcie celu tylko „brakuje X zł, przy obecnym odkładaniu ok. N miesięcy” i który warunek blokuje. Sugestia raz na pół roku jako cichy punkt w „Na dziś” (`checkIgnore['real:'+RRRR-MM]`), zawsze z listą „za i przeciw” z lektury (koszty, czas, dźwignia, brak płynności, „nieruchomości nie zawsze rosną”). Doradca nie mówi „kupcie teraz, bo ceny wzrosną” – nie prognozuje.
