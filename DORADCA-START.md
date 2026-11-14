@@ -1,6 +1,6 @@
 # 🧭 Doradca – instrukcja dla nowego okna Claude (czytaj w całości przed pracą)
 
-Ten plik zastępuje długie rozmowy z 13–14.11.2026, w których powstał plan (także drugą rozmowę 14.11 o nieruchomościach, klasach aktywów i ankiecie – decyzje 10–20). **Stan: wszystkie pytania do Matiego zamknięte, nic nie czeka na odpowiedź; następny krok = D1, gdy Mati napisze „zrób D1”.** Nowe okno nie zna tej rozmowy – wszystko, co potrzebne, jest tutaj i w plikach wymienionych niżej.
+Ten plik zastępuje długie rozmowy z 13–14.11.2026, w których powstał plan (także drugą rozmowę 14.11 o nieruchomościach, klasach aktywów i ankiecie – decyzje 10–20, oraz trzecią – decyzje 21–25). **Stan: następny krok = D1a, gdy Mati napisze „zrób D1a”. Otwarte: decyzja 25 (czy własne mieszkanie liczyć do proporcji) – do D1b; zrzut VWCE z XTB.** Nowe okno nie zna tej rozmowy – wszystko, co potrzebne, jest tutaj i w plikach wymienionych niżej.
 
 ## 1. Zanim cokolwiek zrobisz
 1. `git pull origin main`, `git log -5` (zasady wielu okien z `CLAUDE.md`).
@@ -9,7 +9,7 @@ Ten plik zastępuje długie rozmowy z 13–14.11.2026, w których powstał plan 
    - **`DORADCA-plan.md`** – plan; **punkt 0 „Decyzje Matiego” jest nadrzędny** wobec reszty tekstu,
    - `PLAN.md` → „Część 8 – Doradca” (co już odhaczone),
    - `DORADCA-notatki.md` – wiedza merytoryczna (liczby, zasady kont, przykłady do testów). Czytaj sekcje potrzebne w danym etapie; przy liczbach do testów – zawsze stąd, nie z pamięci.
-3. Ustal, który etap jest następny (pierwszy nieodhaczony D1…D7 w `PLAN.md`). **Etap zaczynasz dopiero na wyraźną komendę Matiego** („zrób D1” itp.). Przed etapem poproś o kopię (⚙️ → Pobierz kopię).
+3. Ustal, który etap jest następny (pierwszy nieodhaczony D1a, D1b, D2…D7 w `PLAN.md`). **Etap zaczynasz dopiero na wyraźną komendę Matiego** („zrób D1a” itp.). Przed etapem poproś o kopię (⚙️ → Pobierz kopię).
 4. Przed etapem napisz Matiemu krótko (po polsku, prosto) plan etapu: co zobaczy w aplikacji, gdzie; poczekaj na „ok”, jeśli coś jest niejasne.
 
 ## 2. Najważniejsze decyzje (skrót punktu 0 planu)
@@ -23,11 +23,12 @@ Ten plik zastępuje długie rozmowy z 13–14.11.2026, w których powstał plan 
 - **Koło** (wykres kołowy) w Inwestycjach z widełkami planu; **kotki** przy kole podpowiadają wyrównanie.
 - Lista ETF-ów Matiego: punkt 13 planu (8 funduszy z XTB). Każdy instrument spoza listy: po wpisaniu zakupu sam trafia do śledzenia i analizy. ISIN-y i koszty z tabeli **sprawdź u dostawcy** przed wpisaniem do kodu (wpisz datę sprawdzenia); jeśli sieć nie pozwala – zapytaj Matiego o zgodę na dodanie hosta (narzędzia środowiska) albo zostaw pole „do sprawdzenia”.
 - Ankieta: każda osoba na swoim telefonie (`S.who`); tryb „wspólnie” łączy.
+- **Decyzje 21–25 (trzecia rozmowa 14.11):** D1 dzielone na D1a / D1b; pod kołem paski „jest / ma być” z widełkami (D2); szczegółowa ankieta zostaje, ale jej wynik = prosty plan, po D2 przegląd licznika „Czego używamy”; ETF-y przepisane ze zrzutów XTB (punkt 13, ALLW = Xtrackers IE000L6ZMMC4, TER 0,07%); dostęp do stron dostawców – Mati się zgadza; **25 otwarte**: własne mieszkanie osobno jako „🏡 Nasz dom (nie zarabia)”, bez proporcji? – zapytać przed D1b.
 - **Uzupełnienie 14.11 (decyzje 10–14):** nieobowiązkowe „🏠 Dodaj nieruchomość” (wartość, mieszkamy/wynajem, czynsz, kredyt) – na kole (punkt 15 planu); koło przyjmuje **każdy rodzaj aktywa** + własne klasy i „＋ Dodaj inne aktywo” (punkt 14); proporcje całego majątku (np. 50% nieruchomości / 50% aktywa) – sugestia zakupu tylko, gdy stać (15.4); **doradcą są kotki**; ankieta rozbudowana do ok. 64 pytań warunkowych (4.1). Decyzje 15–16: własne mieszkanie liczy się do wartości i proporcji, ale „nie zarabia”; jeden główny wykres nieruchomości / aktywa, stuknięcie = szczegóły. Decyzje 17–20: przechył w stronę nieruchomości dozwolony (kotki sprawdzają, czy stać na zakup, i podsuwają); udział % właścicieli (Wspólne 50/50, widok „Ja” = swój udział wartości i kredytu); ankieta najpierw tylko u Matiego; pytanie-bramka przed każdym działem („nie chcę” = doradca tego nie proponuje).
 
 **Uwaga przy czytaniu planu:** punkty 1–9 planu pisane były przed decyzjami; gdzie mówią inaczej (PPK, „nieruchomość tylko jako cel”, „dwa pierścienie koła”), obowiązuje punkt 0 (decyzje 1–20) oraz punkty 14–15.
 
-## 2a. Co dokładnie wchodzi w D1 (zebrane z całego planu)
+## 2a. Co dokładnie wchodzi w D1 (zebrane z całego planu) – **D1a = punkty 1, 2, 4 (koło kont i instrumentów), 5, 6; D1b = punkt 3 + główny wykres 🏠 / 📈 i widok Ja / Wspólnie z udziałami**
 1. Klasy i grupy aktywów z punktu 14 (wbudowane w `advisor.js`) + „＋ Własna klasa” (`assetCls`) + pole `cls` w `hold` i `accsM` (puste = domyślne z `kind` / listy ETF-ów; ETF spoza listy = „do przypisania”, kotki pytają).
 2. Lista 8 ETF-ów Matiego (punkt 13) z danymi i datą sprawdzenia; karta analizy instrumentu (kryteria, dublowanie „całych światów”, flagi). Nowy instrument spoza listy – śledzony automatycznie (automat już pobiera ceny po tickerze).
 3. „＋ Dodaj inne aktywo” i „🏠 Dodaj nieruchomość” (`assetM`, punkty 14 i 15.1): wartość z datą, mieszkamy / wynajem / puste, czynsz (połączenie z `fixedM.najem`), kredyt z 🔻, właściciel + udział % (decyzja 18). Nie zmieniają sald, Budżetu ani `savFlow`; w 👛 Konta linijka obok zobowiązań.
@@ -44,7 +45,7 @@ Ten plik zastępuje długie rozmowy z 13–14.11.2026, w których powstał plan 
 - Po etapie: odhacz w `PLAN.md`, dopisz krótko do `CLAUDE.md` (architektura: co robi `advisor.js` itd.), commit z opisem dla innych okien, `git pull --no-rebase`, push na `main`, napisz Matiemu prosto, co sprawdzić w telefonie.
 
 ## 4. Kolejność etapów (punkt 10 planu)
-D1 klasy aktywów + lista ETF-ów z analizą + auto-śledzenie + koło „jak jest” → D2 ankieta, plan, widełki, kotki przy kole, diagnoza → D3 „gdzie” → D4 „w co” (XTB, transze, zapis porady) → D5 cele (emerytura, mieszkanie, test kryzysu, koszty) → D6 termometr, reguły na spadki, „Na dziś” → D7 piaskownica.
+D1a klasy aktywów + lista ETF-ów z analizą + auto-śledzenie + koło „jak jest” → D1b nieruchomości i inne aktywa, główny wykres → D2 ankieta, plan, widełki, kotki przy kole, diagnoza → D3 „gdzie” → D4 „w co” (XTB, transze, zapis porady) → D5 cele (emerytura, mieszkanie, test kryzysu, koszty) → D6 termometr, reguły na spadki, „Na dziś” → D7 piaskownica.
 
 ## 5. Czego nie robić
 - Nie zaczynać etapu bez komendy Matiego. Nie robić kilku etapów naraz, jeśli Mati nie powie.

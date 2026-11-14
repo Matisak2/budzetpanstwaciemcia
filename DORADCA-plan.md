@@ -10,7 +10,7 @@ Podstawa: wymagania Matiego z rozmowy 13–14.11.2026 oraz pełna lektura ok. 90
 2. **Termometr** tylko informuje (transze, własne reguły na spadki), nie zmienia kwot – TAK.
 3. **Nieruchomości**: mieszkanie jako cel odkładania **i** jego wartość w strukturze majątku (wpisywana ręcznie raz na 1–3 lata, ostrożnie) – OBA.
 4. **Piaskownica** do 10% części długoterminowej – TAK. Do tego **wykres kołowy** w Inwestycjach: ile % w jakich aktywach + widełki z planu; **kotki przy kole podpowiadają wyrównanie** do planu.
-5. **PPK – całkowicie poza doradcą i poza kołem.** Nie liczyć, nie doradzać, nie pytać, nie używać jako wkładu własnego (Mati: konto, którego fizycznie nie ma i gdzie sam nie inwestuje). Wszystkie wzmianki o PPK w punktach 1–12 są nieaktualne.
+5. **PPK – całkowicie poza doradcą i poza kołem.** Nie liczyć, nie doradzać, nie pytać, nie używać jako wkładu własnego (Mati: konto, którego fizycznie nie ma i gdzie sam nie inwestuje). Stare wzmianki o PPK w punktach 1–12 usunięte 14.11.2026 (zostały tylko zdania „bez PPK”).
 6. **Broker: XTB** (IKE/IKZE/zwykłe; od 2027 OKI). Koszty XTB: prowizja 0 zł (do 100 tys. EUR obrotu/mies.), **marża walutowa 0,5%** przy każdej wymianie, ułamki jednostek, brak trzymania walut na rachunku.
 7. **Lista ETF-ów Matiego** (zrzuty z XTB, 14.11.2026) – punkt 13. Każdy instrument kupiony spoza listy ma po wpisaniu zakupu w aplikacji **automatycznie trafić do śledzenia i do analizy**; analizowane są też najpopularniejsze ETF-y. (Aplikacja nie łączy się z XTB – zakup trzeba raz wpisać.)
 8. **Etapy** uporządkowane tak, żeby całość powstawała krok po kroku – punkt 10 (nowa kolejność D1–D7).
@@ -29,6 +29,13 @@ Podstawa: wymagania Matiego z rozmowy 13–14.11.2026 oraz pełna lektura ok. 90
 19. **Ankieta najpierw u Matiego.** W D2 ankieta jest widoczna tylko na telefonie Matiego, dopóki nie stuknie „Pokaż ankietę Werci” (ustawienie we wspólnych danych doradcy).
 20. **Pytanie-bramka przed każdym działem warunkowym.** Ankieta nie pomija działu po cichu – najpierw pyta, np. „Kredyt: mam / nie mam, ale biorę pod uwagę / nie mam i nie chcę / nie wiem”. „Biorę pod uwagę” otwiera pytania na przyszłość; „nie chcę” zapisuje się jako preferencja i doradca **nigdy tego nie proponuje** (np. bez zgody na kredyt zakup nieruchomości liczony tylko za gotówkę). Działy z bramką: kredyt hipoteczny, inne długi, nieruchomości (dla siebie / na wynajem osobno), dzieci, działalność, OKI, złoto, kryptowaluty i inne alternatywne, pojedyncze spółki, obce waluty, nadpłata kredytu. Zapis odpowiedzi: `'yes'|'maybe'|'no'|'?'`.
 
+**Trzecia rozmowa 14.11.2026 (po uwagach nowego okna):**
+21. **D1 w dwóch częściach**: **D1a** – klasy aktywów, lista ETF-ów z analizą, auto-śledzenie, koło „jak jest” dla kont i instrumentów; **D1b** – 🏠 nieruchomości i inne aktywa (`assetM`), główny wykres 🏠 / 📈, udziały %. Każda część na osobną komendę.
+22. **Pod kołem paski „jest / ma być” z widełkami** (od D2) – koło zostaje, paski pokazują dokładnie, co jest poza zakresem.
+23. **Prostota przez ankietę**: szczegółowa ankieta zostaje (Mati: dzięki niej plan będzie prosty, ale dopasowany), ale jej wynikiem ma być **prosty plan** (kilka składników, mało czynności). Po D2 sprawdzamy licznik „📊 Czego używamy”, zanim powstaną D5–D7.
+24. **Lista ETF-ów sprawdzona w XTB 14.11.2026** (zrzuty „Szczegóły” od Matiego) – punkt 13; dostęp do stron dostawców przy budowie: Mati się zgadza (okienko zgody na host).
+25. **Własne mieszkanie – DO USTALENIA z Matim** (pytanie z 14.11): propozycja nowego okna – wartość mieszkania, w którym mieszkacie, widoczna w majątku jako osobna pozycja „🏡 Nasz dom (nie zarabia)”, ale **bez wliczania do proporcji** (proporcje = części, które pracują: inwestycje + nieruchomości na wynajem). Do decyzji Matiego obowiązuje decyzja 15.
+
 ---
 
 ## 1. Co to ma być
@@ -37,8 +44,8 @@ Nowa pod-zakładka **🧭 Doradca** w 💰 Majątku (obok „Oszczędności” i
 
 Wpisuję kwotę, którą chcę teraz zainwestować → doradca odpowiada na trzy pytania:
 
-1. **Czy w ogóle inwestować tę kwotę** – czy najpierw coś innego (dług, poduszka, PPK).
-2. **Gdzie** – IKE / IKZE / OKI / PPK / obligacje / zwykłe konto / nadpłata kredytu. Z rozbiciem kwoty („część tu, część tu”, „wszystko tu”, „**na pewno nie tu**”) i wyliczeniem w złotych, dlaczego.
+1. **Czy w ogóle inwestować tę kwotę** – czy najpierw coś innego (dług, poduszka).
+2. **Gdzie** – IKE / IKZE / OKI / obligacje / zwykłe konto / nadpłata kredytu. Z rozbiciem kwoty („część tu, część tu”, „wszystko tu”, „**na pewno nie tu**”) i wyliczeniem w złotych, dlaczego.
 3. **W co** – konkretne instrumenty (z nazwą i numerem ISIN), w jakich kwotach, i jak to kupić, żeby nie przepłacić.
 
 Liczone **osobiście** dla osoby telefonu (jej konta, jej pensja, jej próg podatkowy, jej limity). Przełącznik **„wspólnie”** liczy dla obojga razem i dzieli kwotę między osoby tak, żeby najlepiej wykorzystać limity i ulgi obojga.
@@ -54,7 +61,7 @@ Liczone **osobiście** dla osoby telefonu (jej konta, jej pensja, jej próg poda
 
 Wyciąg z lektury. Każda zasada przekłada się na konkretną regułę w obliczeniach.
 
-1. **Najpierw kolejność.** Długi konsumenckie → mały fundusz awaryjny → poduszka → PPK → emerytura (IKE/IKZE) i ewentualnie nadpłata hipoteki → reszta. Doradca nie pozwala „przeskoczyć” kroku bez wyraźnego ostrzeżenia.
+1. **Najpierw kolejność.** Długi konsumenckie → mały fundusz awaryjny → poduszka → emerytura (IKE/IKZE) i ewentualnie nadpłata hipoteki → reszta. Doradca nie pozwala „przeskoczyć” kroku bez wyraźnego ostrzeżenia.
 2. **Najpierw „co”, potem „opakowanie”.** Najpierw plan proporcji (ile akcji, obligacji, złota), dopiero potem konta (IKE, IKZE, OKI).
 3. **Plan zamiast pytania „w co teraz?”.** Właściwe pytanie brzmi: „czego brakuje w moim portfelu względem planu?”. Nowa kwota idzie tam, gdzie jest największy niedobór. To samo w sobie oznacza kupowanie tego, co ostatnio staniało.
 4. **Prosto.** Trzon to 3 składniki: obligacje skarbowe indeksowane inflacją + jeden tani ETF na akcje całego świata + (opcjonalnie) trochę złota.
@@ -205,7 +212,6 @@ Sprawdzane po kolei; pierwsza niespełniona zabiera z kwoty tyle, ile trzeba:
 | Dług na karcie, raty, pożyczki | 🔻 zobowiązania | „Najpierw spłać: oprocentowanie X% to więcej, niż da jakakolwiek pewna inwestycja” – kwota do spłaty |
 | Brak małego funduszu awaryjnego (ok. 2 000 zł) | salda | odkłada go przed resztą |
 | Poduszka mniejsza niż cel | konto poduszki, wydatki z Budżetu | „Poduszka starcza na 3,2 mies., cel 6 → z tej kwoty 8 400 zł do poduszki”; **akcje: nie teraz** |
-| PPK dostępne, a nie zapisany | paski | pierwsza rada: zapisz się (wyliczenie dopłat pracodawcy i państwa z Twojej pensji) |
 | Pieniądze potrzebne w ciągu 3 lat | krótka ankieta | tylko bezpieczne miejsca (krok 2, koszyk „krótki”) |
 | Źródło: poduszka | krótka ankieta | „Poduszki nie inwestujemy” |
 
@@ -219,7 +225,7 @@ Według planu z ankiety: 🛟 poduszka / 🏠 mieszkanie (termin) / 🌴 emerytu
 | Poduszka | zawsze dostępna | konto oszczędnościowe (ok. 1/4), obligacje detaliczne (reszta) | akcje, złoto, fundusze obligacji długoterminowych, IKZE |
 | Cel do 3 lat | krótki | konto, lokaty, obligacje roczne–3-letnie, fundusz krótkoterminowych papierów skarbowych (tani, ryzyko 1–2) | akcje, obligacje firm, fundusze długoterminowe |
 | Cel 3–5 lat | średni | jak wyżej + obligacje indeksowane inflacją (wyliczenie z opłatą za wcześniejszy wykup) | akcje (najwyżej symbolicznie) |
-| Mieszkanie | wg terminu | jak „cel”; do tego konto mieszkaniowe (jeśli spełniacie warunki) i PPK jako źródło wkładu (do 45 lat) | akcje przy terminie krótszym niż 5 lat |
+| Mieszkanie | wg terminu | jak „cel”; do tego konto mieszkaniowe (jeśli spełniacie warunki); OKI (decyzja 1) | akcje przy terminie krótszym niż 5 lat |
 | Emerytura | 10+ lat | pełny plan: obligacje indeksowane + ETF akcji świata + złoto | drogie fundusze, „tematy”, dźwignia |
 | Piaskownica | dowolny | pojedyncze akcje, ETF-y regionów | więcej niż limit z ankiety (domyślnie 10% części długoterminowej) |
 
@@ -230,13 +236,13 @@ Wyliczane z ankiety, do zatwierdzenia:
 - **Górna granica akcji z tolerancji straty**: akcje ≈ 2 × spadek całego portfela, który zniesiesz (bo akcje świata potrafiły spaść o połowę; w złotych zwykle mniej, bo złoty wtedy słabnie). Zniosę −15% → ok. 30% akcji; −25% → ok. 50%; −40% → ok. 80%.
 - Do planu trafia **niższa** z granic; w trybie „wspólnie” – niższa z dwojga.
 - Złoto: wg odpowiedzi (0–15%). Reszta: obligacje indeksowane inflacją.
-- Akcje: domyślnie jeden fundusz na cały świat. PPK liczy się do akcji/obligacji według swojego funduszu (i jako „Polska”).
+- Akcje: domyślnie jeden fundusz na cały świat. PPK się nie liczy (decyzja 5).
 - Dla porównania doradca pokazuje wzorzec z lektury (50% obligacje indeksowane / 35% akcje świata / 15% złoto: cel „inflacja + 3 punkty”, największy spadek w 6 lat prawdziwego prowadzenia 5,9%) – jako punkt odniesienia, nie nakaz.
 - Przy każdym ustawieniu **test kryzysu**: ile ten portfel straciłby w złotych w trzech historycznych kryzysach (2000–2002, 2007–2009, 2020) – stała tabelka spadków klas aktywów w kodzie + wariant ostrożniejszy.
 
 ### Krok 3. „W co” – niedobory (rebalancing nową wpłatą)
 Dla koszyka długoterminowego:
-1. stan = wartości wszystkich Waszych instrumentów i kont według klas (akcje / obligacje / złoto / gotówka), łącznie po wszystkich kontach (IKE, IKZE, PPK, zwykłe);
+1. stan = wartości wszystkich Waszych instrumentów i kont według klas (akcje / obligacje / złoto / gotówka), łącznie po wszystkich kontach (IKE, IKZE, OKI, zwykłe; bez PPK);
 2. po dodaniu nowej kwoty: ile powinno być w każdej klasie według planu;
 3. niedobór = ma być − jest; nowa kwota idzie w klasy z niedoborem, proporcjonalnie;
 4. drobne odchyłki pomija (poniżej progu kosztów albo minimalnej kwoty zlecenia);
@@ -247,8 +253,7 @@ To jest odpowiedź na pytanie Matiego „czy teraz warto coś kupić”: **warto
 ### Krok 4. „Gdzie” – pokrowce i miejsca (z wyliczeniem)
 Dla każdej złotówki koszyka długoterminowego doradca wybiera miejsce w tej kolejności, licząc konkretne kwoty:
 
-1. **PPK** – jeśli można zwiększyć własną wpłatę, a pracodawca dopłaca; pokazuje dopłaty.
-2. **IKZE albo IKE – zależnie od progu** (to, o co prosił Mati):
+1. **IKZE albo IKE – zależnie od progu** (to, o co prosił Mati):
    - **0%** (ulga dla młodych, brak dochodu, dochód do 30 tys.) → **IKZE: na pewno nie**; IKE tak.
    - **12%** → **najpierw IKE**; IKZE dopiero po wyczerpaniu IKE i tylko gdy pieniądze doczekają 65 lat (wyliczenie: zwrot podatku X zł teraz, 10% podatku przy wypłacie; ostrzeżenie o pułapce: wcześniejszy zwrot może wpaść w 32%).
    - **32%** → **najpierw IKZE** do limitu (zwrot 32% wpłaty, np. 11 304 zł → 3 617 zł), potem IKE; warunek: zwrot podatku też zainwestować (doradca przypomni o nim w marcu–kwietniu).
@@ -256,15 +261,15 @@ Dla każdej złotówki koszyka długoterminowego doradca wybiera miejsce w tej k
    - **ryczałt** → liczy ze stawki; przy niskich stawkach (do 8,5%) IKZE słabe → IKE.
    - Jeśli próg ma się zmienić (pytanie 4) – doradca mówi, co zrobić w tym roku, a co w przyszłym.
    - Zawsze pokazuje porównanie trzech liczb „za N lat”: IKE / IKZE (z reinwestycją ulgi) / zwykły rachunek – liczone tym samym wzorem dla Twojego wieku i progu.
-3. **Które konto na którą klasę** (para ma 2 × IKE i 2 × IKZE):
+2. **Które konto na którą klasę** (para ma 2 × IKE i 2 × IKZE):
    - akcje (ETF świata) → IKE/IKZE w domu maklerskim – tam zwolnienie z podatku daje najwięcej i można wyrównywać proporcje bez podatku;
    - obligacje indeksowane → IKE-Obligacje drugiej osoby, jeśli akcje są już „upakowane”; nadwyżka na zwykłym rachunku obligacji;
    - złoto fizyczne – poza kontami; złoto „papierowe” (ETC) – w IKE/IKZE.
    - Jedno konto = jeden rodzaj produktu (nie ma IKE łączącego zagraniczne ETF-y i obligacje detaliczne) – doradca to uwzględnia i w razie potrzeby proponuje, które konto przeznaczyć na co.
-4. **OKI (od 1.01.2027)**: obligacje detaliczne i konto oszczędnościowe do 25 000 zł, polskie akcje/ETF-y do łącznie 100 000 zł – bez podatku; dla zagranicznych ETF-ów OKI zwykle **nie** (podatek od pierwszej złotówki) – doradca policzy próg, przy którym OKI wygrywa ze zwykłym rachunkiem dla Twojego horyzontu. Naturalne miejsce na **poduszkę** i **wkład własny**.
-5. **OIPE** – dopiero po wyczerpaniu IKE i IKZE, z pokazanym kosztem; domyślnie „raczej nie teraz”.
-6. **Zwykły rachunek** – ETF akumulujący (podatek odroczony do sprzedaży), obligacje indeksowane 10-letnie (podatek na końcu).
-7. **Nadpłata hipoteki** – równoległa opcja dla nadwyżek po poduszce i limicie IKE: próg opłacalności = oprocentowanie kredytu ÷ 0,81 (poza IKE). Doradca porównuje go z ostrożnym założeniem zwrotu Twojego portfela i z bieżącą ofertą obligacji, uwzględnia prowizję za nadpłatę i suwak z ankiety; proponuje podział (np. 70% nadpłata / 30% inwestycje) i tabelę „za 5, 10, 15 lat”. Podpowiedzi praktyczne: obniż ratę i dokładaj różnicę, nadpłacaj dzień po racie.
+3. **OKI (od 1.01.2027)**: obligacje detaliczne i konto oszczędnościowe do 25 000 zł, polskie akcje/ETF-y do łącznie 100 000 zł – bez podatku; dla zagranicznych ETF-ów OKI zwykle **nie** (podatek od pierwszej złotówki) – doradca policzy próg, przy którym OKI wygrywa ze zwykłym rachunkiem dla Twojego horyzontu. Naturalne miejsce na **poduszkę** i **wkład własny**.
+4. **OIPE** – dopiero po wyczerpaniu IKE i IKZE, z pokazanym kosztem; domyślnie „raczej nie teraz”.
+5. **Zwykły rachunek** – ETF akumulujący (podatek odroczony do sprzedaży), obligacje indeksowane 10-letnie (podatek na końcu).
+6. **Nadpłata hipoteki** – równoległa opcja dla nadwyżek po poduszce i limicie IKE: próg opłacalności = oprocentowanie kredytu ÷ 0,81 (poza IKE). Doradca porównuje go z ostrożnym założeniem zwrotu Twojego portfela i z bieżącą ofertą obligacji, uwzględnia prowizję za nadpłatę i suwak z ankiety; proponuje podział (np. 70% nadpłata / 30% inwestycje) i tabelę „za 5, 10, 15 lat”. Podpowiedzi praktyczne: obniż ratę i dokładaj różnicę, nadpłacaj dzień po racie.
 
 **Limity i terminy**: doradca pilnuje limitów rocznych (2026: IKE 28 260 zł, IKZE 11 304 zł / 16 956 zł; 2027: 30 099 zł, 12 039,60 zł / 18 059,40 zł), tego, co już wpłacone w tym roku, i tego, że limit przepada 31 grudnia.
 
@@ -277,7 +282,7 @@ Doradca podaje nazwy – z krótkiej, pilnowanej listy, i pokazuje **kryteria**,
 - **ETF akcji świata** – kryteria: indeks całego świata (MSCI ACWI / FTSE All-World), akumulujący, zarejestrowany w Irlandii (ISIN zaczyna się od IE), replikacja fizyczna, koszt do ok. 0,25% rocznie, duży i wieloletni, bez zabezpieczenia do złotego. Lista startowa (2–4 fundusze największych dostawców + wariant „rynki rozwinięte + wschodzące”) z numerami ISIN – **każdy numer i koszt sprawdzony u dostawcy w dniu budowy**, z datą sprawdzenia w aplikacji.
 - **Złoto** – małe kwoty: ETC na złoto fizyczne (w IKE/IKZE); większe: moneta/sztabka 1 uncja – doradca pokazuje dzisiejszą cenę uncji (już ją mamy) i ostrzega, gdy marża sprzedawcy przekracza ok. 5%.
 - **Krótki termin** – konto oszczędnościowe / lokata (z przypomnieniem o gwarancji do 100 tys. euro na bank i osobę), fundusz krótkoterminowych papierów skarbowych z kryteriami (koszt do 0,5%, bez obligacji firm).
-- **Fundusze już posiadane** (PPK, TFI) – doradca ocenia koszt i skład, podpowiada przeniesienie drogiego IKE/IKZE (wypłata transferowa, bez utraty ulg).
+- **Fundusze już posiadane** (TFI; bez PPK) – doradca ocenia koszt i skład, podpowiada przeniesienie drogiego IKE/IKZE (wypłata transferowa, bez utraty ulg).
 
 **Koszt zakupu i sposób wejścia**:
 - koszt = prowizja (z minimum) + wymiana walut + roczny koszt funduszu; gdy koszt zakupu przekracza ok. 0,5–1% kwoty → „zbierz 2–3 wpłaty i kup raz na kwartał” albo „u Twojego maklera ta kwota jest za mała na osobne zlecenie”;
@@ -310,7 +315,7 @@ Na co termometr **wpływa**: (1) czy dużą kwotę w akcje rozłożyć na transz
 ---
 
 ## 8. Moduły dodatkowe
-1. **Luka emerytalna** – z odpowiedzi 14–15: ile trzeba odkładać miesięcznie, żeby mieć wybraną kwotę (ostrożne założenia: zysk 2–3 punkty ponad inflację, życie do 90–95 lat), z uwzględnieniem tego, co już jest w PPK/IKE/IKZE. Połączone z istniejącą kartą FIRE.
+1. **Luka emerytalna** – z odpowiedzi 14–15: ile trzeba odkładać miesięcznie, żeby mieć wybraną kwotę (ostrożne założenia: zysk 2–3 punkty ponad inflację, życie do 90–95 lat), z uwzględnieniem tego, co już jest w IKE/IKZE/OKI (bez PPK). Połączone z istniejącą kartą FIRE.
 2. **Cel „mieszkanie”** – próg wejścia (wkład 10/20% + koszty + poduszka liczona z ratą), ile brakuje i za ile miesięcy przy obecnej nadwyżce, test „czy nas stać” (rata do 30% dochodu, okres do 20 lat, wariant bankowy +2,5 punktu), gdzie trzymać wkład (wg terminu), konto mieszkaniowe i PPK jako opcje – warunki sprawdzone na dzień budowy.
 3. **Test kryzysu** – patrz krok 2.
 4. **Strażnik kosztów** – roczny koszt wszystkich Waszych produktów w złotych; czerwona flaga przy drogich.
@@ -335,8 +340,8 @@ Na co termometr **wpływa**: (1) czy dużą kwotę w akcje rozłożyć na transz
 
 Każdy etap działa samodzielnie i jest fundamentem dla następnego.
 
-**D1 – Klasy aktywów i koło „jak jest”.** Każdy instrument (`hold`) i konto oszczędnościowe/inwestycyjne dostaje klasę: akcje (z podziałem: świat / rozwinięte / wschodzące / Polska / pojedyncze spółki), obligacje (detaliczne / rynkowe), złoto, gotówka. Domyślnie z rodzaju i z listy znanych ETF-ów, z możliwością zmiany. **PPK wyłączone.** Lista znanych ETF-ów (punkt 13) w kodzie z danymi (ISIN, indeks, koszt, Acc, rejestracja, replikacja, data sprawdzenia). Nowy instrument spoza listy po dodaniu: automatycznie śledzony (automat już pobiera ceny) + karta analizy (kryteria, dublowanie z posiadanymi, flagi). Wykres kołowy w 💰 Majątku → Oszczędności („Inwestycje”), stuknięcie w kawałek = lista instrumentów. **Dodatkowo (decyzje 10–11):** pełna lista klas i grup z punktu 14, „＋ Własna klasa”, „＋ Dodaj inne aktywo”, przycisk „🏠 Dodaj nieruchomość” (15.1) i jeden główny wykres nieruchomości / aktywa ze szczegółami po stuknięciu (15.2, decyzja 16).
-**D2 – Ankieta i plan.** Ankieta (punkt 4, bez pytań o PPK), „plan na jednej kartce”, proporcje docelowe z widełkami → widełki na kole; **kotki przy kole**: „akcje 41% (plan 30–40%) – przy następnej wpłacie dokup obligacji”; kafelki diagnozy (poduszka, długi, limity IKE/IKZE/OKI).
+**D1 – Klasy aktywów i koło „jak jest”** (decyzja 21: w dwóch częściach – **D1a** klasy, lista ETF-ów, analiza, auto-śledzenie, koło kont i instrumentów; **D1b** nieruchomości, inne aktywa, główny wykres 🏠 / 📈). Każdy instrument (`hold`) i konto oszczędnościowe/inwestycyjne dostaje klasę: akcje (z podziałem: świat / rozwinięte / wschodzące / Polska / pojedyncze spółki), obligacje (detaliczne / rynkowe), złoto, gotówka. Domyślnie z rodzaju i z listy znanych ETF-ów, z możliwością zmiany. **PPK wyłączone.** Lista znanych ETF-ów (punkt 13) w kodzie z danymi (ISIN, indeks, koszt, Acc, rejestracja, replikacja, data sprawdzenia). Nowy instrument spoza listy po dodaniu: automatycznie śledzony (automat już pobiera ceny) + karta analizy (kryteria, dublowanie z posiadanymi, flagi). Wykres kołowy w 💰 Majątku → Oszczędności („Inwestycje”), stuknięcie w kawałek = lista instrumentów. **Dodatkowo (decyzje 10–11):** pełna lista klas i grup z punktu 14, „＋ Własna klasa”, „＋ Dodaj inne aktywo”, przycisk „🏠 Dodaj nieruchomość” (15.1) i jeden główny wykres nieruchomości / aktywa ze szczegółami po stuknięciu (15.2, decyzja 16).
+**D2 – Ankieta i plan.** Ankieta (punkt 4, bez pytań o PPK), „plan na jednej kartce”, proporcje docelowe z widełkami → widełki na kole i paski „jest / ma być” pod kołem (decyzja 22); **kotki przy kole**: „akcje 41% (plan 30–40%) – przy następnej wpłacie dokup obligacji”; kafelki diagnozy (poduszka, długi, limity IKE/IKZE/OKI).
 **D3 – „Gdzie”.** Kwota, krótka ankieta, bramki (dług, poduszka, termin), koszyki celów, wybór pokrowca z wyliczeniem (IKE/IKZE wg progu, OKI, zwykły rachunek, nadpłata hipoteki), „na pewno nie tu”, tryb „wspólnie”.
 **D4 – „W co”.** Niedobory względem planu, konkretne instrumenty z listy, kalkulator obligacji na N miesięcy, koszt zakupu w XTB (0,5% waluta), liczba jednostek (ułamki), transze, „co po zakupie”, zapis porady, odhaczanie po wpisaniu zakupu.
 **D5 – Cele.** Luka emerytalna (bez PPK), cel „mieszkanie” + wartość mieszkania w majątku, test kryzysu w złotych, strażnik kosztów. **Dodatkowo (decyzja 12):** liczby najmu (15.3), proporcje nieruchomości w planie, sugestia zakupu tylko gdy Was stać (15.4), ewentualnie ceny mieszkań z raportów NBP w automacie.
@@ -366,19 +371,23 @@ Testy każdego etapu: jak w poprzedniej wersji planu (przykłady liczbowe z blog
 ## 13. Lista ETF-ów Matiego (zrzuty z XTB, 14.11.2026)
 Dane poza tickerem/dostawcą/walutą są z mojej wiedzy – **przed użyciem w kodzie sprawdzić u dostawcy (ISIN, TER) i wpisać datę sprawdzenia.**
 
-| Ticker XTB | Fundusz | Indeks / co zawiera | Waluta notowania | ISIN (do sprawdzenia) | Koszt roczny (do sprawdzenia) |
-|---|---|---|---|---|---|
-| VWCE.DE | Vanguard FTSE All-World Acc | cały świat (rozwinięte + wschodzące) | EUR | IE00BK5BQT80 | 0,19% |
-| FWIA.DE | Invesco FTSE All-World Acc | cały świat | EUR | IE000716YHJ7 | 0,15% |
-| ALLW.UK | Xtrackers – „FTSE All-World” Acc | cały świat (sprawdzić dokładny indeks) | USD | ? | ? |
-| ISAC.UK | iShares MSCI ACWI Acc | cały świat (MSCI) | USD | IE00B6R52259 | 0,20% |
-| SWDA.UK | iShares Core MSCI World Acc | tylko kraje rozwinięte | GBP (linia) | IE00B4L5Y983 | 0,20% |
-| VHVE.UK | Vanguard FTSE Developed World Acc | tylko kraje rozwinięte | USD | IE00BK5BQV03 | 0,12% |
-| EMIM.UK | iShares Core MSCI EM IMI Acc | rynki wschodzące (+ małe spółki) | GBP (linia) | IE00BKM4GZ66 | 0,18% |
-| VFEA.DE | Vanguard FTSE Emerging Markets Acc | rynki wschodzące | EUR | IE00BK5BR733 | 0,22% |
+Dane ze zrzutów „Szczegóły instrumentu” w XTB, **stan na 14.11.2026** (VWCE – zrzut jeszcze do przysłania; dane z pamięci do sprawdzenia).
+
+| Ticker XTB | Fundusz | Indeks / co zawiera | Waluta notowania / giełda | ISIN | TER | Aktywa |
+|---|---|---|---|---|---|---|
+| VWCE.DE | Vanguard FTSE All-World Acc | cały świat | EUR / Frankfurt | IE00BK5BQT80 (do sprawdzenia) | ok. 0,19% (do sprawdzenia) | – |
+| FWIA.DE | Invesco FTSE All-World Acc | cały świat | EUR / Frankfurt | IE000716YHJ7 ✔ | 0,15% ✔ | 4,82 mld USD |
+| ALLW.UK | Xtrackers FTSE All-World Acc | cały świat | USD / Londyn | IE000L6ZMMC4 ✔ | **0,07%** ✔ | 0,25 mld USD (mały, młody) |
+| ISAC.UK | iShares MSCI ACWI Acc | cały świat (MSCI) | USD / Londyn | IE00B6R52259 ✔ | 0,20% ✔ | 35,33 mld USD |
+| SWDA.UK | iShares Core MSCI World Acc | tylko kraje rozwinięte | GBP / Londyn | IE00B4L5Y983 ✔ | 0,20% ✔ | 146,00 mld USD |
+| VHVE.UK | Vanguard FTSE Developed World Acc | tylko kraje rozwinięte | USD / Londyn | IE00BK5BQV03 ✔ | 0,12% ✔ | 6,89 mld USD |
+| EMIM.UK | iShares Core MSCI EM IMI Acc | rynki wschodzące (+ małe spółki) | GBP / Londyn | IE00BKM4GZ66 ✔ | 0,18% ✔ | 41,49 mld USD |
+| VFEA.DE | Vanguard FTSE Emerging Markets Acc | rynki wschodzące | EUR / Frankfurt | IE00BK5BR733 ✔ | **0,17%** ✔ | 2,46 mld USD |
+
+Minimalne zlecenie w XTB: 1 jednostka waluty notowania (ułamki). ✔ = przepisane ze zrzutu XTB; przy budowie D1a potwierdzić u dostawcy (KID) i wpisać datę.
 
 Wnioski do analizy (dla doradcy):
-- Wszystkie: UCITS, akumulujące, irlandzkie – spełniają kryteria z lektury.
+- Wszystkie: UCITS, akumulujące, irlandzkie – spełniają kryteria z lektury. **ALLW** jest najtańszy (0,07%), ale mały i młody (ok. 250 mln USD) – kryterium „duży i wieloletni” spełnia słabiej; analiza ma to pokazać jako fakt (ryzyko zamknięcia funduszu = sprzedaż i podatek poza IKE/IKZE), nie jako zakaz.
 - To są **3 rodziny tego samego**: „cały świat w jednym” (VWCE, FWIA, ALLW, ISAC) albo „rozwinięte + wschodzące” (SWDA lub VHVE + EMIM lub VFEA ≈ ok. 88/12). Wystarczy **jeden** fundusz świata albo **jedna** para – kupowanie kilku „całych światów” to dublowanie (bez szkody, ale bez korzyści; trudniej pilnować proporcji). Analiza ma to wykrywać i pokazywać.
 - Waluta notowania nie zmienia ryzyka walutowego (liczy się, w co fundusz inwestuje); w XTB każda waluta kosztuje tak samo: 0,5% przy wymianie.
 - Rodzina Vanguard FTSE (VWCE / VHVE+VFEA) i iShares MSCI (ISAC / SWDA+EMIM) – w parze lepiej trzymać się jednej rodziny indeksów (te same zasady podziału na kraje).
