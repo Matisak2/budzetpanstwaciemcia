@@ -1,6 +1,6 @@
 # 🧭 Doradca – instrukcja dla nowego okna Claude (czytaj w całości przed pracą)
 
-Ten plik zastępuje długą rozmowę z 13–14.11.2026, w której powstał plan. Nowe okno nie zna tej rozmowy – wszystko, co potrzebne, jest tutaj i w plikach wymienionych niżej.
+Ten plik zastępuje długie rozmowy z 13–14.11.2026, w których powstał plan (także drugą rozmowę 14.11 o nieruchomościach, klasach aktywów i ankiecie – decyzje 10–20). **Stan: wszystkie pytania do Matiego zamknięte, nic nie czeka na odpowiedź; następny krok = D1, gdy Mati napisze „zrób D1”.** Nowe okno nie zna tej rozmowy – wszystko, co potrzebne, jest tutaj i w plikach wymienionych niżej.
 
 ## 1. Zanim cokolwiek zrobisz
 1. `git pull origin main`, `git log -5` (zasady wielu okien z `CLAUDE.md`).
@@ -24,6 +24,16 @@ Ten plik zastępuje długą rozmowę z 13–14.11.2026, w której powstał plan.
 - Lista ETF-ów Matiego: punkt 13 planu (8 funduszy z XTB). Każdy instrument spoza listy: po wpisaniu zakupu sam trafia do śledzenia i analizy. ISIN-y i koszty z tabeli **sprawdź u dostawcy** przed wpisaniem do kodu (wpisz datę sprawdzenia); jeśli sieć nie pozwala – zapytaj Matiego o zgodę na dodanie hosta (narzędzia środowiska) albo zostaw pole „do sprawdzenia”.
 - Ankieta: każda osoba na swoim telefonie (`S.who`); tryb „wspólnie” łączy.
 - **Uzupełnienie 14.11 (decyzje 10–14):** nieobowiązkowe „🏠 Dodaj nieruchomość” (wartość, mieszkamy/wynajem, czynsz, kredyt) – na kole (punkt 15 planu); koło przyjmuje **każdy rodzaj aktywa** + własne klasy i „＋ Dodaj inne aktywo” (punkt 14); proporcje całego majątku (np. 50% nieruchomości / 50% aktywa) – sugestia zakupu tylko, gdy stać (15.4); **doradcą są kotki**; ankieta rozbudowana do ok. 64 pytań warunkowych (4.1). Decyzje 15–16: własne mieszkanie liczy się do wartości i proporcji, ale „nie zarabia”; jeden główny wykres nieruchomości / aktywa, stuknięcie = szczegóły. Decyzje 17–20: przechył w stronę nieruchomości dozwolony (kotki sprawdzają, czy stać na zakup, i podsuwają); udział % właścicieli (Wspólne 50/50, widok „Ja” = swój udział wartości i kredytu); ankieta najpierw tylko u Matiego; pytanie-bramka przed każdym działem („nie chcę” = doradca tego nie proponuje).
+
+**Uwaga przy czytaniu planu:** punkty 1–9 planu pisane były przed decyzjami; gdzie mówią inaczej (PPK, „nieruchomość tylko jako cel”, „dwa pierścienie koła”), obowiązuje punkt 0 (decyzje 1–20) oraz punkty 14–15.
+
+## 2a. Co dokładnie wchodzi w D1 (zebrane z całego planu)
+1. Klasy i grupy aktywów z punktu 14 (wbudowane w `advisor.js`) + „＋ Własna klasa” (`assetCls`) + pole `cls` w `hold` i `accsM` (puste = domyślne z `kind` / listy ETF-ów; ETF spoza listy = „do przypisania”, kotki pytają).
+2. Lista 8 ETF-ów Matiego (punkt 13) z danymi i datą sprawdzenia; karta analizy instrumentu (kryteria, dublowanie „całych światów”, flagi). Nowy instrument spoza listy – śledzony automatycznie (automat już pobiera ceny po tickerze).
+3. „＋ Dodaj inne aktywo” i „🏠 Dodaj nieruchomość” (`assetM`, punkty 14 i 15.1): wartość z datą, mieszkamy / wynajem / puste, czynsz (połączenie z `fixedM.najem`), kredyt z 🔻, właściciel + udział % (decyzja 18). Nie zmieniają sald, Budżetu ani `savFlow`; w 👛 Konta linijka obok zobowiązań.
+4. Jeden główny wykres 🏠 / 📈 w 💰 Majątku → Oszczędności, stuknięcie = szczegóły (decyzja 16); PPK pominięte; widok Ja (swój udział) / Wspólnie.
+5. Bez ankiety, widełek i porad – to D2+. Bez sugestii zakupu – to D5.
+6. Jak każdy etap: `BACKUP_KEYS` + `restore.mjs`, `CACHE`, `NEWS`/`HELP`, `USAGE_CAT`, `SCREENS`, dane w `demo/demo.js` (przykładowa nieruchomość i inne aktywo), testy liczbowe w `calc.mjs`.
 
 ## 3. Jak pracować przy każdym etapie (z `CLAUDE.md`, w skrócie)
 - Kod: czyste obliczenia w nowym `js/advisor.js` (bez importu UI; testowalne), interfejs w `js/advisorui.js`; nowe pliki do `SHELL` w `sw.js`; zasada modułów (na górze pliku tylko deklaracje, start w `wire…()`); funkcje z `onclick` wystawić na `window` na końcu `app.js`.
