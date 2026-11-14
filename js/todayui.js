@@ -14,7 +14,7 @@ import {fillAvg} from './debts.js';
 import {openInst,editLimits,goYear,bookInt} from './savings.js';
 import {render,goTab,setPage} from './app.js';
 import {use} from './usage.js';
-import {editAsset} from './advisorui.js';
+import {editAsset,advTodo,openGoals} from './advisorui.js';
 
 /* ---------- 🔔 real notifications (Web Push); the automat sends them, keys are made by the automat ---------- */
 export const pushCan=()=>!DEMO&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
@@ -45,7 +45,7 @@ export const pushCardH=()=>`<div class="card"><h3>🔔 Powiadomienia</h3><div cl
   <div class="btns" style="gap:6px">${S.pushOk?'<button class="btn sm" onclick="disablePush()">Wyłącz</button>':`<button class="btn sm primary" onclick="enablePush()">${S.pushLost?'Włącz ponownie':'Włącz powiadomienia'}</button>`}</div></div>`;
 export const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw});
 /* 🗓️ the closing of the month is personal – each phone shows only its own person's; the most urgent first (late → today → tomorrow → the rest), „Wkrótce” (later) at the end */
-export function todayItems(){if(!S.cfg)return[];const L=[...todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}),...planTodo()].filter(x=>seenBy(x.who,S.who)).map((x,i)=>({x,i,r:todayRank(x)}));
+export function todayItems(){if(!S.cfg)return[];const L=[...todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}),...planTodo(),...advTodo()].filter(x=>seenBy(x.who,S.who)).map((x,i)=>({x,i,r:todayRank(x)}));
   return L.sort((a,b)=>(!!a.x.later-!!b.x.later)||a.r-b.r||a.i-b.i).map(y=>y.x)}
 export const todayNow=()=>todayItems().filter(x=>!x.later);
 /* 📊 the plan of the current month (only in the app – plans are not read by the automat, so no phone notification): it used to be banners and cats' warnings on Budżet */
@@ -68,7 +68,7 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='pit'){S.fixSub='pay';S.payView='y';S.ym=(g.y||String(+td().slice(0,4)-1))+'-12';return goTab('fix')}if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);
   if(a=='pay'){S.fixSub='pay';return goTab('fix')}if(a=='year')return goYear();if(a=='rem'){S.fixSub='year';return goTab('fix')}
   if(a=='lent'||a=='owe'){S.accView=a;return goTab('acc')}if(a=='rata')return openTx(null,{type:'exp',debt:g.id});if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
-  if(a=='tr')return openTx(null,{type:'tr',to:g.to,...(+g.amount>0?{amount:+g.amount}:{})});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='asset'){S.sub='all';goTab('sav');return editAsset(g.id)}if(a=='limits'){goTab('sav');return editLimits()}
+  if(a=='tr')return openTx(null,{type:'tr',to:g.to,...(+g.amount>0?{amount:+g.amount}:{})});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='asset'){S.sub='all';goTab('sav');return editAsset(g.id)}if(a=='goals'){S.sub='all';goTab('sav');return openGoals()}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
   if(a=='round'){goTab('set');return setPage('cat')}if(a=='close')return openClose();if(a=='subs')return openSubs();

@@ -332,3 +332,49 @@ export function adviceDoneP(adv,hold,tx,cfg){const since=new Date(adv.at).toISOS
   const buys=(adv.buys||[]).map(b=>({...b,done:lots.some(({h})=>b.isin?etfOf(h)?.isin==b.isin:b.g=='bond'?h.kind=='obl':b.g=='gold'?h.kind=='zloto':false)}));
   const rows=(adv.rows||[]).map(r=>({...r,done:(r.kind=='ike'||r.kind=='ikze')&&tx.some(t=>t.type=='tr'&&t.date>=since&&cfg.accs.some(a=>a.id==t.to&&wrapOf(a)==r.kind&&(a.owner||'Wspólne')==r.who))}));
   const all=[...buys,...rows.filter(r=>r.kind=='ike'||r.kind=='ikze')];return{buys,rows,n:all.filter(x=>x.done).length,of:all.length}}
+
+/* ======================= D5: cele – emerytura, mieszkanie, kryzysy, koszty, najem, „czy stać na zakup” ======================= */
+/* ⚡ three crises (DORADCA-notatki D/G u07, u00): 2007–2009 in złoty (developed −32,8%, emerging −43,9%, gold +76,2% → cautious half +38%);
+   2000–2002 and 2020 only in dollars (stocks −50% and −34%) – used as they are, gold 0 (it did not protect in 2000–2002), bonds and cash 0. Cautious variant. */
+export const CRISES=[{k:'2008',n:'Kryzys finansowy 2007–2009',s:-33,em:-44,gold:38,bond:5,note:'w złotych (słaby złoty złagodził spadek)'},
+  {k:'2000',n:'Bańka internetowa 2000–2002',s:-50,em:-50,gold:0,bond:0,note:'spadek akcji w dolarach – w złotych brak danych, liczę ostrożnie'},
+  {k:'2020',n:'COVID 2020',s:-34,em:-34,gold:0,bond:0,note:'spadek akcji w dolarach, szybko odrobiony'}];
+const crRate=(cls,c,all)=>{const k=all[cls]||all.todo,risk=k.risk;if(cls=='s_em')return c.em;if(risk=='safe')return 0;if(risk=='bond')return c.bond;if(risk=='gold')return c.gold;if(risk=='high')return Math.max(-80,Math.round(c.s*1.4));return c.s};
+/* loss in złoty of the rows on the koło (alloc rows; real estate – „bez zmiany wyceny”) */
+export function crisesP(rows,custom={}){const all=clsAll(custom),base=rows.reduce((s,r)=>s+r.v,0);
+  return CRISES.map(c=>{const d=rows.reduce((s,r)=>s+r.v*crRate(r.cls,c,all)/100,0);return{...c,zl:Math.round(d),pct:base?Math.round(d/base*1000)/10:0}})}
+
+/* 🧾 pension from ZUS: gross → net (2026 rules: health 9%, PIT 12% above 30 000 zł a year) */
+export const pensionNet=b=>Math.round(b-b*0.09-Math.max(0,(12*b-3000000)*0.12)/12);
+/* 🌴 the retirement gap (plan 8.1, notes u05): today's złoty; real return before 2,5%, during 1% (cautious); capital needed for the payout years,
+   what today's capital grows to, the monthly saving needed (end-of-month payments) */
+export function retireP({age,retAge,want,zusNet,until=95,cap=0,save=0,r=0.025,r2=0.01}){const n=Math.max(1,retAge-age),m=Math.max(1,until-retAge),gap=Math.max(0,want-zusNet);
+  const need=Math.round(gap*12*(1-Math.pow(1+r2,-m))/r2),fv=Math.round(cap*Math.pow(1+r,n)),rm=Math.pow(1+r,1/12)-1,k=(Math.pow(1+rm,12*n)-1)/rm;
+  const pmt=Math.max(0,Math.round((need-fv)/k)),saveFv=Math.round(save*k);return{n,m,gap,need,fv,pmt,saveFv,ok:fv+saveFv>=need}}
+
+/* 🏦 annuity payment of a loan (grosze, % a year, years) */
+export const rataOf=(loan,rate,years)=>{const i=rate/1200,n=years*12;return Math.round(i?loan*i/(1-Math.pow(1+i,-n)):loan/n)};
+/* 🏡 a flat to buy (plan 8.2, notes D „Nieruchomości”): down payment + costs (notary, fees ~3%, PCC 2% unless first flat), how much is missing and when,
+   the 30/20/20 test with the bank's +2,5 pt buffer, the cushion counted with the new payment */
+export function homeP({price,downPct=20,first=true,saved=0,surplus=0,income=0,rate=7,years=20,exp=0,podM=6,loanOk=true}){
+  const down=Math.round(price*(loanOk?downPct:100)/100),costs=Math.round(price*(0.03+(first?0:0.02))),need=down+costs,missing=Math.max(0,need-saved);
+  const loan=loanOk?price-down:0,rata=loan?rataOf(loan,rate,years):0,stress=loan?rataOf(loan,rate+2.5,years):0;
+  return{down,costs,need,missing,months:missing?(surplus>0?Math.ceil(missing/surplus):null):0,loan,rata,stress,share:income?Math.round(stress/income*1000)/10:null,
+    ok30:income?stress<=income*0.3:null,pod:Math.round((exp+rata)*podM)}}
+/* 🏘️ a rented flat (plan 15.3): net yield on the whole value = (rent × months − costs × 12 − ryczałt 8,5% of the rent) ÷ value */
+export function rentP({value,rent,costs=0,months=10.5,debt=0}){const inc=rent*months,tax=Math.round(inc*0.085),net=Math.round(inc-costs*12-tax);
+  return{inc:Math.round(inc),tax,net,yld:value?Math.round(net/value*1000)/10:0,own:value-debt>0?Math.round(net/(value-debt)*1000)/10:null}}
+/* 🏠 „może warto pomyśleć o zakupie” (plan 15.4, decision 17): every condition with ok / why; no – never blocks, only informs */
+export function buyCheckP({price,kind,liquid,near=0,exp,podM,income,surplus,consDebt,rate,loanOk,downPct=20,first=true,stay,rent=0,costs=0}){
+  const H=homeP({price,downPct,first,saved:0,surplus,income,rate,exp,podM,loanOk}),need=H.need,rest=liquid-need-near,podNeed=Math.round((exp+H.rata)*podM),c=[];
+  c.push({ok:rest>=podNeed,s:'za mało pieniędzy na wkład i koszty przy nietkniętej poduszce',t:`Wkład${loanOk?` ${downPct}%`:' (cała cena – bez kredytu)'} i koszty ${zlS(need)} z pieniędzy, które można na to przeznaczyć (bez IKE/IKZE), a poduszka na ${podM} mies. z nową ratą (${zlS(podNeed)})${near?` i cele do 3 lat (${zlS(near)})`:''} zostaje nietknięta`});
+  if(loanOk)c.push({ok:H.ok30!==false&&!!income,s:'rata ponad 30% dochodów',t:`Rata z buforem banku (+2,5 pkt) ${zlS(H.stress)} – najwyżej 30% dochodów netto${H.share!=null?` (teraz ${String(H.share).replace('.',',')}%)`:''}; kredyt na 20 lat`});
+  if(kind=='rent'&&loanOk){const cover=Math.round(rent*10/12);c.push({ok:cover>=H.rata+costs||surplus>=H.rata+costs-cover,s:'czynsz nie pokrywa raty i kosztów',t:`Czynsz z 10 miesięcy (${zlS(cover)}/mies.) pokrywa ratę i koszty (${zlS(H.rata+costs)}) albo nadwyżka budżetu dopłaca różnicę`})}
+  c.push({ok:!consDebt,s:'najpierw spłata długów',t:'Bez długów konsumenckich (karty, raty, pożyczki)'});
+  if(kind=='home')c.push({ok:stay!='lt5',s:'za krótko na mieszkanie (mniej niż 5 lat)',t:'Plan mieszkania tam co najmniej 5–10 lat'});
+  return{H,c,ok:c.every(x=>x.ok)}}
+
+/* 💸 the cost guard (plan 8.4): yearly cost of the products in złoty – ETFs from the list (TER), funds / IKE in funds from the survey (q38) */
+export function costsP(rows,hold,fundPct){const out=[];for(const r of rows){if(r.kind!='h')continue;const it=hold?.[r.id];if(!it)continue;const e=etfOf(it);
+    if(e)out.push({name:r.name,v:r.v,pct:e.ter,zl:Math.round(r.v*e.ter/100)});else if(it.kind=='tfi'||it.kind=='etf')out.push({name:r.name,v:r.v,pct:fundPct??null,zl:fundPct!=null?Math.round(r.v*fundPct/100):null})}
+  const known=out.filter(x=>x.zl!=null);return{list:out,year:known.reduce((s,x)=>s+x.zl,0),bad:out.filter(x=>x.pct!=null&&x.pct>1),unknown:out.filter(x=>x.zl==null).length}}

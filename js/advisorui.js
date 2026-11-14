@@ -1,7 +1,7 @@
 /* 🧭 Doradca – screens (D1a): 🥧 „Z czego składa się majątek” in 💰 Majątek → Oszczędności (groups → classes → instruments and accounts,
    tap = change the class), 🔎 the analysis of held funds and the list of known ETFs. Calculations in advisor.js. */
 import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {fillP,pickEtf,unitsP,tranchesP,bondPickP,adviceDoneP,XTB,taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
+import {crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,fillP,pickEtf,unitsP,tranchesP,bondPickP,adviceDoneP,XTB,taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
 import {donutSvg} from './charts.js';
 import {liveOf,ownerOf,agg,balance} from './logic.js';
 import {youngUntil} from './pay.js';
@@ -162,7 +162,7 @@ export function advCardH(owner){const who=S.who,ctx=ankCtx(who),A=ankOf(who),dn=
     ${tile(D.debts.n?'k-ro':'k-em','🔻 Długi najpierw',D.debts.n?zl0(D.debts.sum):'brak',D.debts.n?'spłać przed inwestowaniem':'bez kart i rat – super','debt')}
     ${tile('k-sk','📅 Limity '+td().slice(0,4),lim,`do końca roku ${D.days} dni`,'lim')}
     ${tile(plan?'k-em':'k-am','🎯 Plan',plan?`akcje ${plan.g.stock}%`:open?`${dn.n}/${dn.of}`:'—',plan?`obligacje ${plan.g.bond}% · złoto ${plan.g.gold}%`:open?'odpowiedzi w ankiecie':'najpierw ankieta Matiego','plan')}</div>`;
-  if(open)h+=`<button class="btn primary" onclick="openWhere()">💸 Chcę zainwestować… – gdzie wpłacić?</button>`;
+  if(open)h+=`<button class="btn primary" onclick="openWhere()">💸 Chcę zainwestować… – gdzie wpłacić?</button><button class="btn sm" onclick="openGoals()">🎯 Cele: emerytura, mieszkanie, kryzys, koszty</button>`;
   if(open)h+=`<div class="g2"><button class="btn ${plan?'':'primary'} sm" onclick="openAnk()">📝 ${dn.n?dn.n<dn.of?'Dokończ ankietę':'Popraw odpowiedzi':'Zacznij ankietę z kotkami'}</button><button class="btn ${plan?'primary':''} sm" onclick="openPlan()">📄 ${plan?'Mój plan':'Propozycja planu'}</button></div>`;
   else h+=`<div class="mini">🐾 Ankietę najpierw wypełnia Mati. Gdy skończy, odblokuje ją dla Ciebie w swoim planie.</div>`;
   if(D.debts.n)h+=`<div class="mini">🐾 Najpierw spłata długów: ich oprocentowanie to więcej, niż da jakakolwiek pewna inwestycja.</div>`;
@@ -343,3 +343,65 @@ export function saveAdvice(){if(guard())return;const R=S.advRes;if(!R)return;con
 export function delAdvice(id){if(guard())return;const x=advLog()[id];if(!x)return;S.hraw={...S.hraw,advLog:{...advLog(),[id]:{...x,deleted:true}}};merge(H,{advLog:{[id]:{deleted:true}}});toast('Usunięto poradę');render()}
 export function advFixed(){const who=S.who,P=planFor(who)||planFor('all'),to=S.cfg.accs.find(a=>!a.archived&&['ike','ikze'].includes(wrapOf(a))&&ownerOf(a)==who)||S.cfg.accs.find(a=>!a.archived&&a.grp=='inv'&&wrapOf(a)!='ppk');
   editFixedTr(null,{name:'Inwestycje co miesiąc',amount:P?.save||0,day:10,...(to?{to:to.id}:{})})}
+
+/* ======================= D5: 🎯 cele – emerytura, mieszkanie, kryzysy, koszty, najem, zakup ======================= */
+export function openGoals(){use('f:cele');S.adv='goals';window.scrollTo(0,0);render()}
+/* net income a month: from payslips of the last 6 months (person or both); without payslips – household income from the budget */
+function netInc(who){const from=addMonths(td().slice(0,7),-6);let s=0;const ms=new Set();for(const[ym,sl]of Object.entries(S.slips||{})){if(ym<from)continue;for(const x of Object.values(sl||{}))if(x&&(!who||x.who==who)&&x.net){s+=x.net;ms.add(ym)}}
+  if(ms.size)return Math.round(s/ms.size);const tx=liveOf(S.tx),cur=td().slice(0,7);let inc=0,n=0;for(let k=1;k<=6;k++){const g=agg(S.cfg,tx,addMonths(cur,-k));if(g.inc){inc+=g.inc;n++}}return n?Math.round(inc/n/(who?2:1)):0}
+const mRate=()=>Math.round(((+macro().nbp||4)+2)*100)/100;
+function buyCtx(){const A=allocNow('all'),W=advW().ank||{},ctx=ankCtx(S.who),liquid=A.rows.filter(r=>{const a=S.cfg.accs.find(x=>x.id==r.acc);return!a||!['ike','ikze','oki'].includes(wrapOf(a))}).reduce((s,r)=>s+r.v,0);
+  const y=+td().slice(0,4),gl=[...(ankOf('Mati').q27||[]),...(ankOf('Wercia').q27||[])].filter(g=>g&&g.a&&g.y&&g.y<=y+3).reduce((s,g)=>s+g.a,0);
+  return{A,W,ctx,liquid,near:gl,income:netInc(null),cons:ctx.debtList.filter(d=>d.kind!='hip'&&d.left>0).length,podM:+(W.q17||6)||6}}
+/* 🏠 the purchase checks for a flat for yourselves (no home yet) and for rent – only when the survey does not say „no” (decision 20) */
+export function buyChecks(){const B=buyCtx(),W=B.W,R=realNow('all'),out=[],loan=W.q20!='no';
+  if(!R.list.some(x=>x.home)&&['yes','maybe'].includes(W.q32)&&W.q33>0)out.push({kind:'home',price:+W.q33,...buyCheckP({price:+W.q33,kind:'home',liquid:B.liquid,near:B.near,exp:B.ctx.exp,podM:B.podM,income:B.income,surplus:B.ctx.surplus,consDebt:B.cons,rate:mRate(),loanOk:loan,downPct:+(W.q33b||20)||20,first:W.q32c!='no',stay:W.q32b})});
+  if(['yes','maybe'].includes(W.q29)&&['yes','maybe'].includes(W.q34)&&W.rentPrice>0)out.push({kind:'rent',price:+W.rentPrice,...buyCheckP({price:+W.rentPrice,kind:'rent',liquid:B.liquid,near:B.near,exp:B.ctx.exp,podM:B.podM,income:B.income,surplus:B.ctx.surplus,consDebt:B.cons,rate:mRate(),loanOk:loan&&W.q34c!='cash',downPct:20,first:false,rent:+(W.rentRent||0),costs:+(W.q35||0)})});
+  return{B,out}}
+/* 🔔 „może warto pomyśleć o zakupie” – a quiet point in Na dziś, at most once a half-year (checkIgnore real:RRRR-H1|H2) */
+export function advTodo(){try{if(!S.cfg||!S.hraw?.advW)return[];const ig=S.hraw?.checkIgnore||{},t=td(),key='real:'+t.slice(0,4)+'-H'+(+t.slice(5,7)<=6?1:2);if(ig[key])return[];
+  const ok=buyChecks().out.filter(x=>x.ok);if(!ok.length)return[];return[{key,icon:'🏠',text:`Kotki policzyły: stać Was na ${ok[0].kind=='home'?'mieszkanie dla siebie':'mieszkanie na wynajem'} (${zl0(ok[0].price)}) bez ruszania poduszki. Może warto pomyśleć o zakupie – zobacz liczby, za i przeciw.`,go:{a:'goals'},label:'Zobacz',k:'plan',who:null,quiet:true}]}catch(e){return[]}}
+export async function setRentPrice(){if(guard())return;const W=advW().ank||{};const r=await ask({title:'🏘️ Mieszkanie na wynajem – liczby do sprawdzenia',text:'Kotki sprawdzą, czy Was stać, i policzą rentowność. Wpisz ceny z ogłoszeń w Waszej okolicy.',fields:[
+  {id:'p',label:'Cena mieszkania (zł)',type:'decimal',value:W.rentPrice?String(W.rentPrice/100):''},{id:'r',label:'Czynsz najmu miesięcznie (zł)',type:'decimal',value:W.rentRent?String(W.rentRent/100):''},{id:'c',label:'Koszty miesięcznie (administracja, fundusz remontowy, podatki, ubezpieczenie) (zł)',type:'decimal',value:W.q35?String(W.q35/100):''}],ok:'Zapisz'});
+  if(!r)return;const x={rentPrice:pg(r.p||'0'),rentRent:pg(r.r||'0'),q35:pg(r.c||'0')};S.hraw={...S.hraw,advW:{...advW(),ank:{...W,...x}}};merge(H,{advW:{ank:x}});render()}
+export function goalsPageH(){const who=S.who,A=ankOf(who),W=advW().ank||{},ctx=ankCtx(who),y=+td().slice(0,4),birth=S.hraw?.birth?.[who],age=birth?y-+birth.slice(0,4):null,P=planFor(who);
+  let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button>`;
+  /* 🌴 retirement */
+  h+=`<section class="chart"><div class="ct"><b>🌴 Emerytura – ${esc(who)}</b><span class="mini">w dzisiejszych złotych · bez PPK · założenie: 2,5% ponad inflację przed emeryturą, 1% w czasie</span></div>`;
+  if(!(A.q23||[]).includes('ret')||!(A.q24>0)||!(A.q24b>0)||age==null)h+=`<div class="mini">🐾 Do policzenia potrzebuję: daty urodzenia, wieku przejścia na emeryturę i kwoty „na rękę” (ankieta, dział „Cele” – zaznacz emeryturę).</div><button class="chip" onclick="openAnk()">📝 Ankieta</button>`;
+  else{const zusB=A.q25>0?+A.q25:null,inc=netInc(who),zusNet=zusB?pensionNet(zusB):Math.round(inc*0.25),cap=devP(allocNow(who),{g:{cash:0,bond:0,stock:0,gold:0}}).base,Rt=retireP({age,retAge:+A.q24,want:+A.q24b,zusNet,until:+(A.q26||95)||95,cap,save:P?.save||0});
+    h+=`<div class="r1 mini"><span>Chcesz mieć na rękę</span><b class="num">${zl0(+A.q24b)}/mies.</b></div><div class="r1 mini"><span>ZUS ${zusB?`(prognoza ${zl0(zusB)} brutto → netto)`:'(nie wiem – ostrożnie 25% dzisiejszych dochodów)'}</span><b class="num">− ${zl0(zusNet)}</b></div>
+      <div class="r1"><b>Luka</b><b class="num">${zl0(Rt.gap)}/mies.</b></div><div class="mini">Od ${A.q24} do ${A.q26||95} roku życia (${Rt.m} lat) to kapitał ok. <b>${zl0(Rt.need)}</b>. To, co macie dziś (${zl0(cap)}), urośnie do ok. ${zl0(Rt.fv)} za ${Rt.n} lat.</div>
+      <div class="note ${Rt.ok?'':'bad'}">🐾 Trzeba odkładać ok. <b>${zl0(Rt.pmt)} miesięcznie</b>${P?.save?` – w planie masz ${zl0(P.save)}, co da ok. ${zl0(Rt.saveFv)} (${Rt.ok?'starczy ✓':'za mało'})`:''}. Odkładanie przez IKE/IKZE daje więcej, bo bez podatku.</div>
+      <div class="mini">Prognozę ZUS znajdziesz na PUE/eZUS → „Kalkulator emerytalny”. Każde 5 lat później to dużo mniejsza miesięczna kwota – ale i wcześniej warto zacząć.</div>`}
+  h+='</section>';
+  /* 🏡 a flat for yourselves */
+  const R=realNow('all');
+  if(!R.list.some(x=>x.home)&&['yes','maybe'].includes(W.q32)){h+=`<section class="chart"><div class="ct"><b>🏡 Mieszkanie dla siebie</b><span class="mini">zasada 30/20/20 · kredyt: stopa NBP + 2 pkt = ${String(mRate()).replace('.',',')}% (założenie)</span></div>`;
+    if(!(W.q33>0))h+=`<div class="mini">🐾 Wpisz w ankiecie szacowaną cenę (dział „Nieruchomości”).</div>`;
+    else{const Hm=homeP({price:+W.q33,downPct:+(W.q33b||20)||20,first:W.q32c!='no',saved:+(W.q33c||0),surplus:Math.max(0,ctx.surplus),income:netInc(null),rate:mRate(),exp:ctx.exp,podM:+(W.q17||6)||6,loanOk:W.q20!='no'});
+      h+=`<div class="r1 mini"><span>Cena</span><b class="num">${zl0(+W.q33)}</b></div><div class="r1 mini"><span>${W.q20=='no'?'Cała cena (bez kredytu)':`Wkład ${W.q33b||20}%`}</span><b class="num">${zl0(Hm.down)}</b></div><div class="r1 mini"><span>Koszty zakupu (notariusz, opłaty${W.q32c=='no'?', PCC 2%':''})</span><b class="num">${zl0(Hm.costs)}</b></div>
+        <div class="r1"><b>Brakuje</b><b class="num">${zl0(Hm.missing)}</b></div><div class="mini">${Hm.missing?Hm.months?`Przy obecnej nadwyżce (${zl0(Math.max(0,ctx.surplus))}/mies.) ok. <b>${Hm.months} mies.</b> (${(Hm.months/12).toFixed(1).replace('.',',')} roku).`:'Bez nadwyżki w budżecie – trzeba ją najpierw zbudować.':'✓ Wkład i koszty już są.'}</div>
+        ${Hm.loan?`<div class="mini">Kredyt ${zl0(Hm.loan)} na 20 lat: rata ok. ${zl0(Hm.rata)}, z buforem banku (+2,5 pkt) ${zl0(Hm.stress)}${Hm.share!=null?` = <b class="${Hm.ok30?'t-inc':'t-exp'}">${String(Hm.share).replace('.',',')}% dochodów</b> (bezpiecznie do 30%)`:''}.</div>`:''}
+        <div class="mini">Poduszka po zakupie (z ratą): ok. ${zl0(Hm.pod)}. Wkład trzymajcie bezpiecznie – przy terminie do 3 lat konto, lokata, obligacje 3-letnie; od 2027 OKI.</div>`}
+    h+='</section>'}
+  /* ⚡ crises */
+  const AA=allocNow('all'),C=crisesP(AA.rows,custom());
+  h+=`<section class="chart"><div class="ct"><b>⚡ Test kryzysu w złotych</b><span class="mini">Wasze dzisiejsze aktywa (${zl0(AA.total)}) w trzech historycznych kryzysach · nieruchomości bez zmiany wyceny</span></div>${C.map(c=>`<div class="r1"><span>${esc(c.n)}</span><b class="num ${c.zl<0?'t-exp':'t-inc'}">${c.zl<0?'−':'+'}${zl0(Math.abs(c.zl))} <em>(${String(c.pct).replace('.',',')}%)</em></b></div><div class="mini">${esc(c.note)}</div>`).join('')}
+    <div class="mini">Ostrożnie: złoto liczę za połowę jego zysku z 2008, pojedyncze spółki i krypto ×1,4 spadku akcji. Akcje odrabiały takie spadki od kilku miesięcy (2020) do kilkunastu lat (2000).${P?` Wasz plan w kryzysie 2008: ${zl0(Math.abs(crisisP(P.g,devP(AA,P).base).zl))}.`:''}</div></section>`;
+  /* 💸 costs */
+  const K=costsP(AA.rows,S.hold,A.q38>0?+A.q38:null);
+  h+=`<section class="chart"><div class="ct"><b>💸 Strażnik kosztów</b><span class="mini">ile rocznie kosztują Wasze fundusze (opłata za zarządzanie)</span></div>${K.list.length?K.list.map(x=>`<div class="r1 mini"><span>${esc(x.name)}${x.pct!=null?` · ${String(x.pct).replace('.',',')}%`:''}</span><b class="num ${x.pct>1?'t-exp':''}">${x.zl!=null?zl0(x.zl)+'/rok':'koszt nieznany'}</b></div>`).join('')+`<div class="r1"><b>Razem</b><b class="num">${zl0(K.year)}/rok</b></div><div class="mini">Przez 20 lat to co najmniej ${zl0(K.year*20)}.${K.bad.length?` 🚩 Ponad 1% rocznie: ${esc(K.bad.map(x=>x.name).join(', '))} – warto przenieść (wypłata transferowa IKE/IKZE nie traci ulg).`:' ✓ Nic drogiego.'}${K.unknown?' Koszt funduszy spoza listy wpiszesz w ankiecie (pytanie o KID).':''} W XTB: prowizja 0 zł, wymiana waluty 0,5%.</div>`:'<div class="mini">Brak funduszy na kontach (poza PPK) – obligacje skarbowe i konta nie mają opłat za zarządzanie.</div>'}</section>`;
+  /* 🏘️ rentals */
+  const rents=R.list.filter(x=>x.use=='rent'&&x.rent>0);
+  if(rents.length){const edo=(+macro().infl||0)+2;h+=`<section class="chart"><div class="ct"><b>🏘️ Najem – liczby</b><span class="mini">fakty, nie prognozy · 10,5 miesiąca najmu w roku · ryczałt 8,5%</span></div>`+rents.map(x=>{const N=rentP({value:x.value,rent:x.rent,costs:+(W.q35||0),debt:x.debt});
+    return`<div class="mini"><b>${esc(x.name)}</b>: czynsz ${zl0(x.rent)}/mies. → po kosztach i ryczałcie ${zl0(N.net)}/rok = <b>${String(N.yld).replace('.',',')}%</b> wartości${N.own!=null&&x.debt?` (na własnym wkładzie ${String(N.own).replace('.',',')}%)`:''}. Dla porównania EDO dziś ok. ${String(edo.toFixed(1)).replace('.',',')}% (inflacja + 2 pkt), bez pracy i pustostanów.</div>`}).join('')+`<div class="mini">Odkładajcie na remont co 5–7 lat. ${W.q35?'':'Koszty miesięczne dopisz przyciskiem niżej.'}</div><button class="chip" onclick="setRentPrice()">✎ Koszty i liczby najmu</button></section>`}
+  /* 🏠 can you afford a purchase */
+  const BC=buyChecks();if(['yes','maybe'].includes(W.q29)&&['yes','maybe'].includes(W.q34)||BC.out.length){
+    h+=`<section class="chart"><div class="ct"><b>🏠 Czy stać Was na zakup?</b><span class="mini">kotki sprawdzają warunki, nie przewidują cen</span></div>`;
+    if(!BC.out.some(x=>x.kind=='rent')&&['yes','maybe'].includes(W.q34))h+=`<div class="mini">🐾 Mieszkanie na wynajem: wpisz cenę i czynsz z ogłoszeń, a sprawdzę warunki.</div><button class="chip" onclick="setRentPrice()">✎ Wpisz liczby</button>`;
+    for(const x of BC.out){const work=R.work.value+x.price,after=Math.round(work/(work+Math.max(0,AA.total-x.H.need))*100);
+      h+=`<div class="mini" style="margin-top:6px"><b>${x.kind=='home'?'🏡 Dla siebie':'🔑 Na wynajem'} – ${zl0(x.price)}</b></div>${x.c.map(c=>`<div class="mini">${c.ok?'✅':'⛔'} ${esc(c.t)}</div>`).join('')}
+        <div class="note ${x.ok?'':'bad'}">🐾 ${x.ok?`Stać Was. Może warto pomyśleć o zakupie – po zakupie nieruchomości to ok. ${after}% majątku, który pracuje.`:`Na razie nie – blokuje: ${esc(x.c.filter(c=>!c.ok).map(c=>c.s).join('; '))}.`}</div>`}
+    h+=`<details class="info"><summary>⚖️ Za i przeciw (z lektury)</summary><div class="mini">➕ realnie 3–4% netto z najmu + wzrost wartości; czynsz rośnie z inflacją; dźwignia kredytu.<br>➖ koszty zakupu i remontów, czas (najemcy, naprawy), 1–2 miesiące pustostanu w roku, brak płynności (sprzedaż trwa miesiące), dźwignia działa w obie strony, nieruchomości nie zawsze rosną (cykl ok. 16–17 lat). Na mieszkaniu dla siebie nie spekulować.</div></details></section>`}
+  return h}

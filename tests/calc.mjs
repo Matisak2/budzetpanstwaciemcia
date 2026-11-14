@@ -10,7 +10,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {keepPrev} from '../scripts/market-lib.mjs';
-import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP} from '../js/advisor.js';
+import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -653,5 +653,27 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   const adv={at:Date.parse('2026-11-14T12:00:00Z'),rows:[{kind:'ike',who:'Mati',a:100000}],buys:[{g:'stock',isin:'IE00BK5BQT80',a:100000},{g:'bond',a:50000}]};
   const dn=adviceDoneP(adv,{h:{kind:'etf',ticker:'VWCE.DE',lots:{l:{date:'2026-11-20',kind:'buy',qty:1,price:130}}}},[{type:'tr',to:'i',acc:'c',amount:100000,date:'2026-11-15'}],{accs:[{id:'i',name:'IKE',wrap:'ike',owner:'Mati'}]});
   eq('Porada odhacza się sama: zakup funduszu i przelew na IKE (obligacje jeszcze nie)',[dn.n,dn.of,dn.buys.map(b=>b.done)],[2,3,[true,false]]);}
+
+/* ---------- 🧭 doradca D5: cele, kryzysy, koszty, najem ---------- */
+{ // 10 000 zł akcji świata, 2 000 rynki wschodzące, 3 000 złoto, 5 000 EDO: 2008 → −3 300 − 880 + 1 140 + 0 = −3 040 zł (−15,2%); 2000 → −5 000 − 1 000 = −6 000 (−30%)
+  const rows=[{cls:'s_world',v:1000000},{cls:'s_em',v:200000},{cls:'g_phys',v:300000},{cls:'b_idx',v:500000}],C=crisesP(rows);
+  eq('Test kryzysu: 2008 i 2000 w złotych',C.slice(0,2).map(c=>[c.k,c.zl,c.pct]),[['2008',-304000,-15.2],['2000',-600000,-30]]);
+  // emerytura ZUS 3 000 zł brutto: zdrowotna 270, PIT (36 000 − 30 000) × 12% ÷ 12 = 60 → 2 670 zł; 5 000 zł → 5 000 − 450 − 300 = 4 250 zł
+  eq('Emerytura z ZUS netto (zasady 2026)',[pensionNet(300000),pensionNet(500000)],[267000,425000]);
+  // luka 3 500 zł × 12 × (1 − 1,01^−35) ÷ 0,01 = 42 000 × 29,409 = 1 235 160 zł; 50 000 × 1,025^30 = 104 878; odkładanie: (1 235 160 − 104 878) ÷ 532,84 = 2 121 zł
+  const Rt=retireP({age:30,retAge:60,want:600000,zusNet:250000,until:95,cap:5000000,save:100000});
+  eq('Luka emerytalna: kapitał, dzisiejsze oszczędności za 30 lat, ile odkładać',[Math.round(Rt.need/100),Math.round(Rt.fv/100),Math.round(Rt.pmt/100),Rt.ok],[1235160,104878,2121,false]);
+  // kredyt 600 000 zł na 7% przez 20 lat: rata 4 651,8 zł; 300 000 → 2 325,9
+  eq('Rata kredytu (równa)',[rataOf(60000000,7,20),rataOf(30000000,7,20)],[465179,232590]);
+  // mieszkanie 750 000: wkład 20% 150 000, koszty 3% 22 500, odłożone 100 000 → brakuje 72 500, przy 3 000 zł/mies. 25 mies.; rata z buforem 9,5% = 5 592,8 zł = 37,3% z 15 000 zł → ponad 30%
+  const Hm=homeP({price:75000000,downPct:20,first:true,saved:10000000,surplus:300000,income:1500000,rate:7,exp:600000,podM:6});
+  eq('Mieszkanie: brakuje, za ile miesięcy, test 30% z buforem',[Hm.need,Hm.missing,Hm.months,Hm.stress,Hm.share,Hm.ok30],[17250000,7250000,25,559279,37.3,false]);
+  eq('Mieszkanie bez kredytu i nie pierwsze (PCC 2%)',(h=>[h.down,h.costs,h.loan])(homeP({price:40000000,first:false,loanOk:false})),[40000000,2000000,0]);
+  // najem 400 000 zł, czynsz 2 500 × 10,5 = 26 250 − koszty 7 200 − ryczałt 2 231,25 = 16 818,75 → 4,2%
+  eq('Najem: rentowność netto',(n=>[n.net,n.yld])(rentP({value:40000000,rent:250000,costs:60000})),[1681875,4.2]);
+  // zakup za gotówkę 300 000 + koszty 3% = 309 000; płynne 400 000, poduszka 6 × 6 000 = 36 000 → zostaje 91 000 ≥ 36 000 ✓; z długiem na karcie – nie
+  const bc=a=>buyCheckP({price:30000000,kind:'home',liquid:40000000,exp:600000,podM:6,income:1500000,surplus:300000,consDebt:a,rate:7,loanOk:false,stay:'gt10'});
+  eq('Czy stać na zakup: wszystkie warunki / dług blokuje',[bc(0).ok,bc(1).ok,bc(1).c.filter(c=>!c.ok).length],[true,false,1]);
+  eq('Strażnik kosztów: VWCE 0,14% od 100 000 zł = 140 zł + fundusz 1,8% od 50 000 = 900 zł → 1 040 zł, flaga',(k=>[k.year,k.bad.length,k.unknown])(costsP([{kind:'h',id:'a',name:'VWCE',v:10000000},{kind:'h',id:'b',name:'TFI',v:5000000},{kind:'a',id:'x',v:100}],{a:{kind:'etf',ticker:'VWCE.DE'},b:{kind:'tfi'}},1.8)),[104000,1,0]);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);
