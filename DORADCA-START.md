@@ -1,0 +1,42 @@
+# 🧭 Doradca – instrukcja dla nowego okna Claude (czytaj w całości przed pracą)
+
+Ten plik zastępuje długą rozmowę z 13–14.11.2026, w której powstał plan. Nowe okno nie zna tej rozmowy – wszystko, co potrzebne, jest tutaj i w plikach wymienionych niżej.
+
+## 1. Zanim cokolwiek zrobisz
+1. `git pull origin main`, `git log -5` (zasady wielu okien z `CLAUDE.md`).
+2. Przeczytaj w tej kolejności:
+   - `CLAUDE.md` (architektura, zasady pracy – obowiązują w całości),
+   - **`DORADCA-plan.md`** – plan; **punkt 0 „Decyzje Matiego” jest nadrzędny** wobec reszty tekstu,
+   - `PLAN.md` → „Część 8 – Doradca” (co już odhaczone),
+   - `DORADCA-notatki.md` – wiedza merytoryczna (liczby, zasady kont, przykłady do testów). Czytaj sekcje potrzebne w danym etapie; przy liczbach do testów – zawsze stąd, nie z pamięci.
+3. Ustal, który etap jest następny (pierwszy nieodhaczony D1…D7 w `PLAN.md`). **Etap zaczynasz dopiero na wyraźną komendę Matiego** („zrób D1” itp.). Przed etapem poproś o kopię (⚙️ → Pobierz kopię).
+4. Przed etapem napisz Matiemu krótko (po polsku, prosto) plan etapu: co zobaczy w aplikacji, gdzie; poczekaj na „ok”, jeśli coś jest niejasne.
+
+## 2. Najważniejsze decyzje (skrót punktu 0 planu)
+- **PPK nie istnieje dla doradcy**: nie liczyć w kole, w proporcjach, w bramkach, w ankiecie, w celach. Konta z `wrap:'ppk'` pomijać.
+- Broker: **XTB** – prowizja 0, **0,5% marży przy wymianie walut**, ułamki jednostek, brak walut na rachunku. Stawki trzymać jako dane z datą „stan na”.
+- OKI (od 1.01.2027): poduszka, wkład własny, polskie aktywa; zagraniczne ETF-y najpierw IKE/IKZE.
+- IKZE wg progu: 0% – nie; 12% – najpierw IKE; 32% – najpierw IKZE; liniowy/ryczałt – liczyć.
+- Doradca **nie prognozuje**; „czy warto kupić” = czego brakuje względem planu. Termometr tylko informuje (transze, własne reguły na spadki).
+- Mieszkanie: cel odkładania + wartość w majątku (ręcznie, raz na 1–3 lata).
+- Piaskownica (pojedyncze akcje/tematy) do 10% części długoterminowej.
+- **Koło** (wykres kołowy) w Inwestycjach z widełkami planu; **kotki** przy kole podpowiadają wyrównanie.
+- Lista ETF-ów Matiego: punkt 13 planu (8 funduszy z XTB). Każdy instrument spoza listy: po wpisaniu zakupu sam trafia do śledzenia i analizy. ISIN-y i koszty z tabeli **sprawdź u dostawcy** przed wpisaniem do kodu (wpisz datę sprawdzenia); jeśli sieć nie pozwala – zapytaj Matiego o zgodę na dodanie hosta (narzędzia środowiska) albo zostaw pole „do sprawdzenia”.
+- Ankieta: każda osoba na swoim telefonie (`S.who`); tryb „wspólnie” łączy.
+
+## 3. Jak pracować przy każdym etapie (z `CLAUDE.md`, w skrócie)
+- Kod: czyste obliczenia w nowym `js/advisor.js` (bez importu UI; testowalne), interfejs w `js/advisorui.js`; nowe pliki do `SHELL` w `sw.js`; zasada modułów (na górze pliku tylko deklaracje, start w `wire…()`); funkcje z `onclick` wystawić na `window` na końcu `app.js`.
+- Dane nowe, nigdy nie zmieniać starych wpisów; nowe ustawienia w `households/main` (np. `advM`, `advW`, `advLog`, `brok`, `assetCls`) → dopisać do `BACKUP_KEYS` i do porównań w `tests/restore.mjs`.
+- Wykorzystać istniejące: `pay.js` (próg, ulga dla młodych), `inv.js` (`LIMITS`, `BONDS`, `bondYears`, `OKI_*`, `wrapOf`, `holdAt`, FIRE), `logic.js` (salda, `savFlow`), `isPod` (poduszka), `debts`/`rataP`, automat `market.mjs` (ceny posiadanych instrumentów już są).
+- Każdy etap: `CACHE` +1 w `sw.js`, wpis na początku `NEWS` i w `HELP` (`guide.js`), `USAGE_CAT`, nowy ekran w `SCREENS` (`tests/screens.mjs`), dane przykładowe w `demo/demo.js`, okienko transakcji tylko gdy trzeba (wtedy oba `index.html`), wygląd: pastele, Nunito, zaokrąglenia, jedna przewijana kartka w okienkach.
+- Testy przed wysyłką (lokalnie, jak w `CLAUDE.md` → Testowanie): eslint, `node --check`, `tests/calc.mjs` (dopisz przykłady liczbowe z `DORADCA-notatki.md`, policzone niezależnie), `tests/cache.mjs`, `tests/imports.mjs`, `tests/screens.mjs`.
+- Po etapie: odhacz w `PLAN.md`, dopisz krótko do `CLAUDE.md` (architektura: co robi `advisor.js` itd.), commit z opisem dla innych okien, `git pull --no-rebase`, push na `main`, napisz Matiemu prosto, co sprawdzić w telefonie.
+
+## 4. Kolejność etapów (punkt 10 planu)
+D1 klasy aktywów + lista ETF-ów z analizą + auto-śledzenie + koło „jak jest” → D2 ankieta, plan, widełki, kotki przy kole, diagnoza → D3 „gdzie” → D4 „w co” (XTB, transze, zapis porady) → D5 cele (emerytura, mieszkanie, test kryzysu, koszty) → D6 termometr, reguły na spadki, „Na dziś” → D7 piaskownica.
+
+## 5. Czego nie robić
+- Nie zaczynać etapu bez komendy Matiego. Nie robić kilku etapów naraz, jeśli Mati nie powie.
+- Nie ruszać PPK. Nie pokazywać prognoz analityków. Nie polecać funduszy aktywnych, tematycznych, z dźwignią, CFD, polis inwestycyjnych.
+- Nie zaszywać na sztywno rankingów brokerów ani stawek bez daty „stan na”.
+- Nie wpisywać adresów e-mail do kodu (repo publiczne).

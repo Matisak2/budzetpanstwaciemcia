@@ -7,6 +7,7 @@ Adres: https://matisak2.github.io/budzetpanstwaciemcia/
 - Mati jest lekarzem, **nie programuje**. Pisz po polsku, prosto, krok po kroku („za rączkę”) przy każdej czynności technicznej.
 - Zmiany robisz sam: edytujesz pliki, testujesz, robisz commit i **push na `main`** – GitHub Pages publikuje w 1–2 min. Mati tylko odświeża aplikację.
 - Przed większą zmianą krótko zaproponuj plan; drobne poprawki rób od razu.
+- 🧭 **Doradca inwestycyjny** (w budowie, etapy D1–D7): zanim zaczniesz – `DORADCA-START.md`.
 - **Plan rozwoju jest w `PLAN.md`** (bieżąca część; zakończone etapy z opisami w `PLAN-archiwum.md` – zaglądaj tam tylko, gdy potrzebujesz historii). Przed pracą przeczytaj `PLAN.md`, a po skończeniu etapu odhacz zrobione punkty. Kolejny etap zaczynaj dopiero na wyraźną komendę Matiego. Przed każdym etapem poproś o pobranie kopii (⚙️ → Pobierz kopię).
 - Dane wpisane przez Matiego i Wercię nigdy nie mogą zniknąć: zmiany w modelu danych rób jako migrację istniejących wpisów.
 - Estetyka jest ważna (szczególnie dla Werci): **delikatne pastele**, zaokrąglone kształty, czcionka Nunito, czytelność. Unikaj ciemnych, mocnych kolorów.

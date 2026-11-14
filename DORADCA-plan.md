@@ -1,7 +1,20 @@
 # 🧭 Doradca inwestycyjny – kompletny plan
 
-Stan: **plan do akceptacji Matiego. W aplikacji nic jeszcze nie zmieniono.** Budowa dopiero na komendę, etapami, przed każdym etapem kopia (⚙️ → Pobierz kopię).
+Stan: **plan zaakceptowany przez Matiego 14.11.2026 (decyzje w punkcie 0 – są nadrzędne wobec reszty tekstu). W aplikacji nic jeszcze nie zmieniono.** Budowa dopiero na komendę, etapami, przed każdym etapem kopia (⚙️ → Pobierz kopię).
 Podstawa: wymagania Matiego z rozmowy 13–14.11.2026 oraz pełna lektura ok. 90 artykułów z bloga Marcina Iwucia (notatki: `DORADCA-notatki.md`, sekcje A–G).
+
+---
+
+## 0. Decyzje Matiego (14.11.2026) – NADRZĘDNE wobec reszty planu
+1. **OKI**: głównie poduszka, wkład własny, polskie aktywa; zagraniczne ETF-y najpierw do IKE/IKZE – TAK.
+2. **Termometr** tylko informuje (transze, własne reguły na spadki), nie zmienia kwot – TAK.
+3. **Nieruchomości**: mieszkanie jako cel odkładania **i** jego wartość w strukturze majątku (wpisywana ręcznie raz na 1–3 lata, ostrożnie) – OBA.
+4. **Piaskownica** do 10% części długoterminowej – TAK. Do tego **wykres kołowy** w Inwestycjach: ile % w jakich aktywach + widełki z planu; **kotki przy kole podpowiadają wyrównanie** do planu.
+5. **PPK – całkowicie poza doradcą i poza kołem.** Nie liczyć, nie doradzać, nie pytać, nie używać jako wkładu własnego (Mati: konto, którego fizycznie nie ma i gdzie sam nie inwestuje). Wszystkie wzmianki o PPK w punktach 1–12 są nieaktualne.
+6. **Broker: XTB** (IKE/IKZE/zwykłe; od 2027 OKI). Koszty XTB: prowizja 0 zł (do 100 tys. EUR obrotu/mies.), **marża walutowa 0,5%** przy każdej wymianie, ułamki jednostek, brak trzymania walut na rachunku.
+7. **Lista ETF-ów Matiego** (zrzuty z XTB, 14.11.2026) – punkt 13. Każdy instrument kupiony spoza listy ma po wpisaniu zakupu w aplikacji **automatycznie trafić do śledzenia i do analizy**; analizowane są też najpopularniejsze ETF-y. (Aplikacja nie łączy się z XTB – zakup trzeba raz wpisać.)
+8. **Etapy** uporządkowane tak, żeby całość powstawała krok po kroku – punkt 10 (nowa kolejność D1–D7).
+9. Ankieta: każda osoba wypełnia swoją na swoim telefonie (osoba telefonu); „wspólnie” łączy obie.
 
 ---
 
@@ -261,27 +274,19 @@ Na co termometr **wpływa**: (1) czy dużą kwotę w akcje rozłożyć na transz
 
 ---
 
-## 10. Etapy budowy (każdy na osobną komendę, każdy = kopia → budowa → testy → wysyłka)
+## 10. Etapy budowy (nowa kolejność 14.11 – każdy na osobną komendę: kopia → budowa → testy → wysyłka)
 
-**Etap D1 – Ankieta i diagnoza.** Zakładka, duża ankieta (z wypełnieniem z danych aplikacji), „Twój plan na jednej kartce”, kafelki diagnozy (poduszka, długi, limity, plan a stan). Jeszcze bez wpisywania kwoty.
-*Testy:* próg podatkowy z pasków (4 przypadki), wielkość poduszki, limity i wykorzystanie, zapis/odczyt ankiety, kopia.
+Każdy etap działa samodzielnie i jest fundamentem dla następnego.
 
-**Etap D2 – „Gdzie”.** Pole kwoty, krótka ankieta, bramki, koszyki, wybór pokrowca z wyliczeniem (IKE/IKZE dla każdego progu, PPK, OKI, zwykły rachunek, nadpłata), lista „na pewno nie tu”, tryb „wspólnie”.
-*Testy:* przykłady policzone niezależnie – m.in. przykłady z kalkulatorów Iwucia (IKZE 12% i 32% po 10/20/35 latach, ulga „od góry”, próg nadpłaty 6% → 7,4%), podział kwoty przy niepełnej poduszce, przy długu na karcie, przy 0%/12%/32%.
+**D1 – Klasy aktywów i koło „jak jest”.** Każdy instrument (`hold`) i konto oszczędnościowe/inwestycyjne dostaje klasę: akcje (z podziałem: świat / rozwinięte / wschodzące / Polska / pojedyncze spółki), obligacje (detaliczne / rynkowe), złoto, gotówka. Domyślnie z rodzaju i z listy znanych ETF-ów, z możliwością zmiany. **PPK wyłączone.** Lista znanych ETF-ów (punkt 13) w kodzie z danymi (ISIN, indeks, koszt, Acc, rejestracja, replikacja, data sprawdzenia). Nowy instrument spoza listy po dodaniu: automatycznie śledzony (automat już pobiera ceny) + karta analizy (kryteria, dublowanie z posiadanymi, flagi). Wykres kołowy w 💰 Majątku → Oszczędności („Inwestycje”), stuknięcie w kawałek = lista instrumentów.
+**D2 – Ankieta i plan.** Ankieta (punkt 4, bez pytań o PPK), „plan na jednej kartce”, proporcje docelowe z widełkami → widełki na kole; **kotki przy kole**: „akcje 41% (plan 30–40%) – przy następnej wpłacie dokup obligacji”; kafelki diagnozy (poduszka, długi, limity IKE/IKZE/OKI).
+**D3 – „Gdzie”.** Kwota, krótka ankieta, bramki (dług, poduszka, termin), koszyki celów, wybór pokrowca z wyliczeniem (IKE/IKZE wg progu, OKI, zwykły rachunek, nadpłata hipoteki), „na pewno nie tu”, tryb „wspólnie”.
+**D4 – „W co”.** Niedobory względem planu, konkretne instrumenty z listy, kalkulator obligacji na N miesięcy, koszt zakupu w XTB (0,5% waluta), liczba jednostek (ułamki), transze, „co po zakupie”, zapis porady, odhaczanie po wpisaniu zakupu.
+**D5 – Cele.** Luka emerytalna (bez PPK), cel „mieszkanie” + wartość mieszkania w majątku, test kryzysu w złotych, strażnik kosztów.
+**D6 – Pilnowanie planu.** Termometr, własne reguły na spadki, list do siebie, przypomnienia w 🔔 „Na dziś” (limity do 31.12, zwrot z IKZE, przegląd kwartalny, poduszka o inflację, coroczny przegląd listy ETF-ów i kosztów XTB).
+**D7 – Piaskownica.** Analiza wpisanej spółki / ETF-u, limit 10%, lista życzeń z ceną.
 
-**Etap D3 – „W co”.** Proporcje i niedobory, lista instrumentów z kryteriami, kalkulator obligacji na N miesięcy, koszt zakupu i transze, „co po zakupie”, zapis porady.
-*Testy:* tabela wyrównywania proporcji (przykład z bloga odtworzony co do złotówki), koszty dla 100 / 1 000 / 10 000 zł, wybór obligacji dla 12 / 30 / 120 miesięcy.
-
-**Etap D4 – Cele.** Luka emerytalna, cel „mieszkanie”, test kryzysu, strażnik kosztów.
-*Testy:* przykład emerytalny z bloga (3 180,80 zł miesięcznie), test 30/20/20, tabela kryzysu dla wzorcowego portfela (+2,6% / −7%).
-
-**Etap D5 – Termometr i pilnowanie planu.** Termometr, reguły na spadki, list do siebie, przypomnienia w „Na dziś”, przegląd kwartalny.
-
-**Etap D6 – Piaskownica.** Analiza wpisanej spółki / ETF-u, limit piaskownicy, lista życzeń z ceną.
-
-Kolejność można zmienić; D1–D3 dają już to, o co Mati prosił na początku.
-
----
+Testy każdego etapu: jak w poprzedniej wersji planu (przykłady liczbowe z bloga policzone niezależnie, w `tests/calc.mjs`) + nowe ekrany w `tests/screens.mjs`.
 
 ## 11. Czego ten plan uczciwie nie obiecuje
 - **Źródła**: przeczytałem artykuły z bloga (ok. 90, teraz w całości). **Nagrań z YouTube i podcastów bez spisanej treści nie da się stąd przeczytać**, tak samo książki – znam je tylko z artykułów, które je streszczają. Większość filmów ma jednak swój artykuł i te są przeczytane.
@@ -291,10 +296,32 @@ Kolejność można zmienić; D1–D3 dają już to, o co Mati prosił na począt
 
 ---
 
-## 12. Pytania do Matiego (odpowiedzi potrzebne przed etapem D1/D2)
+## 12. Pytania do Matiego – ODPOWIEDZIANE 14.11 (patrz punkt 0)
 1. **OKI**: używamy głównie na poduszkę, wkład własny i ewentualnie polskie fundusze; zagraniczne ETF-y najpierw do IKE/IKZE. Zgoda?
 2. **„Czy teraz warto kupić”**: główna odpowiedź = czego brakuje w planie; termometr tylko informuje i decyduje o transzach / własnych regułach na spadki. Zgoda? Czy wolisz, żeby termometr mocniej wpływał na kwoty (odradzam)?
 3. **Nieruchomości**: tylko jako cel (plan zakupu), czy dodatkowo wartość Waszego mieszkania ma być widoczna w strukturze majątku (wpisywana ręcznie raz na rok–trzy)?
 4. **Pojedyncze akcje**: „piaskownica” z limitem (podpowiedź 10% części długoterminowej) – zgoda? Jaki limit?
 5. **Konkretne ETF-y**: krótka lista (2–4 fundusze) z numerami ISIN, aktualizowana przeze mnie raz w roku – zgoda? Czy macie już konta maklerskie (gdzie), żebym sprawdził, co jest tam dostępne?
 6. Od którego etapu zaczynamy i czy Wercia ma mieć od razu swoją ankietę, czy najpierw sprawdzasz Ty?
+
+---
+
+## 13. Lista ETF-ów Matiego (zrzuty z XTB, 14.11.2026)
+Dane poza tickerem/dostawcą/walutą są z mojej wiedzy – **przed użyciem w kodzie sprawdzić u dostawcy (ISIN, TER) i wpisać datę sprawdzenia.**
+
+| Ticker XTB | Fundusz | Indeks / co zawiera | Waluta notowania | ISIN (do sprawdzenia) | Koszt roczny (do sprawdzenia) |
+|---|---|---|---|---|---|
+| VWCE.DE | Vanguard FTSE All-World Acc | cały świat (rozwinięte + wschodzące) | EUR | IE00BK5BQT80 | 0,19% |
+| FWIA.DE | Invesco FTSE All-World Acc | cały świat | EUR | IE000716YHJ7 | 0,15% |
+| ALLW.UK | Xtrackers – „FTSE All-World” Acc | cały świat (sprawdzić dokładny indeks) | USD | ? | ? |
+| ISAC.UK | iShares MSCI ACWI Acc | cały świat (MSCI) | USD | IE00B6R52259 | 0,20% |
+| SWDA.UK | iShares Core MSCI World Acc | tylko kraje rozwinięte | GBP (linia) | IE00B4L5Y983 | 0,20% |
+| VHVE.UK | Vanguard FTSE Developed World Acc | tylko kraje rozwinięte | USD | IE00BK5BQV03 | 0,12% |
+| EMIM.UK | iShares Core MSCI EM IMI Acc | rynki wschodzące (+ małe spółki) | GBP (linia) | IE00BKM4GZ66 | 0,18% |
+| VFEA.DE | Vanguard FTSE Emerging Markets Acc | rynki wschodzące | EUR | IE00BK5BR733 | 0,22% |
+
+Wnioski do analizy (dla doradcy):
+- Wszystkie: UCITS, akumulujące, irlandzkie – spełniają kryteria z lektury.
+- To są **3 rodziny tego samego**: „cały świat w jednym” (VWCE, FWIA, ALLW, ISAC) albo „rozwinięte + wschodzące” (SWDA lub VHVE + EMIM lub VFEA ≈ ok. 88/12). Wystarczy **jeden** fundusz świata albo **jedna** para – kupowanie kilku „całych światów” to dublowanie (bez szkody, ale bez korzyści; trudniej pilnować proporcji). Analiza ma to wykrywać i pokazywać.
+- Waluta notowania nie zmienia ryzyka walutowego (liczy się, w co fundusz inwestuje); w XTB każda waluta kosztuje tak samo: 0,5% przy wymianie.
+- Rodzina Vanguard FTSE (VWCE / VHVE+VFEA) i iShares MSCI (ISAC / SWDA+EMIM) – w parze lepiej trzymać się jednej rodziny indeksów (te same zasady podziału na kraje).

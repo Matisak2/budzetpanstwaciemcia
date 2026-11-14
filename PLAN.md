@@ -168,16 +168,15 @@ Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przycisk
 ## Później
 Kopia zapasowa na domowy NAS (5–10 TB) – Mati odezwie się, gdy kupi sprzęt.
 
-# Część 8 – 🧭 Doradca inwestycyjny (plan z 14.11.2026, czeka na akceptację Matiego)
-Pełny plan: **`DORADCA-plan.md`** (ankieta 36 pytań, sposób liczenia, etapy, pytania do Matiego). Notatki z lektury ok. 90 artykułów Marcina Iwucia: `DORADCA-notatki.md`. Stan pracy: `DORADCA-stan.md`.
-**Nic z tego nie jest jeszcze w aplikacji.** Każdy etap dopiero na komendę Matiego, po kopii.
+# Część 8 – 🧭 Doradca inwestycyjny (plan zaakceptowany 14.11.2026)
+**Nowe okno: najpierw przeczytaj `DORADCA-START.md`.** Pełny plan: `DORADCA-plan.md` (punkt 0 = decyzje Matiego, nadrzędne). Wiedza: `DORADCA-notatki.md`.
+Każdy etap dopiero na komendę Matiego, po kopii.
 
-- [x] Analiza: wymagania Matiego, zasady kont (IKE, IKZE, OKI, OIPE, PPK), pełna lektura źródeł
-- [x] Kompletny plan doradcy (`DORADCA-plan.md`)
-- [ ] Odpowiedzi Matiego na 6 pytań z końca planu
-- [ ] Etap D1. Ankieta i diagnoza (poduszka, długi, limity, plan a stan)
-- [ ] Etap D2. „Gdzie”: kwota → bramki → pokrowce z wyliczeniem, „na pewno nie tu”, tryb „wspólnie”
-- [ ] Etap D3. „W co”: niedobory, konkretne instrumenty, koszty, transze
-- [ ] Etap D4. Cele: emerytura, mieszkanie, test kryzysu, strażnik kosztów
-- [ ] Etap D5. Termometr, reguły na spadki, przypomnienia w „Na dziś”
-- [ ] Etap D6. Piaskownica: analiza wpisanej spółki / ETF-u
+- [x] Analiza, pełna lektura źródeł, kompletny plan, odpowiedzi Matiego (PPK poza doradcą, XTB, lista 8 ETF-ów, koło z widełkami)
+- [ ] Etap D1. Klasy aktywów, lista ETF-ów z analizą, auto-śledzenie nowych instrumentów, wykres kołowy „jak jest”
+- [ ] Etap D2. Ankieta i plan: proporcje z widełkami na kole, kotki podpowiadają wyrównanie, diagnoza (poduszka, długi, limity)
+- [ ] Etap D3. „Gdzie”: kwota → bramki → pokrowce z wyliczeniem (IKE/IKZE wg progu, OKI, nadpłata), „na pewno nie tu”, „wspólnie”
+- [ ] Etap D4. „W co”: niedobory, konkretne ETF-y/obligacje, koszty XTB, transze, zapis porady
+- [ ] Etap D5. Cele: emerytura, mieszkanie (+ wartość w majątku), test kryzysu, strażnik kosztów
+- [ ] Etap D6. Termometr, reguły na spadki, przypomnienia w „Na dziś”
+- [ ] Etap D7. Piaskownica: analiza wpisanej spółki / ETF-u
