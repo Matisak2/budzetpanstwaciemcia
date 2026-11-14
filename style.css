@@ -208,6 +208,8 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .lim{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid #eef0f4}
 .wrow{border-top:1px solid #eef0f4;padding:8px 0}.wrow summary{display:flex;gap:8px;align-items:center;list-style:none;cursor:pointer;font-weight:700}.wrow summary::-webkit-details-marker{display:none}.wrow summary .an{flex:1;min-width:0}.wrow .mini{margin-top:4px}
 .where select{width:100%}
+.seg.seg5{display:grid;grid-template-columns:repeat(5,1fr);width:100%}.seg.seg5 button{padding:8px 2px;font-size:13px}
+.buy{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid #eef0f4}
 .ankq{font-size:17px;font-weight:800;line-height:1.35}
 .ankcat{display:flex;justify-content:center}.ankcat svg{max-width:150px;max-height:110px}
 .ankopts{display:flex;flex-direction:column;gap:6px}.ankopts .btn{text-align:left;justify-content:flex-start;white-space:normal;min-height:44px}

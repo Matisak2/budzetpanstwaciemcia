@@ -171,7 +171,7 @@ export function carStats(cfg,tx,pid,odo0=0){const sm=subsMap(cfg),L=tx.filter(t=
   return{cost,byCat,km,odo:odos.length?Math.max(...odos):odo0,l100:span>0&&after>0?after/span*100:null,litre:litSum>0?litCost/litSum:null,perKm:km>0?cost/km:null,n:L.length}}
 /* 💾 the backup file – one function for ⚙️ „Pobierz kopię” and the monthly e-mail (scripts/mail-lib.mjs), so the two never differ.
    BACKUP_KEYS = settings kept in households/main next to the maps of cfg; „Wczytaj kopię” puts them back */
-export const BACKUP_KEYS=['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen','payM','assetCls','assetM','advM','advW'];
+export const BACKUP_KEYS=['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen','payM','assetCls','assetM','advM','advW','advLog'];
 export function backupDoc(D,now=new Date(),extra={}){const h=D.hraw||{};
   return{format:'budzet-mw-2',exported:now.toISOString(),cfg:D.cfg,savTarget:D.savTarget??h.savTarget??0,
     ...Object.fromEntries(BACKUP_KEYS.map(k=>[k,h[k]??(k=='yearAcc'?'':{})])),

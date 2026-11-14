@@ -30,7 +30,7 @@
   function marketFor(today){const ym=today.slice(0,7),inflH={},v=[4.9,4.9,4.9,4.3,4.0,4.1,3.1,2.9,2.9,2.8,2.6,2.4,2.5,2.6,2.7,2.9,3.0,2.9,2.8,2.9,3.0,2.9,2.8,2.9];
     v.forEach((x,i)=>{inflH[addMonths(ym,i-v.length)]=x});const ser=t=>t+pad(+ym.slice(5))+String(+ym.slice(2,4)+({EDO:10,COI:4,ROS:6,ROD:12}[t]||0)).padStart(2,'0');
     return{date:today,ts:Date.now(),fxDate:today,fx:{EUR:4.27,USD:3.98,GBP:5.06,CHF:4.55,CZK:0.171},nbp:4,infl:2.9,inflPer:addMonths(ym,-1),inflH,src:{fx:'demo'},
-      prices:{'IWDA.UK':{p:104.2,d:today,src:'demo',cur:'USD'}},gold:452.1,goldDate:today,funds:{PZU56:{p:109.75,d:today,cur:'PLN'}},
+      prices:{'IWDA.UK':{p:104.2,d:today,src:'demo',cur:'USD'},'VWCE.DE':{p:131.6,d:today,src:'demo',cur:'EUR'}},gold:452.1,goldDate:today,funds:{PZU56:{p:109.75,d:today,cur:'PLN'}},
       bonds:{date:today,EDO:{type:'EDO',series:ser('EDO'),first:5.35,margin:2},COI:{type:'COI',series:ser('COI'),first:4.75,margin:1.5},ROS:{type:'ROS',series:ser('ROS'),first:5.6,margin:2},TOS:{type:'TOS',series:ser('TOS'),first:4.4}}}}
   function build(p){const n=names(p),A=n.Mati,B=n.Wercia,today=iso(new Date()),ym0=today.slice(0,7);
     let seed=20261022;const R=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296},r=(a,b)=>Math.round(a+(b-a)*R()),pick=L=>L[Math.floor(R()*L.length)];

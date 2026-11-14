@@ -1,7 +1,7 @@
 /* 🧭 Doradca – screens (D1a): 🥧 „Z czego składa się majątek” in 💰 Majątek → Oszczędności (groups → classes → instruments and accounts,
    tap = change the class), 🔎 the analysis of held funds and the list of known ETFs. Calculations in advisor.js. */
 import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
+import {fillP,pickEtf,unitsP,tranchesP,bondPickP,adviceDoneP,XTB,taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
 import {donutSvg} from './charts.js';
 import {liveOf,ownerOf,agg,balance} from './logic.js';
 import {youngUntil} from './pay.js';
@@ -9,10 +9,11 @@ import {debtStateP} from './today.js';
 import {goalAlloc} from './actions.js';
 import {kotki} from './guide.js';
 import {scene} from './cats.js';
-import {wrapOf,LIMITS,limitOf,paidInYear} from './inv.js';
+import {wrapOf,LIMITS,limitOf,paidInYear,BONDS} from './inv.js';
 import {esc,rid,td,zl0,dmy,pg,addDays,addMonths} from './util.js';
 import {S,ask,toast,H,HOLD,merge,saveAcc,guard,infoH,isP} from './core.js';
-import {macro,mkt} from './savings.js';
+import {macro,mkt,bondOffer} from './savings.js';
+import {editFixedTr} from './actions.js';
 import {render} from './app.js';
 import {use} from './usage.js';
 
@@ -289,7 +290,7 @@ export function wherePageH(){const I=S.advIn||{amt:0,src:'surplus',goal:'plan',n
   if(!R)return h;const sum=R.rows.reduce((s,x)=>s+x.a,0);
   h+=`<section class="chart" id="wRes"><div class="ct"><b>📍 Gdzie</b><span class="mini">${zl0(sum)} · ${R.P.map(p=>`${p.who}: próg ${p.t=='?'?'nieznany':p.t=='19'?'liniowy':p.t+'%'}`).join(' · ')}</span></div>`+
     R.rows.map((x,i)=>`<details class="wrow"${i==0?' open':''}><summary><span class="an">${esc(x.where)}</span><b class="num">${zl0(x.a)}</b></summary><div class="mini">${esc(x.why)}</div></details>`).join('')+
-    (R.noStocks?`<div class="note bad">🐾 Akcje nie teraz – najpierw bezpieczne miejsca.</div>`:'')+`<div class="mini">„W co” dokładnie (fundusz, obligacje, ile jednostek) – w następnym etapie doradcy.</div></section>`;
+    (R.noStocks?`<div class="note bad">🐾 Akcje nie teraz – najpierw bezpieczne miejsca.</div>`:'')+`</section>`+wherePlusH(R);
   const me=R.P.find(p=>p.who==S.who)||R.P[0],wr=R.rows.find(x=>(x.kind=='ike'||x.kind=='ikze')&&x.who==me.who)||R.rows.find(x=>x.kind=='ike'||x.kind=='ikze');
   if(wr){const p=R.P.find(q=>q.who==wr.who)||me,years=Math.max(5,65-(p.age||35)),C=wrapCompare(wr.a,years,p.t);
     h+=`<section class="chart"><div class="ct"><b>⚖️ IKE, IKZE czy zwykłe konto?</b><span class="mini">${zl0(wr.a)} na ${years} lat (do 65. roku życia) · założenie 5% rocznie, to nie prognoza</span></div>
@@ -297,3 +298,48 @@ export function wherePageH(){const I=S.advIn||{amt:0,src:'surplus',goal:'plan',n
       <div class="mini">Ten sam wzór dla wszystkich trzech – różnicę robią tylko podatki. IKZE wygrywa tylko wtedy, gdy zwrot podatku naprawdę inwestujesz.</div></section>`}
   h+=`<section class="chart"><div class="ct"><b>🚫 Na pewno nie tu</b></div>${R.no.map(x=>`<div class="mini"><b>${esc(x.t)}</b> – ${esc(x.why)}</div>`).join('')}</section>`;
   return h}
+
+/* ======================= D4: 🛒 „W co”, kalkulator obligacji, zapisane porady ======================= */
+const advLog=()=>S.hraw?.advLog||{};
+function priceOf(e){const m=mkt(),sym=etfSym(e),q=m?.prices?.[sym]||m?.prices?.[e.t+'.'+e.ex];if(q?.p)return{p:q.p,cur:q.cur||e.cur,d:q.d};
+  const h=Object.values(S.hold||{}).find(x=>!x.deleted&&etfOf(x)?.isin==e.isin&&x.price);return h?{p:+h.price,cur:h.cur||e.cur,d:h.priceDate}:null}
+const fxOfCur=c=>!c||c=='PLN'?1:mkt()?.fx?.[c]||null;
+/* the purchase list for the long-term part of the answer: fills what is missing in the plan */
+export function buyListP(R,mode){const owner=mode=='both'?'all':S.who,plan=planFor(owner);const L=R.rows.filter(x=>['ike','ikze','reg'].includes(x.kind)).reduce((s,x)=>s+x.a,0);
+  if(!plan||!L)return{plan,L,buys:[]};
+  if(R.noStocks)return{plan,L,safe:true,tr:[],after:[],buys:[{g:'bond',name:'Na razie bezpiecznie: obligacje skarbowe EDO albo gotówka na IKE / IKZE',a:L,units:Math.floor(L/10000),where:'IKE/IKZE w XTB – wpłata zostaje jako gotówka; poza IKE – obligacjeskarbowe.pl',why:'Poduszka jeszcze niedokończona albo pieniądze mogą być potrzebne wcześniej – akcje dokupicie później. Limit IKE/IKZE liczy się od wpłaty, nie od zakupu.'}]};const A=allocNow(owner),D=devP(A,plan),F=fillP(L,D,plan),held=Object.values(S.hold||{}).filter(h=>!h.deleted),buys=[];
+  if(F.stock>0)for(const[c,pc]of Object.entries(plan.split||{s_world:100})){const a=Math.round(F.stock*pc/100);if(a<=0)continue;const e=pickEtf(c,held);
+    if(!e){buys.push({g:'stock',name:clsAll(custom())[c]?.n||c,a,where:'XTB – wybierz tani, szeroki ETF tego regionu',why:'Nie mam go na liście – kryteria jak w „🔎 Analiza funduszy”.'});continue}
+    const pr=priceOf(e),fx=pr?fxOfCur(pr.cur):null,u=unitsP(a,pr?.p,pr?.cur||e.cur,fx);
+    buys.push({g:'stock',name:e.n,ticker:etfSym(e),isin:e.isin,a,fee:u.fee,units:u.units,price:pr?.p,cur:pr?.cur||e.cur,where:'XTB – na IKE / IKZE z listy wyżej',why:`${COV[e.cov]} · koszt ${String(e.ter).replace('.',',')}% rocznie · ISIN ${e.isin}${held.some(h=>etfOf(h)?.isin==e.isin)?' · już go macie – dokupcie ten sam':''}`})}
+  if(F.bond>0)buys.push({g:'bond',name:'Obligacje skarbowe EDO (10-letnie, inflacja + marża)',a:F.bond,units:Math.floor(F.bond/10000),where:'obligacjeskarbowe.pl / PKO BP (rachunek obligacji albo IKE-Obligacje)',why:'Chronią przed inflacją, nie spadają z giełdą. W IKE w XTB obligacji detalicznych nie kupisz – na IKE trzymajcie akcje, obligacje obok.'});
+  if(F.gold>0)buys.push({g:'gold',name:'Złoto: ETC na złoto fizyczne (w IKE/IKZE) albo moneta 1 uncja',a:F.gold,where:F.gold<1000000?'XTB – ETC na złoto fizyczne (sprawdź w XTB nazwę i koszt)':'mennica / dealer – moneta 1 oz (marża do ok. 5%)',why:`Polisa na kryzys i słabego złotego.${mkt()?.gold?` Uncja dziś ok. ${zl0(Math.round(mkt().gold*31.1035*100))}.`:''}`});
+  if(F.cash>0)buys.push({g:'cash',name:'Gotówka – „suchy proch” na konto oszczędnościowe',a:F.cash,where:'konto oszczędnościowe',why:'Zgodnie z planem – na okazje w czasie przeceny.'});
+  const st=F.stock,tr=tranchesP(st,D.base,td()),after=D.G.map(x=>({g:x.g,t:x.t,now:D.base+L?Math.round((x.now*D.base/100+F[x.g])/(D.base+L)*1000)/10:0}));
+  return{plan,L,buys,tr,after,D}}
+export function wherePlusH(R){const mode=S.advIn?.mode||'me',B=buyListP(R,mode);let h='';
+  if(!B.plan)h+=`<div class="note">🐾 „W co” policzę, gdy będzie zatwierdzony plan (📄 Plan → ✓ Zatwierdzam).</div>`;
+  else if(B.buys.length){h+=`<section class="chart"><div class="ct"><b>🛒 W co</b><span class="mini">${zl0(B.L)} na część długoterminową – dokupujemy to, czego brakuje w planie</span></div>`+
+    B.buys.map(b=>`<div class="buy"><div class="r1"><b>${esc(b.name)}</b><b class="num">${zl0(b.a)}</b></div>${b.ticker?`<div class="mini">🔤 ${esc(b.ticker)} · ${b.units!=null?`ok. <b>${String(b.units).replace('.',',')} j.</b> po ${String(b.price).replace('.',',')} ${esc(b.cur)}`:'liczba jednostek – według ceny w XTB'}${b.fee?` · wymiana waluty 0,5% ≈ ${zl0(b.fee)}`:' · bez prowizji'}</div>`:''}${b.g=='bond'?`<div class="mini">🧾 ${b.units} szt. po 100 zł</div>`:''}
+      <div class="mini">📍 ${esc(b.where)}</div><div class="mini">${esc(b.why)}</div></div>`).join('')+
+    (B.tr.length?`<div class="note">🐾 To duża kwota w akcje (ponad 10% części długoterminowej) – rozłóżcie ją na ${B.tr.length} równe zakupy, raz w miesiącu: ${B.tr.map(t=>`${dmy(t.date)} ${zl0(t.a)}`).join(' · ')}. Kupujcie zleceniem z limitem ceny.</div>`:`<div class="mini">💡 Kupujcie zleceniem z limitem ceny. W XTB prowizja 0 zł, każda wymiana waluty 0,5% (stan na ${dmy(XTB.at)}).</div>`)+
+    (B.safe?'':`<div class="mini"><b>Po zakupie:</b> ${B.after.map(x=>`${AGRP[x.g].i} ${String(x.now).replace('.',',')}% (plan ${x.t}%)`).join(' · ')}</div>`)+`
+    <div class="g2"><button class="btn primary" onclick="saveAdvice()">💾 Zapisz poradę</button>${B.plan.save?`<button class="btn" onclick="advFixed()">📌 Stały przelew ${zl0(B.plan.save)}/mies.</button>`:''}</div></section>`}
+  /* 🧮 bond calculator */
+  const off=bondOffer(),M=S.bondM||36,amt=R.rows.filter(x=>['pod','safe'].includes(x.kind)).reduce((s,x)=>s+x.a,0)||1000000;
+  h+=`<section class="chart"><div class="ct"><b>🧮 Która obligacja da najwięcej?</b><span class="mini">${zl0(amt)} · obecna oferta, inflacja i stopa NBP jak dziś – porównanie, nie prognoza</span></div>
+    <div class="seg seg5">${[12,24,36,48,120].map(m=>`<button aria-pressed="${M==m}" onclick="setBondM(${m})">${m<24?'1 rok':m<120?m/12+' lata':'10 lat'}</button>`).join('')}</div>`;
+  if(!off)h+=`<div class="mini">Oferta obligacji na ten miesiąc jeszcze nie pobrana – automat sprawdza ją wieczorem.</div>`;
+  else{const L=bondPickP(M,amt,off,macro(),false);h+=L.map((x,i)=>`<div class="r1 mini"><span>${i==0?'🏆 ':''}<b>${x.t}</b> – ${esc(BONDS[x.t].n.split(' – ')[1]||'')}</span><b class="num">${zl0(x.v)} <em>(+${zl0(x.v-amt)})</em></b></div>`).join('')+`<div class="mini">Po podatku Belki i opłacie za wcześniejszy wykup (gdy obligacja dłuższa niż okres). Rodzinne ROS/ROD – tylko z 800+.</div>`}
+  h+='</section>';
+  const L=Object.entries(advLog()).filter(([,x])=>x&&!x.deleted&&(x.who==S.who||x.mode=='both')).sort((a,b)=>b[1].at-a[1].at).slice(0,5);
+  if(L.length)h+=`<section class="chart"><div class="ct"><b>📋 Zapisane porady</b><span class="mini">odhaczam same, gdy wpiszesz zakup albo przelew</span></div>${L.map(([id,x])=>{const d=adviceDoneP(x,S.hold,liveOf(S.tx),S.cfg);
+    return`<details class="wrow"><summary><span class="an">${dmy(new Date(x.at).toISOString().slice(0,10))} · ${zl0(x.amt)}</span><b class="num">${d.n==d.of&&d.of?'✅':`${d.n}/${d.of}`}</b></summary>${[...d.rows.filter(r=>r.kind=='ike'||r.kind=='ikze'),...d.buys].map(r=>`<div class="mini">${r.done?'✅':'⬜'} ${esc(r.where&&!r.g?r.where:r.name)} – ${zl0(r.a)}</div>`).join('')}<button class="chip" onclick="delAdvice('${id}')">🗑️ Usuń poradę</button></details>`}).join('')}</section>`;
+  return h}
+export function setBondM(m){S.bondM=m;render()}
+export function saveAdvice(){if(guard())return;const R=S.advRes;if(!R)return;const B=buyListP(R,S.advIn?.mode||'me'),id='av'+rid();
+  const x={at:Date.now(),who:S.who,mode:S.advIn?.mode||'me',amt:S.advIn.amt,rows:R.rows.map(({a,where,kind,who})=>({a,where,kind,who})),buys:B.buys.map(({g,name,ticker,isin,a,units})=>({g,name,a,...(ticker?{ticker,isin}:{}),...(units!=null?{units}:{})})),tr:B.tr||[],deleted:false};
+  S.hraw={...S.hraw,advLog:{...advLog(),[id]:x}};merge(H,{advLog:{[id]:x}});use('f:porada');toast('💾 Porada zapisana – odhaczę ją, gdy wpiszesz zakup');render()}
+export function delAdvice(id){if(guard())return;const x=advLog()[id];if(!x)return;S.hraw={...S.hraw,advLog:{...advLog(),[id]:{...x,deleted:true}}};merge(H,{advLog:{[id]:{deleted:true}}});toast('Usunięto poradę');render()}
+export function advFixed(){const who=S.who,P=planFor(who)||planFor('all'),to=S.cfg.accs.find(a=>!a.archived&&['ike','ikze'].includes(wrapOf(a))&&ownerOf(a)==who)||S.cfg.accs.find(a=>!a.archived&&a.grp=='inv'&&wrapOf(a)!='ppk');
+  editFixedTr(null,{name:'Inwestycje co miesiąc',amount:P?.save||0,day:10,...(to?{to:to.id}:{})})}

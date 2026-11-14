@@ -10,7 +10,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {keepPrev} from '../scripts/market-lib.mjs';
-import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf} from '../js/advisor.js';
+import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -633,5 +633,25 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Kolejność IKZE wg progu i ryczałtu',[ikzeRank('32'),ikzeRank('19'),ikzeRank('12'),ikzeRank('0'),ikzeRank(8.5),ikzeRank(15),taxOf({q3:'r',q3r:8.5}),taxOf({})],['first','first','after','no','no','after',8.5,'?']);
   // 10 000 zł, 30 lat, 5%: ×4,3219 → IKE 43 219; zwykły 10 000 + 33 219 × 0,81 = 36 908; IKZE 43 219 × 0,9 + zwrot 3 200 z zyskiem po Belce (3 200 + 10 630 × 0,81) = 50 708
   eq('IKE / IKZE / zwykły rachunek za 30 lat',(c=>[Math.round(c.ike/100),Math.round(c.ikze/100),Math.round(c.reg/100),c.back])(wrapCompare(1000000,30,'32')),[43219,50708,36908,320000]);}
+
+/* ---------- 🧭 doradca D4: w co ---------- */
+{ const mc={infl:2.9,nbp:4};
+  // TOS 3 lata 4,4%: 10 000 × 1,044³ = 11 378,9 → zysk 1 378,9 − 19% = 11 116,9; EDO 3 lata: 5,35%, potem 2,9 + 2 = 4,9% → 10 000 × 1,0535 × 1,049² = 11 592,8 − opłata 3 zł × 100 szt. = 1 292,8 zysku − 19% = 11 047,2
+  eq('Obligacje na 3 lata: TOS i EDO z opłatą za wcześniejszy wykup',[Math.round(bondAfter('TOS',36,{first:4.4},mc)/100),Math.round(bondAfter('EDO',36,{first:5.35,margin:2},mc)/100)],[11117,11047]);
+  // ROR co rok 4% wypłacane, po podatku 3,24% × 3 = 972 zł; EDO 10 lat w IKE: 1,0535 × 1,049⁹ = 1,62036 → 16 204 zł
+  eq('Obligacje: ROR z odsetkami wypłacanymi i EDO w IKE na 10 lat',[bondAfter('ROR',36,{first:4},mc),Math.round(bondAfter('EDO',120,{first:5.35,margin:2},mc,{taxFree:true})/100)],[1097200,16204]);
+  eq('Kalkulator obligacji: najlepsza na 3 lata – TOS',bondPickP(36,1000000,{TOS:{first:4.4},EDO:{first:5.35,margin:2},COI:{first:4.75,margin:1.5},ROS:{first:5.6}},mc,false).map(x=>x.t)[0],'TOS');
+  // baza 100 000 zł: gotówka 5%, obligacje 30%, akcje 60%, złoto 5%; plan 0/40/50/10; wpłata 10 000 → po wpłacie 110 000: obligacji brakuje 14 000, złota 6 000 → 7 000 / 3 000
+  const D={base:10000000,G:[{g:'cash',now:5},{g:'bond',now:30},{g:'stock',now:60},{g:'gold',now:5}]},P={g:{stock:50,bond:40,gold:10,cash:0}};
+  eq('W co: wpłata dokupuje to, czego brakuje (akcje ponad plan – nic)',fillP(1000000,D,P),{cash:0,bond:700000,stock:0,gold:300000});
+  // 50 000 zł → 150 000: obligacje 30 000, akcje 15 000, złoto 10 000 = 55 000 > 50 000 → proporcjonalnie 27 273 / 13 636 / 9 091
+  eq('W co: większa wpłata – proporcjonalnie do braków',fillP(5000000,D,P),{cash:0,bond:2727274,stock:1363636,gold:909090});
+  eq('Wybór funduszu: już posiadany, ta sama rodzina, największy',[pickEtf('s_world',[]).t,pickEtf('s_world',[{ticker:'ISAC.UK'}]).t,pickEtf('s_em',[{ticker:'SWDA.UK'}]).t,pickEtf('s_em',[{ticker:'VHVE.UK'}]).t],['VWCE','ISAC','EMIM','VFEA']);
+  // 5 000 zł w EUR: wymiana 0,5% = 25 zł; 4 975 ÷ (130 € × 4,27) = 8,96 j.
+  eq('Jednostki w XTB i koszt wymiany waluty',[unitsP(500000,130,'EUR',4.27),unitsP(500000,130,'PLN',1).fee],[{fee:2500,units:8.96},0]);
+  eq('Transze: 30% części długoterminowej → 6 zakupów co miesiąc; 5% → od razu',[tranchesP(3000000,10000000,'2026-11-30').map(t=>t.date).slice(0,4),tranchesP(500000,10000000,'2026-11-14').length],[['2026-11-30','2026-12-30','2027-01-30','2027-02-28'],0]);
+  const adv={at:Date.parse('2026-11-14T12:00:00Z'),rows:[{kind:'ike',who:'Mati',a:100000}],buys:[{g:'stock',isin:'IE00BK5BQT80',a:100000},{g:'bond',a:50000}]};
+  const dn=adviceDoneP(adv,{h:{kind:'etf',ticker:'VWCE.DE',lots:{l:{date:'2026-11-20',kind:'buy',qty:1,price:130}}}},[{type:'tr',to:'i',acc:'c',amount:100000,date:'2026-11-15'}],{accs:[{id:'i',name:'IKE',wrap:'ike',owner:'Mati'}]});
+  eq('Porada odhacza się sama: zakup funduszu i przelew na IKE (obligacje jeszcze nie)',[dn.n,dn.of,dn.buys.map(b=>b.done)],[2,3,[true,false]]);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

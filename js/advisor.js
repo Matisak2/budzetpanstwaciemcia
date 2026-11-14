@@ -292,3 +292,43 @@ export function whereP(inp,P,ctx){let rest=Math.max(0,Math.round(inp.amt||0));co
   if(!ctx.okiOk&&ctx.today<'2027-01-01')no.push({t:'📦 OKI',why:'Ruszy 1 stycznia 2027 – wtedy dobre na poduszkę, wkład własny i polskie aktywa.'});
   return{rows,no,noStocks,rest}}
 const zlS=g=>zl0(g);
+
+/* ======================= D4: „W co” – niedobory, instrumenty, jednostki, transze, obligacje, porady ======================= */
+/* 🧮 retail bonds: value of an amount after n months (grosze). Year 1 = first, later inflation + margin (COI/EDO/ROS/ROD), NBP rate + margin (ROR/DOR)
+   or fixed (TOS); capitalised series compound, the others pay interest out (counted, not reinvested). At maturity – taxed and rolled over into the same terms;
+   sold earlier – the early redemption fee per bond (at most the interest earned). Belka 19% unless in IKE. Rates stay as today – it is a comparison, not a forecast. */
+export const BOND_FEE={OTS:0,ROR:50,DOR:70,TOS:100,COI:200,EDO:300,ROS:200,ROD:300};
+export function bondAfter(type,months,{first=0,margin}={},macro={},{taxFree=false,amount=1000000}={}){const T=BONDS[type];if(!T)return null;const mg=margin??T.margin,tax=taxFree?0:0.19;
+  const r=y=>(y==0?+first:T.idx=='infl'?Math.max(0,+(macro.infl??0))+mg:T.idx=='nbp'?(+(macro.nbp??0))+mg:+first)/100;
+  const cyc=len=>{if(T.m<12)return{g:r(0)*Math.min(len,T.m)/12,paid:0};let v=1,paid=0;const full=Math.floor(len/12),part=(len%12)/12;
+    for(let y=0;y<full;y++){if(T.cap)v*=1+r(y);else paid+=r(y)}if(part){if(T.cap)v*=1+r(full)*part;else paid+=r(full)*part}return{g:v-1,paid}};
+  let A=amount,cash=0;const k=Math.floor(months/T.m),rem=months%T.m;
+  for(let i=0;i<k;i++){const c=cyc(T.m);cash+=A*c.paid*(1-tax);A+=A*c.g*(1-tax)}
+  if(rem>0){const c=cyc(rem),n=Math.floor(A/10000),fee=Math.min((BOND_FEE[type]||0)*n,A*(c.g+c.paid));const gain=A*(c.g+c.paid)-fee;A+=gain>0?gain*(1-tax):gain}
+  return Math.round(A+cash)}
+export function bondPickP(months,amount,offer,macro,taxFree){return Object.entries(offer||{}).filter(([t])=>BONDS[t]&&!['ROS','ROD'].includes(t)).map(([t,o])=>({t,v:bondAfter(t,months,o,macro,{taxFree,amount})}))
+  .filter(x=>x.v!=null).sort((a,b)=>b.v-a.v)}
+
+/* 🛒 the long-term amount L split by what is missing in the plan after this payment (plan step 3): need = target × (base + L) − now, only positive;
+   needs bigger than L → in their proportion; smaller → needs first, the rest by the plan. Returns {g:{stock,bond,gold,cash}} in grosze (sum = L). */
+export function fillP(L,D,plan){const by=Object.fromEntries(D.G.map(x=>[x.g,Math.round(x.now*D.base/100)])),tot=D.base+L,need={},out={};let sn=0;
+  for(const g of PLAN_G){need[g]=Math.max(0,Math.round(tot*plan.g[g]/100)-by[g]);sn+=need[g]}
+  if(sn>=L)for(const g of PLAN_G)out[g]=sn?Math.floor(L*need[g]/sn):0;
+  else{const rest=L-sn;for(const g of PLAN_G)out[g]=need[g]+Math.floor(rest*plan.g[g]/100)}
+  const diff=L-PLAN_G.reduce((s,g)=>s+out[g],0),big=PLAN_G.reduce((a,g)=>out[g]>out[a]?g:a,'stock');out[big]+=diff;return out}
+/* which ETF for a class: one already held → it; else from the same index family as the held ones; else the biggest on the list */
+export function pickEtf(cls,held=[]){const H=held.map(etfOf).filter(Boolean),own=H.find(e=>e.cls==cls);if(own)return own;const fam=H[0]?.fam;
+  const L=ETFS.filter(e=>e.cls==cls).sort((a,b)=>(fam?(b.fam==fam)-(a.fam==fam):0)||b.aum-a.aum);return L[0]||null}
+/* units in XTB: fractions allowed, no commission, 0,5% on currency exchange (stan na 14.11.2026) */
+export const XTB={fx:0.005,min:100,at:'2026-11-14'};
+export function unitsP(a,price,cur,fxRate){const fee=cur&&cur!='PLN'?Math.round(a*XTB.fx):0;if(!(price>0)||!(fxRate>0))return{fee,units:null};
+  return{fee,units:Math.floor((a-fee)/100/(price*fxRate)*100)/100}}
+/* buying a big stock amount at once (over 10% of the long-term part) → 4–12 equal parts, once a month (plan step 5) */
+export function tranchesP(a,base,today){if(!(a>=200000)||!(base>0)||a<=base*0.1)return[];const n=a<=base*0.25?4:a<=base*0.5?6:12,part=Math.floor(a/n);
+  return Array.from({length:n},(_,i)=>({n:i+1,date:addMonthsD(today,i),a:i==n-1?a-part*(n-1):part}))}
+const addMonthsD=(d,k)=>{const[y,m,dd]=d.split('-').map(Number),t=new Date(Date.UTC(y,m-1+k,1)),last=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate();return t.toISOString().slice(0,8)+String(Math.min(dd,last)).padStart(2,'0')};
+/* ✓ a saved advice: what is already done – a purchase of that fund / bonds / gold after the advice day, or a transfer to that IKE/IKZE */
+export function adviceDoneP(adv,hold,tx,cfg){const since=new Date(adv.at).toISOString().slice(0,10),lots=Object.values(hold||{}).filter(h=>!h.deleted).flatMap(h=>Object.values(h.lots||{}).filter(l=>!l.deleted&&l.kind!='sell'&&l.date>=since).map(l=>({h,l})));
+  const buys=(adv.buys||[]).map(b=>({...b,done:lots.some(({h})=>b.isin?etfOf(h)?.isin==b.isin:b.g=='bond'?h.kind=='obl':b.g=='gold'?h.kind=='zloto':false)}));
+  const rows=(adv.rows||[]).map(r=>({...r,done:(r.kind=='ike'||r.kind=='ikze')&&tx.some(t=>t.type=='tr'&&t.date>=since&&cfg.accs.some(a=>a.id==t.to&&wrapOf(a)==r.kind&&(a.owner||'Wspólne')==r.who))}));
+  const all=[...buys,...rows.filter(r=>r.kind=='ike'||r.kind=='ikze')];return{buys,rows,n:all.filter(x=>x.done).length,of:all.length}}
