@@ -41,7 +41,7 @@
       ['SUBSKRYPCJE','exp','📱',['Spotify','Netflix','Chmura i aplikacje']],['ZWIERZAKI','exp','🐱',['Karma','Weterynarz']],['PREZENTY','exp','🎁',['Prezenty','Święta i okazje']],['INNE','exp','📦',['Opłaty bankowe','Inne wydatki']]];
     const catsM={},sid={};CATS.forEach(([name,type,icon,subs],i)=>{const subsM={};subs.forEach((s,j)=>{subsM[`c${i}s${j}`]={name:s,o:j};sid[s]=`c${i}s${j}`});catsM['c'+i]={name,type,icon,hue:HUES[i],o:i,subsM}});
     const ACC=[['aM',`Konto ${A}`,'cur','Mati',420000],['aW',`Konto ${B}`,'cur','Wercia',380000],['aJ','Konto wspólne','cur','Wspólne',150000],['aG','Gotówka','cur','Wspólne',30000],
-      ['aS','Oszczędności wspólne','sav','Wspólne',1200000],['aP','Poduszka bezpieczeństwa','sav','Wspólne',1800000],['aI',`IKE ${A}`,'inv','Mati',450300,'ike'],['aK',`PPK ${B}`,'inv','Wercia',622380,'ppk'],['aO','Obligacje','inv','Wspólne',1000000],['aY','Subkonto – wydatki roczne','sub','Wspólne',90000]];
+      ['aS','Oszczędności wspólne','sav','Wspólne',1200000],['aP','Poduszka bezpieczeństwa','sav','Wspólne',1800000],['aI',`IKE ${A}`,'inv','Mati',1002400,'ike'],['aK',`PPK ${B}`,'inv','Wercia',622380,'ppk'],['aO','Obligacje i złoto','inv','Wspólne',2300000],['aY','Subkonto – wydatki roczne','sub','Wspólne',90000]];
     const accsM={};ACC.forEach(([id,name,grp,owner,open,wrap],o)=>{accsM[id]={name,grp,owner,open,o,...(wrap?{wrap}:{})}});
     /* 💰 the shared savings account has interest: 4,5%, a 6% promotion up to 10 000 zł ending in 12 days */
     {const iso=d=>d.toISOString().slice(0,10),n=new Date();accsM.aS.int={rates:{[iso(new Date(Date.UTC(n.getFullYear(),n.getMonth()-4,1)))]:4.5},promo:6,promoTo:iso(new Date(Date.now()+12*864e5)),promoMax:1000000,cap:'m',tax:'bank'}}const own=Object.fromEntries(ACC.map(a=>[a[0],a[3]]));
@@ -99,6 +99,9 @@
     st['households/main/hold/h1']={acc:'aI',kind:'etf',name:'MSCI World',ticker:'IWDA.UK',cur:'USD',price:95,fxNow:3.95,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:12,price:95,fx:3.95,fee:0}},deleted:false};
     st['households/main/hold/h2']={acc:'aK',kind:'tfi',name:'PPK inPZU 2040',fund:{id:'PZU56',path:'fundusze-ppk/PZU56/ppk-inpzu-2040',name:'PPK inPZU 2040'},cur:'PLN',price:101.2,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:61.5,price:101.2,fx:1,fee:0},...ppkLots},deleted:false};
     st['households/main/hold/h3']={acc:'aO',kind:'obl',name:'EDO 10-letnie',cur:'PLN',bond:{type:'EDO',first:5.6,margin:2},lots:{l1:{date:m14,kind:'buy',qty:100,price:100}},deleted:false};
+    st['households/main/hold/h4']={acc:'aI',kind:'etf',name:'Vanguard FTSE All-World (Acc)',ticker:'VWCE.DE',cur:'EUR',price:128,fxNow:4.25,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:6,price:128,fx:4.25,fee:0}},deleted:false};
+    st['households/main/hold/h5']={acc:'aI',kind:'etf',name:'iShares Core S&P 500 (Acc)',ticker:'CSPX.UK',cur:'USD',price:610,fxNow:3.7,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:1,price:610,fx:3.7,fee:0}},deleted:false};
+    st['households/main/hold/h6']={acc:'aO',kind:'zloto',name:'Złota moneta 1 oz (31,1 g)',cur:'PLN',price:430,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:31.1,price:418,fx:1,fee:0}},deleted:false};
     st['households/main/goals/g1']={name:'Wakacje',target:800000,alloc:250000,deadline:addMonths(ym0,8)+'-01',owner:'Wspólne'};
     st['households/main/market/rates']=marketFor(today);
     st['households/main/market/funds']={checked:ym0,date:today,list:{PZU56:'ppk-inpzu-2040',PCS81:'pko-emerytura-2060',PIO78:'pekao-ppk-2060',KAH29:'esaliens-2050',ALL87:'allianz-plan-emerytalny-2050'}};

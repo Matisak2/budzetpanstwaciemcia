@@ -10,6 +10,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {keepPrev} from '../scripts/market-lib.mjs';
+import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -556,5 +557,26 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Etap 2 – podpowiedź: Mati zapłacił 300 zł za wspólne',E.Mati.paidFor,{'Wspólne':30000});
   eq('Etap 2 – część planu i wydane (Mati / Wercia)',[E.Mati.mine.plan,E.Mati.mine.spent,E.Wercia.mine.plan,E.Wercia.mine.spent],[30000,10000,80000,30000]);
   eq('Etap 2 – ponad swoją część: kosmetyki 300 z 200 zł',E.Wercia.mine.over.map(x=>[x.sub,x.spent,x.plan]),[['k',30000,20000]]);}
+
+/* ---------- 🧭 doradca D1a: klasy aktywów, lista ETF-ów, koło majątku ---------- */
+{ eq('ETF z listy po symbolu i innej linii notowań (IWDA = SWDA)',[clsOf({kind:'etf',ticker:'iwda.uk'}),etfOf({ticker:'EIMI.UK'})?.isin,etfOf({ticker:'VWCE.DE'})?.ter],['s_dev','IE00BKM4GZ66',0.14]);
+  eq('ETF spoza listy = do przypisania, podpowiedź z nazwy',[clsOf({kind:'etf',ticker:'CSPX.UK',name:'iShares Core S&P 500'}),guessCls('iShares Core S&P 500'),guessCls('Leveraged 3x Nasdaq'),guessCls('Xtrackers MSCI Emerging Markets')],['todo','s_us','s_theme','s_em']);
+  eq('Klasa z rodzaju: COI indeksowane, TOS stałe, złoto, krypto, lokata, akcje',['COI','TOS'].map(b=>clsOf({kind:'obl',bond:{type:b}})).concat([clsOf({kind:'zloto'}),clsOf({kind:'zloto',ticker:'IGLN.UK'}),clsOf({kind:'krypto'}),clsOf({kind:'lokata'}),clsOf({kind:'akcje'})]),['b_idx','b_fix','g_phys','g_etc','x_crypto','deposit','s_single']);
+  eq('Klasa wpisana ręcznie wygrywa, nieznana – domyślna',[clsOf({kind:'etf',ticker:'VWCE',cls:'s_pl'}),clsOf({kind:'etf',cls:'uz'},{uz:{name:'Zegarki',grp:'alt'}}),clsOf({kind:'etf',ticker:'VWCE',cls:'zz'})],['s_pl','uz','s_world']);
+  eq('Dublowanie: dwa „całe światy”',etfDup([{ticker:'VWCE.DE'},{ticker:'ISAC.UK'}]).map(x=>x.slice(0,8)),['Macie 2 ']);
+  eq('Para z jednej rodziny – bez uwag; z dwóch – jedna uwaga; świat + wschodzące – jedna',[etfDup([{ticker:'SWDA.UK'},{ticker:'EMIM.UK'}]).length,etfDup([{ticker:'SWDA.UK'},{ticker:'VFEA.DE'}]).length,etfDup([{ticker:'VWCE'},{ticker:'EMIM'}]).length],[0,1,1]);
+  eq('Analiza: fundusz z listy spełnia kryteria, z dźwignią – flaga',[etfCheck({ticker:'VWCE.DE'}).checks.every(c=>c[0]),etfCheck({ticker:'XX',name:'Daily 3x Leveraged'}).flags.length>0],[true,true]);
+  // poduszka 18 000 zł; IKE Mati 10 000 zł: VWCE 10 j. × 110 € × 4,00 = 4 400 zł (kupione po 100 €), EDO 30 szt. kupione dziś = 3 000 zł → gotówka 10 000 + 400 (niezaksięgowany zysk) − 7 400 = 3 000 zł;
+  // konto w USD 1 000 $ × 4,00 = 4 000 zł; konto w CHF bez kursu – pominięte; PPK, konto bieżące i zarchiwizowane – nie liczą się
+  const cfg={accs:[{id:'p',name:'Poduszka',grp:'sav',owner:'Wspólne',open:1800000},{id:'i',name:'IKE Mati',grp:'inv',owner:'Mati',open:1000000,wrap:'ike'},{id:'k',name:'PPK Wercia',grp:'inv',owner:'Wercia',open:500000,wrap:'ppk'},
+    {id:'u',name:'Dolary',grp:'sav',owner:'Mati',open:100000,cur:'USD'},{id:'f',name:'Franki',grp:'sav',owner:'Wercia',open:50000,cur:'CHF'},{id:'c',name:'Bieżące',grp:'cur',owner:'Mati',open:900000},{id:'z',name:'Stare',grp:'sav',owner:'Mati',open:70000,archived:true}]};
+  const hold={h1:{acc:'i',kind:'etf',name:'VWCE',ticker:'VWCE.DE',cur:'EUR',price:110,fxNow:4,lots:{l:{date:'2026-10-01',kind:'buy',qty:10,price:100,fx:4,fee:0}}},h2:{acc:'i',kind:'obl',name:'EDO',bond:{type:'EDO',first:5.35},lots:{l:{date:'2026-11-14',kind:'buy',qty:30,price:100}}},
+    h3:{acc:'k',kind:'tfi',name:'PPK',price:100,lots:{l:{date:'2026-10-01',kind:'buy',qty:50,price:100,fx:1}}}};
+  const A=allocP(cfg,[],hold,'2026-11-14',{},{fx:{USD:4}});
+  eq('Koło: razem i grupy (gotówka 18 000 + 3 000 + 4 000, obligacje 3 000, akcje 4 400 zł)',[A.total,A.groups.map(g=>[g.g,g.v])],[3240000,[['cash',2500000],['bond',300000],['stock',440000]]]);
+  eq('Koło: pominięte konto bez kursu waluty',A.skipped,[{name:'Franki',cur:'CHF'}]);
+  eq('Koło: tylko Mati (IKE + dolary)',allocP(cfg,[],hold,'2026-11-14',{},{fx:{USD:4}},{owner:'Mati'}).total,1440000);
+  const cfg2={accs:cfg.accs.map(a=>a.id=='p'?{...a,cls:'uz'}:a)};
+  eq('Koło: własna klasa konta trafia do swojej grupy',allocP(cfg2,[],hold,'2026-11-14',{},{fx:{USD:4}},{custom:{uz:{name:'Zegarki',grp:'alt'}}}).groups.find(g=>g.g=='alt')?.v,1800000);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

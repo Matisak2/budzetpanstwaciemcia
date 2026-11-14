@@ -13,6 +13,7 @@ import {gr} from './salary.js';
 import {remsH,warrantiesH,rems,saveRem,projs} from './debts.js';
 import {accN,render} from './app.js';
 import {use} from './usage.js';
+import {etfOf,ETFS,etfSym} from './advisor.js';
 
 /* ---------- 📈 savings & investments: instruments, values on one screen, limits, paid vs value, FIRE ---------- */
 export const accById=id=>S.cfg.accs.find(a=>a.id==id);
@@ -52,9 +53,10 @@ export function instPageH(){const a=accById(S.instAcc);if(!a){S.instAcc=null;ret
   return h}
 export async function editInst(id,accId){if(guard())return;const it0=id?S.hold[id]:null,a=accById(it0?.acc||accId);if(!a)return;
   const r=await ask({title:it0?'Instrument':'Nowy instrument – '+a.name,fields:[{id:'k',label:'Rodzaj',type:'select',value:it0?.kind||'etf',options:Object.entries(IKINDS)},
-    {id:'n',label:'Nazwa',value:it0?.name||'',ph:'np. MSCI World, EDO0336, Lokata 6 mies.'},{id:'t',label:'Symbol dla automatu (jak w stooq.pl)',value:it0?.ticker||'',ph:'np. IWDA.UK, VWCE.DE, CDR, AAPL.US, BTC'}],ok:'Dalej',alt:it0?'Usuń instrument':null});
+    {id:'n',label:'Nazwa',value:it0?.name||'',ph:'np. MSCI World, EDO0336, Lokata 6 mies.'},{id:'t',label:'Symbol dla automatu (jak w stooq.pl)',value:it0?.ticker||'',ph:'np. VWCE.DE, SWDA.UK, CDR, AAPL.US, BTC'}],text:it0?'':'📋 Fundusze z Waszej listy (wpisz symbol – nazwę i walutę uzupełnię): '+ETFS.map(etfSym).join(', '),ok:'Dalej',alt:it0?'Usuń instrument':null});
   if(!r)return;
   if(r=='alt'){if(!await ask({title:'Usunąć instrument?',text:it0.name+'\nWycenę konta zapisz potem ponownie.',ok:'Usuń',danger:true}))return;merge(doc(HOLD(),id),{deleted:true});return toast('Usunięto instrument')}
+  const E=r.k=='etf'?etfOf({ticker:r.t}):null;if(!r.n.trim()&&E)r.n=E.n;
   if(!r.n.trim()&&r.k!='tfi')return toast('Podaj nazwę','bad');const k=r.k,isNew=!it0,f=[];let text='';
   if(k=='obl'){const b=it0?.bond||{},off=bondOffer();f.push({id:'bt',label:'Rodzaj obligacji',type:'select',value:b.type||'EDO',options:Object.entries(BONDS).map(([c,x])=>[c,x.n])},
       {id:'b1',label:'Oprocentowanie w 1. okresie (%)',type:'decimal',value:b.first!=null?nf(b.first):'',ph:off?'puste = z serii w sprzedaży':'z potwierdzenia zakupu'},
@@ -64,7 +66,7 @@ export async function editInst(id,accId){if(guard())return;const it0=id?S.hold[i
       {id:'fu',label:'Adres strony funduszu na analizy.pl (tylko „Inny fundusz”)',value:it0?.fund?.path&&!L.some(x=>x[0]==it0.fund.id)?'https://www.analizy.pl/'+it0.fund.path:'',ph:'https://www.analizy.pl/fundusze-…'});
     text=L.length?'Wybierz fundusz z listy PPK. Wartość jednostki automat pobiera w każdy dzień roboczy wieczorem.':'Lista funduszy PPK pojawi się po pierwszym działaniu automatu (dzień roboczy wieczorem). Na razie możesz wkleić adres strony funduszu z analizy.pl albo dodać fundusz później.'}
   else if(k=='lokata')f.push({id:'dr',label:'Oprocentowanie roczne (%)',type:'decimal',value:it0?.dep?.rate!=null?nf(it0.dep.rate):''},{id:'dm',label:'Na ile miesięcy',type:'int',value:it0?.dep?.months||6});
-  else if(k!='tfi')f.push({id:'c',label:'Waluta notowań',type:'select',value:it0?.cur||CUR(a),options:CUR_OPTS});
+  else if(k!='tfi')f.push({id:'c',label:'Waluta notowań',type:'select',value:it0?.cur||E?.cur||CUR(a),options:CUR_OPTS});
   if(isNew){f.push({id:'ld',label:k=='lokata'?'Data założenia':k=='tfi'?'Stan na dzień':'Data zakupu',type:'date',value:td()});
     if(k=='obl')f.push({id:'lq',label:'Liczba obligacji (1 szt. = 100 zł)',type:'int',value:''});
     else if(k=='tfi')f.push({id:'lq',label:'Liczba jednostek (z aplikacji PPK / TFI)',type:'decimal',value:''},{id:'lp',label:'Wartość jednostki (zł)',type:'decimal',value:'',ph:'puste = pobierze automat'});

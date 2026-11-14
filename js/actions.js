@@ -314,7 +314,7 @@ export async function allocGoal(gid,dir){if(guard())return;use('f:goal');const g
   toast(`${dir>0?'Przydzielono':'Zabrano'} ${zl(v)}`,'',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),{alloc:have,saved:have})})}
 export async function setSavTarget(){if(guard())return;const r=await ask({title:'Ile chcecie odkładać co miesiąc?',text:'Liczą się wpłaty na konta oszczędnościowe i inwestycyjne (także PPK) minus wypłaty z nich. Zmiana kursów inwestycji się nie liczy. Wpisz 0, żeby wyłączyć.',fields:[{id:'v',label:'Kwota miesięcznie (zł)',type:'decimal',value:S.savTarget?f2(S.savTarget):'',ph:'np. 2000'}]});
   if(!r)return;merge(H,{savTarget:Math.max(0,pg(r.v))});toast('Zapisano cel miesięczny')}
-export function setSub(k){S.sub=k;render()}
+export function setSub(k){S.sub=k;S.advG=null;render()}
 /* bulk reconcile screen in the Accounts tab */
 /* investments are not here – their value is updated in 📈 „Aktualizuj wartości” (and by the automat) */
 export const recAccs=()=>{const o={cur:0,sub:1,sav:2},cur=(S.recScope||'cur')=='cur';return S.cfg.accs.filter(a=>!a.archived&&(cur?a.grp=='cur'||a.grp=='sub':a.grp=='sav')).slice().sort((a,b)=>o[a.grp]-o[b.grp])};
