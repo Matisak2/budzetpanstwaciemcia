@@ -32,7 +32,7 @@ Moduły dodatkowe: test kryzysu, luka emerytalna (z FIRE), cel „mieszkanie”,
 
 ## Postęp czytania (runda 4 – pełna lektura pominiętych fragmentów)
 - Rundy 1–3: ok. 88 artykułów (część tylko początek i koniec – stąd runda 4).
-- Runda 4: 37 paczek `u00`–`u36` (1,3 mln znaków). **Przeczytane i zanotowane: u00–u12.** Następna: **u13**.
+- Runda 4: 37 paczek `u00`–`u36` (1,3 mln znaków). **Przeczytane i zanotowane: u00–u17.** Następna: **u18**.
 - Po każdej paczce: dopisać wnioski do sekcji G w `DORADCA-notatki.md`, zmienić numer w tej linijce, co kilka paczek commit + push.
 - Po u36: napisać plan (`DORADCA-plan.md` + skrót w `PLAN.md`), commit, push, pytania do Matiego.
 
