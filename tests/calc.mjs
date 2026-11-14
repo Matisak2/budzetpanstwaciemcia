@@ -10,7 +10,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {keepPrev} from '../scripts/market-lib.mjs';
-import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare} from '../js/advisor.js';
+import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -590,5 +590,29 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Udział: własne 100%, cudze 0, Wspólne w widoku Wspólne w całości',[assetShare({owner:'Mati'},'Mati'),assetShare({owner:'Mati'},'Wercia'),assetShare({owner:'Wspólne',mp:70},'Wspólne'),assetShare({owner:'Wspólne'},'Wercia')],[1,0,1,0.5]);
   eq('Inne aktywo na kole (bez nieruchomości): LEGO u Matiego, u Werci nic',[allocP({accs:[]},[],{},'2026-11-14',{},null,{owner:'Mati',assets:as,debts}).groups.map(g=>[g.g,g.v]),allocP({accs:[]},[],{},'2026-11-14',{},null,{owner:'Wercia',assets:as,debts}).total],[[['alt',500000]],0]);
   eq('Stara wycena (ponad rok przy rocznym przypomnieniu)',assetOldP(as,'2026-11-14').map(x=>x.id),['X']);}
+
+/* ---------- 🧭 doradca D2: ankieta, plan, widełki, diagnoza ---------- */
+{ // horyzont > 20 lat (bez limitu), spadek 25% → akcje 2 × 25 = 50%, reakcja „nic” → bez limitu; złoto 10%, suchy proch 5% → obligacje 35%
+  eq('Plan: akcje = najniższa granica, reszta obligacje',planP({q42:'gt20',q44:'0.25',q43:'none',q54:'10',q58:'5'}).g,{stock:50,gold:10,cash:5,bond:35});
+  // horyzont 5–10 lat → 40%; spadek 40% → 80%; „sprzedaję część” → 40% → akcje 40%; złoto „nie wiem” → ostrożnie 5%
+  eq('Plan: horyzont 5–10 lat i reakcja na spadek',planP({q42:'5-10',q44:'0.4',q43:'part',q54:'?'}).g,{stock:40,gold:5,cash:0,bond:55});
+  eq('Plan: krótki horyzont = bez akcji; same „nie wiem” = 30% akcji',[planP({q42:'3-5',q44:'0.4'}).g.stock,planP({}).g.stock,planP({q42:'gt20',q44:'0.1'}).g.stock],[0,30,20]);
+  eq('Plan: podział akcji, nieruchomości, poduszka, piaskownica',(p=>[p.split,p.real,p.pod,p.sand])(planP({q55:'devem',q29:'yes',q30:40,q17:'9',q57:'yes',q57a:15})),[{s_dev:88,s_em:12},40,9,10]);
+  eq('Widełki ±5 pkt, a dla małych części ±2,5',[bandOf(40),bandOf(10),bandOf(0)],[[35,45],[7.5,12.5],[0,2.5]]);
+  const pa={g:{stock:60}},pb={g:{stock:30}};eq('Wspólny plan = ostrożniejsza osoba',[jointPlan(pa,pb),jointPlan(pa,null),jointPlan(null,null)],[pb,pa,null]);
+  // 100 000 zł: akcje 50% × −35% = −17 500, złoto 10% × +38% = +3 800 → −13 700 zł (−13,7%)
+  eq('Kryzys 2008 w złotych (wariant ostrożny)',crisisP({stock:50,gold:10,cash:0,bond:40},10000000),{pct:-13.7,zl:-1370000});
+  // poduszka 20 000 (poza planem), gotówka 5 000, obligacje 30 000, akcje 60 000, złoto 5 000 → baza 100 000; plan 50/40/10/0
+  const A={rows:[{kind:'a',accName:'Poduszka',grp:'cash',v:2000000},{kind:'a',accName:'Konto',grp:'cash',v:500000},{kind:'h',accName:'IKE',grp:'bond',v:3000000},{kind:'h',accName:'IKE',grp:'stock',v:6000000},{kind:'h',accName:'IKE',grp:'gold',v:500000}]};
+  const D=devP(A,{g:{stock:50,bond:40,gold:10,cash:0}});
+  eq('Jest / ma być: baza bez poduszki, akcje ponad, obligacje i złoto poniżej',[D.base,D.G.map(x=>[x.g,Math.round(x.now),x.st,x.gap])],[10000000,[['cash',5,'high',-500000],['bond',30,'low',1000000],['stock',60,'high',-1000000],['gold',5,'low',500000]]]);
+  eq('Kotki: najpierw dokupić to, czego najbardziej brakuje',D.low.map(x=>x.g),['bond','gold']);
+  eq('Ankieta: pytania warunkowe (bez dzieci nie pytam o edukację, bez kredytu – o nadpłatę)',[ankList({q9:'no',q20:'no'},{birth:'1990-01-01'}).some(q=>q.id=='q10'||q.id=='q59'||q.id=='q1'),ankList({q9:'yes',q20:'yes'},{birth:''}).filter(q=>['q1','q10','q59'].includes(q.id)).length],[false,3]);
+  eq('Ankieta: ok. 60 pytań w katalogu, bez PPK',[ANK.length>=60,ANK.some(q=>/PPK/.test(q.t))],[true,false]);
+  eq('Ankieta: licznik odpowiedzi',ankDone({q2:['uop'],q3:'32'},{birth:'1990-01-01'}).n,2);
+  // poduszka 30 000 zł / wydatki 6 000 zł = 5 mies.; karta kredytowa 2 000 zł (hipoteka się nie liczy); IKE 28 260 − 10 000 wpłacone = 18 260 zł; 47 dni do 31.12
+  const dg=diagP({cushion:3000000,exp:600000,podTarget:6,debts:[{kind:'karta',left:200000},{kind:'hip',left:50000000}],accs:[{id:'i',name:'IKE',wrap:'ike',owner:'Mati'},{id:'z',name:'IKZE W',wrap:'ikze',owner:'Wercia'}],
+    tx:[{type:'tr',to:'i',acc:'x',amount:1000000,date:'2026-03-01'}],today:'2026-11-14',owner:'Mati'});
+  eq('Diagnoza: poduszka, długi, limity',[dg.pod.m,dg.pod.st,dg.debts,dg.lim,dg.days],[5,'mid',{n:1,sum:200000},[{name:'IKE',w:'ike',left:1826000}],47]);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

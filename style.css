@@ -201,6 +201,20 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .acls{display:flex;flex-direction:column;gap:4px;padding:6px 0;border-top:1px solid #eef0f4}.acls:first-child{border-top:0}
 .aetf{display:flex;flex-direction:column;gap:3px;padding:8px 0;border-top:1px solid #eef0f4}.aetf .chip{align-self:flex-start}
 .aetf b small{font-weight:600;color:#64748b}
+.k-am{background:#fffbeb;border-color:#fde68a}
+.advk{display:grid;grid-template-columns:1fr 1fr;gap:8px}.advk .kpi{min-width:0}.advk .v{font-size:17px;overflow-wrap:anywhere}
+.ankq{font-size:17px;font-weight:800;line-height:1.35}
+.ankcat{display:flex;justify-content:center}.ankcat svg{max-width:150px;max-height:110px}
+.ankopts{display:flex;flex-direction:column;gap:6px}.ankopts .btn{text-align:left;justify-content:flex-start;white-space:normal;min-height:44px}
+.ank textarea{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px;font:inherit;font-size:15px;resize:vertical}
+.anrow{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center}.anrow b{grid-column:1/-1}.anrow input,.anrow select{min-width:0;width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px;font:inherit}.anrow select{grid-column:1/-1}
+.pbars{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.pg{display:flex;flex-direction:column;gap:3px}.pg em{font-style:normal;color:#64748b;font-weight:700;font-size:12px}
+.pbar{position:relative;height:10px;border-radius:6px;background:#f1f5f9}
+.pbar .band{position:absolute;top:0;bottom:0;background:#bbf7d0;border-radius:6px;min-width:3px}
+.pbar .tgt,.pbar .now{position:absolute;top:-3px;width:4px;height:16px;border-radius:3px;margin-left:-2px;background:#64748b}
+.pbar .now.ok{background:#22c55e}.pbar .now.low{background:#f59e0b}.pbar .now.high{background:#fb7185}
+.pg.low b,.pg.high b{color:#b45309}
 .erow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;padding:3px 0}.erow span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stack{display:flex;gap:2px;height:12px;border-radius:6px;overflow:hidden}
 .stack i{display:block;height:100%;cursor:pointer}

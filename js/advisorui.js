@@ -1,12 +1,17 @@
 /* 🧭 Doradca – screens (D1a): 🥧 „Z czego składa się majątek” in 💰 Majątek → Oszczędności (groups → classes → instruments and accounts,
    tap = change the class), 🔎 the analysis of held funds and the list of known ETFs. Calculations in advisor.js. */
 import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
+import {ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
 import {donutSvg} from './charts.js';
-import {liveOf,ownerOf} from './logic.js';
+import {liveOf,ownerOf,agg,balance} from './logic.js';
+import {youngUntil} from './pay.js';
+import {debtStateP} from './today.js';
+import {goalAlloc} from './actions.js';
+import {kotki} from './guide.js';
+import {scene} from './cats.js';
 import {wrapOf} from './inv.js';
-import {esc,rid,td,zl0,dmy,pg} from './util.js';
-import {S,ask,toast,H,HOLD,merge,saveAcc,guard,infoH} from './core.js';
+import {esc,rid,td,zl0,dmy,pg,addDays,addMonths} from './util.js';
+import {S,ask,toast,H,HOLD,merge,saveAcc,guard,infoH,isP} from './core.js';
 import {macro,mkt} from './savings.js';
 import {render} from './app.js';
 import {use} from './usage.js';
@@ -35,12 +40,15 @@ export function allocH(owner){const A=allocNow(owner),R=realNow(owner),all=clsAl
     h+=`<div class="dwrap">${donutSvg(segs,zl0(tot),'pracuje')}<div class="arows">
       ${R.work.value?`<button class="arow" onclick="advGrp('real')"><i style="background:${AGRP.real.c}"></i><span class="an">🏠 Nieruchomości</span><span class="num">${zl0(R.work.net)}</span><em class="num">${pct(Math.max(0,R.work.net),tot)}</em><span class="ar">›</span></button>`:''}
       <button class="arow" onclick="advGrp('assets')"><i style="background:${AGRP.stock.c}"></i><span class="an">📈 Aktywa</span><span class="num">${zl0(A.total)}</span><em class="num">${pct(A.total,tot)}</em><span class="ar">›</span></button>${homeH(R)}</div></div>
-      <div class="mini">Razem z domem: <b style="color:var(--fg)">${zl0(tot+R.home.net)}</b>. Proporcje liczę z tego, co pracuje – bez mieszkania, w którym mieszkacie.</div>`}
+      <div class="mini">Razem z domem: <b style="color:var(--fg)">${zl0(tot+R.home.net)}</b>. Proporcje liczę z tego, co pracuje – bez mieszkania, w którym mieszkacie.</div>`;
+    const P=planFor(owner);if(P?.real!=null&&tot>0){const now=Math.max(0,R.work.net)/tot*100,lo=Math.max(0,P.real-10),hi=Math.min(100,P.real+10);
+      h+=`<div class="mini">🎯 Nieruchomości ${now.toFixed(0)}% · plan ${lo}–${hi}%${now<lo?' – poniżej planu (zakup podsuną kotki w etapie celów, gdy Was stać)':now>hi?' – ponad plan: nowe pieniądze kierujcie do aktywów, mieszkania nie sprzedajemy':' ✓'}</div>`}}
   else if(lvl=='real'){h+=`<button class="btn sm" style="align-self:flex-start" onclick="advGrp()">‹ Wróć</button><div class="r1"><b>🏠 Nieruchomości</b><span class="num">netto ${zl0(R.work.net+R.home.net)}</span></div>`;
     h+=R.list.map(x=>`<button class="arow asub areal" onclick="editAsset('${x.id}')"><span class="an">${all[x.cls].i} ${esc(x.name)}<small>${x.home?'🏡 mieszkamy – nie zarabia':REAL_USE[x.use]||esc(all[x.cls].n)}${x.rent?' · czynsz '+zl0(x.rent)+'/mies.':''}${x.share<1?' · Twój udział '+Math.round(x.share*100)+'%':''}<br>wartość ${zl0(x.value)}${x.debt?' − kredyt '+zl0(x.debt):''}${x.valAt?' · wycena z '+dmy(x.valAt):''}</small></span><span class="num">${zl0(x.net)}</span><span class="ar">✎</span></button>`).join('')}
   else if(!lvl||lvl=='assets'){const segs=A.groups.map(x=>({l:AGRP[x.g].n,v:x.v,c:AGRP[x.g].c}));
     if(lvl)h+=`<button class="btn sm" style="align-self:flex-start" onclick="advGrp()">‹ Wróć</button><div class="r1"><b>📈 Aktywa</b><span class="num">${zl0(A.total)}</span></div>`;
-    h+=A.rows.length?`<div class="dwrap">${donutSvg(segs,zl0(A.total),'razem')}<div class="arows">${grpRows(A)}</div></div>`:'<div class="mini">Brak aktywów poza nieruchomościami.</div>'}
+    h+=A.rows.length?`<div class="dwrap">${donutSvg(segs,zl0(A.total),'razem')}<div class="arows">${grpRows(A)}</div></div>`:'<div class="mini">Brak aktywów poza nieruchomościami.</div>';
+    const P=planFor(owner);if(P&&A.rows.length)h+=planBarsH(A,P);else if(!P&&A.rows.length)h+=`<div class="mini">🎯 Widełki planu pojawią się po ankiecie doradcy (karta „🧭 Doradca” wyżej).</div>`}
   else{const g=A.groups.find(x=>x.g==lvl),segs=g.cls.map((k,i)=>({l:all[k.c].n,v:k.v,c:clsCol(k.c,i)}));
     h+=`<button class="btn sm" style="align-self:flex-start" onclick="advGrp('${hasReal?'assets':''}')">‹ Wróć</button><div class="r1"><b>${AGRP[g.g].i} ${esc(AGRP[g.g].n)}</b><span class="num">${zl0(g.v)} · ${pct(g.v,A.total)} aktywów</span></div>
       <div class="dwrap">${donutSvg(segs,zl0(g.v),AGRP[g.g].n.toLowerCase())}<div class="arows">${g.cls.map((k,i)=>`<div class="acls"><div class="r1"><span class="an"><i style="background:${clsCol(k.c,i)}"></i>${all[k.c].i} ${esc(all[k.c].n)}</span><span class="num">${zl0(k.v)} <em>${pct(k.v,g.v)}</em></span></div>
@@ -115,3 +123,114 @@ export function etfCardH(owner){const accs=new Map(S.cfg.accs.filter(a=>!a.archi
     ${['world','dev','em'].map(cv=>`<div class="mini" style="margin-top:6px"><b>${COV[cv]}</b></div>`+ETFS.filter(e=>e.cov==cv).map(e=>`<div class="erow mini"><b>${etfSym(e)}</b><span>${esc(e.n)}</span><span class="num">${String(e.ter).replace('.',',')}%</span></div>`).join('')).join('')}
     <div class="mini" style="margin-top:6px">W XTB każda wymiana waluty kosztuje 0,5%, niezależnie od waluty notowania. Instrument spoza listy po dodaniu też jest śledzony przez automat i analizowany.</div></details></section>`;
   return h}
+
+/* ======================= D2: 🧭 doradca – ankieta, plan, widełki, diagnoza ======================= */
+const advM=()=>S.hraw?.advM||{},advW=()=>S.hraw?.advW||{};
+export const ankOf=who=>({...(advW().ank||{}),...(advM()[who]?.ank||{})});
+/* the survey is first only on Mati's phone (decision 19) until he unlocks it for Wercia */
+export const ankOpen=who=>who=='Mati'||!!advW().showW;
+export const planOfWho=who=>advM()[who]?.plan||null;
+/* the plan for a view: a person – theirs; Razem / Wspólne – the joint one (the more cautious person's), unless they chose separate parts */
+export function planFor(owner){const o=ownF(owner);if(o=='Mati'||o=='Wercia')return planOfWho(o);if(advW().ank?.q64=='sep'&&o!='Wspólne')return null;return jointPlan(planOfWho('Mati'),planOfWho('Wercia'))}
+/* what the app already knows for the survey ([A]) */
+function ankCtx(who){const tx=liveOf(S.tx),today=td(),cur=today.slice(0,7),A=allocNow(who),R=realNow(who);let inc=0,exp=0,n=0;
+  for(let k=1;k<=6;k++){const g=agg(S.cfg,tx,addMonths(cur,-k));if(g.inc||g.exp){inc+=g.inc;exp+=g.exp;n++}}
+  const incs=(S.cfg.incs||[]).filter(x=>x.who==who),kinds=[...new Set(incs.map(x=>x.kind))],birth=S.hraw?.birth?.[who]||'';
+  let taxHint='';if(birth&&youngUntil(birth)>today&&kinds.some(k=>k=='uop'||k=='zlec'))taxHint='0';
+  else if(kinds.some(k=>k=='uop'||k=='zlec')){let b=0,m=0;for(const[ym,sl]of Object.entries(S.slips||{})){if(!ym.startsWith(today.slice(0,4)))continue;let any=0;for(const x of Object.values(sl||{}))if(x?.who==who){b+=+x.base||0;any=1}m+=any}
+    if(m)taxHint=b/m*12>12000000?'32':'12'}
+  const pool=S.cfg.accs.filter(a=>a.grp=='sav'&&!a.archived&&isP(a)).reduce((s,a)=>s+balance(S.cfg,tx,a.id,addDays(today,1)),0),inGoals=Object.values(S.goals||{}).reduce((s,g)=>s+Math.max(0,goalAlloc(g)),0),cush=Math.max(0,pool-inGoals);
+  const avgE=n?exp/n:0,dl=Object.entries(S.debts||{}).filter(([,d])=>!d.deleted&&d.dir=='owe').map(([id,d])=>({id,...d,left:debtStateP({id,...d},tx,today).left}));
+  const cons=dl.filter(d=>d.kind!='hip'),mort=dl.filter(d=>d.kind=='hip'),wrapTxt=w=>{const L=S.cfg.accs.filter(a=>!a.archived&&wrapOf(a)==w&&ownerOf(a)==who);return L.length?'W aplikacji: '+L.map(a=>a.name).join(', ')+'.':''};
+  const base=devP(A,{g:{cash:0,bond:0,stock:0,gold:0}}).base;
+  return{birth,kinds,taxHint,wealth:A.total+R.work.net+R.home.net,base:base||A.total,wealthTxt:zl0(A.total+R.work.net+R.home.net)+(R.list.length?' (z nieruchomościami)':''),surplus:n?(inc-exp)/n:0,surplusTxt:n?`${zl0((inc-exp)/n)} miesięcznie (${inc?Math.round((inc-exp)/inc*100):0}% przychodów)`:'za mało danych',
+    exp:avgE,expTxt:zl0(avgE),podM:avgE?cush/avgE:0,podMTxt:avgE?(cush/avgE).toFixed(1).replace('.',',')+' mies.':'—',cush,debtsTxt:cons.map(d=>`${d.name} ${zl0(d.left)}`).join(', '),mortTxt:mort.map(d=>`${d.name} ${zl0(d.left)}`).join(', '),
+    ikeTxt:wrapTxt('ike'),ikzeTxt:wrapTxt('ikze'),realTxt:R.list.map(x=>x.name).join(', '),hasHome:R.list.some(x=>x.home),hasRent:R.list.some(x=>x.use=='rent'),zl:zl0,debtList:dl}}
+function saveAns(q,v,who=S.who){const k=q.w?'advW':'advM';
+  if(q.w){const W=advW();S.hraw={...S.hraw,advW:{...W,ank:{...(W.ank||{}),[q.id]:v},at:Date.now()}};merge(H,{advW:{ank:{[q.id]:v},at:Date.now()}})}
+  else{const M=advM(),me=M[who]||{};S.hraw={...S.hraw,advM:{...M,[who]:{...me,ank:{...(me.ank||{}),[q.id]:v},at:Date.now()}}};merge(H,{advM:{[who]:{ank:{[q.id]:v},at:Date.now()}}})}
+  return k}
+
+/* 🧭 the card on Oszczędności: diagnosis + the survey / the plan */
+export function advCardH(owner){const who=S.who,ctx=ankCtx(who),A=ankOf(who),dn=ankDone(A,ctx),plan=planOfWho(who),open=ankOpen(who);
+  const D=diagP({cushion:ctx.cush,exp:ctx.exp,podTarget:+(A.q17||6)||6,debts:ctx.debtList,accs:S.cfg.accs,tx:liveOf(S.tx),limits:S.hraw?.limits,today:td(),owner:who});
+  const lim=D.lim.length?D.lim.map(l=>`${l.w.toUpperCase()} ${zl0(l.left)}`).join(' · '):'brak IKE/IKZE';
+  const tile=(c,l,v,s)=>`<div class="kpi ${c}"><div class="l">${l}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`;
+  let h=`<section class="chart adv"><div class="ct"><b>🧭 Doradca</b><span class="mini">${esc(who)} · kotki liczą, nie zgadują przyszłości</span></div><div class="kpis advk">
+    ${tile(D.pod.st=='ok'?'k-em':D.pod.st=='low'?'k-ro':'k-am','🛟 Poduszka',D.pod.m==null?'—':D.pod.m.toFixed(1).replace('.',',')+' mies.',`cel ${D.pod.target} mies.`)}
+    ${tile(D.debts.n?'k-ro':'k-em','🔻 Długi najpierw',D.debts.n?zl0(D.debts.sum):'brak',D.debts.n?'spłać przed inwestowaniem':'bez kart i rat – super')}
+    ${tile('k-sk','📅 Limity '+td().slice(0,4),lim,`zostało ${D.days} dni · OKI od 2027`)}
+    ${tile(plan?'k-em':'k-am','🎯 Plan',plan?`akcje ${plan.g.stock}%`:open?`${dn.n}/${dn.of}`:'—',plan?`obligacje ${plan.g.bond}% · złoto ${plan.g.gold}%`:open?'odpowiedzi w ankiecie':'najpierw ankieta Matiego')}</div>`;
+  if(open)h+=`<div class="g2"><button class="btn ${plan?'':'primary'} sm" onclick="openAnk()">📝 ${dn.n?dn.n<dn.of?'Dokończ ankietę':'Popraw odpowiedzi':'Zacznij ankietę z kotkami'}</button><button class="btn ${plan?'primary':''} sm" onclick="openPlan()">📄 ${plan?'Mój plan':'Propozycja planu'}</button></div>`;
+  else h+=`<div class="mini">🐾 Ankietę najpierw wypełnia Mati. Gdy skończy, odblokuje ją dla Ciebie w swoim planie.</div>`;
+  if(D.debts.n)h+=`<div class="mini">🐾 Najpierw spłata długów: ich oprocentowanie to więcej, niż da jakakolwiek pewna inwestycja.</div>`;
+  return h+'</section>'}
+export function openAnk(){if(guard())return;if(!ankOpen(S.who))return toast('🐾 Ankietę najpierw wypełnia Mati – potem ją odblokuje');use('f:ankieta');const ctx=ankCtx(S.who),A=ankOf(S.who),L=ankList(A,ctx);S.ankQ=(L.find(q=>A[q.id]===undefined)||L[0]).id;S.ankTmp=null;S.adv='ank';window.scrollTo(0,0);render()}
+export function openPlan(){use('f:plan');S.adv='plan';window.scrollTo(0,0);render()}
+export function closeAdv(){S.adv=null;render()}
+
+/* 📝 one question per screen, the kotki ask; answers are saved at once (you can stop and come back) */
+export function ankPageH(){const who=S.who,ctx=ankCtx(who),A=ankOf(who),L=ankList(A,ctx);let i=L.findIndex(q=>q.id==S.ankQ);if(i<0)i=0;const q=L[i],dn=ankDone(A,ctx);
+  let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button><section class="chart ank"><div class="ct"><b>📝 Ankieta · ${esc(ANK_SEC[q.s])}</b><span class="mini">pytanie ${i+1} z ${L.length} · odpowiedzi ${dn.n}${q.w?' · 👥 wspólne – druga osoba też je widzi':''}</span></div>
+    <div class="gbar"><i style="width:${(dn.n/Math.max(1,dn.of)*100).toFixed(1)}%"></i></div>${kotki.mode=='off'?'':`<div class="ankcat">${scene(i%2?'duo':'calc','kot')}</div>`}
+    <div class="ankq">${esc(q.t)}</div>${q.hint&&q.hint(ctx)?`<div class="note">🐾 ${esc(q.hint(ctx))}</div>`:''}${q.why?`<div class="mini">ⓘ Po co pytamy: ${esc(q.why)}</div>`:''}`;
+  const cur=A[q.id],opts=typeof q.o=='function'?q.o(ctx):q.o||[];
+  if(q.type=='one')h+=`<div class="ankopts">${[...opts,...(q.nq?[]:[['?','🤷 Nie wiem']])].map(([v,l])=>`<button class="btn ${String(cur)===String(v)?'primary':''}" onclick="ankSet('${q.id}','${esc(String(v))}')">${esc(l)}</button>`).join('')}</div>`;
+  else if(q.type=='multi'){const sel=S.ankTmp??((Array.isArray(cur)?cur:q.def?q.def(ctx):[])||[]);S.ankTmp=sel;
+    h+=`<div class="ankopts">${opts.map(([v,l])=>`<button class="btn ${sel.includes(v)?'primary':''}" onclick="ankTog('${v}')">${sel.includes(v)?'✓ ':''}${esc(l)}</button>`).join('')}</div><button class="btn dark" onclick="ankSet('${q.id}',null)">Dalej ›</button>`}
+  else if(q.type=='goals'){const gl=(A.q23||[]).filter(g=>!['ret','home','rent'].includes(g)),lab=Object.fromEntries(ANK.find(x=>x.id=='q23').o),G=Array.isArray(cur)?cur:[];
+    h+=gl.map(g=>{const x=G.find(y=>y.g==g)||{};return`<div class="anrow"><b>${esc(lab[g])}</b><input id="ag_a_${g}" inputmode="decimal" placeholder="kwota zł" value="${x.a?String(x.a/100):''}"><input id="ag_y_${g}" inputmode="numeric" placeholder="rok" value="${x.y||''}"><select id="ag_f_${g}"><option value="0"${x.f?'':' selected'}>elastyczny</option><option value="1"${x.f?' selected':''}>sztywny</option></select></div>`}).join('')+`<button class="btn dark" onclick="ankSet('${q.id}',null)">Dalej ›</button>`}
+  else h+=`${q.type=='text'?`<textarea id="ankIn" rows="3" placeholder="${esc(q.ph?q.ph(ctx):'')}">${esc(cur&&cur!='?'?cur:'')}</textarea>`:`<label class="fld"><span>${esc(q.unit||'')}</span><input id="ankIn" inputmode="decimal" value="${cur!=null&&cur!='?'?esc(String(q.unit=='zł'?cur/100:cur)):''}" placeholder="${esc(q.ph?q.ph(ctx):'')}"></label>`}
+    <div class="g2"><button class="btn" onclick="ankSet('${q.id}','?')">🤷 Nie wiem / pomiń</button><button class="btn dark" onclick="ankSet('${q.id}',null)">Dalej ›</button></div>`;
+  h+=`<div class="g2"><button class="btn sm" ${i?'':'disabled'} onclick="ankGo(-1)">‹ Wróć</button><button class="btn sm" onclick="${i<L.length-1?'ankGo(1)':'openPlan()'}">${i<L.length-1?'Pomiń ›':'📄 Zobacz plan'}</button></div></section>`;
+  return h}
+export function ankTog(v){const s=new Set(S.ankTmp||[]);if(v=='none'){S.ankTmp=s.has('none')?[]:['none']}else{s.delete('none');s.has(v)?s.delete(v):s.add(v);S.ankTmp=[...s]}render()}
+export function ankGo(d){const ctx=ankCtx(S.who),L=ankList(ankOf(S.who),ctx),i=L.findIndex(q=>q.id==S.ankQ);const n=L[Math.max(0,Math.min(L.length-1,i+d))];S.ankQ=n.id;S.ankTmp=null;window.scrollTo(0,0);render()}
+export function ankSet(id,v){if(guard())return;const q=ANK.find(x=>x.id==id);if(!q)return;
+  if(v===null){if(q.type=='multi')v=S.ankTmp||[];else if(q.type=='goals'){const gl=(ankOf(S.who).q23||[]).filter(g=>!['ret','home','rent'].includes(g));
+      v=gl.map(g=>({g,a:pg(document.getElementById('ag_a_'+g)?.value||'0'),y:+(document.getElementById('ag_y_'+g)?.value||0)||0,f:document.getElementById('ag_f_'+g)?.value=='1'}))}
+    else{const raw=(document.getElementById('ankIn')?.value||'').trim();if(!raw)return toast('Wpisz odpowiedź albo stuknij „Nie wiem”','bad');
+      if(q.type=='text')v=raw.slice(0,500);else{const n=+raw.replace(/\s/g,'').replace(',','.');if(!isFinite(n))return toast('Wpisz liczbę','bad');
+        if(q.min!=null&&n<q.min||q.max!=null&&n>q.max)return toast(`Od ${q.min} do ${q.max}`,'bad');v=q.unit=='zł'?Math.round(n*100):n}}}
+  saveAns(q,v);S.ankTmp=null;const ctx=ankCtx(S.who),L=ankList(ankOf(S.who),ctx),i=L.findIndex(x=>x.id==id);
+  if(i>=L.length-1){S.adv='plan';toast('🐾 Gotowe! Oto propozycja planu')}else S.ankQ=L[i+1].id;window.scrollTo(0,0);render()}
+
+/* 📄 „Wasz plan na jednej kartce” – the proposal from the answers, approved = advM[who].plan */
+const GN=g=>AGRP[g].i+' '+AGRP[g].n;
+export function planPageH(){const who=S.who,A=ankOf(who),ctx=ankCtx(who),saved=planOfWho(who),prop=planP(A),P=saved||prop,base=ctx.base,cr=crisisP(P.g,base);
+  const other=who=='Mati'?'Wercia':'Mati',op=planOfWho(other),J=jointPlan(saved,op);
+  let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button><section class="chart plan"><div class="ct"><b>📄 ${saved?'Mój plan':'Propozycja planu'} – ${esc(who)}</b><span class="mini">${saved?'zatwierdzony '+dmy(new Date(saved.at).toISOString().slice(0,10)):'z Twoich odpowiedzi – zatwierdź albo zmień'}</span></div>`;
+  h+=`<div class="mini"><b>Część długoterminowa</b> (bez poduszki) – proporcje i widełki:</div>`+PLAN_G.map(g=>{const t=P.g[g],[lo,hi]=bandOf(t);return`<div class="pg"><div class="r1"><span>${GN(g)}</span><b class="num">${t}% <em>(${String(lo).replace('.',',')}–${String(hi).replace('.',',')}%)</em></b></div><div class="pbar"><span class="band" style="left:${lo}%;width:${hi-lo}%"></span><span class="tgt" style="left:${t}%"></span></div></div>`}).join('');
+  const sp=Object.entries(P.split||{}).map(([c,v])=>`${(clsAll(custom())[c]?.n||c).replace(/^Akcje – /,'')} ${v}%`).join(' · ');
+  h+=`<div class="mini">📈 Akcje: ${esc(sp)}${P.sand?` · 🧪 piaskownica do ${P.sand}%`:''}. 🧾 Obligacje: skarbowe indeksowane inflacją (EDO, w IKE też).</div>`;
+  h+=`<div class="note ${cr.zl<0?'bad':''}">⚡ Kryzys jak 2008 (wariant ostrożny, w złotych): ten portfel ${base?`(${zl0(base)})`:''} mógłby ${cr.zl<0?'stracić':'zyskać'} ok. <b>${zl0(Math.abs(cr.zl))}</b> (${String(cr.pct).replace('.',',')}%). Akcje −35%, złoto +38%, obligacje i gotówka bez zmian.</div>`;
+  const L=[];if(P.real!=null)L.push(`🏠 Nieruchomości (bez domu) docelowo ok. ${P.real}% majątku, który pracuje (${Math.max(0,P.real-10)}–${Math.min(100,P.real+10)}%) – wyrównujemy tylko nowymi pieniędzmi, nigdy sprzedażą mieszkania.`);
+  L.push(`🛟 Poduszka: ${P.pod} miesięcy wydatków${ctx.exp?` ≈ ${zl0(ctx.exp*P.pod)}`:''} (teraz ${ctx.podMTxt}).`);
+  if(P.save)L.push(`🐷 Odkładam ${zl0(P.save)} miesięcznie${A.q14=='q'?', kupuję raz na kwartał':A.q14=='m'?', co miesiąc':''}.`);
+  if(A.q61&&A.q61!='?')L.push(`📉 Reguła na spadki: ${A.q61=='r25'?'gdy akcje spadną o 25%, dokupię akcji ze złota / obligacji':A.q61=='none'?'bez reguły – trzymam plan':esc(A.q61t||'własna')}.`);
+  if(A.q62&&A.q62!='?')L.push(`🔒 Plan zmieniam: ${{life:'tylko przy zmianie w życiu',year:'raz w roku',cycle:'po pełnym cyklu 7–10 lat'}[A.q62]}.`);
+  const gl=(A.q27||[]).filter(x=>x.a);if(gl.length){const lab=Object.fromEntries(ANK.find(x=>x.id=='q23').o);L.push('🎯 Cele: '+gl.map(x=>`${lab[x.g]} ${zl0(x.a)}${x.y?' w '+x.y:''}${x.f?' (sztywno)':''}`).join(', ')+'.')}
+  if(A.q60&&A.q60!='?')L.push(`💌 List do siebie: „${esc(A.q60)}”`);
+  h+=L.map(x=>`<div class="mini">${x}</div>`).join('');
+  h+=`<details class="info"><summary>ⓘ Dlaczego takie proporcje</summary><div class="mini">${prop.why.map(esc).join('<br>')}<br>Do planu trafia najniższa z granic. Wzorzec z lektury dla porównania (nie nakaz): 50% obligacje indeksowane / 35% akcje świata / 15% złoto. Doradca nie przewiduje przyszłości – pilnuje planu.</div></details>`;
+  h+=`<div class="g2"><button class="btn primary" onclick="approvePlan()">✓ ${saved?'Zatwierdź jeszcze raz':'Zatwierdzam plan'}</button><button class="btn" onclick="editPlan()">✎ Zmień proporcje</button></div><button class="btn sm" onclick="openAnk()">📝 Popraw odpowiedzi w ankiecie</button>`;
+  if(saved&&JSON.stringify(saved.g)!=JSON.stringify(prop.g))h+=`<div class="mini">Z obecnych odpowiedzi wychodzi: akcje ${prop.g.stock}% · obligacje ${prop.g.bond}% · złoto ${prop.g.gold}% · gotówka ${prop.g.cash}%. <button class="chip" onclick="approvePlan(1)">Weź tę propozycję</button></div>`;
+  if(J&&op)h+=`<div class="mini">👥 Wspólny portfel liczę według ostrożniejszej osoby: akcje ${J.g.stock}%${advW().ank?.q64=='sep'?' (wybraliście osobne części – Razem pokazuje wtedy tylko stan)':''}.</div>`;
+  if(who=='Mati')h+=`<button class="btn sm" onclick="toggleAnkW()">${advW().showW?'🙈 Schowaj ankietę Werci':'👀 Pokaż ankietę Werci'}</button>`;
+  return h+'</section>'}
+export async function approvePlan(fresh){if(guard())return;const who=S.who,P=fresh||!planOfWho(who)?planP(ankOf(who)):planOfWho(who),x={g:P.g,split:P.split,real:P.real,pod:P.pod,save:P.save,sand:P.sand,at:Date.now()};
+  const M=advM();S.hraw={...S.hraw,advM:{...M,[who]:{...(M[who]||{}),plan:x}}};merge(H,{advM:{[who]:{plan:x}}});use('f:planok');toast('🐾 Plan zapisany – na kole pojawią się widełki');render()}
+export async function editPlan(){if(guard())return;const who=S.who,P=planOfWho(who)||planP(ankOf(who)),base=ankCtx(who).base;
+  const r=await ask({title:'✎ Proporcje planu',text:`Obligacje = reszta do 100%. Teraz w kryzysie jak 2008: ${zl0(Math.abs(crisisP(P.g,base).zl))}. Po zmianie zobaczysz nową kwotę na kartce.`,fields:[
+    {id:'s',label:'📈 Akcje (%)',type:'int',value:String(P.g.stock)},{id:'g',label:'🥇 Złoto (%)',type:'int',value:String(P.g.gold)},{id:'c',label:'💵 Gotówka – suchy proch (%)',type:'int',value:String(P.g.cash)}],ok:'Zapisz plan'});
+  if(!r)return;const s=Math.round(+r.s),g=Math.round(+r.g),c=Math.round(+r.c);if(![s,g,c].every(v=>v>=0&&v<=100)||s+g+c>100)return toast('Procenty od 0 do 100, razem najwyżej 100','bad');
+  const x={...P,g:{stock:s,gold:g,cash:c,bond:100-s-g-c},at:Date.now()};delete x.why;const M=advM();S.hraw={...S.hraw,advM:{...M,[who]:{...(M[who]||{}),plan:x}}};merge(H,{advM:{[who]:{plan:x}}});toast('Zapisano plan');render()}
+export function toggleAnkW(){if(guard())return;const v=!advW().showW;S.hraw={...S.hraw,advW:{...advW(),showW:v}};merge(H,{advW:{showW:v}});toast(v?'Werci pokaże się ankieta':'Schowano ankietę Werci');render()}
+
+/* 🎯 under the koło: bars „jest / ma być” with the bands and the kotki's hint (only new money – no selling here) */
+export function planBarsH(A,plan){const D=devP(A,plan);if(!D.base)return'';
+  let h=`<div class="pbars"><div class="mini"><b>🎯 Jest / ma być</b> · część długoterminowa bez poduszki (${zl0(D.base)})</div>`+D.G.map(x=>`<div class="pg ${x.st}"><div class="r1"><span>${GN(x.g)}</span><b class="num">${x.now.toFixed(0)}% <em>plan ${String(x.lo).replace('.',',')}–${String(x.hi).replace('.',',')}%</em></b></div><div class="pbar"><span class="band" style="left:${x.lo}%;width:${x.hi-x.lo}%"></span><span class="now ${x.st}" style="left:${Math.min(100,x.now)}%"></span></div></div>`).join('');
+  if(D.other>=0.5)h+=`<div class="mini">Poza planem (nieruchomości w funduszach, alternatywne, własne, do przypisania): ${D.other.toFixed(0)}%.</div>`;
+  const tip=D.ok?`Wszystko w widełkach planu 💚 Kolejne wpłaty dzielcie według planu: ${PLAN_G.filter(g=>plan.g[g]).map(g=>AGRP[g].n.toLowerCase()+' '+plan.g[g]+'%').join(', ')}.`
+    :[D.low.length?`Przy następnej wpłacie dokupcie: ${D.low.map(x=>`${GN(x.g)} (do planu brakuje ok. ${zl0(x.gap)})`).join(', ')}.`:'',D.high.length?`${D.high.map(x=>`${GN(x.g)} ${x.now.toFixed(0)}% – ponad plan (${String(x.lo).replace('.',',')}–${String(x.hi).replace('.',',')}%)`).join(', ')}: na razie tego nie dokupujcie.`:''].filter(Boolean).join(' ');
+  return h+`<div class="note">🐾 ${esc(tip)}</div></div>`}

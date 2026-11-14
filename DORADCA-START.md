@@ -1,6 +1,6 @@
 # 🧭 Doradca – instrukcja dla nowego okna Claude (czytaj w całości przed pracą)
 
-Ten plik zastępuje długie rozmowy z 13–14.11.2026, w których powstał plan (także drugą rozmowę 14.11 o nieruchomościach, klasach aktywów i ankiecie – decyzje 10–20, oraz trzecią – decyzje 21–25). **Stan: D1a i D1b zrobione 14.11 (`advisor.js`, `advisorui.js`; następny D2 – na komendę); Mati chce po każdym etapie pytania „czy robić następny”. Decyzje 25–26: własne mieszkanie osobno, poza proporcjami; wszystkie etapy jednego dnia, jeden po drugim (każdy osobno testowany i wysyłany).** Nowe okno nie zna tej rozmowy – wszystko, co potrzebne, jest tutaj i w plikach wymienionych niżej.
+Ten plik zastępuje długie rozmowy z 13–14.11.2026, w których powstał plan (także drugą rozmowę 14.11 o nieruchomościach, klasach aktywów i ankiecie – decyzje 10–20, oraz trzecią – decyzje 21–25). **Stan: D1a, D1b i D2 zrobione 14.11 (`advisor.js`, `advisorui.js`; następny D3 – na komendę); Mati chce po każdym etapie pytania „czy robić następny”. Decyzje 25–26: własne mieszkanie osobno, poza proporcjami; wszystkie etapy jednego dnia, jeden po drugim (każdy osobno testowany i wysyłany).** Nowe okno nie zna tej rozmowy – wszystko, co potrzebne, jest tutaj i w plikach wymienionych niżej.
 
 ## 1. Zanim cokolwiek zrobisz
 1. `git pull origin main`, `git log -5` (zasady wielu okien z `CLAUDE.md`).
