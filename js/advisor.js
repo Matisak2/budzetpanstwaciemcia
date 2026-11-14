@@ -1,7 +1,7 @@
 /* 🧭 Doradca – pure calculations (no UI, no saving; tested in tests/calc.mjs). Amounts in grosze (PLN).
    D1a: asset groups and classes (built-in + own `assetCls`), the list of known ETFs (checked in XTB), the class of every instrument and account,
    „what the wealth is made of” (allocP) and the analysis of held ETFs (criteria, doubled „whole worlds”, flags). PPK is left out everywhere (decision 5). */
-import {addDays,zl0} from './util.js';
+import {addDays,plDay,zl0} from './util.js';
 import {balance,ownerOf} from './logic.js';
 import {BONDS,instValue,instDiffP,wrapOf,limitOf,paidInYear} from './inv.js';
 import {debtStateP} from './today.js';
@@ -328,7 +328,7 @@ export function tranchesP(a,base,today){if(!(a>=200000)||!(base>0)||a<=base*0.1)
   return Array.from({length:n},(_,i)=>({n:i+1,date:addMonthsD(today,i),a:i==n-1?a-part*(n-1):part}))}
 const addMonthsD=(d,k)=>{const[y,m,dd]=d.split('-').map(Number),t=new Date(Date.UTC(y,m-1+k,1)),last=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate();return t.toISOString().slice(0,8)+String(Math.min(dd,last)).padStart(2,'0')};
 /* ✓ a saved advice: what is already done – a purchase of that fund / bonds / gold after the advice day, or a transfer to that IKE/IKZE */
-export function adviceDoneP(adv,hold,tx,cfg){const since=new Date(adv.at).toISOString().slice(0,10),lots=Object.values(hold||{}).filter(h=>!h.deleted).flatMap(h=>Object.values(h.lots||{}).filter(l=>!l.deleted&&l.kind!='sell'&&l.date>=since).map(l=>({h,l})));
+export function adviceDoneP(adv,hold,tx,cfg){const since=plDay(adv.at),lots=Object.values(hold||{}).filter(h=>!h.deleted).flatMap(h=>Object.values(h.lots||{}).filter(l=>!l.deleted&&l.kind!='sell'&&l.date>=since).map(l=>({h,l})));
   const buys=(adv.buys||[]).map(b=>({...b,done:lots.some(({h})=>b.isin?etfOf(h)?.isin==b.isin:b.g=='bond'?h.kind=='obl':b.g=='gold'?h.kind=='zloto':false)}));
   const rows=(adv.rows||[]).map(r=>({...r,done:(r.kind=='ike'||r.kind=='ikze')&&tx.some(t=>t.type=='tr'&&t.date>=since&&cfg.accs.some(a=>a.id==t.to&&wrapOf(a)==r.kind&&(a.owner||'Wspólne')==r.who))}));
   const all=[...buys,...rows.filter(r=>r.kind=='ike'||r.kind=='ikze')];return{buys,rows,n:all.filter(x=>x.done).length,of:all.length}}

@@ -36,6 +36,8 @@ export async function copyPlan(to){if(guard())return;const ym=typeof to=='string
   if(w(setDoc(doc(PLC(),ym),{...src})))toast('Skopiowano plan')}
 /* 🗓️ „sprawdzone z bankiem” – the date an account's balance was compared with the bank (zamknięcie miesiąca) */
 export function markRecon(ids){if(!ids.length)return;const v=td(),m=Object.fromEntries(ids.map(id=>[id,v]));S.hraw={...S.hraw,reconM:{...(S.hraw?.reconM||{}),...m}};merge(H,{reconM:m})}
+/* „Cofnij” of a reconciliation: the accounts get back the dates they had before (none → removed) */
+function unmarkRecon(prev){const m={};for(const[id,v]of Object.entries(prev))m[id]=v||deleteField();const R={...(S.hraw?.reconM||{})};for(const[id,v]of Object.entries(prev))if(v)R[id]=v;else delete R[id];S.hraw={...S.hraw,reconM:R};merge(H,{reconM:m})}
 /* ⚖️ balances are corrected only all at once (openRecon – 👛 Konta and the closing of the month), never one account by hand */
 export async function addAcc(){if(guard())return;const r=await ask({title:'Nowe konto',fields:[{id:'n',label:'Nazwa'},{id:'g',label:'Rodzaj',type:'select',value:S.accTab,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:S.who,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:'PLN',options:CUR_OPTS}],ok:'Dodaj'});
   if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner:r.w,open:0,...(r.c!='PLN'?{cur:r.c}:{})};S.cfg.accs.push(a);S.accTab=r.g;render();saveAcc(a)}
@@ -329,18 +331,20 @@ export function recSum(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.re
   $('recApp').textContent=zl(app);$('recReal').textContent=zl(real);$('recN').textContent=n?`uzupełniono ${n} z ${r.length}`:'nic jeszcze nie wpisano';
   const el=$('recDiff');el.textContent=(d>0?'+':'')+zl(d);el.className='num '+(d>0?'t-inc':d<0?'t-exp':'');
   r.forEach(x=>{const c=$('rd_'+x.a.id);if(c){const dd=x.real-x.app;c.textContent=x.filled&&dd?(dd>0?'+':'')+money(dd,CUR(x.a)):'';c.className='rdiff '+(dd>0?'t-inc':'t-exp')}})}
-export async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const all=recRead(true).filter(x=>x.filled),r=all.filter(x=>x.real!==x.app);markRecon(all.filter(x=>x.a.grp!='inv').map(x=>x.a.id));
-  if(!r.length){if(S.recBack){recDone();render()}return toast('Wszystko się zgadza – nic do zmiany')}
+export async function applyRecon(){recAccs().forEach(a=>{const el=$('rv_'+a.id);if(el)S.recVals[a.id]=el.value});const all=recRead(true).filter(x=>x.filled),r=all.filter(x=>x.real!==x.app),chk=all.filter(x=>x.a.grp!='inv').map(x=>x.a.id);
+  /* „sprawdzone z bankiem” only once the changes are saved – „Anuluj” leaves the accounts unchecked (the closing step „bank” too) */
+  if(!r.length){markRecon(chk);if(S.recBack){recDone();render()}return toast('Wszystko się zgadza – nic do zmiany')}
   const ops=planRecon(r.map(x=>({id:x.a.id,d:x.real-x.app,inv:x.a.grp=='inv',cur:CUR(x.a)})));
   const lines=ops.map(o=>o.kind=='tr'?`⇄ ${accN(o.from)} → ${accN(o.to)}: ${am(o.amount,o.from)}`:o.kind=='val'?`📈 ${accN(o.acc)}: zmiana wartości ${o.amount>0?'+':''}${am(o.amount,o.acc)}`:`⚖️ ${accN(o.acc)}: wyrównanie ${o.amount>0?'+':''}${am(o.amount,o.acc)}`).join('\n');
   const tr=ops.filter(o=>o.kind=='tr').length,adj=ops.filter(o=>o.kind=='adj').length;
   if(!await ask({title:'Zapisać te zmiany?',text:lines+`\n\n${tr?'Przelewy (⇄) przenoszą pieniądze między kontami i nie wpływają na budżet. ':''}${adj?'Wyrównania (⚖️) to różnica, której nie da się wyjaśnić przelewem – też nie liczą się do wydatków. ':''}`,ok:'Zapisz'}))return;
+  const prevRec=Object.fromEntries(chk.map(id=>[id,S.hraw?.reconM?.[id]||null]));markRecon(chk);
   const ym=td().slice(0,7),date=td(),ids=[];
   for(const o of ops){const id='t'+rid();ids.push(id);
     const base={date,sub:'',who:S.who,deleted:false,ts:Date.now()};
     putTx(ym,id,o.kind=='tr'?{...base,type:'tr',amount:o.amount,acc:o.from,to:o.to,note:'Wyrównanie sald – przeniesienie'}:{...base,type:'adj',amount:o.amount,acc:o.acc,to:'',note:o.kind=='val'?'Zmiana wartości':'Wyrównanie salda',...(o.kind=='val'?{val:true}:{})})}
   recDone();render();
-  toast(`Zapisano ${ops.length} ${ops.length==1?'zmianę':ops.length<5?'zmiany':'zmian'}`,'',{label:'Cofnij',fn:()=>ids.forEach(id=>putTx(ym,id,{deleted:true}))})}
+  toast(`Zapisano ${ops.length} ${ops.length==1?'zmianę':ops.length<5?'zmiany':'zmian'}`,'',{label:'Cofnij',fn:()=>{ids.forEach(id=>putTx(ym,id,{deleted:true}));unmarkRecon(prevRec)}})}
 /* savings / investment accounts managed from the Savings tab */
 export async function addSavAcc(owner){if(guard())return;
   const r=await ask({title:'Nowe konto – '+owner,fields:[{id:'n',label:'Nazwa',ph:owner=='Wspólne'?'np. Fundusz wakacyjny':'np. Konto oszczędnościowe '+owner}, {id:'g',label:'Rodzaj',type:'select',value:'sav',options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'c',label:'Waluta',type:'select',value:'PLN',options:CUR_OPTS}],ok:'Dodaj konto'});

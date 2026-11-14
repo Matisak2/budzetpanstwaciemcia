@@ -181,3 +181,14 @@ Każdy etap dopiero na komendę Matiego, po kopii.
 - [x] Etap D5. Cele: emerytura, mieszkanie (+ wartość w majątku, najem, proporcje nieruchomości, sugestia zakupu tylko gdy stać), test kryzysu, strażnik kosztów
 - [x] Etap D6. Termometr, reguły na spadki, przypomnienia w „Na dziś”
 - [x] Etap D7. Piaskownica: analiza wpisanej spółki / ETF-u
+
+## Poprawki z przeglądu 14.11.2026 (uzgodnione z Matim)
+Nie robimy: rozliczeń Mati ↔ Wercia (zostają w „Rezygnujemy”); przycisk ＋ niczego nie zasłania (chowa się przy przewijaniu, na dole jest miejsce) – bez zmian.
+- [x] ⚖️ „Wyrównaj wszystkie salda”: konta sprawdzone dopiero po „Zapisz”, „Cofnij” przywraca daty
+- [x] 🧭 Nieaktualne napisy w doradcy („w następnym etapie…”, „w etapie celów”)
+- [x] 🕐 Daty porad doradcy w czasie polskim (`plDay`)
+- [x] 💼 JDG wg zasad 2026: warianty ZUS (start / preferencyjny / pełny / z chorobowym / własna kwota), zdrowotna minimalna, limit odliczenia na liniowym, progi ryczałtu; zlecenie studenta do 26 lat; koszty zlecenia z PPK; testy
+- [x] 🐷 Oszczędności: Ile odłożyliście i cele przed Doradcą i kołem majątku
+- [x] 🥧 „Nieruchomości” nieucinane przy dużej czcionce
+- [x] 👛 Konta: wybór osoby jako guziki w karcie z sumą, „Wyrównaj” pod listą
+

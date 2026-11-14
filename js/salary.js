@@ -3,7 +3,7 @@ import {doc,updateDoc,deleteField} from "https://www.gstatic.com/firebasejs/10.1
 import {catsEmpty} from './art.js';
 import {C_INC,barsSvg,chartBox} from './charts.js';
 import {ULGI,pitSummaryP} from './today.js';
-import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf,youngLeft,youngUntil,youngPart,baseOf} from './pay.js';
+import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,suggest,totals,ytdOf,youngLeft,youngUntil,youngPart,baseOf,jdgT,jdgZus,ZUS_VARS} from './pay.js';
 import {liveOf,subsMap,SUBSCR_RE,subscrOf,fixedWho,seenBy,ownerOf} from './logic.js';
 import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu,ls} from './util.js';
 import {S,toast,ask,accCur,am,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard,delFixedDb,txOk} from './core.js';
@@ -152,9 +152,15 @@ export async function editInc(id,who){if(guard())return;const s0=id?incById(id):
   const day=Math.round(pnum(r.d))||10,k=r.k,P=v=>{const x=pnum(v);return isFinite(x)?x:0};
   const f2p=x=>String(x).replace('.',',');
   const det=k=='uop'?[{id:'kup',label:'Koszty uzyskania przychodu',type:'select',value:String(s0?.kup||250),options:[['250','Standardowe – 250 zł'],['300','Podwyższone (dojazd z innej miejscowości) – 300 zł']]},{id:'pit2',label:'PIT-2 złożony (ulga 300 zł miesięcznie)',type:'select',value:s0?.pit2===false?'0':'1',options:[['1','Tak'],['0','Nie']]}]
-    :k=='zlec'?[{id:'kup',label:'Koszty uzyskania',type:'select',value:String(s0?.kup||20),options:[['20','20%'],['50','50% (prawa autorskie)']]},{id:'zus',label:'Składki ZUS',type:'select',value:s0?.zusOn===false?'0':'1',options:[['1','Tak, płacone ze zlecenia'],['0','Nie (np. student, inny tytuł)']]},{id:'pit2',label:'PIT-2 złożony u zleceniodawcy',type:'select',value:s0?.pit2?'1':'0',options:[['0','Nie'],['1','Tak']]}]
+    :k=='zlec'?[{id:'kup',label:'Koszty uzyskania',type:'select',value:String(s0?.kup||20),options:[['20','20%'],['50','50% (prawa autorskie)']]},{id:'zus',label:'Składki ZUS',type:'select',value:s0?.student?'s':s0?.zusOn===false?'0':'1',options:[['1','Tak, płacone ze zlecenia'],['0','Nie – ZUS płacę z innego tytułu (zdrowotna tak)'],['s','Nie – student / uczeń do 26 lat (bez ZUS i zdrowotnej)']]},{id:'pit2',label:'PIT-2 złożony u zleceniodawcy',type:'select',value:s0?.pit2?'1':'0',options:[['0','Nie'],['1','Tak']]}]
     :k=='dzielo'?[{id:'kup',label:'Koszty uzyskania',type:'select',value:String(s0?.kup||20),options:[['20','20%'],['50','50% (prawa autorskie)']]}]
-    :[{id:'tf',label:'Forma podatku',type:'select',value:s0?.taxf||'skala',options:Object.entries(TAXF)},{id:'za',label:'Twój ZUS społeczny miesięcznie (zł)',type:'decimal',value:s0?.zusAmt?f2(s0.zusAmt):'',ph:'z PUE ZUS, np. 1926,76'},{id:'rr',label:'Stawka ryczałtu (%, tylko ryczałt)',type:'decimal',value:s0?.ryczRate?f2p(s0.ryczRate):'',ph:'np. 14'},{id:'ha',label:'Zdrowotna miesięcznie (zł, tylko ryczałt)',type:'decimal',value:s0?.healthAmt?f2(s0.healthAmt):'',ph:'np. 830,58'}];
+    :(()=>{const ym=td().slice(0,7),T=jdgT(ym),zv=v=>{const z=jdgZus({zusVar:v},ym);return v=='pref'||v=='full'?` – ${zl(z.soc+z.fp)}`:''},ch=v=>{const z=jdgZus({zusVar:v},ym);return zl(jdgZus({zusVar:v,zusChor:true},ym).soc-z.soc)};
+      return[{id:'tf',label:'Forma podatku',type:'select',value:s0?.taxf||'skala',options:Object.entries(TAXF)},
+      {id:'zv',label:`ZUS społeczny (${ym.slice(0,4)})`,type:'select',value:s0?.zusVar||(s0?.zusAmt?'own':'full'),options:Object.entries(ZUS_VARS).map(([k,l])=>[k,l+zv(k)])},
+      {id:'ch',label:`Dobrowolne chorobowe (+${ch('full')} pełny, +${ch('pref')} prefer.)`,type:'select',value:s0?.zusChor?'1':'0',options:[['0','Nie'],['1','Tak – zasiłek przy chorobie']]},
+      {id:'za',label:'Kwota ZUS miesięcznie (zł, tylko „Inna kwota”)',type:'decimal',value:s0?.zusAmt?f2(s0.zusAmt):'',ph:'z PUE ZUS, np. Mały ZUS Plus'},
+      {id:'rr',label:'Stawka ryczałtu (%, tylko ryczałt)',type:'decimal',value:s0?.ryczRate?f2p(s0.ryczRate):'',ph:'np. 14'},
+      {id:'ha',label:'Zdrowotna na ryczałcie (zł) – puste = policzę z progu',type:'decimal',value:s0?.healthAmt?f2(s0.healthAmt):'',ph:`${zl(T.rycz[0])} / ${zl(T.rycz[1])} / ${zl(T.rycz[2])}`}]})();
   if(r.p&&k!='b2b'&&k!='dzielo')det.push({id:'po',label:'PPK – moja wpłata (% brutto)',type:'decimal',value:f2p(s0?.ppkOwnPct??2)},{id:'pe',label:'PPK – pracodawca (% brutto)',type:'decimal',value:f2p(s0?.ppkEmpPct??1.5)});
   const r2=await ask({title:'Szczegóły: '+r.n.trim(),text:'Służą tylko do podpowiedzi z brutto i z netto (szacunek). Zawsze możesz wpisać kwoty z paska.',fields:det,ok:'Dalej'});
   if(!r2)return;
@@ -168,9 +174,9 @@ export async function editInc(id,who){if(guard())return;const s0=id?incById(id):
     if(deds.some(x=>x.a>0&&!x.sub))setTimeout(()=>toast('Pozycję budżetu potrącenia wybierzesz w pasku'),900)}
   const body={id:s0?.id||'i'+rid(),name:r.n.trim(),who,kind:k,acc:r.c,sub:r.s,day:Math.min(31,Math.max(1,day)),ppk:k=='b2b'||k=='dzielo'?'':r.p,fixed:r.f,dedSub:{...(s0?.dedSub||{})},deds:k=='b2b'?[]:deds};deds.forEach(x=>{if(x.n&&x.sub)body.dedSub[x.n.toLowerCase()]=x.sub});
   if(k=='uop'){body.kup=+r2.kup;body.pit2=r2.pit2=='1'}
-  if(k=='zlec'){body.kup=+r2.kup;body.zusOn=r2.zus=='1';body.pit2=r2.pit2=='1'}
+  if(k=='zlec'){body.kup=+r2.kup;body.zusOn=r2.zus=='1';body.student=r2.zus=='s';body.pit2=r2.pit2=='1'}
   if(k=='dzielo')body.kup=+r2.kup;
-  if(k=='b2b'){body.taxf=r2.tf;body.zusAmt=gr(r2.za);body.ryczRate=P(r2.rr);body.healthAmt=gr(r2.ha)}
+  if(k=='b2b'){body.taxf=r2.tf;body.zusVar=r2.zv;body.zusChor=r2.ch=='1';body.zusAmt=gr(r2.za);body.ryczRate=P(r2.rr);body.healthAmt=gr(r2.ha);if(r2.zv=='own'&&!body.zusAmt)setTimeout(()=>toast('Wpisz kwotę ZUS albo wybierz wariant – teraz liczę 0 zł'),900)}
   if(body.ppk){body.ppkOwnPct=P(r2.po)||2;body.ppkEmpPct=P(r2.pe)||1.5}
   S.cfg.incs=incs();let x=s0;if(x)Object.assign(x,body);else{x=body;S.cfg.incs.push(x)}
   render();saveInc(x);toast(s0?'Zapisano źródło dochodu':'Dodano źródło dochodu 💼')}
@@ -267,8 +273,10 @@ export async function saveSlip(){if(guard())return;const {id,ym}=S.slip,src=incB
   if(d.ppkOwn>0)putTx(ym,'t'+rid(),{...pb,type:'inc',amount:d.ppkOwn,note:'PPK – moja wpłata',ppk:'own'});
   if(d.ppkEmp>0)putTx(ym,'t'+rid(),{...pb,type:'inc',amount:d.ppkEmp,note:'PPK – wpłata pracodawcy',ppk:'emp'});
   const yl=youngOf(src,ym,d),young=yl==null?null:youngPart(d,yl),base=baseOf(src,{...d,young});
+  /* JDG liniowy: how much of the health contribution is deducted this month (the yearly limit – the next payslips count from it) */
+  const hded=src.kind=='b2b'&&src.taxf=='liniowy'?Math.min(d.health||0,Math.max(0,jdgT(ym).linLimit-ytdOf(S.slips,id,ym).hded)):0;
   putSlip(ym,id,{comp:d.comp.map(c=>({n:String(c.n||''),a:c.a||0,h:+c.h||0})),zus:d.zus||0,health:d.health||0,kup:d.kup||0,tax:d.tax||0,ppkOwn:d.ppkOwn||0,ppkEmp:d.ppkEmp||0,costs:d.costs||0,
-    ded:d.ded.map(x=>({n:String(x.n||''),a:x.a||0,sub:x.sub||''})),net,date:d.date,base,young,booked:iid,name:src.name,kind:src.kind,who:src.who,est:!!d.est,estNet:!!d.estNet,ts});
+    ded:d.ded.map(x=>({n:String(x.n||''),a:x.a||0,sub:x.sub||''})),net,date:d.date,base,young,...(hded?{hded}:{}),booked:iid,name:src.name,kind:src.kind,who:src.who,est:!!d.est,estNet:!!d.estNet,ts});
   if(dd.length){src.dedSub={...(src.dedSub||{})};dd.forEach(x=>{if(x.n)src.dedSub[x.n.trim().toLowerCase()]=x.sub});saveInc(src)}
   S.slip=null;render();toast(`Zaksięgowano: ${src.name} · ${zl(net)} na konto${dd.length?` · ${dd.length} ${plu(dd.length,'potrącenie','potrącenia','potrąceń')} w budżecie`:''}`)}
 export async function delSlip(){const {id,ym}=S.slip,old=slipOf(ym,id);if(!old)return closeSlip();

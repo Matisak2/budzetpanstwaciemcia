@@ -16,9 +16,21 @@ export const calcNet=(src,sl)=>src.kind=='b2b'?brutto(sl):brutto(sl)-(sl.zus||0)
 export const reserve=sl=>(sl.zus||0)+(sl.health||0)+(sl.tax||0);
 export const onHand=sl=>brutto(sl)-reserve(sl)-(sl.costs||0);
 /* sums of the earlier payslips of this source in the same year (for the ZUS limit and the 32% threshold) */
-export function ytdOf(slips,srcId,ym){const y=ym.slice(0,4),r={brutto:0,base:0};
-  for(const[m,d]of Object.entries(slips||{}))if(m.startsWith(y)&&m<ym&&d[srcId]){const s=d[srcId];r.brutto+=brutto(s);r.base+=s.base||0}
+export function ytdOf(slips,srcId,ym){const y=ym.slice(0,4),r={brutto:0,base:0,hded:0,ym};
+  for(const[m,d]of Object.entries(slips||{}))if(m.startsWith(y)&&m<ym&&d[srcId]){const s=d[srcId];r.brutto+=brutto(s);r.base+=s.base||0;r.hded+=s.hded||0}
   return r}
+/* 💼 JDG 2026 (ZUS, MF): ZUS społeczny from the minimum base – preferential 30% of the minimum wage (4 806 zł), full 60% of the forecast average salary (9 420 zł);
+   emerytalne 19,52%, rentowe 8%, wypadkowe 1,67%, chorobowe 2,45% (voluntary), Fundusz Pracy 2,45% (full ZUS only).
+   Health (zdrowotna): skala 9% / liniowy 4,9% of the income, at least 9% of the minimum wage – from February (January: the minimum of the year before, 314,96 zł);
+   liniowy may deduct the health contribution only up to a yearly limit; ryczałt – a fixed amount by the revenue of the year so far (≤ 60 000 / ≤ 300 000 / more).
+   A new year: add its line (and the robot's examples in tests/calc.mjs). */
+export const JDG={2026:{pref:144180,full:565200,hmin:43254,hminJan:31496,rycz:[49835,83058,149504],linLimit:1410000}};
+export const jdgT=ym=>{const y=+(ym||'').slice(0,4),ks=Object.keys(JDG).map(Number);return JDG[y]||JDG[y>Math.max(...ks)||!y?Math.max(...ks):Math.min(...ks)]};
+export const ZUS_VARS={start:'Ulga na start (6 mies.) – 0 zł',pref:'Preferencyjny (24 mies.)',full:'Pełny ZUS',own:'Inna kwota – wpiszę ją'};
+/* ZUS społeczny of a month: soc = deductible contributions, fp = Fundusz Pracy (a cost of the business, not for ryczałt); no variant (older sources) = the typed amount */
+export function jdgZus(src,ym){const v=src.zusVar||'own';if(v=='own')return{soc:src.zusAmt||0,fp:0};if(v=='start')return{soc:0,fp:0};
+  const T=jdgT(ym),b=v=='pref'?T.pref:T.full;return{soc:pct(b,19.52)+pct(b,8)+pct(b,1.67)+(src.zusChor?pct(b,2.45):0),fp:v=='full'?pct(b,2.45):0}}
+const hMin=ym=>{const T=jdgT(ym);return ym&&ym.slice(5,7)=='01'?T.hminJan:T.hmin};
 function progressive(base,ytdBase,reduce){const low=Math.max(0,Math.min(base,TAX_THR-ytdBase));return Math.max(0,r0(pct(low,12)+pct(base-low,32)-reduce))}
 /* estimate of contributions and tax from brutto (Polish rules 2026, simplified) */
 /* 🎓 ulga dla młodych (PIT-0): umowa o pracę i zlecenie – bez podatku od przychodu (z wpłatą PPK pracodawcy) otrzymanego do dnia 26. urodzin włącznie,
@@ -45,21 +57,25 @@ export function baseOf(src,sl){const b=brutto(sl);if(src.kind=='b2b')return Math
   const rev=revOf(sl),ex=Math.min(rev,sl.young||0),sh=rev?(rev-ex)/rev:1;return Math.max(0,r0(rev-ex-Math.round((sl.zus||0)*sh)-(sl.kup||0)))}
 export function suggest(src,sl,ytd={brutto:0,base:0},young=null){const b=brutto(sl),o={};
   if(src.kind=='uop'||src.kind=='zlec'){
-    const zusOn=src.kind=='uop'||src.zusOn!==false,cap=Math.min(b,Math.max(0,ZUS_LIMIT-ytd.brutto));
+    /* 🎓 a student / pupil under 26 on umowa zlecenie: no ZUS and no health contribution */
+    const stu=src.kind=='zlec'&&!!src.student,zusOn=src.kind=='uop'||(src.zusOn!==false&&!stu),cap=Math.min(b,Math.max(0,ZUS_LIMIT-ytd.brutto));
     o.zus=zusOn?pct(cap,9.76)+pct(cap,1.5)+pct(b,2.45):0;
-    o.health=pct(b-o.zus,9);
+    o.health=stu?0:pct(b-o.zus,9);
     o.ppkOwn=src.ppk?pct(b,src.ppkOwnPct??2):0;o.ppkEmp=src.ppk?pct(b,src.ppkEmpPct??1.5):0;
     const pit2=src.kind=='uop'?src.pit2!==false:!!src.pit2,ex=youngPart({comp:[{a:b}],ppkEmp:o.ppkEmp},young);o.young=ex;
-    if(!ex){o.kup=src.kind=='uop'?(src.kup==300?30000:25000):pct(b-o.zus,src.kup==50?50:20);o.base=Math.max(0,r0(b-o.zus-o.kup+o.ppkEmp))}
+    /* zlecenie: 20% / 50% of the revenue (with the employer's PPK) minus ZUS */
+    if(!ex){o.kup=src.kind=='uop'?(src.kup==300?30000:25000):pct(b+o.ppkEmp-o.zus,src.kup==50?50:20);o.base=Math.max(0,r0(b-o.zus-o.kup+o.ppkEmp))}
     else{const rev=b+o.ppkEmp,tr=rev-ex,sh=tr/rev,zd=Math.round(o.zus*sh);
-      o.kup=src.kind=='uop'?Math.min(src.kup==300?30000:25000,Math.max(0,tr-zd)):pct(Math.max(0,Math.round(b*sh)-zd),src.kup==50?50:20);
+      o.kup=src.kind=='uop'?Math.min(src.kup==300?30000:25000,Math.max(0,tr-zd)):pct(Math.max(0,tr-zd),src.kup==50?50:20);
       o.base=Math.max(0,r0(tr-zd-o.kup))}
     o.tax=o.base>0?progressive(o.base,ytd.base,pit2?30000:0):0}
   else if(src.kind=='dzielo'){o.zus=0;o.health=0;o.ppkOwn=0;o.ppkEmp=0;o.kup=pct(b,src.kup==50?50:20);o.base=Math.max(0,r0(b-o.kup));o.tax=r0(pct(o.base,12))}
-  else{const costs=sl.costs||0,zus=src.zusAmt||0,inc=Math.max(0,b-costs-zus);o.zus=zus;o.kup=0;o.ppkOwn=0;o.ppkEmp=0;
-    if(src.taxf=='liniowy'){o.health=pct(inc,4.9);o.base=Math.max(0,r0(inc-o.health));o.tax=r0(pct(o.base,19))}
-    else if(src.taxf=='ryczalt'){o.health=src.healthAmt||0;o.base=Math.max(0,r0(b-zus-Math.round(o.health/2)));o.tax=r0(Math.round(o.base*(+src.ryczRate||12)/100))}
-    else{o.health=pct(inc,9);o.base=r0(inc);o.tax=progressive(o.base,ytd.base,30000)}}
+  else{const ym=ytd.ym,T=jdgT(ym),costs=sl.costs||0,Z=jdgZus(src,ym),inc=Math.max(0,b-costs-Z.soc-Z.fp);o.zus=Z.soc+Z.fp;o.kup=0;o.ppkOwn=0;o.ppkEmp=0;o.hded=0;
+    if(src.taxf=='liniowy'){o.health=Math.max(pct(inc,4.9),hMin(ym));o.hded=Math.min(o.health,Math.max(0,T.linLimit-(ytd.hded||0)));o.base=Math.max(0,r0(inc-o.hded));o.tax=r0(pct(o.base,19))}
+    else if(src.taxf=='ryczalt'){const R=(ytd.brutto||0)+b;o.health=src.healthAmt||T.rycz[R<=6000000?0:R<=30000000?1:2];
+      /* ryczałt: revenue minus ZUS społeczny (not Fundusz Pracy) and half of the health contribution; costs do not count */
+      o.base=Math.max(0,r0(b-Z.soc-Math.round(o.health/2)));o.tax=r0(Math.round(o.base*(+src.ryczRate||12)/100))}
+    else{o.health=Math.max(pct(inc,9),hMin(ym));o.base=r0(inc);o.tax=progressive(o.base,ytd.base,30000)}}
   return o}
 /* „Podpowiedz z netto”: from the amount that came to the account (plus the deductions taken from the pay) back to brutto, then the same estimate as from brutto.
    Employee contracts only (JDG: the invoice is what comes in). Net grows by at most a grosz per grosz of brutto (rounding can only slow it down),

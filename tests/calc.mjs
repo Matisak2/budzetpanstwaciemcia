@@ -1,6 +1,6 @@
 /* 🤖 Robot: czy obliczenia pieniędzy dalej dają dobre wyniki. Oczekiwane liczby policzone niezależnie (ręcznie / kalkulatorem), nie skopiowane z kodu.
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
-import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf} from '../js/pay.js';
+import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
 import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
@@ -32,6 +32,28 @@ const N=' ';
   eq('Dzieło 1 000 – podatek',suggest({kind:'dzielo'},{comp:[{a:100000}]}).tax,9600);
   // JDG liniowy: faktury 20 000, koszty 2 000, ZUS 1 600 → dochód 16 400, zdrowotna 4,9% = 803,60, podstawa 15 596, podatek 19% = 2 963,24 → 2 963
   const j=suggest({kind:'b2b',taxf:'liniowy',zusAmt:160000},{comp:[{a:2000000}],costs:200000});eq('JDG liniowy – zdrowotna',j.health,80360);eq('JDG liniowy – podatek',j.tax,296300);
+  // 💼 JDG 2026 – ZUS społeczny z minimalnej podstawy (ZUS): pełny 5 652 zł × (19,52 + 8 + 1,67)% = 1 103,27 + 452,16 + 94,39 = 1 649,82 + Fundusz Pracy 138,47 = 1 788,29;
+  // z chorobowym (+138,47) 1 926,76; preferencyjny 1 441,80 zł × … = 281,44 + 115,34 + 24,08 = 420,86, z chorobowym (+35,32) 456,18; ulga na start 0
+  {let z=jdgZus({zusVar:'full'},'2026-03');eq('ZUS pełny – społeczne',z.soc,164982);eq('ZUS pełny – Fundusz Pracy',z.fp,13847);
+   z=jdgZus({zusVar:'full',zusChor:true},'2026-03');eq('ZUS pełny z chorobowym',z.soc+z.fp,192676);
+   z=jdgZus({zusVar:'pref'},'2026-03');eq('ZUS preferencyjny',z.soc+z.fp,42086);z=jdgZus({zusVar:'pref',zusChor:true},'2026-03');eq('ZUS preferencyjny z chorobowym',z.soc,45618);
+   z=jdgZus({zusVar:'start'},'2026-03');eq('Ulga na start',z.soc+z.fp,0);eq('Stara kwota ZUS bez wariantu',jdgZus({zusAmt:160000},'2026-03').soc,160000);
+   // skala, pełny ZUS, faktura 10 000: dochód 10 000 − 1 649,82 − 138,47 = 8 211,71; zdrowotna 9% = 739,05; podstawa 8 212; podatek 12% = 985,44 − 300 = 685,44 → 685
+   let o=suggest({kind:'b2b',taxf:'skala',zusVar:'full'},{comp:[{a:1000000}]},{brutto:0,base:0,ym:'2026-03'});eq('JDG skala – ZUS',o.zus,178829);eq('JDG skala – zdrowotna',o.health,73905);eq('JDG skala – podatek',o.tax,68500);
+   // mały dochód: zdrowotna minimalna – 9% z 4 806 zł = 432,54 (od lutego), w styczniu 2026 jeszcze 314,96
+   o=suggest({kind:'b2b',taxf:'skala',zusVar:'start'},{comp:[{a:200000}]},{brutto:0,base:0,ym:'2026-03'});eq('JDG – zdrowotna minimalna',o.health,43254);
+   o=suggest({kind:'b2b',taxf:'skala',zusVar:'start'},{comp:[{a:200000}]},{brutto:0,base:0,ym:'2026-01'});eq('JDG – zdrowotna minimalna w styczniu',o.health,31496);
+   // liniowy: z limitu 14 100 zł zostało 100 zł → dochód 20 000, zdrowotna 980 (odliczę tylko 100), podstawa 19 900, podatek 19% = 3 781
+   o=suggest({kind:'b2b',taxf:'liniowy',zusVar:'start'},{comp:[{a:2000000}]},{brutto:0,base:0,hded:1400000,ym:'2026-11'});eq('Liniowy – zdrowotna',o.health,98000);eq('Liniowy – odliczona część',o.hded,10000);eq('Liniowy – podatek po limicie',o.tax,378100);
+   // ryczałt 12%: przychód w roku 55 000 + 10 000 = 65 000 → drugi próg 830,58; podstawa 10 000 − 420,86 − 415,29 = 9 163,85 → 9 164; podatek 1 099,68 → 1 100
+   o=suggest({kind:'b2b',taxf:'ryczalt',ryczRate:12,zusVar:'pref'},{comp:[{a:1000000}]},{brutto:5500000,base:0,ym:'2026-06'});eq('Ryczałt – zdrowotna z progu',o.health,83058);eq('Ryczałt – podatek',o.tax,110000);
+   o=suggest({kind:'b2b',taxf:'ryczalt',ryczRate:12,zusVar:'pref'},{comp:[{a:1000000}]},{brutto:0,base:0,ym:'2026-06'});eq('Ryczałt – pierwszy próg',o.health,49835);
+   o=suggest({kind:'b2b',taxf:'ryczalt',ryczRate:12,zusVar:'pref'},{comp:[{a:1000000}]},{brutto:29500000,base:0,ym:'2026-06'});eq('Ryczałt – trzeci próg',o.health,149504);
+   o=suggest({kind:'b2b',taxf:'ryczalt',ryczRate:12,zusVar:'pref',healthAmt:50000},{comp:[{a:1000000}]},{brutto:0,base:0,ym:'2026-06'});eq('Ryczałt – zdrowotna wpisana ręcznie',o.health,50000);
+   // 🎓 zlecenie studenta do 26 lat: bez ZUS i zdrowotnej; 3 000 zł → koszty 20% 600, podstawa 2 400, podatek 12% = 288
+   o=suggest({kind:'zlec',student:true},{comp:[{a:300000}]});eq('Student – ZUS',o.zus,0);eq('Student – zdrowotna',o.health,0);eq('Student – podatek',o.tax,28800);
+   // zlecenie z PPK: ZUS 411,30; PPK pracodawcy 45; koszty 20% z (3 000 + 45 − 411,30) = 526,74; podstawa 2 106,96 → 2 107; podatek 252,84 → 253
+   o=suggest({kind:'zlec',ppk:'x'},{comp:[{a:300000}]});eq('Zlecenie z PPK – koszty',o.kup,52674);eq('Zlecenie z PPK – podatek',o.tax,25300)}
   // „Podpowiedz z netto”: 7 147,39 zł na konto → z powrotem ok. 10 000 zł brutto, a rachunek paska zgadza się co do grosza
   {const back=(s,net,ded=0,ytd)=>{const r=fromNet(s,net,ded,ytd);return{b:r.b,net:calcNet(s,{comp:[{a:r.b}],...r,ded:[{a:ded}]})}};
     let r=back(src,714739);eq('Z netto – rachunek się zgadza',r.net,714739);eq('Z netto – brutto ok. 10 000 zł',Math.abs(r.b-1000000)<=2,true);

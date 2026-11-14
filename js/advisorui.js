@@ -10,7 +10,7 @@ import {goalAlloc} from './actions.js';
 import {kotki} from './guide.js';
 import {scene} from './cats.js';
 import {wrapOf,LIMITS,limitOf,paidInYear,BONDS} from './inv.js';
-import {esc,rid,td,zl0,dmy,pg,addDays,addMonths} from './util.js';
+import {esc,rid,td,zl0,dmy,pg,addDays,addMonths,plDay} from './util.js';
 import {S,ask,toast,H,HOLD,merge,saveAcc,guard,infoH,isP} from './core.js';
 import {macro,mkt,bondOffer} from './savings.js';
 import {editFixedTr} from './actions.js';
@@ -43,7 +43,7 @@ export function allocH(owner){const A=allocNow(owner),R=realNow(owner),all=clsAl
       <button class="arow" onclick="advGrp('assets')"><i style="background:${AGRP.stock.c}"></i><span class="an">📈 Aktywa</span><span class="num">${zl0(A.total)}</span><em class="num">${pct(A.total,tot)}</em><span class="ar">›</span></button>${homeH(R)}</div></div>
       <div class="mini">Razem z domem: <b style="color:var(--fg)">${zl0(tot+R.home.net)}</b>. Proporcje liczę z tego, co pracuje – bez mieszkania, w którym mieszkacie.</div>`;
     const P=planFor(owner);if(P?.real!=null&&tot>0){const now=Math.max(0,R.work.net)/tot*100,lo=Math.max(0,P.real-10),hi=Math.min(100,P.real+10);
-      h+=`<div class="mini">🎯 Nieruchomości ${now.toFixed(0)}% · plan ${lo}–${hi}%${now<lo?' – poniżej planu (zakup podsuną kotki w etapie celów, gdy Was stać)':now>hi?' – ponad plan: nowe pieniądze kierujcie do aktywów, mieszkania nie sprzedajemy':' ✓'}</div>`}}
+      h+=`<div class="mini">🎯 Nieruchomości ${now.toFixed(0)}% · plan ${lo}–${hi}%${now<lo?' – poniżej planu: na zakup przyjdzie czas, gdy będzie Was stać (🧭 Doradca → 🎯 Cele → „Czy stać Was na zakup?”)':now>hi?' – ponad plan: nowe pieniądze kierujcie do aktywów, mieszkania nie sprzedajemy':' ✓'}</div>`}}
   else if(lvl=='real'){h+=`<button class="btn sm" style="align-self:flex-start" onclick="advGrp()">‹ Wróć</button><div class="r1"><b>🏠 Nieruchomości</b><span class="num">netto ${zl0(R.work.net+R.home.net)}</span></div>`;
     h+=R.list.map(x=>`<button class="arow asub areal" onclick="editAsset('${x.id}')"><span class="an">${all[x.cls].i} ${esc(x.name)}<small>${x.home?'🏡 mieszkamy – nie zarabia':REAL_USE[x.use]||esc(all[x.cls].n)}${x.rent?' · czynsz '+zl0(x.rent)+'/mies.':''}${x.share<1?' · Twój udział '+Math.round(x.share*100)+'%':''}<br>wartość ${zl0(x.value)}${x.debt?' − kredyt '+zl0(x.debt):''}${x.valAt?' · wycena z '+dmy(x.valAt):''}</small></span><span class="num">${zl0(x.net)}</span><span class="ar">✎</span></button>`).join('')}
   else if(!lvl||lvl=='assets'){const segs=A.groups.map(x=>({l:AGRP[x.g].n,v:x.v,c:AGRP[x.g].c}));
@@ -59,7 +59,7 @@ export function allocH(owner){const A=allocNow(owner),R=realNow(owner),all=clsAl
   if(old.length)h+=`<div class="mini">🐾 Stara wycena: ${old.map(r=>`<button class="chip" onclick="editAsset('${r.id}')">${esc(r.name)}</button>`).join(' ')} – stuknij i wpisz aktualną wartość.</div>`;
   if(A.neg.length)h+=`<div class="mini t-exp">⚠️ ${esc(A.neg.join(', '))}: instrumenty są warte więcej niż saldo konta – sprawdź saldo albo zakupy (gotówki liczę 0 zł).</div>`;
   if(A.skipped.length)h+=`<div class="mini">Bez kursu waluty (pominięte): ${esc(A.skipped.map(x=>x.name+' ('+x.cur+')').join(', '))}.</div>`;
-  h+=btnsH+infoH('alloc',`Liczę konta oszczędnościowe i inwestycyjne${who?' tej osoby':''} – bez PPK (doradca go nie liczy), bez kont bieżących i subkont – oraz wpisane ręcznie nieruchomości i inne aktywa (wartość minus kredyt; we wspólnych liczy się udział osoby). Instrumenty według dzisiejszej wyceny, gotówka na koncie inwestycyjnym osobno, inne waluty po średnim kursie NBP. Mieszkanie, w którym mieszkacie, jest w majątku, ale nie w proporcjach – nie zarabia i nie da się go „wyrównać”. Klasy przypisuję sam; zawsze możesz zmienić. W następnym etapie dojdzie plan z widełkami.`)+'</section>';
+  h+=btnsH+infoH('alloc',`Liczę konta oszczędnościowe i inwestycyjne${who?' tej osoby':''} – bez PPK (doradca go nie liczy), bez kont bieżących i subkont – oraz wpisane ręcznie nieruchomości i inne aktywa (wartość minus kredyt; we wspólnych liczy się udział osoby). Instrumenty według dzisiejszej wyceny, gotówka na koncie inwestycyjnym osobno, inne waluty po średnim kursie NBP. Mieszkanie, w którym mieszkacie, jest w majątku, ale nie w proporcjach – nie zarabia i nie da się go „wyrównać”. Klasy przypisuję sam; zawsze możesz zmienić. Gdy jest zatwierdzony plan (🧭 Doradca → 📄 Mój plan), pod kołem widać jego widełki – gdy coś z nich wyjdzie, kotki podpowiedzą, co dokupić.`)+'</section>';
   return h}
 
 /* 🏠 / ✨ add or change a property or another asset (two short steps; real estate asks about use, rent and the loan) */
@@ -201,7 +201,7 @@ export function ankSet(id,v){if(guard())return;const q=ANK.find(x=>x.id==id);if(
 const GN=g=>AGRP[g].i+' '+AGRP[g].n;
 export function planPageH(){const who=S.who,A=ankOf(who),ctx=ankCtx(who),saved=planOfWho(who),prop=planP(A),P=saved||prop,base=ctx.base,cr=crisisP(P.g,base);
   const other=who=='Mati'?'Wercia':'Mati',op=planOfWho(other),J=jointPlan(saved,op);
-  let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button><section class="chart plan"><div class="ct"><b>📄 ${saved?'Mój plan':'Propozycja planu'} – ${esc(who)}</b><span class="mini">${saved?'zatwierdzony '+dmy(new Date(saved.at).toISOString().slice(0,10)):'z Twoich odpowiedzi – zatwierdź albo zmień'}</span></div>`;
+  let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button><section class="chart plan"><div class="ct"><b>📄 ${saved?'Mój plan':'Propozycja planu'} – ${esc(who)}</b><span class="mini">${saved?'zatwierdzony '+dmy(plDay(saved.at)):'z Twoich odpowiedzi – zatwierdź albo zmień'}</span></div>`;
   h+=`<div class="mini"><b>Część długoterminowa</b> (bez poduszki) – proporcje i widełki:</div>`+PLAN_G.map(g=>{const t=P.g[g],[lo,hi]=bandOf(t);return`<div class="pg"><div class="r1"><span>${GN(g)}</span><b class="num">${t}% <em>(${String(lo).replace('.',',')}–${String(hi).replace('.',',')}%)</em></b></div><div class="pbar"><span class="band" style="left:${lo}%;width:${hi-lo}%"></span><span class="tgt" style="left:${t}%"></span></div></div>`}).join('');
   const sp=Object.entries(P.split||{}).map(([c,v])=>`${(clsAll(custom())[c]?.n||c).replace(/^Akcje – /,'')} ${v}%`).join(' · ');
   h+=`<div class="mini">📈 Akcje: ${esc(sp)}${P.sand?` · 🧪 piaskownica do ${P.sand}%`:''}. 🧾 Obligacje: skarbowe indeksowane inflacją (EDO, w IKE też).</div>`;
@@ -335,7 +335,7 @@ export function wherePlusH(R){const mode=S.advIn?.mode||'me',B=buyListP(R,mode);
   h+='</section>';
   const L=Object.entries(advLog()).filter(([,x])=>x&&!x.deleted&&(x.who==S.who||x.mode=='both')).sort((a,b)=>b[1].at-a[1].at).slice(0,5);
   if(L.length)h+=`<section class="chart"><div class="ct"><b>📋 Zapisane porady</b><span class="mini">odhaczam same, gdy wpiszesz zakup albo przelew</span></div>${L.map(([id,x])=>{const d=adviceDoneP(x,S.hold,liveOf(S.tx),S.cfg);
-    return`<details class="wrow"><summary><span class="an">${dmy(new Date(x.at).toISOString().slice(0,10))} · ${zl0(x.amt)}</span><b class="num">${d.n==d.of&&d.of?'✅':`${d.n}/${d.of}`}</b></summary>${[...d.rows.filter(r=>r.kind=='ike'||r.kind=='ikze'),...d.buys].map(r=>`<div class="mini">${r.done?'✅':'⬜'} ${esc(r.where&&!r.g?r.where:r.name)} – ${zl0(r.a)}</div>`).join('')}<button class="chip" onclick="delAdvice('${id}')">🗑️ Usuń poradę</button></details>`}).join('')}</section>`;
+    return`<details class="wrow"><summary><span class="an">${dmy(plDay(x.at))} · ${zl0(x.amt)}</span><b class="num">${d.n==d.of&&d.of?'✅':`${d.n}/${d.of}`}</b></summary>${[...d.rows.filter(r=>r.kind=='ike'||r.kind=='ikze'),...d.buys].map(r=>`<div class="mini">${r.done?'✅':'⬜'} ${esc(r.where&&!r.g?r.where:r.name)} – ${zl0(r.a)}</div>`).join('')}<button class="chip" onclick="delAdvice('${id}')">🗑️ Usuń poradę</button></details>`}).join('')}</section>`;
   return h}
 export function setBondM(m){S.bondM=m;render()}
 export function saveAdvice(){if(guard())return;const R=S.advRes;if(!R)return;const B=buyListP(R,S.advIn?.mode||'me'),id='av'+rid();
@@ -419,7 +419,7 @@ export function thermoH(){const T=thermoNow(),A=ankOf(S.who),pc=v=>String(v).rep
   return`<details class="more thermo"${S.infoOpen?.thermo?' open':''} ontoggle="infoTog('thermo',this.open)"><summary>🌡️ Termometr rynku: ${THERMO_TXT[T.lvl]}</summary>${b}</details>`}
 export function advTodoMine(){const who=S.who,A=ankOf(who),plan=planOfWho(who),ctx=ankCtx(who),y=+td().slice(0,4),tx=liveOf(S.tx);
   const ikz=S.cfg.accs.filter(a=>!a.archived&&wrapOf(a)=='ikze'&&ownerOf(a)==who).reduce((s,a)=>s+paidInYear(tx,a.id,String(y-1)),0),w=wrapsOf(who);
-  const trs=Object.entries(advLog()).filter(([,x])=>x&&!x.deleted&&x.who==who&&x.tr?.length).flatMap(([id,x])=>x.tr.map(t=>({...t,id,of:x.tr.length,at:new Date(x.at).toISOString().slice(0,10)})));
+  const trs=Object.entries(advLog()).filter(([,x])=>x&&!x.deleted&&x.who==who&&x.tr?.length).flatMap(([id,x])=>x.tr.map(t=>({...t,id,of:x.tr.length,at:plDay(x.at)})));
   const hits=wishHitP(wishes(),mkt()?.prices).filter(w=>!w.who||w.who==who).map(w=>({key:`sandw:${w.id}:${td().slice(0,7)}`,icon:'⭐',text:`${w.name}: cena ${String(w.q.p).replace('.',',')} – doszła do Twojego celu (${String(w.target).replace('.',',')}). Twój powód: „${w.why}”. Sprawdź limit piaskownicy przed zakupem.`,go:{a:'sand'},label:'Piaskownica',k:'plan',who,quiet:true}));
   return [...hits,...advRemindP({who,today:td(),plan,dev:plan?devP(allocNow(who),plan):null,ikeLeft:w.ike.has?w.ike.left:0,ikzePrevPaid:ikz,t:taxOf(A),podAmt:Math.round(ctx.exp*(+(A.q17||6)||6)),infl:+macro().infl||0,trs,planAt:plan?.at,thermo:thermoNow(),letter:A.q60&&A.q60!='?'?A.q60:'',rule:A.q61})]}
 

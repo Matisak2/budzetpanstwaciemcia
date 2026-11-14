@@ -4,7 +4,7 @@ import {catIcon,catsEmpty} from './art.js';
 import {scene} from './cats.js';
 import {CELEBRATE,HELP,NEWS_V,kotki} from './guide.js';
 import {hbarsH} from './charts.js';
-import {HUES,OWN,OWN_COL,SEASON,catHue,pastel,seed} from './data.js';
+import {HUES,OWN,OWN_COL,SEASON,catHue,pastel,seed,tint} from './data.js';
 import {IICON,limitOf,paidInYear,wrapOf,intOf,intLabel} from './inv.js';
 import {saveSplitP} from './today.js';
 import {yearBody,yearStats} from './report.js';
@@ -201,7 +201,7 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
 
     if(S.sub=='all'){
       h+=`<div class="worth"><div class="l">Oszczędności i inwestycje razem</div><div class="v num">${zl(savEnd)} ${trendH(savDelta)}</div>${fxTxt(ownFx(null,end))?`<div class="s">${esc(fxPlus(ownFx(null,end)).trim())} (bez przeliczania)</div>`:''}<div class="s">${OWN.map(o=>`${o} ${zl0(ownAt(o,end))}`).join(' · ')}</div></div>`;
-      h+=actH('all')+autoValH()+limitPropH()+matH()+advCardH('all')+allocH('all');
+      h+=actH('all')+autoValH()+limitPropH()+matH();
       /* who saves how much: the line under the total and the tabs Mati / Wercia / Wspólne (no separate card) */
       /* the year so far: January … the shown month */
       const yF=Array.from({length:+S.ym.slice(5)},(_,i)=>savFlow(S.cfg,tx,SVI,S.ym.slice(0,5)+String(i+1).padStart(2,'0'))).reduce((a,x)=>({flow:a.flow+x.flow,gain:a.gain+x.gain}),{flow:0,gain:0}),put=flowM.flow,coins=coinSum(S.ym,null,null,SVI);
@@ -213,15 +213,17 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
         ${coins?`<div class="mini">🪙 w tym z drobnych: <b style="color:var(--fg)">${zl(coins)}</b>${put-coins?` · reszta: <b style="color:var(--fg)">${zl(put-coins)}</b>`:''}</div>`:''}
         <button class="btn sm" style="align-self:flex-start" onclick="setSavTarget()">${tg?'Zmień cel miesięczny ('+zl0(tg)+')':'+ Ustaw cel: ile odkładać co miesiąc'}</button></section>`;
       if(tg&&put>=tg&&S.ym==td().slice(0,7)&&!ls.get('mw_conf_'+S.ym)){ls.set('mw_conf_'+S.ym,'1');setTimeout(()=>celebrate(CELEBRATE.saving(S.who)),300)}
-      /* the order: what you look at most often first – put aside, goals, cushion; FIRE and the long chart at the end */
+      /* the order: what you look at most often first – put aside, goals, then 🧭 the advisor and 🥧 the wheel, cushion; FIRE and the long chart at the end */
       const gl=Object.entries(S.goals).map(([id,g])=>({id,...g,pr:goalProgress(g,S.cfg,tx,td())}));
       if(gl.length)h+=`<section class="chart"><div class="ct"><b>Wszystkie cele</b></div>${hbarsH(gl.map(g=>({l:g.name+' · '+goalOwner(g),v:g.pr.saved,c:OWN_COL[goalOwner(g)],dot:OWN_COL[goalOwner(g)],note:`${Math.floor(g.pr.pct)}% z ${zl0(g.target)}`})))}</section>`;
+      /* 🧭 the advisor and the wealth wheel after what you look at every month (put aside, goals) – Mati 14.11 */
+      h+=advCardH('all')+allocH('all');
       h+=etfCardH('all')+cushion()+limitsH()+intCardH()+gainH(S.cfg.accs.filter(a=>shown(a)),'Wszystkie konta')+fireH(savAt(tom),monthlySave())}
     else{const o=S.sub,accs=S.cfg.accs.filter(a=>shown(a)&&ownerOf(a)==o),tE=ownAt(o,end),tD=tE-ownAt(o,start);
       const invV=accs.filter(a=>a.grp=='inv'&&isP(a)).reduce((x,a)=>x+balance(S.cfg,tx,a.id,end),0);
       h+=`<div class="ptab ${o=='Wercia'?'pink':''}">`;
       h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}">${o=='Wercia'?'<svg class="flowers" viewBox="0 0 170 120" aria-hidden="true"><g stroke-linecap="round"><path d="M40 120 C40 96 42 80 46 64" stroke="#86c29a" stroke-width="4" fill="none"/><path d="M42 98 C30 92 24 84 22 74 C34 78 40 86 42 98Z" fill="#a7d8b5"/><path d="M46 64 C34 60 30 44 34 30 C40 38 44 40 46 40 C48 40 52 38 58 30 C62 44 58 60 46 64Z" fill="#f472b6"/><path d="M46 40 C44 30 46 22 46 18 C50 24 52 32 50 42Z" fill="#ec4899"/><path d="M118 120 C118 100 116 86 112 74" stroke="#86c29a" stroke-width="4" fill="none"/><path d="M115 100 C126 94 132 86 134 78 C122 80 116 90 115 100Z" fill="#a7d8b5"/><circle cx="112" cy="62" r="17" fill="#fda4af"/><path d="M112 62 m-11 0 a11 11 0 1 1 11 11" fill="none" stroke="#e11d48" stroke-width="3"/><path d="M112 62 m-6 0 a6 6 0 1 1 6 6" fill="none" stroke="#e11d48" stroke-width="2.5"/><path d="M80 120 C80 108 80 100 82 92" stroke="#86c29a" stroke-width="3" fill="none"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(0 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(45 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(90 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(135 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(180 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(225 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(270 82 90)"/><ellipse cx="82" cy="80" rx="4.5" ry="10" fill="#fff" transform="rotate(315 82 90)"/><circle cx="82" cy="90" r="5" fill="#fbbf24"/><g transform="translate(150 96) scale(.6)"><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(0)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(60)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(120)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(180)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(240)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fbcfe8" transform="rotate(300)"/><circle r="5" fill="#fde68a"/></g><g transform="translate(14 104) scale(.5)"><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(0)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(60)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(120)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(180)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(240)"/><ellipse cx="0" cy="-10" rx="4.5" ry="10" fill="#fff" transform="rotate(300)"/><circle r="5" fill="#f9a8d4"/></g></g></svg>':''}<div class="l">${o=='Wercia'?'🌷 ':''}${o=='Wspólne'?'Wspólne oszczędności':'Oszczędności: '+o}</div><div class="v num">${zl(tE)} ${trendH(tD)}</div><div class="s">oszczędności ${zl0(tE-invV)} · inwestycje, IKE, IKZE ${zl0(invV)}</div></div>`;
-      h+=actH(o)+(o==S.who?advCardH(o):'')+allocH(o)+goalsH(o);
+      h+=actH(o)+goalsH(o)+(o==S.who?advCardH(o):'')+allocH(o);
       if(o=='Wspólne')h+=cushion('Wspólne');
       const grpL=(g,t)=>{const L=accs.filter(a=>a.grp==g);return L.length?`<div class="list"><div class="grp-h ${g}"><span>${t}</span><span class="num">${zl(L.filter(isP).reduce((x,a)=>x+balance(S.cfg,tx,a.id,end),0))}${fxPlus(fxOf(L,a=>balance(S.cfg,tx,a.id,end)))}</span></div>${L.map(accRow).join('')}</div>`:''};
       h+=`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">Razem ${zl(tE)}${fxPlus(ownFx(o,end))}</span><button class="btn sm dark" onclick="addSavAcc('${o}')">+ Dodaj konto</button></div>`+(grpL('sav','OSZCZĘDNOŚCI')+grpL('inv','INWESTYCJE, IKE, IKZE, PPK')||'<div class="acc mini">Brak kont – dodaj pierwsze przyciskiem powyżej.</div>');
@@ -254,18 +256,20 @@ export function render(){if(rq){cancelAnimationFrame(rq);rq=0}
     const dl=ow=>[debtSum('owe',ow)?`🔻 do spłaty ${zl0(debtSum('owe',ow))}`:'',debtSum('lent',ow)?`🔺 pożyczone innym ${zl0(debtSum('lent',ow))}`:'',asv(ow)?`🏠 nieruchomości i inne aktywa ${zl0(asv(ow))}`:''].filter(Boolean).join(' · ');
     const dlH=ow=>dl(ow)?`<div class="s">${dl(ow)} · po rozliczeniu wszystkiego: ${zl0(total(ow)-debtSum('owe',ow)+debtSum('lent',ow)+asv(ow))}</div>`:'';
     const total=ow=>sumO(ow),otag=ow=>`<span class="otag o-${ow=='Mati'?'m':ow=='Wercia'?'w':'s'}">${ow}</span>`;
-    h+=majSegH()+accSegH()+`<button class="btn dark" style="width:100%" onclick="openRecon()">⚖️ Wyrównaj wszystkie salda naraz</button>`;
-    h+=`<div class="seg seg4">${[['all','Wszyscy'],...OWN.map(x=>[x,x])].map(([k,l])=>`<button aria-pressed="${o==k}"${k=='Wercia'?' class="wbtn"':''} onclick="setAccSub('${k}')">${l}${k=='Wercia'?' 🌸':''}</button>`).join('')}</div>`;
+    /* whose accounts: small round buttons inside the card with the total (one row of switches less – Mati 14.11); ⚖️ under the list */
+    const wchH=`<div class="wchips">${[['all','Wszyscy'],...OWN.map(x=>[x,x])].map(([k,l])=>`<button aria-pressed="${o==k}" style="--oc:${k=='all'?'#a5b4fc':OWN_COL[k]};--og:${tint(k=='all'?'#a5b4fc':OWN_COL[k],.35)}" onclick="setAccSub('${k}')">${l}${k=='Wercia'?' 🌸':''}</button>`).join('')}</div>`;
+    h+=majSegH()+accSegH();
     h+=`<div class="ptab ${o=='Wercia'?'pink':''}">`;
     if(o=='all'){const own=OWN.map(x=>[x,total(x)]),pos=own.filter(([,v])=>v>0),pt=pos.reduce((a,[,v])=>a+v,0);
-      h+=`<div class="worth"><div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(total())}${fxSmall(fxO())}</div><div class="s">${parts()}</div>${dlH()}</div>`;
+      h+=`<div class="worth">${wchH}<div class="l">Łączny majątek na koniec miesiąca</div><div class="v num">${zl(total())}${fxSmall(fxO())}</div><div class="s">${parts()}</div>${dlH()}</div>`;
       h+=`<section class="chart"><div class="ct"><b>Czyj majątek</b><span class="mini">stuknij osobę, żeby zobaczyć tylko jej konta</span></div>${pt>0?`<div class="stack">${pos.map(([x,v])=>`<i style="width:${(v/pt*100).toFixed(2)}%;background:${OWN_COL[x]}" data-tip="${x}: ${zl(v)}"></i>`).join('')}</div>`:''}<div class="owners">${own.map(([x,v])=>`<button class="orow" onclick="setAccSub('${x}')"><i style="background:${OWN_COL[x]}"></i><span class="ot"><b>${x}</b><small>${parts(x)}${dl(x)?'<br>'+dl(x):''}</small></span><b class="num">${zl(v)}</b></button>`).join('')}</div></section>`}
-    else h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}"><div class="l">${o=='Wspólne'?'Wspólny majątek':'Majątek: '+o}</div><div class="v num">${zl(total(o))}${fxSmall(fxO(o))}</div><div class="s">${parts(o)}</div>${dlH(o)}</div>`;
+    else h+=`<div class="worth ${o=='Mati'?'mati':o=='Wspólne'?'wsp':''}">${wchH}<div class="l">${o=='Wspólne'?'Wspólny majątek':'Majątek: '+o}</div><div class="v num">${zl(total(o))}${fxSmall(fxO(o))}</div><div class="s">${parts(o)}</div>${dlH(o)}</div>`;
     const GH={cur:'KONTA BIEŻĄCE',sub:'SUBKONTA',sav:'OSZCZĘDNOŚCI',inv:'INWESTYCJE, IKE, IKZE'},groups=['cur','sub','sav','inv'].filter(g=>S.cfg.accs.some(a=>a.grp==g&&vis(a)));
     if(!groups.length)h+=`<div class="empty">Brak kont – dodasz je w ⚙️ Ustawieniach.</div>`;
     h+=groups.map(g=>{const accs=S.cfg.accs.filter(a=>a.grp==g&&vis(a));
       return`<div class="list"><div class="grp-h ${g=='sub'?'subk':g}"><span>${GH[g]}</span><span class="num">${zl(accs.filter(isP).reduce((x,a)=>x+bal(a),0))}${fxPlus(fxOf(accs,bal))}</span></div>${accs.map(a=>{const e=bal(a),s0=balance(S.cfg,tx,a.id,start),dlt=e-s0,M=v=>money(v,CUR(a));
         return`<div class="acc"><div><b>${esc(a.name)}</b>${o=='all'?otag(ownerOf(a)):''}<div class="mini">na początek: ${M(s0)}${isP(a)?'':` · <span class="curtag">${CUR(a)}</span>`}</div>${saveInH(a.id)}${intMini(a,tx)}</div><div class="r"><b class="num">${M(e)}</b><div class="mini ${dlt>0?'t-inc':dlt<0?'t-exp':''}">${dlt>0?'+':''}${M(dlt)}</div></div></div>`}).join('')}</div>`}).join('');
+    if(groups.length)h+=`<button class="btn" style="width:100%" onclick="openRecon()">⚖️ Wyrównaj wszystkie salda naraz</button>`;
     h+='</div>'}
 
   else if(S.help)h+=helpH();

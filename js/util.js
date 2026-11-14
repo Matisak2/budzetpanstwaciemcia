@@ -30,6 +30,9 @@ export const pg=s=>Math.round(pnum(s,true)*100);
 export const fmtIn=n=>n?(n/100).toFixed(2).replace(/\.00$/,'').replace('.',','):'';
 export const f2=n=>(n/100).toFixed(2).replace('.',',');
 export const p2=n=>String(n).padStart(2,'0');
+/* the day of a moment (ms) in Poland, YYYY-MM-DD – toISOString() gives London's date, a day earlier just after midnight */
+const PLD=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'});
+export const plDay=ms=>PLD.format(new Date(ms));
 export const td=()=>{const d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())};
 export const daysIn=ym=>new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
 export const rid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
