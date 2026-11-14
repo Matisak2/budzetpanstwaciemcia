@@ -167,3 +167,17 @@ Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przycisk
 
 ## Później
 Kopia zapasowa na domowy NAS (5–10 TB) – Mati odezwie się, gdy kupi sprzęt.
+
+# Część 8 – 🧭 Doradca inwestycyjny (plan z 14.11.2026, czeka na akceptację Matiego)
+Pełny plan: **`DORADCA-plan.md`** (ankieta 36 pytań, sposób liczenia, etapy, pytania do Matiego). Notatki z lektury ok. 90 artykułów Marcina Iwucia: `DORADCA-notatki.md`. Stan pracy: `DORADCA-stan.md`.
+**Nic z tego nie jest jeszcze w aplikacji.** Każdy etap dopiero na komendę Matiego, po kopii.
+
+- [x] Analiza: wymagania Matiego, zasady kont (IKE, IKZE, OKI, OIPE, PPK), pełna lektura źródeł
+- [x] Kompletny plan doradcy (`DORADCA-plan.md`)
+- [ ] Odpowiedzi Matiego na 6 pytań z końca planu
+- [ ] Etap D1. Ankieta i diagnoza (poduszka, długi, limity, plan a stan)
+- [ ] Etap D2. „Gdzie”: kwota → bramki → pokrowce z wyliczeniem, „na pewno nie tu”, tryb „wspólnie”
+- [ ] Etap D3. „W co”: niedobory, konkretne instrumenty, koszty, transze
+- [ ] Etap D4. Cele: emerytura, mieszkanie, test kryzysu, strażnik kosztów
+- [ ] Etap D5. Termometr, reguły na spadki, przypomnienia w „Na dziś”
+- [ ] Etap D6. Piaskownica: analiza wpisanej spółki / ETF-u

@@ -32,9 +32,9 @@ Moduły dodatkowe: test kryzysu, luka emerytalna (z FIRE), cel „mieszkanie”,
 
 ## Postęp czytania (runda 4 – pełna lektura pominiętych fragmentów)
 - Rundy 1–3: ok. 88 artykułów (część tylko początek i koniec – stąd runda 4).
-- Runda 4: 37 paczek `u00`–`u36` (1,3 mln znaków). **Przeczytane i zanotowane WSZYSTKIE: u00–u36 (lektura zakończona).** Następny krok: plan w `DORADCA-plan.md`.
+- Runda 4: 37 paczek `u00`–`u36` (1,3 mln znaków). **Przeczytane i zanotowane WSZYSTKIE: u00–u36 (lektura zakończona).** **Plan gotowy: `DORADCA-plan.md`** (+ wpis „Część 8” w `PLAN.md`). Następny krok: odpowiedzi Matiego na 6 pytań z końca planu, potem – na komendę – etap D1.
 - Po każdej paczce: dopisać wnioski do sekcji G w `DORADCA-notatki.md`, zmienić numer w tej linijce, co kilka paczek commit + push.
-- Po u36: napisać plan (`DORADCA-plan.md` + skrót w `PLAN.md`), commit, push, pytania do Matiego.
+- Plan napisany i wysłany 14.11.2026. Budowa: tylko na wyraźną komendę Matiego, po kopii.
 
 ## Jak czytać / odtworzyć materiały
 - Paczki: `<scratchpad>/iw/u/uNN.txt`, czytać narzędziem Read z `allow_large:true` (jedna paczka na raz).
