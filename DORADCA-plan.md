@@ -24,6 +24,10 @@ Podstawa: wymagania Matiego z rozmowy 13–14.11.2026 oraz pełna lektura ok. 90
 14. **Ankieta rozbudowana** na podstawie lektury bloga (punkt 4.1, ok. 64 pytania z pytaniami warunkowymi). Czy własne mieszkanie liczyć do proporcji – pytanie 31 w ankiecie (podpowiedź: nie).
 15. **Własne mieszkanie liczy się do wartości i do proporcji majątku** (odpowiedź na pytanie 31 – domyślnie „tak”), ale doradca zawsze pamięta, że **nie zarabia** (brak czynszu, rentowność 0, nie jest pieniędzmi na cele ani na poduszkę, w kryzysie nie do sprzedania – w teście kryzysu osobno, „bez zmiany”).
 16. **Jeden główny wykres**: 🏠 nieruchomości / 📈 aktywa. Stuknięcie w kawałek przechodzi do szczegółów tej kategorii (nieruchomości: lista z wartością, kredytem, netto, czynszem albo „🏡 mieszkamy – nie zarabia”; aktywa: koło grup z punktu 14 → klasy → instrumenty). „‹ Wróć” do głównego. Zastępuje „dwa pierścienie” z 15.2.
+17. **Przechył w stronę nieruchomości jest dopuszczalny.** Udział nieruchomości ponad plan nie blokuje podpowiedzi zakupu. Kotki **analizują, czy stać Was na zakup teraz** (warunki 15.4 bez warunku „udział poniżej widełek”) i podsuwają pomysł – zwłaszcza gdy jedyna nieruchomość to mieszkanie, w którym mieszkacie (ono nie zarabia, więc mieszkanie na wynajem jest wtedy pierwszą nieruchomością „pracującą”). Zawsze pokazują fakt: „po zakupie nieruchomości to ok. X% majątku”, i listę „za i przeciw”, bez blokowania.
+18. **Własność nieruchomości i innych aktywów**: właściciel Mati / Wercia / Wspólne + **udział %** (przy Wspólne domyślnie 50/50, suwak; podpowiedź: wpisać tak, jak w akcie notarialnym / księdze wieczystej). Widok „Ja” liczy tylko swój udział wartości **i kredytu** (kredyt dzieli się w tej samej proporcji, chyba że zobowiązanie ma innego płacącego – wtedy kotki pytają), widok „Wspólnie” – całość. Do proporcji i podpowiedzi każdej osoby liczy się jej udział.
+19. **Ankieta najpierw u Matiego.** W D2 ankieta jest widoczna tylko na telefonie Matiego, dopóki nie stuknie „Pokaż ankietę Werci” (ustawienie we wspólnych danych doradcy).
+20. **Pytanie-bramka przed każdym działem warunkowym.** Ankieta nie pomija działu po cichu – najpierw pyta, np. „Kredyt: mam / nie mam, ale biorę pod uwagę / nie mam i nie chcę / nie wiem”. „Biorę pod uwagę” otwiera pytania na przyszłość; „nie chcę” zapisuje się jako preferencja i doradca **nigdy tego nie proponuje** (np. bez zgody na kredyt zakup nieruchomości liczony tylko za gotówkę). Działy z bramką: kredyt hipoteczny, inne długi, nieruchomości (dla siebie / na wynajem osobno), dzieci, działalność, OKI, złoto, kryptowaluty i inne alternatywne, pojedyncze spółki, obce waluty, nadpłata kredytu. Zapis odpowiedzi: `'yes'|'maybe'|'no'|'?'`.
 
 ---
 
@@ -89,7 +93,7 @@ Wygląd: pastelowo, kafelki jak w reszcie aplikacji; kotki komentują krótko (�
 
 Zasady ankiety:
 - Oznaczenia: **[A]** = aplikacja już to wie, pokazuje do potwierdzenia jednym stuknięciem; **[?]** = trzeba zapytać; **[W]** = pytanie wspólne – odpowiada jedna osoba, druga widzi odpowiedź i może ją zmienić.
-- **Pytania warunkowe** (→): pokazują się tylko, gdy mają sens (np. bez kredytu nie ma pytań o kredyt, bez mieszkania na wynajem – o najem). Dzięki temu przy ok. 70 pytaniach w katalogu jedna osoba widzi zwykle 35–50 (ok. 12–15 minut).
+- **Pytania warunkowe** (→) z **pytaniem-bramką** na początku działu (decyzja 20: mam / biorę pod uwagę / nie chcę / nie wiem): pokazują się tylko, gdy mają sens (np. bez kredytu nie ma pytań o kredyt, bez mieszkania na wynajem – o najem). Dzięki temu przy ok. 70 pytaniach w katalogu jedna osoba widzi zwykle 35–50 (ok. 12–15 minut).
 - Każda osoba wypełnia swoją część na swoim telefonie (`S.who`); można przerwać i wrócić (odpowiedzi zapisują się na bieżąco).
 - **Bez pytań o PPK** (decyzja 5).
 - Przy każdym pytaniu krótkie „po co pytamy” (ⓘ), np. „żeby wiedzieć, ile akcji to dla Ciebie za dużo”. Odpowiedzi w złotych liczone z Waszego majątku, nie same procenty.
@@ -424,7 +428,7 @@ Zapis: `assetM` (punkt 14) z polami `real:{use:'my'|'rent'|'empty'|'other',rent?
 - Rebalancing między nieruchomościami a częścią rynkową **tylko nowymi pieniędzmi** (np. nadwyżki z najmu do części rynkowej, gdy nieruchomości są ponad plan). Doradca **nigdy nie proponuje sprzedaży mieszkania** dla wyrównania proporcji.
 
 ### 15.4 Kiedy kotki podsuną „może warto pomyśleć o zakupie”
-Tylko gdy plan ma udział nieruchomości > 0 i obecny udział jest wyraźnie poniżej dolnej granicy widełek, **i jednocześnie** wszystkie warunki są spełnione:
+Gdy w ankiecie nieruchomości nie mają odpowiedzi „nie chcę” (decyzja 20) i wszystkie warunki są spełnione – **niezależnie od tego, czy udział nieruchomości jest już ponad plan** (decyzja 17; wtedy tylko informacja „po zakupie X% majątku”):
 1. Wkład własny (wg ankiety 10/20%; podpowiedź 20%) **+ koszty zakupu** (PCC 2% – przy pierwszym mieszkaniu z rynku wtórnego zwolnienie, notariusz, prowizja, wykończenie – razem ok. 3–5% ceny, liczone dokładnie przy budowie) **z aktywów, które da się na to przeznaczyć** (bez poduszki; IKE/IKZE tylko z jasnym kosztem wypłaty – domyślnie wcale).
 2. **Poduszka zostaje nietknięta** i jest liczona już z nową ratą (6 miesięcy wydatków z ratą).
 3. **Rata ≤ 30% dochodów netto** (z pasków i Budżetu), kredyt ≤ 20 lat (zasada 30/20/20), sprawdzona też z buforem banku **+2,5 punktu** stopy; przy wynajmie dodatkowo: czynsz z 10 miesięcy pokrywa ratę i koszty albo nadwyżka budżetu pokrywa różnicę.
