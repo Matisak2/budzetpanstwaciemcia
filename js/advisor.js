@@ -403,3 +403,26 @@ export function advRemindP({who,today,plan,dev,ikeLeft=0,ikzePrevPaid=0,t,podAmt
   if(planAt&&Date.parse(today)-planAt>365*864e5)add(`advank:${who}:${y}`,'📝',`Minął rok od planu – przejrzyj ankietę: czy coś się zmieniło (praca, próg, kredyt, dziecko)?`,{a:'ank'},'Ankieta');
   if(thermo?.lvl=='sale')add(`advsale:${today.slice(0,7)}`,'🏷️',`Akcje świata ${String(Math.abs(thermo.stock.dd)).replace('.',',')}% poniżej szczytu.${letter?` Twój list: „${letter}”.`:''}${thermo.ruleHit?' Twoja reguła zadziałała: dokup akcji ze złota / obligacji do planu.':rule=='own'?' Sprawdź swoją regułę z planu.':' Trzymaj plan.'}`,{a:'plan'},'Mój plan');
   return out}
+
+/* ======================= D7: 🧪 piaskownica ======================= */
+/* what counts as the sandbox: every class with risk „high” (single shares, themes, crypto, metals, commodities, collectibles…) – also own classes marked so */
+export const sandCls=(custom={})=>{const all=clsAll(custom);return new Set(Object.keys(all).filter(c=>all[c].risk=='high'))};
+/* the limit = plan.sand % of the long-term part (DORADCA-notatki: „piaskownica 5–10%”) */
+export function sandP(rows,plan,base,custom={}){const S=sandCls(custom),L=rows.filter(r=>S.has(r.cls)),now=L.reduce((s,r)=>s+r.v,0),limit=Math.round(base*(plan?.sand||0)/100);
+  return{rows:L,now,limit,left:Math.max(0,limit-now),over:Math.max(0,now-limit),pct:base?Math.round(now/base*1000)/10:0}}
+/* world shares (notes u17 / u28): USA over 60%, other developed ~29%, emerging ~11%, Poland 0,11% of MSCI ACWI */
+export const WORLD_SHARE={usa:60,dev:29,em:11,pl:0.11};
+export const SAND_KIND={single:'🎯 pojedyncza spółka',theme:'🔭 ETF tematyczny / sektorowy',crypto:'🪙 kryptowaluta',commod:'🛢️ surowiec / metal',other:'✨ inne'};
+export const SAND_REG={usa:'USA',dev:'inne kraje rozwinięte',em:'rynki wschodzące',pl:'Polska',none:'bez kraju (krypto, surowce)'};
+/* 🔎 facts about one idea – no „buy / sell”: its weight, the sandbox limit, what you already hold through the world funds, statistics, devil's advocate */
+export function sandCheckP({amt,kind,region,sand,base,worldVal=0}){const pctP=base?Math.round(amt/(base+amt)*1000)/10:0,after=sand.now+amt,over=Math.max(0,after-sand.limit),facts=[],flags=[];
+  if(region&&region!='none'&&worldVal>0)facts.push(`Przez fundusze „cały świat” macie już ok. ${zlS(Math.round(worldVal*WORLD_SHARE[region]/100))} w ${region=='pl'?'Polsce':region=='usa'?'USA':region=='em'?'rynkach wschodzących':'innych krajach rozwiniętych'} (${String(WORLD_SHARE[region]).replace('.',',')}% indeksu świata) – największe spółki tej części świata prawdopodobnie już są w Waszym portfelu.`);
+  if(kind=='single')facts.push('Z ok. 24 tys. spółek USA w 90 lat tylko 4% dało całą nadwyżkę ponad lokaty, a 6 na 10 wypadło gorzej niż lokata.','Nawet zawodowcy przegrywają: w 20 lat ok. 93% funduszy akcji dużych spółek USA było gorszych od indeksu.');
+  if(kind=='theme')facts.push('ETF-y tematyczne: średnio ok. 8,5 pkt rocznie gorzej niż szeroki indeks w 5 lat; 68% takich funduszy w Europie nie przetrwało 15 lat – szansa, że pobije rynek i przetrwa 5 lat, ok. 1 na 10.','Powstają zwykle po modzie, gdy temat już zdrożał, i są kilka razy droższe.');
+  if(kind=='crypto')facts.push('Dla rdzenia portfela – nie: brak przepływów pieniężnych, spadki o kilkadziesiąt procent zdarzały się wielokrotnie. Tylko pieniądze, bez których się obejdziecie.');
+  if(kind=='commod')facts.push('Surowce (poza złotem) bywały w rocznych obsunięciach ok. −60%; to dodatek, nie trzon.');
+  if(over>0)flags.push(`Po tym zakupie piaskownica przekroczy limit z planu o ${zlS(over)} – zmniejsz kwotę albo najpierw coś z niej sprzedaj.`);
+  if(!sand.limit)flags.push('W planie piaskownica ma 0% – według ankiety bez pojedynczych spółek i „tematów”.');
+  return{pctP,after,over,facts,flags,devil:['Co musiałoby pójść źle, żebym stracił połowę?','Dlaczego miliony inwestorów miałyby się mylić co do dzisiejszej ceny – co wiem ja, czego nie wie rynek?','Czy kupiłbym więcej, gdyby jutro staniało o 50%?','Skąd ten pomysł – i ilu ludzi wpadło na niego przede mną?','Czy nie mam tego już w funduszu świata?']}}
+/* ⭐ the wish list: price at or below the target → a quiet point in Na dziś */
+export const wishHitP=(wish,prices)=>Object.entries(wish||{}).filter(([,w])=>w&&!w.deleted&&!w.bought&&w.ticker&&w.target>0).map(([id,w])=>({id,...w,q:prices?.[String(w.ticker).trim().toUpperCase()]})).filter(w=>w.q?.p>0&&w.q.p<=w.target);

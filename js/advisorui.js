@@ -1,7 +1,7 @@
 /* 🧭 Doradca – screens (D1a): 🥧 „Z czego składa się majątek” in 💰 Majątek → Oszczędności (groups → classes → instruments and accounts,
    tap = change the class), 🔎 the analysis of held funds and the list of known ETFs. Calculations in advisor.js. */
 import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {thermoP,THERMO_TXT,advRemindP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,fillP,pickEtf,unitsP,tranchesP,bondPickP,adviceDoneP,XTB,taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
+import {sandP,sandCheckP,wishHitP,SAND_KIND,SAND_REG,symOf,thermoP,THERMO_TXT,advRemindP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,fillP,pickEtf,unitsP,tranchesP,bondPickP,adviceDoneP,XTB,taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
 import {donutSvg} from './charts.js';
 import {liveOf,ownerOf,agg,balance} from './logic.js';
 import {youngUntil} from './pay.js';
@@ -162,7 +162,7 @@ export function advCardH(owner){const who=S.who,ctx=ankCtx(who),A=ankOf(who),dn=
     ${tile(D.debts.n?'k-ro':'k-em','🔻 Długi najpierw',D.debts.n?zl0(D.debts.sum):'brak',D.debts.n?'spłać przed inwestowaniem':'bez kart i rat – super','debt')}
     ${tile('k-sk','📅 Limity '+td().slice(0,4),lim,`do końca roku ${D.days} dni`,'lim')}
     ${tile(plan?'k-em':'k-am','🎯 Plan',plan?`akcje ${plan.g.stock}%`:open?`${dn.n}/${dn.of}`:'—',plan?`obligacje ${plan.g.bond}% · złoto ${plan.g.gold}%`:open?'odpowiedzi w ankiecie':'najpierw ankieta Matiego','plan')}</div>`;
-  if(open)h+=`<button class="btn primary" onclick="openWhere()">💸 Chcę zainwestować… – gdzie wpłacić?</button><button class="btn sm" onclick="openGoals()">🎯 Cele: emerytura, mieszkanie, kryzys, koszty</button>`;
+  if(open)h+=`<button class="btn primary" onclick="openWhere()">💸 Chcę zainwestować… – gdzie wpłacić?</button><div class="g2"><button class="btn sm" onclick="openGoals()">🎯 Cele, kryzys, koszty</button><button class="btn sm" onclick="openSand()">🧪 Piaskownica</button></div>`;
   if(open)h+=`<div class="g2"><button class="btn ${plan?'':'primary'} sm" onclick="openAnk()">📝 ${dn.n?dn.n<dn.of?'Dokończ ankietę':'Popraw odpowiedzi':'Zacznij ankietę z kotkami'}</button><button class="btn ${plan?'primary':''} sm" onclick="openPlan()">📄 ${plan?'Mój plan':'Propozycja planu'}</button></div>`;
   else h+=`<div class="mini">🐾 Ankietę najpierw wypełnia Mati. Gdy skończy, odblokuje ją dla Ciebie w swoim planie.</div>`;
   if(D.debts.n)h+=`<div class="mini">🐾 Najpierw spłata długów: ich oprocentowanie to więcej, niż da jakakolwiek pewna inwestycja.</div>`;
@@ -273,7 +273,7 @@ function whereCtx(mode){const who=S.who,A=ankOf(who),ctx=ankCtx(who),people=mode
   const cons=ctx.debtList.filter(d=>d.kind!='hip'&&d.left>0),mort=ctx.debtList.find(d=>d.kind=='hip'&&d.left>0),tg=+(W.q17||A.q17||6)||6,plan=planFor(mode=='both'?'all':who);
   return{P,ctx:{debt:{sum:cons.reduce((s,d)=>s+d.left,0),rate:Math.max(0,...cons.map(d=>+d.rate||0))||null,name:cons.map(d=>d.name).join(', ')},podGap:Math.max(0,Math.round(ctx.exp*tg-ctx.cush)),
     mort:W.q20=='yes'&&mort?{rate:+mort.rate||0,fee:W.q20c=='yes'}:null,overpay:W.q20=='yes'&&mort?+(W.q59||0):0,today:td(),okiOk:td()>='2027-01-01'&&['yes','maybe'].includes(A.q40),
-    sandLeft:plan?.sand?Math.round(ctx.base*plan.sand/100):null},A,W}}
+    sandLeft:plan?.sand?sandNow(mode=='both'?'all':who).sand.left:null},A,W}}
 export function calcWhere(){const v=id=>document.getElementById(id)?.value,amt=pg(v('wAmt')||'0');if(!(amt>0))return toast('Wpisz kwotę','bad');
   S.advIn={amt,src:v('wSrc'),goal:v('wGoal'),need3:v('wNeed')=='1',mode:v('wMode'),chg:v('wChg')};const{P,ctx,W}=whereCtx(S.advIn.mode);
   S.advRes=whereP({...S.advIn,homeSoon:+(W.q32a||99)<=3},P,ctx);S.advRes.P=P;use('f:policz');render();setTimeout(()=>document.getElementById('wRes')?.scrollIntoView({behavior:'smooth'}),60)}
@@ -420,4 +420,41 @@ export function thermoH(){const T=thermoNow(),A=ankOf(S.who),pc=v=>String(v).rep
 export function advTodoMine(){const who=S.who,A=ankOf(who),plan=planOfWho(who),ctx=ankCtx(who),y=+td().slice(0,4),tx=liveOf(S.tx);
   const ikz=S.cfg.accs.filter(a=>!a.archived&&wrapOf(a)=='ikze'&&ownerOf(a)==who).reduce((s,a)=>s+paidInYear(tx,a.id,String(y-1)),0),w=wrapsOf(who);
   const trs=Object.entries(advLog()).filter(([,x])=>x&&!x.deleted&&x.who==who&&x.tr?.length).flatMap(([id,x])=>x.tr.map(t=>({...t,id,of:x.tr.length,at:new Date(x.at).toISOString().slice(0,10)})));
-  return advRemindP({who,today:td(),plan,dev:plan?devP(allocNow(who),plan):null,ikeLeft:w.ike.has?w.ike.left:0,ikzePrevPaid:ikz,t:taxOf(A),podAmt:Math.round(ctx.exp*(+(A.q17||6)||6)),infl:+macro().infl||0,trs,planAt:plan?.at,thermo:thermoNow(),letter:A.q60&&A.q60!='?'?A.q60:'',rule:A.q61})}
+  const hits=wishHitP(wishes(),mkt()?.prices).filter(w=>!w.who||w.who==who).map(w=>({key:`sandw:${w.id}:${td().slice(0,7)}`,icon:'⭐',text:`${w.name}: cena ${String(w.q.p).replace('.',',')} – doszła do Twojego celu (${String(w.target).replace('.',',')}). Twój powód: „${w.why}”. Sprawdź limit piaskownicy przed zakupem.`,go:{a:'sand'},label:'Piaskownica',k:'plan',who,quiet:true}));
+  return [...hits,...advRemindP({who,today:td(),plan,dev:plan?devP(allocNow(who),plan):null,ikeLeft:w.ike.has?w.ike.left:0,ikzePrevPaid:ikz,t:taxOf(A),podAmt:Math.round(ctx.exp*(+(A.q17||6)||6)),infl:+macro().infl||0,trs,planAt:plan?.at,thermo:thermoNow(),letter:A.q60&&A.q60!='?'?A.q60:'',rule:A.q61})]}
+
+/* ======================= D7: 🧪 piaskownica ======================= */
+const wishes=()=>S.hraw?.advSand||{};
+export function sandNow(owner){const o=owner||'all',P=planFor(o==S.who?S.who:o)||planFor('all'),A=allocNow(o),base=P?devP(A,P).base:A.total;return{P,A,base,sand:sandP(A.rows,P,base,custom())}}
+export function openSand(){use('f:piaskownica');S.adv='sand';S.sandRes=null;window.scrollTo(0,0);render()}
+export function sandCalc(){const v=id=>document.getElementById(id)?.value||'',amt=pg(v('sAmt')||'0');if(!(amt>0))return toast('Wpisz kwotę','bad');if(!v('sName').trim())return toast('Wpisz nazwę','bad');
+  S.sandIn={name:v('sName').trim().slice(0,60),ticker:v('sTick').trim().toUpperCase().slice(0,20),amt,kind:v('sKind'),region:v('sReg'),why:v('sWhy').trim().slice(0,400),sell:v('sSell').trim().slice(0,300),target:+String(v('sTgt')).replace(',','.')||0};
+  const N=sandNow('all'),world=N.A.rows.filter(r=>r.cls=='s_world').reduce((s,r)=>s+r.v,0);S.sandRes=sandCheckP({amt,kind:S.sandIn.kind,region:S.sandIn.region,sand:N.sand,base:N.base,worldVal:world});use('f:analiza');render();setTimeout(()=>document.getElementById('sRes')?.scrollIntoView({behavior:'smooth'}),60)}
+export function saveWish(){if(guard())return;const I=S.sandIn;if(!I)return;if(!I.why)return toast('🐾 Najpierw zapisz, dlaczego chcesz to kupić – to najważniejsze pole','bad');
+  const id='sw'+rid(),x={...I,who:S.who,at:Date.now(),deleted:false};S.hraw={...S.hraw,advSand:{...wishes(),[id]:x}};merge(H,{advSand:{[id]:x}});use('f:zyczenie');toast('⭐ Na liście życzeń'+(I.ticker&&I.target?' – automat będzie pilnował ceny':''));S.sandRes=null;render()}
+export function wishSet(id,k){if(guard())return;const x=wishes()[id];if(!x)return;const p=k=='del'?{deleted:true}:{bought:!x.bought};S.hraw={...S.hraw,advSand:{...wishes(),[id]:{...x,...p}}};merge(H,{advSand:{[id]:p}});render()}
+export function sandPageH(){const N=sandNow('all'),Sd=N.sand,I=S.sandIn||{kind:'single',region:'usa'},R=S.sandRes,pc=v=>String(v).replace('.',','),sel=(id,val,o)=>`<select id="${id}">${Object.entries(o).map(([k,l])=>`<option value="${k}"${k==val?' selected':''}>${esc(l)}</option>`).join('')}</select>`;
+  let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button><section class="chart"><div class="ct"><b>🧪 Piaskownica</b><span class="mini">pojedyncze spółki, „tematy”, krypto, surowce – mały kawałek na eksperymenty, reszta w prostym planie</span></div>`;
+  h+=`<div class="r1"><span>Limit z planu (${pc(N.P?.sand||0)}% części długoterminowej)</span><b class="num">${zl0(Sd.limit)}</b></div><div class="r1"><span>Teraz w piaskownicy</span><b class="num">${zl0(Sd.now)} <em>(${pc(Sd.pct)}%)</em></b></div>
+    <div class="gbar"><i style="width:${Sd.limit?Math.min(100,Sd.now/Sd.limit*100).toFixed(1):0}%;${Sd.over?'background:#fb7185':''}"></i></div>
+    <div class="mini">${Sd.over?`🐾 Ponad limit o ${zl0(Sd.over)} – nie dokupujcie; zyski stąd możecie przenieść do rdzenia planu.`:Sd.limit?`Zostało miejsca: <b>${zl0(Sd.left)}</b>.`:'🐾 W planie piaskownica ma 0% – w ankiecie bez pojedynczych spółek. Analiza niżej działa, ale doradca nic tu nie proponuje.'}</div>`;
+  if(Sd.rows.length)h+=Sd.rows.map(r=>{const w=Object.values(wishes()).find(x=>x&&!x.deleted&&x.ticker&&symOf(x.ticker)==symOf(r.ticker));return`<div class="mini">• ${esc(r.name)} – ${zl0(r.v)}${w?`<br>&nbsp;&nbsp;💭 powód: „${esc(w.why)}”${w.sell?` · 🚪 sprzedam, gdy: „${esc(w.sell)}”`:''}`:''}</div>`}).join('');
+  h+=`</section><section class="chart where"><div class="ct"><b>🔎 Co chcesz kupić?</b><span class="mini">fakty i pytania – bez „kup / sprzedaj”</span></div>
+    <label class="fld"><span>Nazwa</span><input id="sName" value="${esc(I.name||'')}" placeholder="np. Nvidia, ETF na obronność, Bitcoin"></label>
+    <label class="fld"><span>Symbol (nieobowiązkowo – automat będzie pilnował ceny)</span><input id="sTick" value="${esc(I.ticker||'')}" placeholder="np. NVDA.US, CDR, BTC"></label>
+    <label class="fld"><span>Kwota (zł)</span><input id="sAmt" inputmode="decimal" value="${I.amt?I.amt/100:''}" placeholder="np. 2000"></label>
+    <label class="fld"><span>Co to jest?</span>${sel('sKind',I.kind,SAND_KIND)}</label><label class="fld"><span>Gdzie na świecie?</span>${sel('sReg',I.region,SAND_REG)}</label>
+    <label class="fld"><span>💭 Dlaczego chcesz to kupić? (Twoimi słowami)</span><textarea id="sWhy" rows="2">${esc(I.why||'')}</textarea></label>
+    <label class="fld"><span>🚪 Kiedy sprzedasz? (cena albo warunek – zapisany z góry)</span><textarea id="sSell" rows="2" placeholder="np. gdy spadnie o 40% albo gdy przestanie rosnąć sprzedaż">${esc(I.sell||'')}</textarea></label>
+    <label class="fld"><span>⭐ Kupię, gdy cena spadnie do (w walucie notowania, nieobowiązkowo)</span><input id="sTgt" inputmode="decimal" value="${I.target||''}"></label>
+    <button class="btn primary" onclick="sandCalc()">🐾 Analizuj</button></section>`;
+  if(R)h+=`<section class="chart" id="sRes"><div class="ct"><b>📋 ${esc(S.sandIn.name)} – fakty</b><span class="mini">${zl0(S.sandIn.amt)} = ok. ${pc(R.pctP)}% części długoterminowej</span></div>
+    ${R.flags.map(f=>`<div class="note bad">⚠️ ${esc(f)}</div>`).join('')}${R.facts.map(f=>`<div class="mini">• ${esc(f)}</div>`).join('')}
+    <div class="mini" style="margin-top:6px"><b>😈 Adwokat diabła – odpowiedz sobie szczerze:</b></div>${R.devil.map(q=>`<div class="mini">❓ ${esc(q)}</div>`).join('')}
+    <div class="mini">Kupujesz w XTB na zwykłym rachunku (piaskownicy nie mieszamy z IKE/IKZE, gdzie jest rdzeń). Po zakupie wpisz go w 📊 Instrumenty.</div>
+    <button class="btn primary" onclick="saveWish()">⭐ Zapisz na liście życzeń (z powodem i warunkiem sprzedaży)</button></section>`;
+  const L=Object.entries(wishes()).filter(([,x])=>x&&!x.deleted).sort((a,b)=>b[1].at-a[1].at);
+  if(L.length)h+=`<section class="chart"><div class="ct"><b>⭐ Lista życzeń</b><span class="mini">automat pilnuje ceny, gdy jest symbol – kotki dadzą znać w 🔔</span></div>${L.map(([id,x])=>{const q=x.ticker&&mkt()?.prices?.[x.ticker];
+    return`<div class="buy"><div class="r1"><b>${x.bought?'✅ ':''}${esc(x.name)}${x.ticker?` <small>${esc(x.ticker)}</small>`:''}</b><b class="num">${zl0(x.amt)}</b></div>${q?.p?`<div class="mini">cena ${pc(q.p)} ${esc(q.cur||'')}${x.target?` · cel ${pc(x.target)}${q.p<=x.target?' – <b class="t-inc">osiągnięta</b>':''}`:''}</div>`:x.target?`<div class="mini">cel ${pc(x.target)} – cena pojawi się po wieczornym działaniu automatu</div>`:''}
+      <div class="mini">💭 ${esc(x.why)}</div>${x.sell?`<div class="mini">🚪 ${esc(x.sell)}</div>`:''}<div class="btns" style="gap:6px"><button class="chip" onclick="wishSet('${id}','bought')">${x.bought?'↺ Jednak nie kupione':'✓ Kupione'}</button><button class="chip" onclick="wishSet('${id}','del')">🗑️ Usuń</button></div></div>`}).join('')}</section>`;
+  return h}

@@ -44,6 +44,8 @@ hold.forEach(d=>{const x=d.data();if(x.deleted||x.kind=='obl'||x.kind=='lokata')
   if(x.kind=='zloto'&&!x.ticker){gold=true;return}if(x.ticker)want.set(x.ticker.trim().toUpperCase(),{kind:x.kind,cur:x.cur||'PLN'})});
 /* 🌡️ the doradca's thermometer always follows one whole-world fund, held or not */
 const THERMO='VWCE.DE';if(!want.has(THERMO))want.set(THERMO,{kind:'etf',cur:'EUR'});
+/* ⭐ the doradca's wish list (piaskownica): prices of ideas with a symbol, even if not bought yet */
+for(const w of Object.values(main.data()?.advSand||{}))if(w&&!w.deleted&&!w.bought&&w.ticker&&!want.has(String(w.ticker).trim().toUpperCase())){const c=/^(BTC|ETH|SOL|XRP|ADA|DOGE)$/i.test(w.ticker);want.set(String(w.ticker).trim().toUpperCase(),{kind:c?'krypto':'akcje',cur:c?'USD':''})}
 const cryptos=[...want].filter(([,v])=>v.kind=='krypto');
 if(cryptos.length){const ids=[...new Set(cryptos.map(([t])=>CRYPTO_IDS[t]||t.toLowerCase()))].join(',');
   const cg=await tryIt('krypto',()=>get(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=pln,usd,eur,gbp,chf`));

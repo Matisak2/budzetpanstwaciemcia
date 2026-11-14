@@ -30,7 +30,7 @@
   function marketFor(today){const ym=today.slice(0,7),inflH={},v=[4.9,4.9,4.9,4.3,4.0,4.1,3.1,2.9,2.9,2.8,2.6,2.4,2.5,2.6,2.7,2.9,3.0,2.9,2.8,2.9,3.0,2.9,2.8,2.9];
     v.forEach((x,i)=>{inflH[addMonths(ym,i-v.length)]=x});const ser=t=>t+pad(+ym.slice(5))+String(+ym.slice(2,4)+({EDO:10,COI:4,ROS:6,ROD:12}[t]||0)).padStart(2,'0');
     return{date:today,ts:Date.now(),fxDate:today,fx:{EUR:4.27,USD:3.98,GBP:5.06,CHF:4.55,CZK:0.171},nbp:4,infl:2.9,inflPer:addMonths(ym,-1),inflH,src:{fx:'demo'},
-      prices:{'IWDA.UK':{p:104.2,d:today,src:'demo',cur:'USD'},'VWCE.DE':{p:131.6,d:today,src:'demo',cur:'EUR'}},gold:452.1,goldDate:today,funds:{PZU56:{p:109.75,d:today,cur:'PLN'}},
+      prices:{'IWDA.UK':{p:104.2,d:today,src:'demo',cur:'USD'},'VWCE.DE':{p:131.6,d:today,src:'demo',cur:'EUR'},'NVDA.US':{p:142.3,d:today,src:'demo',cur:'USD'}},gold:452.1,goldDate:today,funds:{PZU56:{p:109.75,d:today,cur:'PLN'}},
       bonds:{date:today,EDO:{type:'EDO',series:ser('EDO'),first:5.35,margin:2},COI:{type:'COI',series:ser('COI'),first:4.75,margin:1.5},ROS:{type:'ROS',series:ser('ROS'),first:5.6,margin:2},TOS:{type:'TOS',series:ser('TOS'),first:4.4}}}}
   function build(p){const n=names(p),A=n.Mati,B=n.Wercia,today=iso(new Date()),ym0=today.slice(0,7);
     let seed=20261022;const R=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296},r=(a,b)=>Math.round(a+(b-a)*R()),pick=L=>L[Math.floor(R()*L.length)];
@@ -70,6 +70,7 @@
         q27:[{g:'trip',a:1200000,y:+ym0.slice(0,4)+1,f:false}],q36:'xtb',q37:'none',q40:'maybe',q42:'gt20',q43:'none',q44:'0.25',q45:'5',q46:'no',q47:'basic',q48:'mid',q49:'2-4',q50:'1hm',q51:'m',q52:['infl'],q53:'some',q54:'10',q54b:'etc',q55:'world',q56:['none'],q57:'maybe',q57a:5,q58:'0',
         q60:'Spokojnie. Spadki się zdarzają, plan jest na 20 lat. Nie sprzedaję.',q61:'r25',q62:'year'},plan:{g:{stock:50,gold:10,cash:0,bond:40},split:{s_world:100},real:40,pod:6,save:100000,sand:5,at:Date.now()}}},
       advW:{at:Date.now(),ank:{q9:'maybe',q9y:+ym0.slice(0,4)+2,q10:'no',q17:'6',q20:'no',q28:'no',q29:'yes',q30:40,q34:'maybe',q34a:'rather',q34c:'cash',q63:'part',q64:'cautious',rentPrice:45000000,rentRent:260000,q35:60000}},
+      advSand:{sw1:{name:'Nvidia',ticker:'NVDA.US',amt:200000,kind:'single',region:'usa',why:'Wierzę w rozwój sztucznej inteligencji – mały zakład.',sell:'Gdy spadnie o 40% od zakupu albo przestanie rosnąć sprzedaż.',target:150,who:'Mati',at:Date.now(),deleted:false}},
       /* random shop / restaurant notes must not look like a fixed payment by chance (only „Bilet miesięczny” and „Chmura 200 GB” are meant to) */
       checkIgnore:Object.fromEntries(['Biedronka','Lidl','Żabka','Auchan','Warzywniak','Pizzeria','Sushi','Bistro','Pierogarnia','Kawiarnia','Pyszne','Glovo','Orlen','BP','Shell','Sklep zoologiczny','Drogeria','Kino','Sklep z modelami','Fryzjer','Apteka','Prezent urodzinowy','Sklep odzieżowy','Wizyta prywatna','Opłata za kartę'].map(n=>['rec:'+n.toLowerCase(),true]))}};
     const PLAN={'Zakupy spożywcze':140000,'Restauracje':40000,'Kawa i przekąski':15000,'Jedzenie z dowozem':12000,'Czynsz':185000,'Prąd':20000,'Internet i telefon':9000,'Środki czystości':8000,'Paliwo':50000,

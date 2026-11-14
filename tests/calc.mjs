@@ -10,7 +10,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
-import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP} from '../js/advisor.js';
+import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP,sandP,sandCheckP,wishHitP} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -691,5 +691,15 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Przypomnienia: styczeń – poduszka o inflację, listopad – przegląd XTB (tylko Mati), transza po terminie',[k({today:'2027-01-10',podAmt:3600000,infl:3}),k({today:'2026-11-20'}),k({who:'Wercia',today:'2026-11-20'}),k({today:'2026-12-20',trs:[{id:'av1',n:2,of:4,a:100000,date:'2026-12-14',at:'2026-11-14'},{id:'av1',n:3,of:4,a:100000,date:'2027-01-14',at:'2026-11-14'}]})],
     [['advpod:2027'],['advxtb:2026'],[],['advtr:av1:2']]);
   eq('Przypomnienia: kwartalny przegląd tylko gdy poza widełkami',[k({today:'2027-01-05',plan:{},dev:{ok:false,low:[{g:'bond'}],high:[]}}),k({today:'2027-01-05',plan:{},dev:{ok:true,low:[],high:[]}})],[['advq:2027-Q1:Mati'],[]]);}
+
+/* ---------- 🧭 doradca D7: piaskownica ---------- */
+{ // część długoterminowa 100 000 zł, plan 5% → limit 5 000; w piaskownicy spółka 3 000 + krypto 1 000 = 4 000 (fundusz świata się nie liczy) → zostaje 1 000
+  const s=sandP([{cls:'s_single',v:300000},{cls:'s_world',v:5000000},{cls:'x_crypto',v:100000}],{sand:5},10000000);
+  eq('Piaskownica: limit, stan, miejsce',[s.limit,s.now,s.left,s.over,s.pct],[500000,400000,100000,0,4]);
+  // pomysł za 2 000 zł → 6 000 > 5 000 – przekroczenie o 1 000; fundusz świata 50 000 × 60% = 30 000 zł w USA
+  const c=sandCheckP({amt:200000,kind:'single',region:'usa',sand:s,base:10000000,worldVal:5000000});
+  eq('Analiza pomysłu: przekroczenie limitu, udział USA przez fundusz świata, pytania adwokata diabła',[c.over,/30 000/.test(c.facts[0].replace(/\s/g,' ')),c.devil.length,c.facts.length],[100000,true,5,3]);
+  eq('Piaskownica 0% w planie – uwaga',sandCheckP({amt:100000,kind:'theme',region:'none',sand:{now:0,limit:0},base:100}).flags.length,2);
+  eq('Lista życzeń: cena doszła do celu',wishHitP({a:{name:'X',ticker:'nvda.us',target:100},b:{name:'Y',ticker:'CDR',target:200},c:{name:'Z',ticker:'BTC',target:9,bought:true}},{'NVDA.US':{p:99},'CDR':{p:250},'BTC':{p:5}}).map(w=>w.id),['a']);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);
