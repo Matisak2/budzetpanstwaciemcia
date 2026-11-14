@@ -378,3 +378,28 @@ export function buyCheckP({price,kind,liquid,near=0,exp,podM,income,surplus,cons
 export function costsP(rows,hold,fundPct){const out=[];for(const r of rows){if(r.kind!='h')continue;const it=hold?.[r.id];if(!it)continue;const e=etfOf(it);
     if(e)out.push({name:r.name,v:r.v,pct:e.ter,zl:Math.round(r.v*e.ter/100)});else if(it.kind=='tfi'||it.kind=='etf')out.push({name:r.name,v:r.v,pct:fundPct??null,zl:fundPct!=null?Math.round(r.v*fundPct/100):null})}
   const known=out.filter(x=>x.zl!=null);return{list:out,year:known.reduce((s,x)=>s+x.zl,0),bad:out.filter(x=>x.pct!=null&&x.pct>1),unknown:out.filter(x=>x.zl==null).length}}
+
+/* ======================= D6: 🌡️ termometr, reguła na spadki, przypomnienia ======================= */
+/* facts only, three steps (plan 7): stocks – the whole-world fund vs its peak and its 3-year average; bonds – EDO vs inflation; gold – real NBP rate;
+   złoty – USD now vs its average. Influences only: tranches of big purchases and the own rule for drops – never whether to follow the plan. */
+export function thermoP(th,rates,{today,rule}={}){const pts=Object.entries(th?.d||{}).filter(([d,p])=>p>0&&(!today||d<=today)).sort((a,b)=>a[0].localeCompare(b[0])),out={n:pts.length};
+  if(pts.length>=60){const last=pts.at(-1),peak=pts.reduce((m,x)=>x[1]>m[1]?x:m),from3=addDays(last[0],-3*365),L3=pts.filter(x=>x[0]>=from3),avg=L3.reduce((s,x)=>s+x[1],0)/L3.length;
+    const dd=Math.round((last[1]/peak[1]-1)*1000)/10,vs=Math.round((last[1]/avg-1)*1000)/10;
+    out.stock={p:last[1],d:last[0],peak:peak[1],peakD:peak[0],dd,vs,lvl:dd<=-20?'sale':dd>-3&&vs>25?'hot':'calm'}}
+  const infl=+rates?.infl,nbp=+rates?.nbp,edo=rates?.bonds?.EDO;
+  if(edo&&isFinite(infl))out.bond={first:+edo.first,real:+(edo.margin??2),infl};
+  if(isFinite(infl)&&isFinite(nbp))out.gold={real:Math.round((nbp-infl)*10)/10};
+  const fx=Object.entries(th?.fx||{}).map(([d,v])=>v?.USD).filter(v=>v>0);if(fx.length>=20&&rates?.fx?.USD){const a=fx.reduce((s,v)=>s+v,0)/fx.length;out.pln={usd:rates.fx.USD,avg:Math.round(a*10000)/10000,vs:Math.round((rates.fx.USD/a-1)*1000)/10,n:fx.length}}
+  out.ruleHit=!!(out.stock&&rule=='r25'&&out.stock.dd<=-25);out.lvl=out.stock?.lvl||'?';return out}
+export const THERMO_TXT={calm:'🙂 spokojnie',hot:'🔥 drogo – duże kwoty w akcje w transzach',sale:'🏷️ przecena – trzymaj plan, sprawdź swoją regułę','?':'❔ za mało danych'};
+/* 🔔 the doradca's reminders for one person (plan 8.6) – quiet points in Na dziś (keys for „to nie błąd” / done) */
+export function advRemindP({who,today,plan,dev,ikeLeft=0,ikzePrevPaid=0,t,podAmt=0,infl,trs=[],planAt,thermo,letter,rule}){const y=+today.slice(0,4),mo=+today.slice(5,7),day=+today.slice(8),q=Math.ceil(mo/3),out=[],add=(key,icon,text,go,label,ex={})=>out.push({key,icon,text,go,label,k:'plan',who,quiet:true,...ex});
+  if(mo==12&&ikeLeft>0)add(`advike:${y}:${who}`,'🛡️',`IKE ${who}: do 31.12 możesz wpłacić jeszcze ${zlS(ikeLeft)} – limit przepada z końcem roku (wpłata może zostać gotówką).`,{a:'where'},'Gdzie wpłacić',{later:day<20});
+  const back=Math.round(ikzePrevPaid*(t=='?'?0:+t)/100);if((mo==3||mo==4)&&back>0)add(`advzwrot:${y}:${who}`,'💸',`Zwrot podatku z IKZE za ${y-1} to ok. ${zlS(back)} – zainwestuj go, inaczej IKZE traci przewagę.`,{a:'where'},'Gdzie wpłacić');
+  if(plan&&dev&&!dev.ok&&day<=15&&[1,4,7,10].includes(mo))add(`advq:${y}-Q${q}:${who}`,'🎯',`Przegląd kwartalny: ${[...dev.low.map(x=>AGRP[x.g].n.toLowerCase()+' poniżej planu'),...dev.high.map(x=>AGRP[x.g].n.toLowerCase()+' ponad plan')].join(', ')} – kolejne wpłaty kierujcie tam, gdzie brakuje.`,{a:'sav'},'Koło');
+  if(mo==1&&podAmt>0&&infl>0)add(`advpod:${y}`,'🛟',`Nowy rok: dopłaćcie do poduszki o inflację (${String(infl).replace('.',',')}%) – ok. ${zlS(Math.round(podAmt*infl/100))}.`,{a:'sav'},'Oszczędności');
+  if(mo==11&&who=='Mati')add(`advxtb:${y}`,'🔎',`Coroczny przegląd: sprawdź w XTB koszty (prowizja, wymiana walut – zapisane ${'0,5%'}) i dane 7 ETF-ów z listy doradcy (koszt, ISIN). Daj znać Claude, jeśli coś się zmieniło.`,{a:'sav'},'Zobacz');
+  for(const tr of trs)if(tr.date<=today)add(`advtr:${tr.id}:${tr.n}`,'📅',`Transza ${tr.n} z ${tr.of}: akcje za ${zlS(tr.a)} (porada z ${tr.at.split('-').reverse().join('.')}). Zleceniem z limitem ceny.`,{a:'sav'},'Zobacz');
+  if(planAt&&Date.parse(today)-planAt>365*864e5)add(`advank:${who}:${y}`,'📝',`Minął rok od planu – przejrzyj ankietę: czy coś się zmieniło (praca, próg, kredyt, dziecko)?`,{a:'ank'},'Ankieta');
+  if(thermo?.lvl=='sale')add(`advsale:${today.slice(0,7)}`,'🏷️',`Akcje świata ${String(Math.abs(thermo.stock.dd)).replace('.',',')}% poniżej szczytu.${letter?` Twój list: „${letter}”.`:''}${thermo.ruleHit?' Twoja reguła zadziałała: dokup akcji ze złota / obligacji do planu.':rule=='own'?' Sprawdź swoją regułę z planu.':' Trzymaj plan.'}`,{a:'plan'},'Mój plan');
+  return out}

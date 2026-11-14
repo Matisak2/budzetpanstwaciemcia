@@ -111,6 +111,8 @@
     st['households/main/hold/h6']={acc:'aO',kind:'zloto',name:'Złota moneta 1 oz (31,1 g)',cur:'PLN',price:430,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:31.1,price:418,fx:1,fee:0}},deleted:false};
     st['households/main/goals/g1']={name:'Wakacje',target:800000,alloc:250000,deadline:addMonths(ym0,8)+'-01',owner:'Wspólne'};
     st['households/main/market/rates']=marketFor(today);
+    {const d={},fx={},t0=Date.parse(today+'T12:00:00Z');for(let i=500;i>=0;i--){const dt=new Date(t0-i*864e5).toISOString().slice(0,10),k=500-i;d[dt]=Math.round((100+k*0.07-Math.max(0,k-430)*0.25+Math.sin(k/9)*1.5)*100)/100;if(i<60)fx[dt]={USD:Math.round((3.9+Math.sin(i/7)*0.08)*10000)/10000,EUR:4.27}}
+      st['households/main/market/thermo']={sym:'VWCE.DE',at:today,back:today,d,fx}}
     st['households/main/market/funds']={checked:ym0,date:today,list:{PZU56:'ppk-inpzu-2040',PCS81:'pko-emerytura-2060',PIO78:'pekao-ppk-2060',KAH29:'esaliens-2050',ALL87:'allianz-plan-emerytalny-2050'}};
     st['households/main/meta/backup']={at:Date.now()};
     return st}

@@ -179,5 +179,5 @@ Każdy etap dopiero na komendę Matiego, po kopii.
 - [x] Etap D3. „Gdzie”: kwota → bramki → pokrowce z wyliczeniem (IKE/IKZE wg progu, OKI, nadpłata), „na pewno nie tu”, „wspólnie”; **+ kafelki karty 🧭 Doradca do stuknięcia** (Mati 14.11): każdy z 4 (poduszka, długi, limity, plan) otwiera okienko z pełnymi szczegółami – np. limity: IKE i IKZE osobno, limit, wpłacone, zostało, dni do 31.12 (dziś tekst limitów jest ucięty)
 - [x] Etap D4. „W co”: niedobory, konkretne ETF-y/obligacje, koszty XTB, transze, zapis porady
 - [x] Etap D5. Cele: emerytura, mieszkanie (+ wartość w majątku, najem, proporcje nieruchomości, sugestia zakupu tylko gdy stać), test kryzysu, strażnik kosztów
-- [ ] Etap D6. Termometr, reguły na spadki, przypomnienia w „Na dziś”
+- [x] Etap D6. Termometr, reguły na spadki, przypomnienia w „Na dziś”
 - [ ] Etap D7. Piaskownica: analiza wpisanej spółki / ETF-u

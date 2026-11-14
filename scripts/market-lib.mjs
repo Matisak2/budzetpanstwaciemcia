@@ -55,3 +55,8 @@ export function keepPrev(out,prev,want=[],gold=false){const p=prev||{},fxToday=O
   if(!fxToday&&p.fx&&Object.keys(p.fx).length){out.fx=p.fx;out.fxDate=p.fxDate||p.date;if(p.src?.fx)out.src.fx=p.src.fx;kept++}
   if(out.nbp==null&&p.nbp!=null){out.nbp=p.nbp;kept++}
   return kept}
+/* 🌡️ the thermometer history: stooq daily CSV (Date,Open,High,Low,Close,Volume) or Yahoo chart (timestamps + closes) → {YYYY-MM-DD: close} */
+export function parseStooqHist(csv){const L=String(csv||'').trim().split(/\r?\n/);if(L.length<2)return null;const H=L[0].split(',').map(s=>s.trim().toLowerCase()),di=H.indexOf('date'),ci=H.indexOf('close');if(di<0||ci<0)return null;
+  const o={};for(const l of L.slice(1)){const r=l.split(','),d=r[di],c=+r[ci];if(/^\d{4}-\d\d-\d\d$/.test(d||'')&&c>0)o[d]=c}return Object.keys(o).length?o:null}
+export function parseYahooHist(j){const R=j?.chart?.result?.[0],t=R?.timestamp,c=R?.indicators?.quote?.[0]?.close;if(!Array.isArray(t)||!Array.isArray(c))return null;
+  const o={};t.forEach((s,i)=>{if(c[i]>0)o[new Date(s*1000).toISOString().slice(0,10)]=Math.round(c[i]*10000)/10000});return Object.keys(o).length?o:null}

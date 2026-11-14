@@ -1,7 +1,7 @@
 /* 🧭 Doradca – screens (D1a): 🥧 „Z czego składa się majątek” in 💰 Majątek → Oszczędności (groups → classes → instruments and accounts,
    tap = change the class), 🔎 the analysis of held funds and the list of known ETFs. Calculations in advisor.js. */
 import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,fillP,pickEtf,unitsP,tranchesP,bondPickP,adviceDoneP,XTB,taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
+import {thermoP,THERMO_TXT,advRemindP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,fillP,pickEtf,unitsP,tranchesP,bondPickP,adviceDoneP,XTB,taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
 import {donutSvg} from './charts.js';
 import {liveOf,ownerOf,agg,balance} from './logic.js';
 import {youngUntil} from './pay.js';
@@ -166,7 +166,7 @@ export function advCardH(owner){const who=S.who,ctx=ankCtx(who),A=ankOf(who),dn=
   if(open)h+=`<div class="g2"><button class="btn ${plan?'':'primary'} sm" onclick="openAnk()">📝 ${dn.n?dn.n<dn.of?'Dokończ ankietę':'Popraw odpowiedzi':'Zacznij ankietę z kotkami'}</button><button class="btn ${plan?'primary':''} sm" onclick="openPlan()">📄 ${plan?'Mój plan':'Propozycja planu'}</button></div>`;
   else h+=`<div class="mini">🐾 Ankietę najpierw wypełnia Mati. Gdy skończy, odblokuje ją dla Ciebie w swoim planie.</div>`;
   if(D.debts.n)h+=`<div class="mini">🐾 Najpierw spłata długów: ich oprocentowanie to więcej, niż da jakakolwiek pewna inwestycja.</div>`;
-  return h+'</section>'}
+  return h+thermoH()+'</section>'}
 export function openAnk(){if(guard())return;if(!ankOpen(S.who))return toast('🐾 Ankietę najpierw wypełnia Mati – potem ją odblokuje');use('f:ankieta');const ctx=ankCtx(S.who),A=ankOf(S.who),L=ankList(A,ctx);S.ankQ=(L.find(q=>A[q.id]===undefined)||L[0]).id;S.ankTmp=null;S.adv='ank';window.scrollTo(0,0);render()}
 export function openPlan(){use('f:plan');S.adv='plan';window.scrollTo(0,0);render()}
 export function closeAdv(){S.adv=null;render()}
@@ -320,6 +320,7 @@ export function buyListP(R,mode){const owner=mode=='both'?'all':S.who,plan=planF
 export function wherePlusH(R){const mode=S.advIn?.mode||'me',B=buyListP(R,mode);let h='';
   if(!B.plan)h+=`<div class="note">🐾 „W co” policzę, gdy będzie zatwierdzony plan (📄 Plan → ✓ Zatwierdzam).</div>`;
   else if(B.buys.length){h+=`<section class="chart"><div class="ct"><b>🛒 W co</b><span class="mini">${zl0(B.L)} na część długoterminową – dokupujemy to, czego brakuje w planie</span></div>`+
+    (thermoNow().lvl=='hot'&&!B.tr.length&&B.buys.some(b=>b.g=='stock'&&b.a>=200000)?`<div class="note">🌡️ Termometr: akcje drogo – rozważ podzielenie zakupu akcji na 2–4 części w kolejnych miesiącach.</div>`:'')+
     B.buys.map(b=>`<div class="buy"><div class="r1"><b>${esc(b.name)}</b><b class="num">${zl0(b.a)}</b></div>${b.ticker?`<div class="mini">🔤 ${esc(b.ticker)} · ${b.units!=null?`ok. <b>${String(b.units).replace('.',',')} j.</b> po ${String(b.price).replace('.',',')} ${esc(b.cur)}`:'liczba jednostek – według ceny w XTB'}${b.fee?` · wymiana waluty 0,5% ≈ ${zl0(b.fee)}`:' · bez prowizji'}</div>`:''}${b.g=='bond'?`<div class="mini">🧾 ${b.units} szt. po 100 zł</div>`:''}
       <div class="mini">📍 ${esc(b.where)}</div><div class="mini">${esc(b.why)}</div></div>`).join('')+
     (B.tr.length?`<div class="note">🐾 To duża kwota w akcje (ponad 10% części długoterminowej) – rozłóżcie ją na ${B.tr.length} równe zakupy, raz w miesiącu: ${B.tr.map(t=>`${dmy(t.date)} ${zl0(t.a)}`).join(' · ')}. Kupujcie zleceniem z limitem ceny.</div>`:`<div class="mini">💡 Kupujcie zleceniem z limitem ceny. W XTB prowizja 0 zł, każda wymiana waluty 0,5% (stan na ${dmy(XTB.at)}).</div>`)+
@@ -359,8 +360,8 @@ export function buyChecks(){const B=buyCtx(),W=B.W,R=realNow('all'),out=[],loan=
   if(['yes','maybe'].includes(W.q29)&&['yes','maybe'].includes(W.q34)&&W.rentPrice>0)out.push({kind:'rent',price:+W.rentPrice,...buyCheckP({price:+W.rentPrice,kind:'rent',liquid:B.liquid,near:B.near,exp:B.ctx.exp,podM:B.podM,income:B.income,surplus:B.ctx.surplus,consDebt:B.cons,rate:mRate(),loanOk:loan&&W.q34c!='cash',downPct:20,first:false,rent:+(W.rentRent||0),costs:+(W.q35||0)})});
   return{B,out}}
 /* 🔔 „może warto pomyśleć o zakupie” – a quiet point in Na dziś, at most once a half-year (checkIgnore real:RRRR-H1|H2) */
-export function advTodo(){try{if(!S.cfg||!S.hraw?.advW)return[];const ig=S.hraw?.checkIgnore||{},t=td(),key='real:'+t.slice(0,4)+'-H'+(+t.slice(5,7)<=6?1:2);if(ig[key])return[];
-  const ok=buyChecks().out.filter(x=>x.ok);if(!ok.length)return[];return[{key,icon:'🏠',text:`Kotki policzyły: stać Was na ${ok[0].kind=='home'?'mieszkanie dla siebie':'mieszkanie na wynajem'} (${zl0(ok[0].price)}) bez ruszania poduszki. Może warto pomyśleć o zakupie – zobacz liczby, za i przeciw.`,go:{a:'goals'},label:'Zobacz',k:'plan',who:null,quiet:true}]}catch(e){return[]}}
+export function advTodo(){try{if(!S.cfg||!S.hraw?.advM)return[];const ig=S.hraw?.checkIgnore||{},t=td(),key='real:'+t.slice(0,4)+'-H'+(+t.slice(5,7)<=6?1:2),mine=advTodoMine().filter(x=>!ig[x.key]);if(ig[key]||!S.hraw?.advW)return mine;
+  const ok=buyChecks().out.filter(x=>x.ok);if(!ok.length)return mine;return[...mine,{key,icon:'🏠',text:`Kotki policzyły: stać Was na ${ok[0].kind=='home'?'mieszkanie dla siebie':'mieszkanie na wynajem'} (${zl0(ok[0].price)}) bez ruszania poduszki. Może warto pomyśleć o zakupie – zobacz liczby, za i przeciw.`,go:{a:'goals'},label:'Zobacz',k:'plan',who:null,quiet:true}]}catch(e){return[]}}
 export async function setRentPrice(){if(guard())return;const W=advW().ank||{};const r=await ask({title:'🏘️ Mieszkanie na wynajem – liczby do sprawdzenia',text:'Kotki sprawdzą, czy Was stać, i policzą rentowność. Wpisz ceny z ogłoszeń w Waszej okolicy.',fields:[
   {id:'p',label:'Cena mieszkania (zł)',type:'decimal',value:W.rentPrice?String(W.rentPrice/100):''},{id:'r',label:'Czynsz najmu miesięcznie (zł)',type:'decimal',value:W.rentRent?String(W.rentRent/100):''},{id:'c',label:'Koszty miesięcznie (administracja, fundusz remontowy, podatki, ubezpieczenie) (zł)',type:'decimal',value:W.q35?String(W.q35/100):''}],ok:'Zapisz'});
   if(!r)return;const x={rentPrice:pg(r.p||'0'),rentRent:pg(r.r||'0'),q35:pg(r.c||'0')};S.hraw={...S.hraw,advW:{...advW(),ank:{...W,...x}}};merge(H,{advW:{ank:x}});render()}
@@ -405,3 +406,18 @@ export function goalsPageH(){const who=S.who,A=ankOf(who),W=advW().ank||{},ctx=a
         <div class="note ${x.ok?'':'bad'}">🐾 ${x.ok?`Stać Was. Może warto pomyśleć o zakupie – po zakupie nieruchomości to ok. ${after}% majątku, który pracuje.`:`Na razie nie – blokuje: ${esc(x.c.filter(c=>!c.ok).map(c=>c.s).join('; '))}.`}</div>`}
     h+=`<details class="info"><summary>⚖️ Za i przeciw (z lektury)</summary><div class="mini">➕ realnie 3–4% netto z najmu + wzrost wartości; czynsz rośnie z inflacją; dźwignia kredytu.<br>➖ koszty zakupu i remontów, czas (najemcy, naprawy), 1–2 miesiące pustostanu w roku, brak płynności (sprzedaż trwa miesiące), dźwignia działa w obie strony, nieruchomości nie zawsze rosną (cykl ok. 16–17 lat). Na mieszkaniu dla siebie nie spekulować.</div></details></section>`}
   return h}
+
+/* ======================= D6: 🌡️ termometr i przypomnienia ======================= */
+export const thermoNow=()=>thermoP(S.market?.thermo,mkt(),{today:td(),rule:ankOf(S.who).q61});
+export function thermoH(){const T=thermoNow(),A=ankOf(S.who),pc=v=>String(v).replace('.',',');let b='';
+  b+=T.stock?`<div class="mini">📈 <b>Akcje świata</b> (VWCE): ${pc(T.stock.dd)}% od szczytu z ${dmy(T.stock.peakD)}, ${T.stock.vs>=0?'+':''}${pc(T.stock.vs)}% względem średniej z 3 lat.</div>`:`<div class="mini">📈 Akcje: automat zbiera historię ceny funduszu świata (${T.n} dni) – termometr ruszy, gdy będzie jej więcej.</div>`;
+  if(T.bond)b+=`<div class="mini">🧾 <b>Obligacje</b>: EDO dziś ${pc(T.bond.first)}% w 1. roku, potem inflacja + ${pc(T.bond.real)} pkt (inflacja ${pc(T.bond.infl)}%). Obligacje detaliczne kupuje się zawsze po 100 zł – nie mają „złego momentu”.</div>`;
+  if(T.gold)b+=`<div class="mini">🥇 <b>Złoto</b>: realna stopa (NBP − inflacja) ${T.gold.real>=0?'+':''}${pc(T.gold.real)} pkt${T.gold.real>2?' – wysoka, złoto zwykle ma wtedy pod górkę':T.gold.real<0?' – ujemna, dla złota to zwykle sprzyjające tło':''}.</div>`;
+  if(T.pln)b+=`<div class="mini">💵 <b>Złoty</b>: dolar ${pc(T.pln.usd)} zł, ${T.pln.vs>=0?'+':''}${pc(T.pln.vs)}% względem średniej z ${T.pln.n} dni.</div>`;
+  if(T.lvl=='sale')b+=`<div class="note">🐾 ${A.q60&&A.q60!='?'?`Twój list do siebie: „${esc(A.q60)}”. `:''}${T.ruleHit?'Twoja reguła zadziałała: dokup akcji ze złota / obligacji do planu.':'Trzymaj plan – wpłaty dalej według niego.'}</div>`;
+  b+=`<div class="mini">Termometr tylko informuje: przy „drogo” radzi transze dużych zakupów, przy „przecenie” przypomina Twoją regułę. Nie mówi, czy realizować plan – plan realizuje się zawsze.</div>`;
+  return`<details class="more thermo"${S.infoOpen?.thermo?' open':''} ontoggle="infoTog('thermo',this.open)"><summary>🌡️ Termometr rynku: ${THERMO_TXT[T.lvl]}</summary>${b}</details>`}
+export function advTodoMine(){const who=S.who,A=ankOf(who),plan=planOfWho(who),ctx=ankCtx(who),y=+td().slice(0,4),tx=liveOf(S.tx);
+  const ikz=S.cfg.accs.filter(a=>!a.archived&&wrapOf(a)=='ikze'&&ownerOf(a)==who).reduce((s,a)=>s+paidInYear(tx,a.id,String(y-1)),0),w=wrapsOf(who);
+  const trs=Object.entries(advLog()).filter(([,x])=>x&&!x.deleted&&x.who==who&&x.tr?.length).flatMap(([id,x])=>x.tr.map(t=>({...t,id,of:x.tr.length,at:new Date(x.at).toISOString().slice(0,10)})));
+  return advRemindP({who,today:td(),plan,dev:plan?devP(allocNow(who),plan):null,ikeLeft:w.ike.has?w.ike.left:0,ikzePrevPaid:ikz,t:taxOf(A),podAmt:Math.round(ctx.exp*(+(A.q17||6)||6)),infl:+macro().infl||0,trs,planAt:plan?.at,thermo:thermoNow(),letter:A.q60&&A.q60!='?'?A.q60:'',rule:A.q61})}

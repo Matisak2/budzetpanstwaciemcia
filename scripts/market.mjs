@@ -2,7 +2,7 @@
 // the list of PPK funds once a month and the month-end valuation of accounts with instruments.
 // Needs the secret FIREBASE_SA (service account JSON). Logs only counts – never amounts, names or symbols (the repository is public).
 import {db as fdb,ensureVapid,household,warsaw} from './common.mjs';
-import {CRYPTO_IDS,OZ,bondLinks,fundLinks,gusCsvLink,keepPrev,parseBondPage,parseEurostatAll,parseFundPage,parseGusCpi,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym} from './market-lib.mjs';
+import {CRYPTO_IDS,OZ,bondLinks,fundLinks,gusCsvLink,keepPrev,parseBondPage,parseEurostatAll,parseFundPage,parseGusCpi,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym,parseStooqHist,parseYahooHist} from './market-lib.mjs';
 import {holdAt,instDiffP,macroP} from '../js/inv.js';
 import {ownerOf} from '../js/today.js';
 import {daysIn} from '../js/util.js';
@@ -42,6 +42,8 @@ const accs=main.data()?.accsM||{},want=new Map(),fundsWant=new Map();let gold=fa
 hold.forEach(d=>{const x=d.data();if(x.deleted||x.kind=='obl'||x.kind=='lokata')return;
   if(x.kind=='tfi'){if(x.fund?.id)fundsWant.set(x.fund.id,x.fund.path||`fundusze-ppk/${x.fund.id}/x`);return}
   if(x.kind=='zloto'&&!x.ticker){gold=true;return}if(x.ticker)want.set(x.ticker.trim().toUpperCase(),{kind:x.kind,cur:x.cur||'PLN'})});
+/* 🌡️ the doradca's thermometer always follows one whole-world fund, held or not */
+const THERMO='VWCE.DE';if(!want.has(THERMO))want.set(THERMO,{kind:'etf',cur:'EUR'});
 const cryptos=[...want].filter(([,v])=>v.kind=='krypto');
 if(cryptos.length){const ids=[...new Set(cryptos.map(([t])=>CRYPTO_IDS[t]||t.toLowerCase()))].join(',');
   const cg=await tryIt('krypto',()=>get(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=pln,usd,eur,gbp,chf`));
@@ -89,5 +91,12 @@ if(target&&(av.last||'')<target){const D=await household(H),date=lastDay(target)
     const d=instDiffP(a,items,D.tx.filter(t=>t.date<=date),date,mc,out),id='av'+target.replace('-','')+a.id;if(!d||txIds.has(id))continue;
     const w=ownerOf(a);await H.collection('months').doc(target).set({tx:{[id]:{type:'adj',val:true,amount:d,date,sub:'',acc:a.id,to:'',who:w=='Wercia'?'Wercia':'Mati',note:'Wycena instrumentów (automat)',by:'automat',auto:true,deleted:false,ts:Date.now()}}},{merge:true});n++}
   await mref.set({last:target,at:today,n},{merge:true});console.log(`✓ wycena na koniec miesiąca: ${n} ${n==1?'konto':'kont'}`)}
+// 9. 🌡️ thermometer: daily price of the whole-world fund + USD/EUR, the first time (or when short) the last ~5 years from stooq / Yahoo
+await tryIt('termometr',async()=>{const th=(await M.doc('thermo').get()).data()||{},d={},q=out.prices[THERMO];if(q?.p&&q.d)d[q.d]=q.p;
+  if(Object.keys(th.d||{}).length<200&&th.back!=today){const h=await tryIt('termometr – historia',async()=>parseStooqHist(await get(`https://stooq.pl/q/d/l/?s=${THERMO.toLowerCase()}&i=d`,'text')))
+      ||await tryIt('termometr – historia (zapasowo)',async()=>parseYahooHist(await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym(THERMO))}?range=5y&interval=1d`)));
+    if(h)Object.assign(d,Object.fromEntries(Object.entries(h).filter(([k])=>!d[k])))}
+  const fx=out.fx?.USD&&out.fx?.EUR?{[out.fxDate||today]:{USD:out.fx.USD,EUR:out.fx.EUR}}:{};
+  await M.doc('thermo').set({sym:THERMO,at:today,back:th.back||(Object.keys(d).length>200?today:''),d,fx},{merge:true});console.log(`✓ termometr: ${Object.keys(d).length} nowych dni`)});
 await ensureVapid(H);
 console.log('Gotowe.');process.exit(0);

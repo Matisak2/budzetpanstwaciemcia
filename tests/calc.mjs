@@ -9,8 +9,8 @@ import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
-import {keepPrev} from '../scripts/market-lib.mjs';
-import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf} from '../js/advisor.js';
+import {keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
+import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -675,5 +675,21 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   const bc=a=>buyCheckP({price:30000000,kind:'home',liquid:40000000,exp:600000,podM:6,income:1500000,surplus:300000,consDebt:a,rate:7,loanOk:false,stay:'gt10'});
   eq('Czy stać na zakup: wszystkie warunki / dług blokuje',[bc(0).ok,bc(1).ok,bc(1).c.filter(c=>!c.ok).length],[true,false,1]);
   eq('Strażnik kosztów: VWCE 0,14% od 100 000 zł = 140 zł + fundusz 1,8% od 50 000 = 900 zł → 1 040 zł, flaga',(k=>[k.year,k.bad.length,k.unknown])(costsP([{kind:'h',id:'a',name:'VWCE',v:10000000},{kind:'h',id:'b',name:'TFI',v:5000000},{kind:'a',id:'x',v:100}],{a:{kind:'etf',ticker:'VWCE.DE'},b:{kind:'tfi'}},1.8)),[104000,1,0]);}
+
+/* ---------- 🧭 doradca D6: termometr, przypomnienia ---------- */
+{ // 300 dni: przez 200 dni +0,1 dziennie (szczyt 120), potem −0,15 → ostatnia 105,15 = −12,4% od szczytu; średnia z 3 lat (wszystkie dni) 110,04 → −4,4%
+  const d={};for(let i=0;i<300;i++)d[new Date(Date.UTC(2025,0,1)+i*864e5).toISOString().slice(0,10)]=Math.round((i<200?100+i*0.1:120-(i-200)*0.15)*100)/100;
+  const T=thermoP({d},{infl:2.9,nbp:4,bonds:{EDO:{first:5.35,margin:2}}},{today:'2025-12-31',rule:'r25'});
+  eq('Termometr: spadek od szczytu, poziom, złoto (stopa realna 4 − 2,9)',[T.stock.dd,T.stock.lvl,T.gold.real,T.bond.real,T.ruleHit],[-12.4,'calm',1.1,2,false]);
+  const d2={...d};for(let i=300;i<420;i++)d2[new Date(Date.UTC(2025,0,1)+i*864e5).toISOString().slice(0,10)]=Math.round((105.15-(i-300)*0.2)*100)/100;
+  const T2=thermoP({d:d2},{},{today:'2026-12-31',rule:'r25'});eq('Termometr: przecena i Twoja reguła 25%',[T2.stock.lvl,T2.ruleHit],['sale',true]);
+  eq('Termometr: za mało danych',thermoP({d:{'2026-01-01':100}},{}).lvl,'?');
+  eq('Historia cen: stooq CSV i Yahoo',[parseStooqHist('Date,Open,High,Low,Close,Volume\n2026-11-12,1,1,1,131.5,10\n2026-11-13,1,1,1,132,10'),parseYahooHist({chart:{result:[{timestamp:[1763035200],indicators:{quote:[{close:[132.123456]}]}}]}})],[{'2026-11-12':131.5,'2026-11-13':132},{'2025-11-13':132.1235}]);
+  const base={who:'Mati',plan:null,dev:null,t:'32'};
+  const k=o=>advRemindP({...base,...o}).map(x=>x.key);
+  eq('Przypomnienia: grudzień – IKE, marzec – zwrot z IKZE (11 304 × 32% = 3 617 zł)',[k({today:'2026-12-05',ikeLeft:100000}),advRemindP({...base,today:'2027-03-02',ikzePrevPaid:1130400}).map(x=>x.text.match(/ok\. ([^z]+)zł/)[1].replace(/\D/g,''))],[['advike:2026:Mati'],['3617']]);
+  eq('Przypomnienia: styczeń – poduszka o inflację, listopad – przegląd XTB (tylko Mati), transza po terminie',[k({today:'2027-01-10',podAmt:3600000,infl:3}),k({today:'2026-11-20'}),k({who:'Wercia',today:'2026-11-20'}),k({today:'2026-12-20',trs:[{id:'av1',n:2,of:4,a:100000,date:'2026-12-14',at:'2026-11-14'},{id:'av1',n:3,of:4,a:100000,date:'2027-01-14',at:'2026-11-14'}]})],
+    [['advpod:2027'],['advxtb:2026'],[],['advtr:av1:2']]);
+  eq('Przypomnienia: kwartalny przegląd tylko gdy poza widełkami',[k({today:'2027-01-05',plan:{},dev:{ok:false,low:[{g:'bond'}],high:[]}}),k({today:'2027-01-05',plan:{},dev:{ok:true,low:[],high:[]}})],[['advq:2027-Q1:Mati'],[]]);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);
