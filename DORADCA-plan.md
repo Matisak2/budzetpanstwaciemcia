@@ -34,7 +34,8 @@ Podstawa: wymagania Matiego z rozmowy 13–14.11.2026 oraz pełna lektura ok. 90
 22. **Pod kołem paski „jest / ma być” z widełkami** (od D2) – koło zostaje, paski pokazują dokładnie, co jest poza zakresem.
 23. **Prostota przez ankietę**: szczegółowa ankieta zostaje (Mati: dzięki niej plan będzie prosty, ale dopasowany), ale jej wynikiem ma być **prosty plan** (kilka składników, mało czynności). Po D2 sprawdzamy licznik „📊 Czego używamy”, zanim powstaną D5–D7.
 24. **Lista ETF-ów sprawdzona w XTB 14.11.2026** (zrzuty „Szczegóły” od Matiego) – punkt 13; dostęp do stron dostawców przy budowie: Mati się zgadza (okienko zgody na host).
-25. **Własne mieszkanie – DO USTALENIA z Matim** (pytanie z 14.11): propozycja nowego okna – wartość mieszkania, w którym mieszkacie, widoczna w majątku jako osobna pozycja „🏡 Nasz dom (nie zarabia)”, ale **bez wliczania do proporcji** (proporcje = części, które pracują: inwestycje + nieruchomości na wynajem). Do decyzji Matiego obowiązuje decyzja 15.
+25. **Własne mieszkanie osobno (Mati 14.11 – zastępuje decyzję 15 i pytanie 31 ankiety):** wartość mieszkania, w którym mieszkacie, jest w majątku jako osobna pozycja „🏡 Nasz dom (nie zarabia)” (wartość, kredyt, netto; liczy się do majątku netto), ale **nie wchodzi do proporcji** – proporcje = to, co pracuje (inwestycje + nieruchomości na wynajem / puste / inne). Na głównym wykresie 🏠 / 📈 dom jest pokazany obok, nie jako kawałek proporcji; ankieta nie zadaje pytania 31.
+26. **Tempo: wszystkie etapy jednego dnia (14.11), jeden po drugim** – każdy etap nadal osobno: testy, commit, push (telefon dostaje działające kawałki), krótka informacja dla Matiego, co sprawdzić. Jedna kopia przed startem wystarcza na cały dzień (Mati może pobrać nową w przerwie). Gdy któryś etap wymaga odpowiedzi Matiego (np. ankieta w D2 – wypełnia ją sam w telefonie), kolejne etapy budują się na danych demo i działają od chwili, gdy ankieta jest wypełniona.
 
 ---
 
@@ -279,7 +280,7 @@ Dla każdej złotówki koszyka długoterminowego doradca wybiera miejsce w tej k
 Doradca podaje nazwy – z krótkiej, pilnowanej listy, i pokazuje **kryteria**, żeby było widać, skąd wybór:
 
 - **Obligacje skarbowe detaliczne** – bieżąca oferta z automatu (już pobierana). Wybór serii według horyzontu, mini-kalkulator „która obligacja da najwięcej za N miesięcy” (z opłatą za wcześniejszy wykup, z podatkiem albo w IKE). Domyślnie: długi termin – 10-letnie indeksowane (i rodzinne 12-letnie do kwoty 800+); 2–3 lata – 3-letnie stałe albo indeksowane po przeliczeniu; do roku – roczne.
-- **ETF akcji świata** – kryteria: indeks całego świata (MSCI ACWI / FTSE All-World), akumulujący, zarejestrowany w Irlandii (ISIN zaczyna się od IE), replikacja fizyczna, koszt do ok. 0,25% rocznie, duży i wieloletni, bez zabezpieczenia do złotego. Lista startowa (2–4 fundusze największych dostawców + wariant „rynki rozwinięte + wschodzące”) z numerami ISIN – **każdy numer i koszt sprawdzony u dostawcy w dniu budowy**, z datą sprawdzenia w aplikacji.
+- **ETF akcji świata** – kryteria: indeks całego świata (MSCI ACWI / FTSE All-World), akumulujący, zarejestrowany w Irlandii (ISIN zaczyna się od IE), replikacja fizyczna, koszt do ok. 0,25% rocznie, duży i wieloletni, bez zabezpieczenia do złotego. Lista startowa (2–fundusze z listy w punkcie 13 + wariant „rynki rozwinięte + wschodzące”) z numerami ISIN – **każdy numer i koszt sprawdzony u dostawcy w dniu budowy**, z datą sprawdzenia w aplikacji.
 - **Złoto** – małe kwoty: ETC na złoto fizyczne (w IKE/IKZE); większe: moneta/sztabka 1 uncja – doradca pokazuje dzisiejszą cenę uncji (już ją mamy) i ostrzega, gdy marża sprzedawcy przekracza ok. 5%.
 - **Krótki termin** – konto oszczędnościowe / lokata (z przypomnieniem o gwarancji do 100 tys. euro na bank i osobę), fundusz krótkoterminowych papierów skarbowych z kryteriami (koszt do 0,5%, bez obligacji firm).
 - **Fundusze już posiadane** (TFI; bez PPK) – doradca ocenia koszt i skład, podpowiada przeniesienie drogiego IKE/IKZE (wypłata transferowa, bez utraty ulg).
@@ -371,13 +372,12 @@ Testy każdego etapu: jak w poprzedniej wersji planu (przykłady liczbowe z blog
 ## 13. Lista ETF-ów Matiego (zrzuty z XTB, 14.11.2026)
 Dane poza tickerem/dostawcą/walutą są z mojej wiedzy – **przed użyciem w kodzie sprawdzić u dostawcy (ISIN, TER) i wpisać datę sprawdzenia.**
 
-Dane ze zrzutów „Szczegóły instrumentu” w XTB, **stan na 14.11.2026** (VWCE – zrzut jeszcze do przysłania; dane z pamięci do sprawdzenia).
+Dane ze zrzutów „Szczegóły instrumentu” w XTB, **stan na 14.11.2026** (wszystkie 7 ze zrzutów). **ALLW.UK (Xtrackers FTSE All-World, IE000L6ZMMC4, TER 0,07%, ok. 250 mln USD) usunięty z listy na prośbę Matiego** (mały i młody fundusz); gdyby kiedyś został kupiony – trafia do śledzenia jak każdy instrument spoza listy.
 
 | Ticker XTB | Fundusz | Indeks / co zawiera | Waluta notowania / giełda | ISIN | TER | Aktywa |
 |---|---|---|---|---|---|---|
-| VWCE.DE | Vanguard FTSE All-World Acc | cały świat | EUR / Frankfurt | IE00BK5BQT80 (do sprawdzenia) | ok. 0,19% (do sprawdzenia) | – |
+| VWCE.DE | Vanguard FTSE All-World Acc | cały świat | EUR / Frankfurt | IE00BK5BQT80 ✔ | 0,14% ✔ | 64,45 mld USD |
 | FWIA.DE | Invesco FTSE All-World Acc | cały świat | EUR / Frankfurt | IE000716YHJ7 ✔ | 0,15% ✔ | 4,82 mld USD |
-| ALLW.UK | Xtrackers FTSE All-World Acc | cały świat | USD / Londyn | IE000L6ZMMC4 ✔ | **0,07%** ✔ | 0,25 mld USD (mały, młody) |
 | ISAC.UK | iShares MSCI ACWI Acc | cały świat (MSCI) | USD / Londyn | IE00B6R52259 ✔ | 0,20% ✔ | 35,33 mld USD |
 | SWDA.UK | iShares Core MSCI World Acc | tylko kraje rozwinięte | GBP / Londyn | IE00B4L5Y983 ✔ | 0,20% ✔ | 146,00 mld USD |
 | VHVE.UK | Vanguard FTSE Developed World Acc | tylko kraje rozwinięte | USD / Londyn | IE00BK5BQV03 ✔ | 0,12% ✔ | 6,89 mld USD |
@@ -387,8 +387,8 @@ Dane ze zrzutów „Szczegóły instrumentu” w XTB, **stan na 14.11.2026** (VW
 Minimalne zlecenie w XTB: 1 jednostka waluty notowania (ułamki). ✔ = przepisane ze zrzutu XTB; przy budowie D1a potwierdzić u dostawcy (KID) i wpisać datę.
 
 Wnioski do analizy (dla doradcy):
-- Wszystkie: UCITS, akumulujące, irlandzkie – spełniają kryteria z lektury. **ALLW** jest najtańszy (0,07%), ale mały i młody (ok. 250 mln USD) – kryterium „duży i wieloletni” spełnia słabiej; analiza ma to pokazać jako fakt (ryzyko zamknięcia funduszu = sprzedaż i podatek poza IKE/IKZE), nie jako zakaz.
-- To są **3 rodziny tego samego**: „cały świat w jednym” (VWCE, FWIA, ALLW, ISAC) albo „rozwinięte + wschodzące” (SWDA lub VHVE + EMIM lub VFEA ≈ ok. 88/12). Wystarczy **jeden** fundusz świata albo **jedna** para – kupowanie kilku „całych światów” to dublowanie (bez szkody, ale bez korzyści; trudniej pilnować proporcji). Analiza ma to wykrywać i pokazywać.
+- Wszystkie: UCITS, akumulujące, irlandzkie – spełniają kryteria z lektury. Kryterium „duży i wieloletni”: przy funduszach spoza listy analiza pokazuje wielkość i wiek jako fakt (mały fundusz = ryzyko zamknięcia, czyli sprzedaży i podatku poza IKE/IKZE).
+- To są **3 rodziny tego samego**: „cały świat w jednym” (VWCE, FWIA, ISAC) albo „rozwinięte + wschodzące” (SWDA lub VHVE + EMIM lub VFEA ≈ ok. 88/12). Wystarczy **jeden** fundusz świata albo **jedna** para – kupowanie kilku „całych światów” to dublowanie (bez szkody, ale bez korzyści; trudniej pilnować proporcji). Analiza ma to wykrywać i pokazywać.
 - Waluta notowania nie zmienia ryzyka walutowego (liczy się, w co fundusz inwestuje); w XTB każda waluta kosztuje tak samo: 0,5% przy wymianie.
 - Rodzina Vanguard FTSE (VWCE / VHVE+VFEA) i iShares MSCI (ISAC / SWDA+EMIM) – w parze lepiej trzymać się jednej rodziny indeksów (te same zasady podziału na kraje).
 
