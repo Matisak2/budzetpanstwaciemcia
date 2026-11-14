@@ -10,7 +10,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {keepPrev} from '../scripts/market-lib.mjs';
-import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK} from '../js/advisor.js';
+import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -614,5 +614,24 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   const dg=diagP({cushion:3000000,exp:600000,podTarget:6,debts:[{kind:'karta',left:200000},{kind:'hip',left:50000000}],accs:[{id:'i',name:'IKE',wrap:'ike',owner:'Mati'},{id:'z',name:'IKZE W',wrap:'ikze',owner:'Wercia'}],
     tx:[{type:'tr',to:'i',acc:'x',amount:1000000,date:'2026-03-01'}],today:'2026-11-14',owner:'Mati'});
   eq('Diagnoza: poduszka, długi, limity',[dg.pod.m,dg.pod.st,dg.debts,dg.lim,dg.days],[5,'mid',{n:1,sum:200000},[{name:'IKE',w:'ike',left:1826000}],47]);}
+
+/* ---------- 🧭 doradca D3: gdzie wpłacić ---------- */
+{ const M={who:'Mati',t:'32',ike:{left:2826000,has:true},ikze:{left:1130400,has:true}},W={who:'Wercia',t:'12',ike:{left:2826000},ikze:{left:1130400}},C={debt:{sum:0},podGap:0,today:'2026-11-14'};
+  const sum=r=>r.rows.reduce((s,x)=>s+x.a,0),k=r=>r.rows.map(x=>[x.kind,x.who,x.a]);
+  eq('Z poduszki – nic nie inwestujemy',k(whereP({amt:500000,src:'pod'},[M],C)),[['pod','',500000]]);
+  // 10 000 zł: dług 3 000, do poduszki 5 000, reszta 2 000 → IKZE Matiego (próg 32%); akcje nie teraz
+  const r1=whereP({amt:1000000,src:'surplus',goal:'plan'},[M],{...C,debt:{sum:300000,rate:9.9,name:'Karta'},podGap:500000});
+  eq('Bramki: najpierw dług, potem poduszka, reszta IKZE',[k(r1),r1.noStocks,sum(r1)],[[['debt','',300000],['pod','',500000],['ikze','Mati',200000]],true,1000000]);
+  // wspólnie 50 000 zł: IKZE Matiego (32%) 11 304, IKE Matiego 28 260, IKE Werci reszta 10 436; IKZE Werci (12%) dopiero po IKE – już nie starcza
+  eq('Wspólnie: IKZE wyższego progu, potem IKE obojga',k(whereP({amt:5000000,src:'bonus',goal:'plan'},[M,W],C)),[['ikze','Mati',1130400],['ike','Mati',2826000],['ike','Wercia',1043600]]);
+  eq('Przy 12% najpierw IKE, potem IKZE, potem zwykły rachunek',k(whereP({amt:4500000,src:'surplus',goal:'plan'},[W],C)),[['ike','Wercia',2826000],['ikze','Wercia',1130400],['reg','',543600]]);
+  eq('Potrzebne w 3 lata – tylko bezpiecznie',k(whereP({amt:300000,src:'surplus',goal:'plan',need3:true},[M],C)),[['safe','',300000]]);
+  // nadpłata 30% z 10 000 zł = 3 000; próg opłacalności 7% ÷ 0,81 = 8,64%
+  const r2=whereP({amt:1000000,src:'surplus',goal:'plan'},[M],{...C,mort:{rate:7,fee:false},overpay:30});
+  eq('Nadpłata kredytu według ankiety i próg opłacalności',[r2.rows[0].kind,r2.rows[0].a,/8,64%/.test(r2.rows[0].why)],['overpay',300000,true]);
+  eq('IKZE przy progu 0% – na liście „na pewno nie”',whereP({amt:100000,src:'surplus',goal:'plan'},[{...M,t:'0'}],C).no.some(x=>/IKZE Mati/.test(x.t)),true);
+  eq('Kolejność IKZE wg progu i ryczałtu',[ikzeRank('32'),ikzeRank('19'),ikzeRank('12'),ikzeRank('0'),ikzeRank(8.5),ikzeRank(15),taxOf({q3:'r',q3r:8.5}),taxOf({})],['first','first','after','no','no','after',8.5,'?']);
+  // 10 000 zł, 30 lat, 5%: ×4,3219 → IKE 43 219; zwykły 10 000 + 33 219 × 0,81 = 36 908; IKZE 43 219 × 0,9 + zwrot 3 200 z zyskiem po Belce (3 200 + 10 630 × 0,81) = 50 708
+  eq('IKE / IKZE / zwykły rachunek za 30 lat',(c=>[Math.round(c.ike/100),Math.round(c.ikze/100),Math.round(c.reg/100),c.back])(wrapCompare(1000000,30,'32')),[43219,50708,36908,320000]);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

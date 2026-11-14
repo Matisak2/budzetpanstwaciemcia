@@ -1,7 +1,7 @@
 /* 🧭 Doradca – screens (D1a): 🥧 „Z czego składa się majątek” in 💰 Majątek → Oszczędności (groups → classes → instruments and accounts,
    tap = change the class), 🔎 the analysis of held funds and the list of known ETFs. Calculations in advisor.js. */
 import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
+import {taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
 import {donutSvg} from './charts.js';
 import {liveOf,ownerOf,agg,balance} from './logic.js';
 import {youngUntil} from './pay.js';
@@ -9,7 +9,7 @@ import {debtStateP} from './today.js';
 import {goalAlloc} from './actions.js';
 import {kotki} from './guide.js';
 import {scene} from './cats.js';
-import {wrapOf} from './inv.js';
+import {wrapOf,LIMITS,limitOf,paidInYear} from './inv.js';
 import {esc,rid,td,zl0,dmy,pg,addDays,addMonths} from './util.js';
 import {S,ask,toast,H,HOLD,merge,saveAcc,guard,infoH,isP} from './core.js';
 import {macro,mkt} from './savings.js';
@@ -154,13 +154,14 @@ function saveAns(q,v,who=S.who){const k=q.w?'advW':'advM';
 /* 🧭 the card on Oszczędności: diagnosis + the survey / the plan */
 export function advCardH(owner){const who=S.who,ctx=ankCtx(who),A=ankOf(who),dn=ankDone(A,ctx),plan=planOfWho(who),open=ankOpen(who);
   const D=diagP({cushion:ctx.cush,exp:ctx.exp,podTarget:+(A.q17||6)||6,debts:ctx.debtList,accs:S.cfg.accs,tx:liveOf(S.tx),limits:S.hraw?.limits,today:td(),owner:who});
-  const lim=D.lim.length?D.lim.map(l=>`${l.w.toUpperCase()} ${zl0(l.left)}`).join(' · '):'brak IKE/IKZE';
-  const tile=(c,l,v,s)=>`<div class="kpi ${c}"><div class="l">${l}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`;
+  const lim=D.lim.length?D.lim.map(l=>`${l.w.toUpperCase()} ${zl0(l.left)}`).join('<br>'):'brak IKE/IKZE';
+  const tile=(c,l,v,s,k)=>`<button class="kpi ${c}" onclick="advTile('${k}')"><div class="l">${l}</div><div class="v num">${v}</div><div class="s">${s}</div><span class="kmore">›</span></button>`;
   let h=`<section class="chart adv"><div class="ct"><b>🧭 Doradca</b><span class="mini">${esc(who)} · kotki liczą, nie zgadują przyszłości</span></div><div class="kpis advk">
-    ${tile(D.pod.st=='ok'?'k-em':D.pod.st=='low'?'k-ro':'k-am','🛟 Poduszka',D.pod.m==null?'—':D.pod.m.toFixed(1).replace('.',',')+' mies.',`cel ${D.pod.target} mies.`)}
-    ${tile(D.debts.n?'k-ro':'k-em','🔻 Długi najpierw',D.debts.n?zl0(D.debts.sum):'brak',D.debts.n?'spłać przed inwestowaniem':'bez kart i rat – super')}
-    ${tile('k-sk','📅 Limity '+td().slice(0,4),lim,`zostało ${D.days} dni · OKI od 2027`)}
-    ${tile(plan?'k-em':'k-am','🎯 Plan',plan?`akcje ${plan.g.stock}%`:open?`${dn.n}/${dn.of}`:'—',plan?`obligacje ${plan.g.bond}% · złoto ${plan.g.gold}%`:open?'odpowiedzi w ankiecie':'najpierw ankieta Matiego')}</div>`;
+    ${tile(D.pod.st=='ok'?'k-em':D.pod.st=='low'?'k-ro':'k-am','🛟 Poduszka',D.pod.m==null?'—':D.pod.m.toFixed(1).replace('.',',')+' mies.',`cel ${D.pod.target} mies.`,'pod')}
+    ${tile(D.debts.n?'k-ro':'k-em','🔻 Długi najpierw',D.debts.n?zl0(D.debts.sum):'brak',D.debts.n?'spłać przed inwestowaniem':'bez kart i rat – super','debt')}
+    ${tile('k-sk','📅 Limity '+td().slice(0,4),lim,`do końca roku ${D.days} dni`,'lim')}
+    ${tile(plan?'k-em':'k-am','🎯 Plan',plan?`akcje ${plan.g.stock}%`:open?`${dn.n}/${dn.of}`:'—',plan?`obligacje ${plan.g.bond}% · złoto ${plan.g.gold}%`:open?'odpowiedzi w ankiecie':'najpierw ankieta Matiego','plan')}</div>`;
+  if(open)h+=`<button class="btn primary" onclick="openWhere()">💸 Chcę zainwestować… – gdzie wpłacić?</button>`;
   if(open)h+=`<div class="g2"><button class="btn ${plan?'':'primary'} sm" onclick="openAnk()">📝 ${dn.n?dn.n<dn.of?'Dokończ ankietę':'Popraw odpowiedzi':'Zacznij ankietę z kotkami'}</button><button class="btn ${plan?'primary':''} sm" onclick="openPlan()">📄 ${plan?'Mój plan':'Propozycja planu'}</button></div>`;
   else h+=`<div class="mini">🐾 Ankietę najpierw wypełnia Mati. Gdy skończy, odblokuje ją dla Ciebie w swoim planie.</div>`;
   if(D.debts.n)h+=`<div class="mini">🐾 Najpierw spłata długów: ich oprocentowanie to więcej, niż da jakakolwiek pewna inwestycja.</div>`;
@@ -234,3 +235,65 @@ export function planBarsH(A,plan){const D=devP(A,plan);if(!D.base)return'';
   const tip=D.ok?`Wszystko w widełkach planu 💚 Kolejne wpłaty dzielcie według planu: ${PLAN_G.filter(g=>plan.g[g]).map(g=>AGRP[g].n.toLowerCase()+' '+plan.g[g]+'%').join(', ')}.`
     :[D.low.length?`Przy następnej wpłacie dokupcie: ${D.low.map(x=>`${GN(x.g)} (do planu brakuje ok. ${zl0(x.gap)})`).join(', ')}.`:'',D.high.length?`${D.high.map(x=>`${GN(x.g)} ${x.now.toFixed(0)}% – ponad plan (${String(x.lo).replace('.',',')}–${String(x.hi).replace('.',',')}%)`).join(', ')}: na razie tego nie dokupujcie.`:''].filter(Boolean).join(' ');
   return h+`<div class="note">🐾 ${esc(tip)}</div></div>`}
+
+/* ======================= D3: kafelki ze szczegółami, „💸 gdzie wpłacić” ======================= */
+/* a details window over the page (one scrolling sheet, „Zamknij” at the bottom) */
+function infoDlg(title,html){const d=document.getElementById('dlg');document.getElementById('dlgBody').innerHTML=`<h2>${esc(title)}</h2>${html}<div class="stfoot"><button class="btn primary" style="width:100%" onclick="advClose()">Zamknij</button></div>`;d.hidden=false;d.onclick=e=>{if(e.target===d)advClose()}}
+export function advClose(){document.getElementById('dlg').hidden=true}
+const yr=()=>td().slice(0,4);
+/* each person's IKE / IKZE: accounts in the app (limit − paid this year); none → the full limit, „do założenia” */
+function wrapsOf(who){const tx=liveOf(S.tx),y=yr(),L={...(LIMITS[y]||LIMITS[Math.max(...Object.keys(LIMITS).map(Number))]),...(S.hraw?.limits?.[y]||{})},out={};
+  for(const w of ['ike','ikze']){const acc=S.cfg.accs.filter(a=>!a.archived&&wrapOf(a)==w&&ownerOf(a)==who);
+    if(acc.length)out[w]={has:true,accs:acc.map(a=>({name:a.name,lim:limitOf(a,y,S.hraw?.limits),paid:paidInYear(tx,a.id,y)})),left:acc.reduce((s,a)=>s+Math.max(0,limitOf(a,y,S.hraw?.limits)-paidInYear(tx,a.id,y)),0)};
+    else{const jdg=(S.cfg.incs||[]).some(x=>x.who==who&&x.kind=='b2b'),lim=w=='ike'?L.ike:jdg?L.ikzeB:L.ikze;out[w]={has:false,accs:[],left:lim,lim}}}
+  return out}
+export function advTile(k){use('f:kafelek');const who=S.who,ctx=ankCtx(who),A=ankOf(who),tx=liveOf(S.tx),tom=addDays(td(),1);
+  if(k=='pod'){const L=S.cfg.accs.filter(a=>a.grp=='sav'&&!a.archived&&isP(a)),goals=Object.values(S.goals||{}).reduce((s,g)=>s+Math.max(0,goalAlloc(g)),0),tg=+(A.q17||6)||6,need=Math.round(ctx.exp*tg);
+    return infoDlg('🛟 Poduszka bezpieczeństwa',`<div class="mini">Konta oszczędnościowe (bez IKE, IKZE, PPK i inwestycji – tych nie da się szybko wypłacić bez straty):</div>${L.map(a=>`<div class="r1 mini"><span>${esc(a.name)}</span><b class="num">${zl0(balance(S.cfg,tx,a.id,tom))}</b></div>`).join('')||'<div class="mini">brak kont oszczędnościowych</div>'}
+      ${goals?`<div class="r1 mini"><span>− przydzielone do celów</span><b class="num">${zl0(goals)}</b></div>`:''}<div class="r1"><b>Poduszka</b><b class="num">${zl0(ctx.cush)}</b></div>
+      <div class="mini">Średnie wydatki domu (6 mies.): <b>${zl0(ctx.exp)}</b> → starczy na <b>${ctx.podMTxt}</b>.</div><div class="mini">Cel z ankiety: ${tg} mies. = ${zl0(need)}. ${need>ctx.cush?`<b class="t-exp">Brakuje ${zl0(need-ctx.cush)}.</b> Najpierw poduszka, potem giełda.`:'<b class="t-inc">✓ Cel osiągnięty.</b>'}</div>
+      <div class="mini">Skład według lektury: ok. ¼ na koncie oszczędnościowym, reszta w obligacjach skarbowych (EDO / COI); 2–3 tygodnie wydatków w gotówce. Co rok dopłata o inflację.</div>`)}
+  if(k=='debt'){const L=ctx.debtList,cons=L.filter(d=>d.kind!='hip'),mort=L.filter(d=>d.kind=='hip'),row=d=>`<div class="r1 mini"><span>${esc(d.name)}${d.rate?` · ${String(d.rate).replace('.',',')}%`:''}</span><b class="num">${zl0(d.left)}</b></div>`;
+    return infoDlg('🔻 Długi',`${cons.length?`<div class="mini"><b>Do spłaty przed inwestowaniem</b> (karty, raty, pożyczki):</div>${cons.map(row).join('')}<div class="mini">Spłata długu oprocentowanego np. na 10% to pewny zysk 10% – żadna bezpieczna inwestycja tyle nie da.</div>`:'<div class="mini">✓ Brak kart, rat i pożyczek – można inwestować.</div>'}
+      ${mort.length?`<div class="mini" style="margin-top:8px"><b>Kredyt hipoteczny</b> (nie blokuje inwestowania – nadpłata albo inwestycje według planu):</div>${mort.map(row).join('')}`:''}<div class="mini">Długi wpisujesz w 💰 Majątek → 👛 Konta → 🔻 My winni.</div>`)}
+  if(k=='lim'){const t=taxOf(A),W=wrapsOf(who),days=Math.round((Date.parse(yr()+'-12-31')-Date.parse(td()))/864e5);
+    const blk=(w,n)=>{const x=W[w];return`<div class="lim"><div class="r1"><b>${n}</b><b class="num">zostało ${zl0(x.left)}</b></div>${x.has?x.accs.map(a=>`<div class="mini">${esc(a.name)}: limit ${zl0(a.lim)} · wpłacono ${zl0(a.paid)}</div>`).join(''):`<div class="mini">Nie masz jeszcze ${n} w aplikacji – limit ${zl0(x.lim)} (np. w XTB, za darmo).</div>`}</div>`};
+    return infoDlg(`📅 Limity ${yr()} – ${who}`,blk('ike','IKE')+blk('ikze','IKZE')+`<div class="mini">Do 31 grudnia zostało <b>${days} dni</b> – wpłata musi dotrzeć do instytucji przed końcem roku (najlepiej do ok. 20.12). Limit liczy się od wpłaty, nie od zakupu – można wpłacić i kupić później.</div>
+      ${ikzeRank(t)=='first'?`<div class="note">🐾 Przy progu ${t=='19'?'liniowym 19%':t+'%'} pełne IKZE (${zl0(W.ikze.left)}) da w PIT zwrot ok. <b>${zl0(Math.round(W.ikze.left*tNumUI(t)/100))}</b>.</div>`:ikzeRank(t)=='no'?`<div class="mini">Przy progu ${t}% IKZE się nie opłaca – najpierw IKE.</div>`:''}
+      <div class="mini">📦 OKI ruszy 1 stycznia 2027 (bez limitu wpłat, bez podatku do 100 tys. zł majątku).</div>`)}
+  const P=planOfWho(who);if(!P)return openPlan();
+  return infoDlg('🎯 Plan – '+who,PLAN_G.map(g=>{const[lo,hi]=bandOf(P.g[g]);return`<div class="r1 mini"><span>${GN(g)}</span><b class="num">${P.g[g]}% <em>(${String(lo).replace('.',',')}–${String(hi).replace('.',',')}%)</em></b></div>`}).join('')+`<div class="mini">Stan i paski „jest / ma być” są pod kołem majątku.</div><button class="btn" onclick="advClose();openPlan()">📄 Cały plan</button>`)}
+const tNumUI=t=>t=='?'?0:+t;
+
+/* 💸 „Chcę zainwestować … zł” – a short survey (plan 4.2) and the answer „gdzie” */
+export function openWhere(){if(guard())return;use('f:gdzie');S.adv='where';S.advRes=null;window.scrollTo(0,0);render()}
+function whereCtx(mode){const who=S.who,A=ankOf(who),ctx=ankCtx(who),people=mode=='both'?['Mati','Wercia']:[who],W=advW().ank||{};
+  const P=people.map(p=>{const w=wrapsOf(p),b=S.hraw?.birth?.[p];return{who:p,t:taxOf(ankOf(p)),ike:w.ike,ikze:w.ikze,age:b?+td().slice(0,4)-+b.slice(0,4):null}});
+  const cons=ctx.debtList.filter(d=>d.kind!='hip'&&d.left>0),mort=ctx.debtList.find(d=>d.kind=='hip'&&d.left>0),tg=+(W.q17||A.q17||6)||6,plan=planFor(mode=='both'?'all':who);
+  return{P,ctx:{debt:{sum:cons.reduce((s,d)=>s+d.left,0),rate:Math.max(0,...cons.map(d=>+d.rate||0))||null,name:cons.map(d=>d.name).join(', ')},podGap:Math.max(0,Math.round(ctx.exp*tg-ctx.cush)),
+    mort:W.q20=='yes'&&mort?{rate:+mort.rate||0,fee:W.q20c=='yes'}:null,overpay:W.q20=='yes'&&mort?+(W.q59||0):0,today:td(),okiOk:td()>='2027-01-01'&&['yes','maybe'].includes(A.q40),
+    sandLeft:plan?.sand?Math.round(ctx.base*plan.sand/100):null},A,W}}
+export function calcWhere(){const v=id=>document.getElementById(id)?.value,amt=pg(v('wAmt')||'0');if(!(amt>0))return toast('Wpisz kwotę','bad');
+  S.advIn={amt,src:v('wSrc'),goal:v('wGoal'),need3:v('wNeed')=='1',mode:v('wMode'),chg:v('wChg')};const{P,ctx,W}=whereCtx(S.advIn.mode);
+  S.advRes=whereP({...S.advIn,homeSoon:+(W.q32a||99)<=3},P,ctx);S.advRes.P=P;use('f:policz');render();setTimeout(()=>document.getElementById('wRes')?.scrollIntoView({behavior:'smooth'}),60)}
+export function wherePageH(){const I=S.advIn||{amt:0,src:'surplus',goal:'plan',need3:false,mode:'me',chg:'no'},R=S.advRes,sel=(id,val,o)=>`<select id="${id}">${o.map(([k,l])=>`<option value="${k}"${k==val?' selected':''}>${esc(l)}</option>`).join('')}</select>`;
+  let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button><section class="chart where"><div class="ct"><b>💸 Gdzie wpłacić?</b><span class="mini">kotki liczą według Waszego planu, progu podatkowego i limitów</span></div>
+    <label class="fld"><span>Chcę teraz zainwestować (zł)</span><input id="wAmt" inputmode="decimal" value="${I.amt?String(I.amt/100):''}" placeholder="np. 5000"></label>
+    <label class="fld"><span>Skąd te pieniądze?</span>${sel('wSrc',I.src,[['surplus','nadwyżka z miesiąca'],['bonus','premia, zwrot podatku'],['sale','sprzedaż czegoś'],['pod','z poduszki']])}</label>
+    <label class="fld"><span>Na jaki cel?</span>${sel('wGoal',I.goal,[['plan','zgodnie z planem'],['ret','tylko emerytura'],['home','mieszkanie'],['pod','poduszka'],['sand','piaskownica (pojedyncze spółki)']])}</label>
+    <label class="fld"><span>Czy możesz ich potrzebować w ciągu 3 lat?</span>${sel('wNeed',I.need3?'1':'0',[['0','nie'],['1','tak']])}</label>
+    <label class="fld"><span>Czy coś się zmieniło od ankiety (praca, próg, kredyt, dziecko)?</span>${sel('wChg',I.chg,[['no','nie'],['yes','tak']])}</label>
+    <label class="fld"><span>Dla kogo liczyć?</span>${sel('wMode',I.mode,[['me','dla mnie ('+S.who+')'],['both','wspólnie – podziel między nas dwoje']])}</label>
+    <button class="btn primary" onclick="calcWhere()">🐾 Policz</button></section>`;
+  if(I.chg=='yes'&&R)h+=`<div class="note">🐾 Coś się zmieniło? Popraw odpowiedzi w ankiecie (📝), wtedy wynik będzie dokładniejszy. <button class="chip" onclick="openAnk()">📝 Ankieta</button></div>`;
+  if(!R)return h;const sum=R.rows.reduce((s,x)=>s+x.a,0);
+  h+=`<section class="chart" id="wRes"><div class="ct"><b>📍 Gdzie</b><span class="mini">${zl0(sum)} · ${R.P.map(p=>`${p.who}: próg ${p.t=='?'?'nieznany':p.t=='19'?'liniowy':p.t+'%'}`).join(' · ')}</span></div>`+
+    R.rows.map((x,i)=>`<details class="wrow"${i==0?' open':''}><summary><span class="an">${esc(x.where)}</span><b class="num">${zl0(x.a)}</b></summary><div class="mini">${esc(x.why)}</div></details>`).join('')+
+    (R.noStocks?`<div class="note bad">🐾 Akcje nie teraz – najpierw bezpieczne miejsca.</div>`:'')+`<div class="mini">„W co” dokładnie (fundusz, obligacje, ile jednostek) – w następnym etapie doradcy.</div></section>`;
+  const me=R.P.find(p=>p.who==S.who)||R.P[0],wr=R.rows.find(x=>(x.kind=='ike'||x.kind=='ikze')&&x.who==me.who)||R.rows.find(x=>x.kind=='ike'||x.kind=='ikze');
+  if(wr){const p=R.P.find(q=>q.who==wr.who)||me,years=Math.max(5,65-(p.age||35)),C=wrapCompare(wr.a,years,p.t);
+    h+=`<section class="chart"><div class="ct"><b>⚖️ IKE, IKZE czy zwykłe konto?</b><span class="mini">${zl0(wr.a)} na ${years} lat (do 65. roku życia) · założenie 5% rocznie, to nie prognoza</span></div>
+      <div class="r1"><span>🛡️ IKE (bez podatku)</span><b class="num">${zl0(C.ike)}</b></div><div class="r1"><span>🛡️ IKZE (10% przy wypłacie, zwrot z PIT ${zl0(C.back)} też zainwestowany)</span><b class="num">${zl0(C.ikze)}</b></div><div class="r1"><span>📂 Zwykły rachunek (19% od zysku)</span><b class="num">${zl0(C.reg)}</b></div>
+      <div class="mini">Ten sam wzór dla wszystkich trzech – różnicę robią tylko podatki. IKZE wygrywa tylko wtedy, gdy zwrot podatku naprawdę inwestujesz.</div></section>`}
+  h+=`<section class="chart"><div class="ct"><b>🚫 Na pewno nie tu</b></div>${R.no.map(x=>`<div class="mini"><b>${esc(x.t)}</b> – ${esc(x.why)}</div>`).join('')}</section>`;
+  return h}

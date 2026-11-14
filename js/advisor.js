@@ -1,7 +1,7 @@
 /* 🧭 Doradca – pure calculations (no UI, no saving; tested in tests/calc.mjs). Amounts in grosze (PLN).
    D1a: asset groups and classes (built-in + own `assetCls`), the list of known ETFs (checked in XTB), the class of every instrument and account,
    „what the wealth is made of” (allocP) and the analysis of held ETFs (criteria, doubled „whole worlds”, flags). PPK is left out everywhere (decision 5). */
-import {addDays} from './util.js';
+import {addDays,zl0} from './util.js';
 import {balance,ownerOf} from './logic.js';
 import {BONDS,instValue,instDiffP,wrapOf,limitOf,paidInYear} from './inv.js';
 import {debtStateP} from './today.js';
@@ -252,3 +252,43 @@ export function diagP({cushion,exp,podTarget=6,debts=[],accs=[],tx=[],limits={},
   const cons=debts.filter(d=>d.kind!='hip'),wr=accs.filter(a=>!a.archived&&['ike','ikze'].includes(wrapOf(a))&&(!owner||(a.owner||'Wspólne')==owner));
   return{pod:{m,target:podTarget,st:m==null?'?':m>=podTarget?'ok':m>=3?'mid':'low'},debts:{n:cons.length,sum:cons.reduce((s,d)=>s+(d.left||0),0)},
     lim:wr.map(a=>({name:a.name,w:wrapOf(a),left:Math.max(0,limitOf(a,y,limits)-paidInYear(tx,a.id,y))})),days:Math.round((Date.parse(y+'-12-31')-Date.parse(today))/864e5)}}
+
+/* ======================= D3: „Gdzie” – kwota → bramki → pokrowce ======================= */
+/* tax threshold from the survey: '0'|'12'|'32'|'19' or a flat rate (ryczałt) number; '?' = unknown */
+export const taxOf=A=>A.q3=='r'?(+A.q3r>0?+A.q3r:'?'):(A.q3||'?');
+const tNum=t=>t=='?'?0:+t;
+/* IKZE order: 32% and 19% (linear) – IKZE first; 12% and a flat rate ≥ 12% – IKE first, IKZE after; 0% or a low flat rate – IKZE never (plan step 4) */
+export const ikzeRank=t=>t=='?'?'after':t=='32'||t=='19'?'first':tNum(t)>=12?'after':'no';
+/* 💰 IKE / IKZE / regular account after N years for amount W (grosze) at r a year: IKE without tax; IKZE pays 10% at 65 and its tax return (t%) is reinvested
+   on a regular account (Belka 19% on the gain); regular – Belka on the gain (notes C: Iwuć's calculator) */
+export function wrapCompare(W,years,t,r=0.05){const f=Math.pow(1+r,years),ike=Math.round(W*f),reg=Math.round(W+(W*f-W)*0.81),rate=tNum(t)/100,back=W*rate;
+  const ikze=Math.round(W*f*0.9+back+(back*f-back)*0.81);return{years,ike,ikze,reg,back:Math.round(back)}}
+/* 🚦 the gates and the places for one amount (plan point 5 steps 0–4). P = people [{who,t,ike:{left},ikze:{left},age}], in: {amt,src,goal,need3},
+   ctx: {debt:{sum,rate,name}, podGap (grosze to the cushion target), podHave, mort:{rate,fee}, overpay (% of the long-term part, q59), today, okiOk}
+   → {rows[{a,where,why,who,kind}],no[{t,why}],noStocks,rest} – amounts in grosze, the sum of rows = amt */
+export function whereP(inp,P,ctx){let rest=Math.max(0,Math.round(inp.amt||0));const rows=[],no=[],add=(a,where,why,who='',kind='')=>{a=Math.min(rest,Math.round(a));if(a>0){rows.push({a,where,why,who,kind});rest-=a}};
+  let noStocks=false;const mo=+ctx.today.slice(5,7);
+  if(inp.src=='pod'){add(rest,'🛟 Zostaje w poduszce','Poduszki nie inwestujemy – to pieniądze na awarie. Do inwestowania bierzemy nadwyżkę, premię albo zwrot podatku.','','pod');no.push({t:'📈 Giełda z poduszki',why:'Gdy przyjdzie awaria w czasie spadku, trzeba by sprzedać ze stratą.'});return{rows,no,noStocks:true,rest}}
+  if(ctx.debt?.sum>0)add(ctx.debt.sum,`🔻 Spłata: ${ctx.debt.name||'długi'}`,`Najpierw dług${ctx.debt.rate?` (${String(ctx.debt.rate).replace('.',',')}% rocznie)`:''}: jego spłata to pewny „zysk”, którego nie da żadna bezpieczna inwestycja.`,'','debt');
+  if(ctx.podGap>0){noStocks=true;add(ctx.podGap,'🛟 Poduszka: ok. ¼ konto oszczędnościowe, reszta obligacje skarbowe (EDO / COI)',`Do celu poduszki brakuje ${zlS(ctx.podGap)}. Poduszka przed giełdą – akcje nie teraz.`,'','pod');
+    if(rest>0&&mo==12&&P.some(p=>p.ike?.left>0))no.push({t:'💡 Wyjątek grudniowy',why:'Limit IKE przepada 31 grudnia – możesz wpłacić na IKE i trzymać tam gotówkę albo obligacje (bezpiecznie), a akcje kupić po dokończeniu poduszki.'})}
+  if(inp.goal=='pod')add(rest,'🛟 Poduszka','Wybrałeś cel „poduszka” – konto oszczędnościowe i obligacje skarbowe.','','pod');
+  if(inp.need3||inp.goal=='home'&&inp.homeSoon){noStocks=true;add(rest,`🔒 Bezpiecznie: konto oszczędnościowe / lokata, obligacje 3-letnie TOS${ctx.okiOk?' – najlepiej na OKI (bez podatku)':''}`,'Pieniądze potrzebne w ciągu 3 lat nie mogą zależeć od giełdy.','','safe');
+    no.push({t:'📈 Akcje',why:'Termin krótszy niż ok. 5 lat – akcje potrafią spaść o połowę i odrabiać latami.'})}
+  if(inp.goal=='sand')add(Math.min(rest,ctx.sandLeft??rest),'🧪 Piaskownica – zwykły rachunek maklerski (XTB)','Pojedyncze spółki i „tematy” tylko w piaskownicy z limitem z planu. Szczegóły w etapie piaskownicy.','','sand');
+  if(rest>0&&ctx.mort&&ctx.overpay>0){const a=Math.round(rest*ctx.overpay/100),be=Math.round(ctx.mort.rate/0.81*100)/100;
+    add(a,'🏠 Nadpłata kredytu hipotecznego',`Tak ustaliliście w ankiecie (${ctx.overpay}% nadwyżek). Kredyt ${String(ctx.mort.rate).replace('.',',')}% – żeby się opłacało inwestować poza IKE, trzeba by zarabiać ponad ${String(be).replace('.',',')}% rocznie.${ctx.mort.fee?' Sprawdźcie prowizję za nadpłatę.':''} Najlepiej dzień po racie.`,'Wspólne','overpay')}
+  /* long-term: wrappers by threshold, people in order (the higher threshold first for IKZE), then regular account */
+  const order=[];for(const p of [...P].sort((a,b)=>tNum(b.t)-tNum(a.t)))if(ikzeRank(p.t)=='first')order.push([p,'ikze']);
+  for(const p of P)order.push([p,'ike']);for(const p of P)if(ikzeRank(p.t)=='after')order.push([p,'ikze']);
+  for(const[p,w]of order){if(rest<=0)break;const left=p[w]?.left||0;if(left<=0)continue;const a=Math.min(rest,left);
+    if(w=='ikze')add(a,`🛡️ IKZE ${p.who}${p.ikze?.has?'':' (do założenia, np. w XTB)'}`,`Próg ${p.t=='19'?'liniowy 19%':p.t+'%'}: w PIT wróci ok. ${zlS(Math.round(a*tNum(p.t)/100))} – ten zwrot też zainwestuj. Wypłata po 65. roku życia z 10% podatku.${ikzeRank(p.t)=='after'?' Dopiero po IKE i tylko gdy pieniądze doczekają 65 lat.':''} Zostało limitu: ${zlS(left)}.`,p.who,'ikze');
+    else add(a,`🛡️ IKE ${p.who}${p.ike?.has?'':' (do założenia, np. w XTB)'}`,`Bez podatku Belki od zysków przy wypłacie po 60. roku życia. Zostało limitu: ${zlS(left)}.`,p.who,'ike')}
+  if(rest>0)add(rest,`📂 Zwykły rachunek maklerski${ctx.okiOk?' / OKI (polskie aktywa, obligacje)':''}`,'Limity IKE/IKZE na ten rok są wykorzystane. Na zwykłym rachunku: ETF akumulujący (podatek dopiero przy sprzedaży) albo obligacje 10-letnie EDO.','','reg');
+  for(const p of P)if(ikzeRank(p.t)=='no'&&p.t!='?')no.push({t:`🛡️ IKZE ${p.who}`,why:`Przy progu ${p.t}% ulga jest zerowa albo bardzo mała, a przy wypłacie zapłacisz 10% – zostań przy IKE.`});
+  no.push({t:'💸 Fundusze z kosztem ponad ok. 1% rocznie, polisy inwestycyjne, IKE w ubezpieczeniu',why:'Koszty to pewnik, zysk nie: +1 pkt opłat zjada przez 30 lat kilkadziesiąt tysięcy.'},
+    {t:'🎢 ETF-y z dźwignią, tematyczne, CFD',why:'Dźwignia działa w obie strony, „tematy” powstają po modzie. CFD w XTB to nie akcje.'},
+    {t:'🏦 Lokata na pieniądze na 10+ lat',why:'Po podatku i inflacji zwykle realnie traci.'},{t:'💳 Inwestowanie za pożyczone',why:'Kredyt na giełdę zwielokrotnia skutki błędów.'});
+  if(!ctx.okiOk&&ctx.today<'2027-01-01')no.push({t:'📦 OKI',why:'Ruszy 1 stycznia 2027 – wtedy dobre na poduszkę, wkład własny i polskie aktywa.'});
+  return{rows,no,noStocks,rest}}
+const zlS=g=>zl0(g);

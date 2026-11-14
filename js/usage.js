@@ -10,18 +10,18 @@ import {S,H,merge} from './core.js';
 export const USAGE_CAT=[
   ['Ekrany',[['e:dash','📊 Budżet'],['e:tx','🧾 Rejestr'],['e:fix','📌 Stałe → Opłaty'],['e:pay','💼 Pensje'],['e:payy','💼 Pensje – widok roku (PIT)'],['e:year','📅 Roczne i terminy'],
     ['e:sav','🐷 Oszczędności – Razem'],['e:savp','🐷 Oszczędności – osoba / Wspólne'],['e:acc','👛 Konta – salda'],['e:owe','🔻 My winni'],['e:lent','🔺 Nam winni'],['e:recon','⚖️ Wyrównaj wszystkie salda'],
-    ['e:inst','📈 Instrumenty konta'],['e:ank','🧭 Ankieta doradcy'],['e:plan','🧭 Plan na jednej kartce'],['e:values','📈 Aktualizuj wartości'],['e:anam','📈 Analiza miesiąc – Podstawowa'],['e:anamf','📈 Analiza miesiąc – Pełna'],['e:anay','📈 Analiza rok'],
+    ['e:inst','📈 Instrumenty konta'],['e:ank','🧭 Ankieta doradcy'],['e:plan','🧭 Plan na jednej kartce'],['e:where','💸 Gdzie wpłacić'],['e:values','📈 Aktualizuj wartości'],['e:anam','📈 Analiza miesiąc – Podstawowa'],['e:anamf','📈 Analiza miesiąc – Pełna'],['e:anay','📈 Analiza rok'],
     ['e:close','🗓️ Zamknięcie miesiąca'],['e:proj','🏷️ Projekt'],['e:report','🖨️ Podsumowanie roku'],['e:help','📖 Przewodnik'],
     ['e:set','⚙️ Ustawienia'],['e:set-acc','⚙️ Konta'],['e:set-cat','⚙️ Kategorie i drobne'],['e:set-tel','⚙️ Ten telefon'],['e:set-bez','⚙️ Bezpieczeństwo'],['e:set-auto','⚙️ Automaty'],['e:set-pom','⚙️ Pomoc']]],
   ['Okienka i przyciski',[['f:today','🔔 Na dziś'],['f:find','🔍 Szukaj wszędzie'],['f:add','➕ Nowy wpis'],['f:edit','✎ Zmiana wpisu'],['f:next','⏩ Zapisz i dodaj kolejny'],['f:slip','💼 Pasek pensji'],
     ['f:fixtick','📌 Odhaczenie opłaty stałej'],['f:txmenu','✋ Przytrzymanie wpisu'],['f:swipe','👆 Zmiana miesiąca palcem'],['f:hide','🙈 Tryb dyskretny'],['f:link','🗣️ Siri / skrót / link z powiadomienia'],
-    ['f:wrapped','🎁 Money Wrapped'],['f:csv','📤 Eksport CSV'],['f:backup','💾 Pobierz kopię'],['f:subs','📋 Przegląd subskrypcji'],['f:subtx','🔎 Wpisy pozycji z Budżetu'],['f:goal','🎯 Przydziel do celu'],['f:odloz','🐷 Odłóż'],['f:usage','📊 Czego używamy'],['f:pay','👥 Kto płaci pozycję'],['f:klasa','🥧 Zmiana klasy aktywa'],['f:wlasnaklasa','✨ Własna klasa aktywa'],['f:aktywo','🏠 Nieruchomość / inne aktywo'],['f:ankieta','📝 Ankieta doradcy'],['f:plan','📄 Plan doradcy'],['f:planok','✓ Zatwierdzenie planu']]],
+    ['f:wrapped','🎁 Money Wrapped'],['f:csv','📤 Eksport CSV'],['f:backup','💾 Pobierz kopię'],['f:subs','📋 Przegląd subskrypcji'],['f:subtx','🔎 Wpisy pozycji z Budżetu'],['f:goal','🎯 Przydziel do celu'],['f:odloz','🐷 Odłóż'],['f:usage','📊 Czego używamy'],['f:pay','👥 Kto płaci pozycję'],['f:klasa','🥧 Zmiana klasy aktywa'],['f:wlasnaklasa','✨ Własna klasa aktywa'],['f:aktywo','🏠 Nieruchomość / inne aktywo'],['f:ankieta','📝 Ankieta doradcy'],['f:plan','📄 Plan doradcy'],['f:planok','✓ Zatwierdzenie planu'],['f:kafelek','🧭 Szczegóły kafelka doradcy'],['f:policz','💸 Policz: gdzie wpłacić']]],
   ['Dodatki we wpisie (zapisane)',[['f:split','✂️ Podział paragonu'],['f:fx','🌍 Obca waluta'],['f:photo','📷 Zdjęcie paragonu'],['f:refund','↩️ Zwrot'],['f:ulga','🧾 Ulga w PIT'],['f:projtx','🏷️ Projekt we wpisie'],
     ['f:debt','🔻 Rata / spłata we wpisie'],['f:war','🛡️ Gwarancja'],['f:coin','🪙 Drobne'],['f:fuel','⛽ Tankowanie (litry, licznik)'],['f:notesug','✍️ Podpowiedź notatki']]],
   ['Karty (widoczne na ekranie co najmniej 2 s)',[...['Podsumowanie miesiąca','Nietypowo dużo','Na co poszły pieniądze','Rok temu','Przepływ pieniędzy','Mati ↔ Wercia','Największe pozycje','Co się zmieniło','Wydatki dzień po dniu',
     'Z jakich kont','Opłaty stałe a reszta','Gdzie wydajemy','Największe pojedyncze wydatki','Przychody i wydatki','Kategorie w całym roku','Kategorie przez 12 miesięcy','Miesiąc po miesiącu','Najciekawsze miesiące',
     'Plan a rzeczywistość','Majątek na kontach','Oszczędności i inwestycje','Wasza inflacja','Ile odłożyliście','Wszystkie cele','Poduszka bezpieczeństwa','Limity','Odsetki z kont','Wpłacone a wartość',
-    'Niezależność finansowa (FIRE)','Kaskada nadwyżek','Czyj majątek','Czy starczy?','Z czego składa się majątek','Analiza funduszy','Doradca'].map(t=>['k:'+t,t])]]];
+    'Niezależność finansowa (FIRE)','Kaskada nadwyżek','Czyj majątek','Czy starczy?','Z czego składa się majątek','Analiza funduszy','Doradca','Gdzie','IKE, IKZE czy zwykłe konto?','Na pewno nie tu'].map(t=>['k:'+t,t])]]];
 const LABEL=Object.fromEntries(USAGE_CAT.flatMap(([,L])=>L));
 
 /* ---------- counting ---------- */
@@ -32,7 +32,7 @@ export function flushUsage(){clearTimeout(timer);timer=0;const who=S.who,keys=Ob
   merge(doc(collection(H,'usage'),td().slice(0,7)),{c:{[who]:c},d:{[who]:d}})}
 /* the screen now shown (called after every render) – counted when it changes */
 export function useScreen(){const t=S.tab;let k=t=='dash'?(S.close?'e:close':S.proj?'e:proj':'e:dash'):t=='tx'?'e:tx':t=='fix'?(S.fixSub=='pay'?(S.payView=='y'?'e:payy':'e:pay'):S.fixSub=='year'||S.fixSub=='rem'?'e:year':'e:fix')
-    :t=='sav'?(S.values?'e:values':S.instAcc?'e:inst':S.adv=='ank'?'e:ank':S.adv=='plan'?'e:plan':S.sub=='all'?'e:sav':'e:savp'):t=='acc'?(S.recon?'e:recon':S.accView=='owe'?'e:owe':S.accView=='lent'?'e:lent':'e:acc')
+    :t=='sav'?(S.values?'e:values':S.instAcc?'e:inst':S.adv=='ank'?'e:ank':S.adv=='plan'?'e:plan':S.adv=='where'?'e:where':S.sub=='all'?'e:sav':'e:savp'):t=='acc'?(S.recon?'e:recon':S.accView=='owe'?'e:owe':S.accView=='lent'?'e:lent':'e:acc')
     :t=='ana'?(S.report?'e:report':S.ana=='y'?'e:anay':ls.get('mw_anam')!='basic'?'e:anamf':'e:anam'):t=='set'?(S.help?'e:help':S.setPage?'e:set-'+S.setPage:'e:set'):'';
   if(S.help)k='e:help';if(k&&k!=lastScreen){lastScreen=k;counted.clear();use(k)}watchCards()}
 /* a card = section.chart; its title without emoji, year, „: …” or „ – …” */

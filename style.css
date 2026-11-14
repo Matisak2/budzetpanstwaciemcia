@@ -203,6 +203,11 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .aetf b small{font-weight:600;color:#64748b}
 .k-am{background:#fffbeb;border-color:#fde68a}
 .advk{display:grid;grid-template-columns:1fr 1fr;gap:8px}.advk .kpi{min-width:0}.advk .v{font-size:17px;overflow-wrap:anywhere}
+.advk button.kpi{text-align:left;position:relative;font:inherit;color:inherit;width:100%}.advk .kmore{position:absolute;right:10px;top:10px;color:#94a3b8;font-weight:800}
+.advk .v{white-space:normal;overflow:visible;line-height:1.2}
+.lim{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid #eef0f4}
+.wrow{border-top:1px solid #eef0f4;padding:8px 0}.wrow summary{display:flex;gap:8px;align-items:center;list-style:none;cursor:pointer;font-weight:700}.wrow summary::-webkit-details-marker{display:none}.wrow summary .an{flex:1;min-width:0}.wrow .mini{margin-top:4px}
+.where select{width:100%}
 .ankq{font-size:17px;font-weight:800;line-height:1.35}
 .ankcat{display:flex;justify-content:center}.ankcat svg{max-width:150px;max-height:110px}
 .ankopts{display:flex;flex-direction:column;gap:6px}.ankopts .btn{text-align:left;justify-content:flex-start;white-space:normal;min-height:44px}
