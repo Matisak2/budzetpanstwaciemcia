@@ -65,7 +65,9 @@ for(const C of CASES){
   /* „today” = the 15th of this month: the demo data follow today's date, and on the 1st–2nd the month is almost empty (no „Rok temu”, no entries of a position) */
   await p.clock.setFixedTime(MID);
   p.on('pageerror',e=>fail(`${tag}: błąd JavaScript: ${e.message}`));
-  p.on('console',m=>{if(m.type()=='error'&&!/Failed to load resource|net::|ERR_/.test(m.text()))fail(`${tag}: błąd w konsoli: ${m.text()}`)});
+  /* the demo fetches live NBP rates – the robot must not depend on an outside server (it answers without CORS sometimes): abort, the sample rates stay */
+  await p.route('https://api.nbp.pl/**',r=>r.abort());
+  p.on('console',m=>{if(m.type()=='error'&&!/Failed to load resource|net::|ERR_|CORS policy/.test(m.text()))fail(`${tag}: błąd w konsoli: ${m.text()}`)});
   await p.addInitScript(([C])=>{if(sessionStorage.getItem('robot'))return;sessionStorage.setItem('robot','1');localStorage.clear();
     localStorage.setItem('demo_people',JSON.stringify({me:C.role=='Mati'?'Kuba':'Ania',role:C.role,partner:C.role=='Mati'?'Ola':'Tomek'}));
     const t=new Date().toISOString().slice(0,10);for(const[k,v] of [['mw_tour','1'],['mw_news','999'],['mw_today',t],['mw_eve',t],['mw_size',C.size],['mw_oth',JSON.stringify({d:new Date().toISOString().slice(0,10),a:'aM aW aJ aG aS aP aI aK aO'.split(' ')})]])localStorage.setItem('demo_'+k,v)},[C]);
