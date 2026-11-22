@@ -9,7 +9,7 @@ import {debtStateP} from './today.js';
 import {goalAlloc} from './actions.js';
 import {kotki} from './guide.js';
 import {scene} from './cats.js';
-import {wrapOf,LIMITS,limitOf,paidInYear,BONDS} from './inv.js';
+import {wrapOf,LIMITS,limitOf,paidInYear,BONDS,penceFix} from './inv.js';
 import {esc,rid,td,zl0,dmy,pg,addDays,addMonths,plDay} from './util.js';
 import {S,ask,toast,H,HOLD,merge,saveAcc,guard,infoH,isP} from './core.js';
 import {macro,mkt,bondOffer} from './savings.js';
@@ -301,8 +301,8 @@ export function wherePageH(){const I=S.advIn||{amt:0,src:'surplus',goal:'plan',n
 
 /* ======================= D4: 🛒 „W co”, kalkulator obligacji, zapisane porady ======================= */
 const advLog=()=>S.hraw?.advLog||{};
-function priceOf(e){const m=mkt(),sym=etfSym(e),q=m?.prices?.[sym]||m?.prices?.[e.t+'.'+e.ex];if(q?.p)return{p:q.p,cur:q.cur||e.cur,d:q.d};
-  const h=Object.values(S.hold||{}).find(x=>!x.deleted&&etfOf(x)?.isin==e.isin&&x.price);return h?{p:+h.price,cur:h.cur||e.cur,d:h.priceDate}:null}
+function priceOf(e){const m=mkt(),sym=etfSym(e),q=m?.prices?.[sym]||m?.prices?.[e.t+'.'+e.ex],h=Object.values(S.hold||{}).find(x=>!x.deleted&&etfOf(x)?.isin==e.isin&&x.price);
+  if(q?.p)return{p:h&&(h.cur||e.cur)==e.cur?penceFix({cur:e.cur,price:h.price,lots:h.lots},q):q.p,cur:q.cur||e.cur,d:q.d};return h?{p:+h.price,cur:h.cur||e.cur,d:h.priceDate}:null}
 const fxOfCur=c=>!c||c=='PLN'?1:mkt()?.fx?.[c]||null;
 /* the purchase list for the long-term part of the answer: fills what is missing in the plan */
 export function buyListP(R,mode){const owner=mode=='both'?'all':S.who,plan=planFor(owner);const L=R.rows.filter(x=>['ike','ikze','reg'].includes(x.kind)).reduce((s,x)=>s+x.a,0);

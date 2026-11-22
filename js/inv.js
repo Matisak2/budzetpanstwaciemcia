@@ -49,11 +49,15 @@ export function bondLotValue(b,l,today,macro){const T=BONDS[b.type]||BONDS.EDO,m
   let v=N,paid=0;for(let i=0;i<full;i++){if(T.cap)v=v*(1+rates[i]);else paid+=N*rates[i]}
   const cur=full<rates.length?rates[full]:0;
   return{value:Math.round(v*(1+cur*frac)),paid:Math.round(paid),end,cost:N}}
+/* 💷 London ETFs trade in pence: a price without a currency (stooq) about 100× the price paid for a GBP instrument = pence → pounds */
+export function penceFix(it,q){const p=+q.p;if(q.cur||(it.cur||'')!='GBP'||!(p>0))return p;
+  const buys=Object.values(it.lots||{}).filter(l=>l&&l.kind!='sell'&&+l.price>0).map(l=>+l.price),ref=+it.price||(buys.length?buys.reduce((a,b)=>a+b,0)/buys.length:0);
+  return ref>0&&p/ref>30&&p/ref<300?p/100:p}
 /* the automat's quote for an instrument (only when newer than a price typed by hand); fx from NBP mid rates */
 export function marketQuote(it,acc,m){if(!m)return null;const ac=acc.cur||'PLN',ic=it.cur||ac,fx=c=>c=='PLN'?1:m.fx?.[c],newer=d=>d&&(!it.priceDate||d>=it.priceDate);
   let p=null,d=null;const q=it.ticker&&m.prices?.[String(it.ticker).trim().toUpperCase()];
   const fq=it.kind=='tfi'&&it.fund?.id&&m.funds?.[it.fund.id];
-  if(fq&&(!fq.cur||fq.cur==ic)){p=fq.p;d=fq.d}else if(q&&(!q.cur||q.cur==ic)){p=q.p;d=q.d}else if(it.kind=='zloto'&&!it.ticker&&m.gold&&ic=='PLN'){p=m.gold;d=m.goldDate||m.date}
+  if(fq&&(!fq.cur||fq.cur==ic)){p=fq.p;d=fq.d}else if(q&&(!q.cur||q.cur==ic)){p=penceFix(it,q);d=q.d}else if(it.kind=='zloto'&&!it.ticker&&m.gold&&ic=='PLN'){p=m.gold;d=m.goldDate||m.date}
   const f=ic==ac?1:(fx(ic)&&fx(ac)?fx(ic)/fx(ac):null);
   return{p:newer(d)?p:null,fx:newer(m.fxDate||m.date)&&ic!=ac?f:null,d}}
 /* value of an instrument in the account currency, gains and the amount after the 19% tax */

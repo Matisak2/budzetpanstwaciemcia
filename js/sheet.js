@@ -9,7 +9,7 @@ import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch,ownerOf,balDrop} fr
 import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays,plu,dmy} from './util.js';
 import {S,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard,negStop,txOk} from './core.js';
 import {downloadBlob} from './actions.js';
-import {incById,openSlip} from './salary.js';
+import {incById,openSlip,slipOfTx,slipDrop,slipBack} from './salary.js';
 import {markYearPaid,yearUndo} from './savings.js';
 import {dIcon,debtList,debtState,setDebtLeft,fillDebt,updDebtHint,updDebt,fillProj,updProj} from './debts.js';
 import {accN,render} from './app.js';
@@ -269,12 +269,17 @@ export async function saveTx(next){if(guard())return;
   if(ok&&next===true){openTx(null,{type:keep.type});$('mc').value=keep.acc;$('md').value=keep.date;$('mw').value=keep.who;updX()}
   if(ok)useTx(body,{old,parts:parts.length,coin,next:next===true});
   if(ok){const n=parts.length+1;const M=v=>money(v,cA);toast(old?'Zapisano zmiany':parts.length?`Dodano paragon ${M(amount)} (${n} ${plu(n,'pozycja','pozycje','pozycji')})${coin?' · 🪙 +'+M(coin.v):''}`:'Dodano '+M(amount)+(coin?' · 🪙 +'+M(coin.v):'')+(coinOut?' · 🪙 drobne pominięte – za mało na koncie':''));if(ym!=S.ym){S.ym=ym;render()}}}
-export async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id);
+export async function delTx(id){if(guard())return;const t=liveById(id);if(!t)return;
+  /* 🧾 a deduction or PPK of a payslip: the income was booked as net + deductions – one part alone would leave the account too high */
+  const par=t.slipOf?liveById(t.slipOf):t.ppkOf?liveById(t.ppkOf):null;
+  if(par?.slip){const r=await ask({title:'To część paska pensji',text:`${stripFx(t.note)||'Potrącenie'} – ${am(t.amount,t.acc)}\nWpływ z paska to netto + potrącenia, więc samo to usunięcie zawyżyłoby saldo. Zmień kwoty w pasku albo usuń cały pasek.`,ok:'Otwórz pasek',alt:'Usuń cały pasek',cancel:'Anuluj'});
+    if(r=='alt')return delTx(par.id);if(r){closeSheet();openSlip(par.slip,par.date.slice(0,7))}return}
+  const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id),bak=slipOfTx(t);
   /* 🚫 deleting an income or a transfer in must not leave the account with a minus (later spending was paid with it) */
   if(!await txOk([t,...linked].map(x=>({...x,deleted:true}))))return;
-  closeSheet();if(!await putTx(ym,id,{deleted:true}))return;
-  linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t);
-  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.payOf)?' razem z odsetkami':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:async()=>{if(!await txOk([t,...linked].map(x=>({...x,deleted:false}))))return;putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true)}})}
+  closeSheet();if(!await putTx(ym,id,{deleted:true,...(bak?{slipBak:bak}:{})}))return;
+  linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t);slipDrop(bak);
+  toast('Usunięto '+am(Math.abs(t.amount),t.acc)+(linked.length?linked.some(x=>x.slipOf)?' razem z potrąceniami i PPK':linked.some(x=>x.payOf)?' razem z odsetkami':linked.some(x=>x.ppk)?' razem z wpłatami PPK':' razem ze zwrotami':''),'',{label:'Cofnij',fn:async()=>{if(!await txOk([t,...linked].map(x=>({...x,deleted:false}))))return;putTx(ym,id,{deleted:false});linked.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true);slipBack(bak)}})}
 export async function markRefund(id){const t=liveById(id);if(!t)return;const done=refundsOf(id).reduce((a,x)=>a+x.amount,0),left=t.amount-done;
   if(left<=0)return toast('Ten wydatek jest już w całości zwrócony');
   const r=await ask({title:'↩️ Zwrot: '+(subsMap(S.cfg)[t.sub]?.name||''),text:`Wydatek ${am(t.amount,t.acc)} z ${t.date.split('-').reverse().join('.')}${done?`, zwrócono już ${am(done,t.acc)}`:''}.\nZwrot zmniejszy wydatek w tej samej pozycji – nie liczy się jako przychód.`,

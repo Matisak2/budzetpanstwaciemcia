@@ -30,7 +30,7 @@ export function debtStateP(d,tx,today){if(!d?.id)return{left:0,paid:0,pc:0,src:'
   const pays=tx.filter(t=>d.dir=='owe'?t.debt===d.id:t.lendOf===d.id).sort((a,b)=>a.date.localeCompare(b.date)),paid=pays.reduce((a,t)=>a+t.amount,0);
   const r=mRate(d),run=(bal,L)=>{let ym='';for(const t of L){const i=!r||t.payoff||t.date.slice(0,7)==ym?0:Math.round(bal*r);ym=t.date.slice(0,7);bal=Math.max(0,bal-Math.max(0,t.amount-i))}return bal};
   const bl=Object.entries(d.left||{}).sort((a,b)=>a[0].localeCompare(b[0])).at(-1);let left=run(d.start||0,pays),src='auto';
-  if(d.mode=='bank'&&bl){left=run(bl[1],pays.filter(t=>t.date>bl[0]));src=bl[0]}
+  if(d.mode=='bank'&&bl){left=run(bl[1],pays.filter(t=>t.date>bl[0]||(t.payoff&&t.date==bl[0])));src=bl[0]}
   const pc=d.start?Math.min(100,(1-left/d.start)*100):0,last3=pays.slice(-3),avg=last3.length?last3.reduce((a,t)=>a+t.amount,0)/last3.length:(d.inst||0);
   const A=d.inst||avg,months=left&&A>0&&A>left*r?Math.ceil(r?-Math.log(1-left*r/A)/Math.log(1+r):left/A):null,end=months?addMonths(today.slice(0,7),months):null;
   return{left,paid,pc,src,end,pays,late:d.dir=='lent'&&!!d.until&&d.until<today&&left>0}}

@@ -1,7 +1,7 @@
 /* 🤖 Robot: czy obliczenia pieniędzy dalej dają dobre wyniki. Oczekiwane liczby policzone niezależnie (ręcznie / kalkulatorem), nie skopiowane z kodu.
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
-import {bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
+import {penceFix,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
@@ -10,7 +10,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
-import {allocP,clsOf,etfOf,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP,sandP,sandCheckP,wishHitP} from '../js/advisor.js';
+import {allocP,clsOf,etfOf,etfCur,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP,sandP,sandCheckP,wishHitP} from '../js/advisor.js';
 
 let n=0,bad=0;
 const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
@@ -737,5 +737,9 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Lista życzeń: cena doszła do celu',wishHitP({a:{name:'X',ticker:'nvda.us',target:100},b:{name:'Y',ticker:'CDR',target:200},c:{name:'Z',ticker:'BTC',target:9,bought:true}},{'NVDA.US':{p:99},'CDR':{p:250},'BTC':{p:5}}).map(w=>w.id),['a']);}
 { const g=planP({q42:'gt20',q44:'0.5',q43:'more',q54:'10',q58:'0'}).g;eq('Plan doradcy – razem zawsze 100% (akcje 100 + złoto 10)',[g.stock+g.gold+g.cash+g.bond,g.stock,g.gold,g.bond],[100,90,10,0]);
   eq('Limity 2027 – IKE i IKZE',[limitOf({grp:'inv',wrap:'ike'},'2027'),limitOf({grp:'inv',wrap:'ikze'},'2027'),limitOf({grp:'inv',wrap:'ikze',jdg:true},'2027')],[3009900,1203960,1805940]);}
+eq('Pensy: cena bez waluty ~100× ceny zakupu w GBP → funty',[penceFix({cur:'GBP',lots:{a:{kind:'buy',price:110}}},{p:11058}),penceFix({cur:'GBP',lots:{a:{kind:'buy',price:110}}},{p:111}),penceFix({cur:'GBP',price:110},{p:11058,cur:'GBP'}),penceFix({cur:'USD',price:110},{p:11058})],[110.58,111,11058,11058]);
+eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWDA.UK','EIMI.UK','SWDA.UK','VWCE.DE'].map(t=>etfCur(etfOf({ticker:t}),t)),['USD','USD','GBP','EUR']);
+{ const d={id:'dB',dir:'owe',mode:'bank',start:500000,left:{'2026-10-01':100000}},po={id:'po',type:'exp',amount:100000,date:'2026-11-05',acc:'a',debt:'dB',payoff:true};
+  eq('Spłata całości (bank): dług 0, a po usunięciu spłaty wraca',[debtStateP(d,[po],'2026-11-20').left,debtStateP(d,[],'2026-11-20').left],[0,100000]);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

@@ -13,7 +13,7 @@ import {gr} from './salary.js';
 import {remsH,warrantiesH,rems,saveRem,projs} from './debts.js';
 import {accN,render} from './app.js';
 import {use} from './usage.js';
-import {etfOf,ETFS,etfSym} from './advisor.js';
+import {etfOf,ETFS,etfSym,etfCur} from './advisor.js';
 
 /* ---------- 📈 savings & investments: instruments, values on one screen, limits, paid vs value, FIRE ---------- */
 export const accById=id=>S.cfg.accs.find(a=>a.id==id);
@@ -66,12 +66,12 @@ export async function editInst(id,accId){if(guard())return;const it0=id?S.hold[i
       {id:'fu',label:'Adres strony funduszu na analizy.pl (tylko „Inny fundusz”)',value:it0?.fund?.path&&!L.some(x=>x[0]==it0.fund.id)?'https://www.analizy.pl/'+it0.fund.path:'',ph:'https://www.analizy.pl/fundusze-…'});
     text=L.length?'Wybierz fundusz z listy PPK. Wartość jednostki automat pobiera w każdy dzień roboczy wieczorem.':'Lista funduszy PPK pojawi się po pierwszym działaniu automatu (dzień roboczy wieczorem). Na razie możesz wkleić adres strony funduszu z analizy.pl albo dodać fundusz później.'}
   else if(k=='lokata')f.push({id:'dr',label:'Oprocentowanie roczne (%)',type:'decimal',value:it0?.dep?.rate!=null?nf(it0.dep.rate):''},{id:'dm',label:'Na ile miesięcy',type:'int',value:it0?.dep?.months||6});
-  else if(k!='tfi')f.push({id:'c',label:'Waluta notowań',type:'select',value:it0?.cur||E?.cur||CUR(a),options:CUR_OPTS});
+  else if(k!='tfi')f.push({id:'c',label:'Waluta notowań',type:'select',value:it0?.cur||etfCur(E,r.t)||CUR(a),options:CUR_OPTS});
   if(isNew){f.push({id:'ld',label:k=='lokata'?'Data założenia':k=='tfi'?'Stan na dzień':'Data zakupu',type:'date',value:td()});
     if(k=='obl')f.push({id:'lq',label:'Liczba obligacji (1 szt. = 100 zł)',type:'int',value:''});
     else if(k=='tfi')f.push({id:'lq',label:'Liczba jednostek (z aplikacji PPK / TFI)',type:'decimal',value:''},{id:'lp',label:'Wartość jednostki (zł)',type:'decimal',value:'',ph:'puste = pobierze automat'});
     else if(k=='lokata')f.push({id:'lp',label:`Kwota (${curSym(CUR(a))})`,type:'decimal',value:''});
-    else f.push({id:'lq',label:'Liczba sztuk / jednostek / gramów',type:'decimal',value:''},{id:'lp',label:'Cena zakupu za sztukę (w walucie notowań)',type:'decimal',value:''},{id:'lx',label:'Kurs waluty przy zakupie (puste = 1)',type:'decimal',value:'',ph:'np. 3,9850 – tylko gdy waluta inna niż konta'},{id:'lf',label:`Prowizja (${curSym(CUR(a))})`,type:'decimal',value:''})}
+    else f.push({id:'lq',label:'Liczba sztuk / jednostek / gramów',type:'decimal',value:''},{id:'lp',label:'Cena zakupu za sztukę (w walucie notowań)',type:'decimal',value:'',ph:/\.UK$/i.test(r.t.trim())?'w funtach, nie w pensach (11 058 GBX = 110,58)':''},{id:'lx',label:'Kurs waluty przy zakupie (puste = 1)',type:'decimal',value:'',ph:'np. 3,9850 – tylko gdy waluta inna niż konta'},{id:'lf',label:`Prowizja (${curSym(CUR(a))})`,type:'decimal',value:''})}
   const r2=await ask({title:r.n.trim()||IKINDS[k],text,fields:f,ok:isNew?'Dodaj':'Zapisz'});if(!r2)return;
   const body={acc:a.id,kind:k,name:r.n.trim(),ticker:k=='tfi'?'':r.t.trim(),deleted:false,ts:Date.now()};
   if(k=='obl'){const o=bondOffer()?.[r2.bt],now=isNew&&r2.ld?.slice(0,7)==td().slice(0,7);

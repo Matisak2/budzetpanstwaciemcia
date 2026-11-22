@@ -41,6 +41,9 @@ export const ETFS=[
   {t:'VHVE',ex:'UK',al:[],n:'Vanguard FTSE Developed World (Acc)',isin:'IE00BK5BQV03',idx:'FTSE Developed',fam:'FTSE',cov:'dev',cls:'s_dev',ter:0.12,cur:'USD',aum:6.89},
   {t:'EMIM',ex:'UK',al:['EIMI','IS3N'],n:'iShares Core MSCI EM IMI (Acc)',isin:'IE00BKM4GZ66',idx:'MSCI EM IMI',fam:'MSCI',cov:'em',cls:'s_em',ter:0.18,cur:'GBP',aum:41.49},
   {t:'VFEA',ex:'DE',al:[],n:'Vanguard FTSE Emerging Markets (Acc)',isin:'IE00BK5BR733',idx:'FTSE Emerging',fam:'FTSE',cov:'em',cls:'s_em',ter:0.17,cur:'EUR',aum:2.46}];
+/* the trading currency of other listings of the same fund (XTB: IWDA, EIMI, VWRA in USD; EUNL, IS3N in EUR) – not the main listing's */
+export const ETF_ALCUR={IWDA:'USD',EIMI:'USD',VWRA:'USD',EUNL:'EUR',IS3N:'EUR'};
+export const etfCur=(e,ticker)=>e?(ETF_ALCUR[symOf(ticker)]&&e.t!=symOf(ticker)?ETF_ALCUR[symOf(ticker)]:e.cur):null;
 export const COV={world:'cały świat',dev:'kraje rozwinięte',em:'rynki wschodzące'};
 export const symOf=t=>String(t||'').trim().toUpperCase().split(/[.:\s]/)[0];
 /* the list entry of an instrument: by ISIN, or by the symbol before the dot (VWCE.DE, vwce, VWRA.UK…) */

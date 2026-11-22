@@ -118,8 +118,10 @@ export async function restoreTx(id){if(guard())return;const t=S.tx.find(x=>x.id=
   const kids=S.tx.filter(x=>x.deleted===true&&parOf(x)===id&&withParent(x,t)),ym=t.date.slice(0,7);
   /* 🚫 bringing back a deleted expense / transfer must not leave the account with a minus (the money may already be spent) */
   if(!await txOk([t,...kids].map(x=>({...x,deleted:false}))))return;
-  if(!await putTx(ym,id,{deleted:false}))return;kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true);
-  toast('Przywrócono '+am(Math.abs(t.amount||0),t.acc)+(kids.length?` (razem z ${kids.length} ${plu(kids.length,'powiązanym wpisem','powiązanymi wpisami','powiązanymi wpisami')})`:''),'',{label:'Cofnij',fn:async()=>{if(!await txOk([t,...kids].map(x=>({...x,deleted:true}))))return;putTx(ym,id,{deleted:true});kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t)}})}
+  /* a payslip income: the month has a new payslip of this source already → bringing the old one back would count the salary twice */
+  const bak=t.slip&&t.slipBak;if(bak&&slipOf(bak.ym,bak.id)&&slipOf(bak.ym,bak.id).booked!==id)return toast('Ten miesiąc ma już nowy pasek tej pensji – przywrócenie policzyłoby ją dwa razy','bad');
+  if(!await putTx(ym,id,{deleted:false}))return;kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:false}));if(t.yearId)yearUndo(t,true);slipBack(bak);
+  toast('Przywrócono '+am(Math.abs(t.amount||0),t.acc)+(kids.length?` (razem z ${kids.length} ${plu(kids.length,'powiązanym wpisem','powiązanymi wpisami','powiązanymi wpisami')})`:''),'',{label:'Cofnij',fn:async()=>{if(!await txOk([t,...kids].map(x=>({...x,deleted:true}))))return;putTx(ym,id,{deleted:true});kids.forEach(x=>putTx(x.date.slice(0,7),x.id,{deleted:true}));if(t.yearId)yearUndo(t);slipDrop(bak)}})}
 /* 🕑 recent changes: who added, changed or deleted what (from either phone) */
 export function changesH(){const sm=subsMap(S.cfg),ev=[];
   /* the name and amount are written only for the few events shown (formatting thousands of amounts was slow) */
@@ -279,7 +281,13 @@ export async function saveSlip(){if(guard())return;const {id,ym}=S.slip,src=incB
     ded:d.ded.map(x=>({n:String(x.n||''),a:x.a||0,sub:x.sub||''})),net,date:d.date,base,young,...(hded?{hded}:{}),booked:iid,name:src.name,kind:src.kind,who:src.who,est:!!d.est,estNet:!!d.estNet,ts});
   if(dd.length){src.dedSub={...(src.dedSub||{})};dd.forEach(x=>{if(x.n)src.dedSub[x.n.trim().toLowerCase()]=x.sub});saveInc(src)}
   S.slip=null;render();toast(`Zaksięgowano: ${src.name} · ${zl(net)} na konto${dd.length?` · ${dd.length} ${plu(dd.length,'potrącenie','potrącenia','potrąceń')} w budżecie`:''}`)}
+/* 🧾 a deleted payslip is kept on its deleted income (slipBak) – 🗑️ „Przywróć” brings the payslip back with it, so no salary is counted twice
+   and the brutto / tax / ZUS details are not lost */
+export function slipOfTx(t){if(!t?.slip)return null;for(const[ym,m]of Object.entries(S.slips||{})){const d=m?.[t.slip];if(d&&d.booked===t.id)return{ym,id:t.slip,d}}return null}
+export const slipDrop=b=>b&&w(updateDoc(doc(SLIPS(),b.ym),{['s.'+b.id]:deleteField()}));
+export const slipBack=b=>{if(b&&!slipOf(b.ym,b.id))putSlip(b.ym,b.id,b.d)};
 export async function delSlip(){const {id,ym}=S.slip,old=slipOf(ym,id);if(!old)return closeSlip();
-  if(!await ask({title:'Usunąć pasek?',text:`${old.name||''} – ${MN[+ym.slice(5)-1].toLowerCase()}\nUsunę też wpływ, potrącenia i wpłaty PPK z tego paska.`,ok:'Usuń',danger:true}))return;
-  slipTxs(old.booked).forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));w(updateDoc(doc(SLIPS(),ym),{['s.'+id]:deleteField()}));
-  S.slip=null;render();toast('Usunięto pasek')}
+  if(!await ask({title:'Usunąć pasek?',text:`${old.name||''} – ${MN[+ym.slice(5)-1].toLowerCase()}\nUsunę też wpływ, potrącenia i wpłaty PPK z tego paska. W 🗑️ „Ostatnio usunięte” można go przywrócić.`,ok:'Usuń',danger:true}))return;
+  const bak={ym,id,d:old},L=slipTxs(old.booked);
+  L.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true,...(t.id===old.booked?{slipBak:bak}:{})}));slipDrop(bak);
+  S.slip=null;render();toast('Usunięto pasek','',{label:'Cofnij',fn:()=>{L.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}));slipBack(bak)}})}

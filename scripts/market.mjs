@@ -9,7 +9,8 @@ import {daysIn} from '../js/util.js';
 
 const H=fdb().doc('households/main'),M=H.collection('market');
 const {today,hour}=warsaw(),sched=process.env.RUN=='schedule';
-const get=async(u,type='json')=>{const r=await fetch(u,{headers:{'User-Agent':'Mozilla/5.0 (budzet-mw automat)','Accept':type=='json'?'application/json':'*/*'}});
+/* every download has a time limit – one hanging server must not stop the whole run (the job has 10 minutes) */
+const get=async(u,type='json')=>{const r=await fetch(u,{signal:AbortSignal.timeout(20000),headers:{'User-Agent':'Mozilla/5.0 (budzet-mw automat)','Accept':type=='json'?'application/json':'*/*'}});
   if(!r.ok)throw new Error('HTTP '+r.status);return type=='json'?r.json():r.text()};
 const tryIt=async(name,fn)=>{try{return await fn()}catch(e){console.log(`– ${name}: nie udało się (${e.message})`);return null}};
 
@@ -45,16 +46,16 @@ hold.forEach(d=>{const x=d.data();if(x.deleted||x.kind=='obl'||x.kind=='lokata')
 /* 🌡️ the doradca's thermometer always follows one whole-world fund, held or not */
 const THERMO='VWCE.DE';if(!want.has(THERMO))want.set(THERMO,{kind:'etf',cur:'EUR'});
 /* ⭐ the doradca's wish list (piaskownica): prices of ideas with a symbol, even if not bought yet */
-for(const w of Object.values(main.data()?.advSand||{}))if(w&&!w.deleted&&!w.bought&&w.ticker&&!want.has(String(w.ticker).trim().toUpperCase())){const c=/^(BTC|ETH|SOL|XRP|ADA|DOGE)$/i.test(w.ticker);want.set(String(w.ticker).trim().toUpperCase(),{kind:c?'krypto':'akcje',cur:c?'USD':''})}
+for(const w of Object.values(main.data()?.advSand||{}))if(w&&!w.deleted&&!w.bought&&w.ticker&&!want.has(String(w.ticker).trim().toUpperCase())){const c=!!CRYPTO_IDS[String(w.ticker).trim().toUpperCase()];want.set(String(w.ticker).trim().toUpperCase(),{kind:c?'krypto':'akcje',cur:c?'USD':''})}
 const cryptos=[...want].filter(([,v])=>v.kind=='krypto');
 if(cryptos.length){const ids=[...new Set(cryptos.map(([t])=>CRYPTO_IDS[t]||t.toLowerCase()))].join(',');
   const cg=await tryIt('krypto',()=>get(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=pln,usd,eur,gbp,chf`));
   if(cg)for(const[t,v]of cryptos){const q=cg[CRYPTO_IDS[t]||t.toLowerCase()],p=q?.[v.cur.toLowerCase()];if(p>0)out.prices[t]={p,d:today,src:'coingecko'}}}
-for(const[t,v]of want){if(v.kind=='krypto')continue;
-  const s=await tryIt('cena',async()=>parseStooq(await get(`https://stooq.pl/q/l/?s=${encodeURIComponent(t.toLowerCase())}&f=sd2t2ohlcv&h&e=csv`,'text')));
-  if(s){out.prices[t]={...s,src:'stooq'};continue}
-  const y=await tryIt('cena (zapasowo)',async()=>parseYahoo(await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym(t))}?range=5d&interval=1d`)));
-  if(y)out.prices[t]={p:y.p,d:y.d||today,cur:y.cur,src:'yahoo'}}
+/* London (.UK) first from Yahoo: it says the currency and turns pence (GBp) into pounds – stooq gives a bare number (pence or not) */
+const fromStooq=async t=>{const s=await tryIt('cena',async()=>parseStooq(await get(`https://stooq.pl/q/l/?s=${encodeURIComponent(t.toLowerCase())}&f=sd2t2ohlcv&h&e=csv`,'text')));return s?{...s,src:'stooq'}:null};
+const fromYahoo=async t=>{const y=await tryIt('cena (Yahoo)',async()=>parseYahoo(await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym(t))}?range=5d&interval=1d`)));return y?{p:y.p,d:y.d||today,cur:y.cur,src:'yahoo'}:null};
+for(const[t]of want){if(want.get(t).kind=='krypto')continue;const uk=/\.UK$/.test(t);
+  const q=uk?(await fromYahoo(t))||(await fromStooq(t)):(await fromStooq(t))||(await fromYahoo(t));if(q)out.prices[t]=q}
 if(gold){const g=await tryIt('złoto',async()=>parseStooq(await get('https://stooq.pl/q/l/?s=xaupln&f=sd2t2ohlcv&h&e=csv','text')));if(g){out.gold=Math.round(g.p/OZ*100)/100;out.goldDate=g.d}}
 const goldToday=!!out.gold;console.log(`✓ ceny: ${Object.keys(out.prices).length} z ${want.size}${gold?(goldToday?' + złoto':' (złoto: brak)'):''}`);
 /* 4b. what did not come today keeps yesterday's value (a valuation never falls back to the purchase price because a site was down for a day) */

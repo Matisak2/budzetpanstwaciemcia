@@ -82,7 +82,7 @@ export async function payoffDebt(id){if(guard())return;const d=dById(id);if(!d)r
   const ym=r.d.slice(0,7),pid='t'+rid(),who=d.payer=='Mati'||d.payer=='Wercia'?d.payer:S.who,base={date:r.d,acc:r.c,to:'',who,deleted:false,ts:Date.now()};
   if(!await putTx(ym,pid,{...base,type:'exp',amount:P,sub:'',note:'Spłata całości: '+d.name,debt:id,payoff:true,...(up?{save:{[id]:-up}}:{})}))return;
   if(I)putTx(ym,'t'+rid(),{...base,type:'exp',amount:I,sub:r.s,note:'💸 Odsetki od spłaty pożyczki: '+d.name,debtInt:id,payOf:pid,...(ui?{save:{[id]:-ui}}:{})});
-  if(d.mode=='bank')merge(doc(DEBTS(),id),{left:{[r.d]:Math.max(0,st.left-P)}});
+  /* no „pozostało” record here: the payoff entry itself lowers the debt, so deleting it (🗑️) brings the debt back */
   toast(full?'Pożyczka spłacona w całości 🎉'+(saved>P+I&&saved?` · ${zl(saved-P-I)} z odłożonych jest teraz wolne`:''):'Zapisano spłatę '+zl(P))}
 export async function setDebtLeft(id){if(guard())return;const d=dById(id);if(!d)return;const st=debtState(d);
   const r=await ask({title:'Pozostało do spłaty: '+d.name,text:'Wpisz kwotę z aplikacji banku (kapitał do spłaty).',fields:[{id:'a',label:'Pozostało (zł)',type:'decimal',value:f2(st.left)},{id:'d',label:'Stan na dzień',type:'date',value:td()}]});
