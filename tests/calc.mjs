@@ -454,6 +454,7 @@ const N=' ';
 
 /* ---------- 🔢 wpisywanie i pokazywanie kwot ---------- */
 eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',pg('1 234,56 zł'),123456);eq('Kwota „12,5”',pg('12,5'),1250);eq('Kwota „1,234.56”',pg('1,234.56'),123456);
+  eq('Kwota „1,256” (przecinek = grosze) i „1.005” (kropka = tysiące)',[pg('1,256'),pg('1.005')],[126,100500]);eq('Zaokrąglenie symetryczne −2,50 / 2,50',[zl0(-250),zl0(250)].map(x=>x.replace(/\s/g,' ')),['-3 zł','3 zł']);
   eq('Kwota ujemna',pg('-20'),-2000);eq('Liczba',pnum('3,5'),3.5);
   eq('Zapis 5 449,18 zł',zl(544918),'5'+N+'449,18'+N+'zł');eq('Zapis 14 109 zł',zl0(1410900),'14'+N+'109'+N+'zł');eq('Zapis 999,99 zł',zl(99999),'999,99'+N+'zł');
   eq('Zapis w euro',money(450000,'EUR'),'4'+N+'500,00'+N+'€');eq('Liczba z odstępem',fmtN(1234567.8,1),'1'+N+'234'+N+'567,8');

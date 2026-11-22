@@ -291,6 +291,8 @@ export async function bookInt(accId,key){if(guard())return;const a=accById(accId
   const r=await ask({title:'💰 Odsetki: '+a.name,text:`Szacunek za ${P.from.split('-').reverse().join('.')}–${P.to.split('-').reverse().join('.')}: ${money(c.book,CUR(a))}${self?' (bez podatku – podatek 19% ≈ '+money(c.tax,CUR(a))+' rozliczysz w PIT-38)':intTax(a)=='bank'?` (przed podatkiem ${money(c.gross,CUR(a))}, podatek ${money(c.tax,CUR(a))})`:''}.\nJeśli w banku jest inna kwota, popraw ją.`,
     fields:[{id:'a',label:`Kwota z banku (${curSym(CUR(a))})`,type:'decimal',value:f2(c.book)},{id:'d',label:'Data',type:'date',value:P.to<=td()?P.to:td()}],ok:'Zapisz odsetki'});
   if(!r)return;const v=Math.round((pnum(r.a)||0)*100),d=isDate(r.d)?r.d:td();if(v<=0)return toast('Podaj kwotę odsetek','bad');
+  /* the same period booked again with a date in another month: the old entry moves (one id = one entry, never counted twice) */
+  const old=S.tx.find(t=>t.id===id&&!t.deleted);if(old&&old.date.slice(0,7)!=d.slice(0,7))putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
   if(await putTx(d.slice(0,7),id,{type:'adj',val:true,int:true,intP:key,amount:v,date:d,sub:'',acc:a.id,to:'',who:ownerOf(a)=='Wspólne'?S.who:ownerOf(a),note:'💰 odsetki '+key,deleted:false,ts:Date.now()}))toast('Zapisano odsetki: '+money(v,CUR(a))+' 💰')}
 /* the line under an account: its rate and about how much a month */
 export function intMini(a,tx){const I=intOf(a);if(!I)return'';const b=balance(S.cfg,tx,a.id,addDays(td(),1)),m=intMonthly(a,b,td());

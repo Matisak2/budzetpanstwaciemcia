@@ -7,7 +7,7 @@ import {addM,limitOf,paidInYear,wrapOf} from './inv.js';
 import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
 import {avgActuals,carStats,balance,balDrop,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf,CASC_BUF} from './logic.js';
 import {$,MN,addDays,esc,f2,isDate,pnum,rid,td,zl,zl0,plu} from './util.js';
-import {S,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard,infoH,negStop} from './core.js';
+import {S,CUR,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,putTx,guard,infoH,negStop} from './core.js';
 import {calcAmt} from './sheet.js';
 import {fixedPaid,isPod,txRowH} from './actions.js';
 import {gr,segL} from './salary.js';
@@ -90,6 +90,7 @@ export async function setDebtLeft(id){if(guard())return;const d=dById(id);if(!d)
 export async function lentBack(id){if(guard())return;const d=dById(id);if(!d)return;const st=debtState(d);
   const r=await ask({title:'↩️ Zwrot: '+d.name,fields:[{id:'a',label:'Ile oddano (zł)',type:'decimal',value:f2(st.left)},{id:'d',label:'Data',type:'date',value:td()},{id:'c',label:'Na konto',type:'select',value:S.cfg.accs.find(a=>a.grp=='cur'&&ownerOf(a)==S.who)?.id||'',options:accOpts()}]});
   if(!r)return;const amt=gr(r.a);if(amt<=0||!isDate(r.d))return toast('Podaj kwotę i datę','bad');if(amt>st.left)return toast('Zwrot może wynieść najwyżej '+zl(st.left),'bad');
+  if(CUR(accById(r.c)||{})!='PLN')return toast('Pożyczka jest w złotych – wybierz konto złotówkowe','bad');
   if(await putTx(r.d.slice(0,7),'t'+rid(),{type:'inc',amount:amt,date:r.d,sub:'',acc:r.c,to:'',who:S.who,note:'🔺 Zwrot pożyczki: '+(d.party||d.name),lendOf:id,deleted:false,ts:Date.now()}))toast(amt>=st.left?'Pożyczka oddana w całości 🎉':'Zapisano zwrot '+zl(amt))}
 /* earlier "Udzielone pożyczki" expenses become receivables (the entries stay, only their type changes) */
 export async function moveLent(){if(guard())return;const sid=S.cfg.cats.flatMap(c=>c.subs).find(s=>/udzielone pożyczki/i.test(s.name))?.id,old=liveOf(S.tx).filter(t=>t.type=='exp'&&t.sub===sid);if(!old.length)return;

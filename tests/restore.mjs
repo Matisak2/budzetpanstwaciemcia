@@ -38,7 +38,7 @@ await p.waitForFunction(()=>!document.getElementById('dlg').hidden&&/Wczytać ko
 await p.click('#dlg button:has-text("Wczytaj")');
 const want=B.tx.filter(t=>/^\d{4}-\d\d-\d\d$/.test(t.date||'')).length;
 await p.waitForFunction(n=>S.tx.length>=n,want,{timeout:120000}).catch(()=>{});await p.waitForTimeout(1500);
-const R=await p.evaluate(async B=>{const{balance}=await import('/js/logic.js');const isD=d=>/^\d{4}-\d\d-\d\d$/.test(d||'');
+const R=await p.evaluate(async B=>{const{balance,BACKUP_KEYS}=await import('/js/logic.js');const isD=d=>/^\d{4}-\d\d-\d\d$/.test(d||'');
   const bt=B.tx.filter(t=>isD(t.date)),byId=new Map(S.tx.map(t=>[t.id,t]));let miss=0,diff=0;
   for(const t of bt){const x=byId.get(t.id);if(!x)miss++;else if(x.amount!==t.amount||!!x.deleted!==!!t.deleted||x.date!==t.date||(x.acc||'')!==(t.acc||''))diff++}
   const n=o=>Object.keys(o||{}).length,live=o=>Object.values(o||{}).filter(x=>!x.deleted).length,subs=c=>c.cats.reduce((a,k)=>a+k.subs.length,0);
@@ -46,9 +46,9 @@ const R=await p.evaluate(async B=>{const{balance}=await import('/js/logic.js');c
   return{tx:bt.length,txApp:S.tx.length,miss,diff,acc:[B.cfg.accs.length,S.cfg.accs.length],subs:[subs(B.cfg),subs(S.cfg)],fixed:[(B.cfg.fixed||[]).length,(S.cfg.fixed||[]).length],
     plans:[n(B.plans),n(S.plans)],slips:[n(B.slips),n(S.slips)],debts:[live(B.debts),live(S.debts)],hold:[live(B.hold),live(S.hold)],goals:[n(B.goals),n(S.goals)],bal,accN:B.cfg.accs.length,
     /* settings beside the maps: every one in the file must come back (old files without them – nothing to compare) */
-    set:['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen','payM','assetCls','assetM','advM','advW','advLog','advSand'].filter(k=>{const v=B[k];if(!v||(typeof v=='object'&&!Object.keys(v).length))return false;
-      const x=S.hraw?.[k];return typeof v=='object'?Object.keys(v).some(i=>JSON.stringify(v[i])!==JSON.stringify(x?.[i])):v!==x}),
-    setN:['birth','closeM','reconM','checkIgnore','cascade','yearAcc','macro','limits','limitsSeen','payM','assetCls','assetM','advM','advW','advLog','advSand'].filter(k=>B[k]&&(typeof B[k]!='object'||Object.keys(B[k]).length)).length}},B);
+    set:[...BACKUP_KEYS.filter(k=>{const v=B[k];if(!v||(typeof v=='object'&&!Object.keys(v).length))return false;
+      const x=S.hraw?.[k];return typeof v=='object'?Object.keys(v).some(i=>JSON.stringify(v[i])!==JSON.stringify(x?.[i])):v!==x}),...((B.savTarget||0)!==(S.savTarget||0)?['savTarget']:[])],
+    setN:BACKUP_KEYS.filter(k=>B[k]&&(typeof B[k]!='object'||Object.keys(B[k]).length)).length}},B);
 await ctx.close();await browser.close();srv.close();
 
 const pairs=['acc','subs','fixed','plans','slips','debts','hold','goals'].filter(k=>R[k][0]!==R[k][1]);

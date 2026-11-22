@@ -4,7 +4,7 @@
 import {execFileSync} from 'node:child_process';
 const git=(...a)=>execFileSync('git',a,{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();
 const base=process.argv[2]||'';
-let ok=true;try{if(!/^[0-9a-f]{7,40}$|^origin\//.test(base)||/^0+$/.test(base))throw 0;git('cat-file','-e',base+'^{commit}')}catch(e){ok=false}
+let ok=true;try{if(!/^[0-9a-f]{7,40}$|^origin\/|^HEAD~\d+$/.test(base)||/^0+$/.test(base))throw 0;git('cat-file','-e',base+'^{commit}')}catch(e){ok=false}
 if(!ok){console.log('⏭️  Brak poprzedniej wersji do porównania – pomijam sprawdzenie numeru CACHE.');process.exit(0)}
 const cacheOf=src=>(/const CACHE = '([^']+)'/.exec(src)||[])[1];
 const sw=git('show','HEAD:sw.js'),shell=[...sw.matchAll(/'\.\/([^']*)'/g)].map(m=>m[1]||'index.html');

@@ -7,7 +7,7 @@ import {addM} from './inv.js';
 import {ULGI,savedP,saveSplitP} from './today.js';
 import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch,ownerOf,balDrop} from './logic.js';
 import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays,plu,dmy} from './util.js';
-import {S,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard,negStop,txOk} from './core.js';
+import {S,accWho,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard,negStop,txOk} from './core.js';
 import {downloadBlob} from './actions.js';
 import {incById,openSlip,slipOfTx,slipDrop,slipBack} from './salary.js';
 import {markYearPaid,yearUndo} from './savings.js';
@@ -240,7 +240,7 @@ export async function saveTx(next){if(guard())return;
     else{const it=yearMatch(S.cfg,tx,t);if(it&&await ask({title:`To „${it.name}” z wydatków rocznych?`,text:`W 📅 Roczne i terminy „${it.name}” (${zl(it.amount)}) czeka na zapłatę. Jeśli to ten wydatek, zapiszę go jako zapłacony – przypomnienie zniknie, a koperta i plan policzą się dobrze.`,ok:'Tak, to ten',cancel:'Nie, to coś innego'})){link={yearId:it.id};yItem=it}}}
   ls.set('mw_acc_'+S.who,$('mc').value);
   const old=S.edit?liveById(S.edit):null,id=old?old.id:'t'+rid();
-  const base={type,date,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?S.who:$('mw').value,note:[stripFx($('mn').value.trim()),auto].filter(Boolean).join(' · '),deleted:false,ts:Date.now()};
+  const base={type,date,acc:$('mc').value,to:type=='tr'?$('mto').value:'',who:type=='tr'?((S.edit&&liveById(S.edit)?.who)||accWho($('mc').value)):$('mw').value,note:[stripFx($('mn').value.trim()),auto].filter(Boolean).join(' · '),deleted:false,ts:Date.now()};
   const body={...base,amount:main,sub:type=='tr'?'':$('ms').value};
   if(two)body.amount2=amount2;else if(old?.amount2)body.amount2=null;
   if(old?.save&&old.type=='tr'){const z={};Object.keys(old.save).forEach(k=>z[k]=0);save={...z,...(save||{})}}if(save&&Object.keys(save).length)body.save=save;

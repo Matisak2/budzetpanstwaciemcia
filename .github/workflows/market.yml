@@ -1,5 +1,5 @@
 # 🤖 Automat Budżetu M&W: kursy walut i stopa NBP, inflacja, ceny instrumentów (raz w miesiącu także limity IKE/IKZE).
-# Działa za darmo na GitHubie. Potrzebuje sekretu FIREBASE_SA (klucz konta usługi Firebase) – instrukcja w PLAN.md.
+# Działa za darmo na GitHubie. Potrzebuje sekretu FIREBASE_SA (klucz konta usługi Firebase) – instrukcja w PLAN-archiwum.md.
 name: Automat – kursy i ceny
 on:
   schedule:

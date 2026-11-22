@@ -3,6 +3,7 @@
   "short_name": "Budżet M&W",
   "description": "Wspólny budżet domowy Matiego i Werci",
   "lang": "pl",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

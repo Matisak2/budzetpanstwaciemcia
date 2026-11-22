@@ -37,7 +37,7 @@ export function allocH(owner){const A=allocNow(owner),R=realNow(owner),all=clsAl
   const who=ownF(owner);let h=`<section class="chart alloc"><div class="ct"><b>🥧 Z czego składa się majątek</b><span class="mini">${who?esc(who)+(who!='Wspólne'?' (z udziałem we wspólnych nieruchomościach i aktywach)':''):'razem'} · wycena na dziś · bez PPK</span></div>`;
   if(!A.rows.length&&!hasReal)return h+`<div class="mini">Gdy na kontach oszczędnościowych i inwestycyjnych będą pieniądze, zobaczysz tu, z czego składa się majątek.</div>${btnsH}</section>`;
   const todo=A.rows.filter(r=>r.cls=='todo'),old=[...A.rows.filter(r=>r.old),...R.list.filter(r=>r.old)];
-  if(!lvl&&hasReal){const tot=R.work.net+A.total,segs=[{l:'🏠 Nieruchomości (netto)',v:Math.max(0,R.work.net),c:AGRP.real.c},{l:'📈 Aktywa',v:A.total,c:AGRP.stock.c}].filter(x=>x.v>0);
+  if(!lvl&&hasReal){const tot=Math.max(0,R.work.net)+A.total, /* a property under water (loan > value) is 0 on the koło – the centre matches the slices */segs=[{l:'🏠 Nieruchomości (netto)',v:Math.max(0,R.work.net),c:AGRP.real.c},{l:'📈 Aktywa',v:A.total,c:AGRP.stock.c}].filter(x=>x.v>0);
     h+=`<div class="dwrap">${donutSvg(segs,zl0(tot),'pracuje')}<div class="arows">
       ${R.work.value?`<button class="arow" onclick="advGrp('real')"><i style="background:${AGRP.real.c}"></i><span class="an">🏠 Nieruchomości</span><span class="num">${zl0(R.work.net)}</span><em class="num">${pct(Math.max(0,R.work.net),tot)}</em><span class="ar">›</span></button>`:''}
       <button class="arow" onclick="advGrp('assets')"><i style="background:${AGRP.stock.c}"></i><span class="an">📈 Aktywa</span><span class="num">${zl0(A.total)}</span><em class="num">${pct(A.total,tot)}</em><span class="ar">›</span></button>${homeH(R)}</div></div>

@@ -17,14 +17,15 @@ export const money=(n,c)=>!c||c=='PLN'?zl(n):(priv.on?'•••':fmtN(n/100))+'
 const fxList=m=>Object.entries(m||{}).filter(([,v])=>v).sort((a,b)=>a[0].localeCompare(b[0]));
 export const fxPlus=m=>fxList(m).map(([c,v])=>(v<0?' − ':' + ')+money(Math.abs(v),c)).join('');
 export const fxTxt=m=>fxPlus(m).replace(/^ \+ /,'').replace(/^ − /,'−');
-export const zl0=n=>(priv.on?'•••':fmtN(Math.round(n/100),0))+' zł';
-/* amounts as typed or pasted: "1 234,56", "1.234,56", "1,234.56", "12,5"; for money a single separator followed by exactly 3 digits ("1.234") means thousands */
+export const zl0=n=>(priv.on?'•••':fmtN(Math.sign(n)*Math.round(Math.abs(n)/100),0))+' zł'; // −2,50 → −3 like 2,50 → 3
+/* amounts as typed or pasted: "1 234,56", "1.234,56", "1,234.56", "12,5"; for money a single DOT followed by exactly 3 digits ("1.234") means thousands;
+   a comma is always the Polish decimal separator ("1,005" = 1,005 – a pasted fuel price or rate is not taken as a thousand) */
 export const pnum=(s,money)=>{s=String(s??'').replace(/\s/g,'').replace(/zł|pln|eur|usd|gbp|chf|€|\$/gi,'');
   const neg=/^[-−]/.test(s);s=s.replace(/^[-−]/,'');
   const nd=(s.match(/\./g)||[]).length,nc=(s.match(/,/g)||[]).length;
   if(nd&&nc){const dec=s.lastIndexOf('.')>s.lastIndexOf(',')?'.':',';s=s.split(dec=='.'?',':'.').join('').replace(',','.')}
   else if(nd+nc>1)s=s.replace(/[.,]/g,'');
-  else if(nd+nc==1){const[a,b]=s.split(nd?'.':',');s=money&&b.length==3&&/^[1-9]\d{0,2}$/.test(a)?a+b:a+'.'+b}
+  else if(nd+nc==1){const[a,b]=s.split(nd?'.':',');s=money&&nd&&b.length==3&&/^[1-9]\d{0,2}$/.test(a)?a+b:a+'.'+b}
   const v=parseFloat(s);return isNaN(v)?0:neg?-v:v};
 export const pg=s=>Math.round(pnum(s,true)*100);
 export const fmtIn=n=>n?(n/100).toFixed(2).replace(/\.00$/,'').replace('.',','):'';

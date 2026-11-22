@@ -186,6 +186,8 @@ export const delRoundDb=id=>w(updateDoc(H,{['roundM.'+id]:deleteField()}));
 export const delFixedDb=id=>w(updateDoc(H,{['fixedM.'+id]:deleteField()}));
 /* every write remembers whose phone it came from (shown in the entry and in ⚙️ „Ostatnie zmiany”) */
 /* a real deletion also clears „moved” – an entry once moved out of this month and back still had it, and 🗑️ Ostatnio usunięte did not show it */
+/* 👥 „Kto” of an entry made without the „Kto” field (transfers, ticked fixed items): the owner of the account it comes from; a shared account – the phone's person */
+export const accWho=id=>{const a=S.cfg?.accs?.find(x=>x.id===id),o=a?(a.owner||'Wspólne'):'';return o=='Mati'||o=='Wercia'?o:S.who};
 export const putTx=(ym,id,body)=>{if(body.deleted===true&&!body.moved)body={...body,moved:false,dby:S.who,dAt:Date.now()};else if(body.type&&!('by' in body))body={...body,by:S.who};return merge(doc(MC(),ym),{tx:{[id]:body}})};
 export const putInv=(id,body)=>merge(doc(INV(),id),body);
 export const liveById=id=>S.tx.find(t=>t.id===id&&!t.deleted);

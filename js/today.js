@@ -28,7 +28,9 @@ const mDiff=(a,b)=>(+b.slice(0,4)-+a.slice(0,4))*12+(+b.slice(5,7)-+a.slice(5,7)
    with interest only the capital part of a payment lowers the debt (the first payment of a month pays that month's interest first; the payoff is capital only) */
 export function debtStateP(d,tx,today){if(!d?.id)return{left:0,paid:0,pc:0,src:'auto',end:null,pays:[],late:false};
   const pays=tx.filter(t=>d.dir=='owe'?t.debt===d.id:t.lendOf===d.id).sort((a,b)=>a.date.localeCompare(b.date)),paid=pays.reduce((a,t)=>a+t.amount,0);
-  const r=mRate(d),run=(bal,L)=>{let ym='';for(const t of L){const i=!r||t.payoff||t.date.slice(0,7)==ym?0:Math.round(bal*r);ym=t.date.slice(0,7);bal=Math.max(0,bal-Math.max(0,t.amount-i))}return bal};
+  /* a month without any payment between two payments: its interest is added to the debt (the bank charges it anyway) */
+  const r=mRate(d),run=(bal,L)=>{let ym='';for(const t of L){const m=t.date.slice(0,7);if(r&&ym&&m>ym)for(let k=mDiff(ym,m)-1;k>0;k--)bal+=Math.round(bal*r);
+    const i=!r||t.payoff||m==ym?0:Math.round(bal*r);ym=m;bal=Math.max(0,bal-Math.max(0,t.amount-i))}return bal};
   const bl=Object.entries(d.left||{}).sort((a,b)=>a[0].localeCompare(b[0])).at(-1);let left=run(d.start||0,pays),src='auto';
   if(d.mode=='bank'&&bl){left=run(bl[1],pays.filter(t=>t.date>bl[0]||(t.payoff&&t.date==bl[0])));src=bl[0]}
   const pc=d.start?Math.min(100,(1-left/d.start)*100):0,last3=pays.slice(-3),avg=last3.length?last3.reduce((a,t)=>a+t.amount,0)/last3.length:(d.inst||0);
@@ -205,7 +207,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   /* 🤖 technical matters (automat, backup, IKE/IKZE limits, payslip rules) – only Mati */
   const TECH='Mati',add=(icon,text,go,label,k='',who=null,ex)=>out.push({icon,text,go,label,k,who,...ex});const incs=cfg.incs||[];
   const st=automatStale(market,today);if(st)add('🤖',`Automat nie pobiera danych od ${st} dni. Sprawdź go na GitHubie.`,{a:'automat'},'Otwórz','bad',TECH);
-  for(const x of dueAlerts(cfg.fixed||[],tx,today)){const tw=x.when!='inc'&&fixedTwin(cfg,tx,x.f,x.due.slice(0,7));
+  const salFixed=new Set(incs.map(s=>s.fixed).filter(Boolean)); // a fixed income linked to a payslip source is reminded once – as „💼 Pasek”
+  for(const x of dueAlerts(cfg.fixed||[],tx,today)){if(x.when=='inc'&&salFixed.has(x.f.id))continue;const tw=x.when!='inc'&&fixedTwin(cfg,tx,x.f,x.due.slice(0,7));
     if(tw){add('💡',`${x.f.name} – jest podobny wpis z ${dmy(tw.date)} (${money(tw.amount,cm[tw.acc])}). To ten rachunek? Odhacz, żeby je połączyć.`,{a:'fixed'},'Połącz','',person(fixedWho(cfg,x.f)));continue}
     add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – czeka na odhaczenie`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(fixedWho(cfg,x.f)),x.when=='inc'?{}:{n:x.when=='late'?-1:x.when=='today'?0:1});}
   /* ⚠️ a fixed payment the account will not cover – a phone notification on the first day of the problem and the day before the payment */
@@ -213,7 +216,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
     for(const x of shortP(cfg,tx,today)){const a=accOf(x.acc),f=(cfg.fixed||[]).find(f=>f.id==x.fid),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+ym;if(hraw?.checkIgnore?.[key])continue;
       out.push({key,icon:'⚠️',text:`${a.name}: ${money(x.bal,cm[x.acc])}, a ${n<=0?'dziś':n==1?'jutro':dmy(x.date)} „${x.name}” ${money(x.amount,cm[x.acc])} – zabraknie ${money(x.miss,cm[x.acc])}. Przelej wcześniej na to konto.`,go:{a:'tr',to:x.acc,amount:x.miss},label:'Przelej',k:n<=1?'bad':'short',n,who:person(ownerOf(a))||(f?person(fixedWho(cfg,f)):null),quiet:!(n==1||!before.has(x.acc+':'+x.fid+':'+x.date.slice(0,7)))})}}
   const live=new Set(tx.map(t=>t.id));
-  for(const s of incs)if(day>=Math.min(+s.day||10,daysIn(ym))){/* paid on the 31st → in a shorter month the last day */const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata zwykle do ${s.day||10}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}
+  /* the pay day learned from the payslips (payDateP), the typed day only without history; paid on the 31st → in a shorter month the last day */
+  for(const s of incs){const pd=payDateP(tx,s,ym);if(pd?pd.date<=today:day>=Math.min(+s.day||10,daysIn(ym))){const sl=(slips?.[ym]||{})[s.id];if(!sl||!sl.booked||!live.has(sl.booked))add('💼',`Pasek: ${s.name}${s.who?' ('+s.who+')':''} – wypłata ${pd?.real?'była '+dmy(pd.date):'zwykle '+(pd?dmy(pd.date):'do '+(s.day||10))}.`,{a:'slip',id:s.id,ym},'Wpisz','',person(s.who))}}
   /* 🎓 the end of ulga dla młodych: from a month before the 26th birthday – later payslips are taxed; the drop estimated from the last payslip of each source */
   for(const w of ['Mati','Wercia']){const un=youngUntil(hraw?.birth?.[w]),n=un?dd(today,un):-1,L=incs.filter(s=>s.who==w&&youngKind(s.kind)),key='young:'+w+':'+un;
     if(n<0||n>31||!L.length||hraw?.checkIgnore?.[key])continue;
@@ -229,7 +233,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='owe'||!x.saveAcc)continue;const d={id,...x},s=debtStateP(d,tx,today),saved=savedP(id,tx),from=+d.day||1;
     if(s.left>0&&saved>=s.left&&day>=from&&day<=from+2)add('💰',`${d.name}: uzbierane ${zl(saved)} – możesz spłacić całość (${zl(s.left)}).`,{a:'owe'},'Zobacz','',person(d.payer))}
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='owe'||!x.day||(cfg.fixed||[]).some(f=>f.debt==id&&f.kind!='inc'))continue;const d={id,...x},s=debtStateP(d,tx,today);
-    const due=fixedDate(d,ym),n=dd(today,due);if(!s.left||n>1||(d.date&&d.date>due)||s.pays.some(t=>t.date.startsWith(ym)))continue;const r=rataP(d,tx,today);
+    /* a rate on the 1st: on the last day of the month before – „termin jutro” (the next month's rate) */
+    const dN=fixedDate(d,addMonths(ym,1)),due=dd(today,dN)==1?dN:fixedDate(d,ym),n=dd(today,due);if(!s.left||n>1||(d.date&&d.date>due)||s.pays.some(t=>t.date.startsWith(due.slice(0,7))))continue;const r=rataP(d,tx,today);
     add('🔻',`Rata: ${d.name}${r?' – ok. '+zl(r.amt):''} · ${n<0?'po terminie ('+dmy(due)+')':n==0?'termin dziś':'termin jutro'}`,{a:'rata',id},'Wpisz',n<0?'bad':'',person(d.payer),{n})}
   for(const m of maturitiesP(cfg,hold,today,30)){const n=dd(today,m.end);add(IICON[m.it.kind],`${m.it.kind=='obl'?'Wykup':'Koniec lokaty'}: ${m.it.name} – ${dmy(m.end)}`,{a:'inst',acc:m.a.id},'Zobacz','',person(ownerOf(m.a)),{n,later:n>7})}
   const mo=+today.slice(5,7),y=today.slice(0,4),wr=cfg.accs.filter(a=>(a.grp=='inv'||(a.grp=='sav'&&wrapOf(a)))&&!a.archived); // an IKE kept as a savings account is still an IKE
