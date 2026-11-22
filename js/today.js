@@ -220,7 +220,7 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
     out.push({key,icon:'🔴',text:`Ujemne saldo: ${a.name} ${money(b,a.cur)}. Coś nie wpisane, przelew z innego konta albo wyrównanie z bankiem?`,go:{a:'acc'},label:'Zobacz',k:'bad',n:-1,who:person(ownerOf(a))})}
   /* ⚠️ a fixed payment the account will not cover – a phone notification on the first day of the problem and the day before the payment */
   {const yd=addDays(today,-1),before=new Set(shortP(cfg,tx.filter(t=>t.date<today),yd,hraw?.yearAcc).map(x=>x.acc+':'+x.fid+':'+x.date.slice(0,7)));
-    for(const x of shortP(cfg,tx,today,hraw?.yearAcc)){const a=accOf(x.acc),f=(cfg.fixed||[]).find(f=>f.id==x.fid),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+ym;if(hraw?.checkIgnore?.[key])continue;
+    for(const x of shortP(cfg,tx,today,hraw?.yearAcc)){const a=accOf(x.acc),f=(cfg.fixed||[]).find(f=>f.id==x.fid),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+x.date.slice(0,7);if(hraw?.checkIgnore?.[key])continue;
       out.push({key,icon:'⚠️',text:`${a.name}: ${money(x.bal,cm[x.acc])}, a ${n<=0?'dziś':n==1?'jutro':dmy(x.date)} „${x.name}” ${money(x.amount,cm[x.acc])} – zabraknie ${money(x.miss,cm[x.acc])}. Przelej wcześniej na to konto.`,go:{a:'tr',to:x.acc,amount:x.miss},label:'Przelej',k:n<=1?'bad':'short',n,who:person(ownerOf(a))||(f?person(fixedWho(cfg,f)):null),quiet:!(n==1||!before.has(x.acc+':'+x.fid+':'+x.date.slice(0,7)))})}}
   const live=new Set(tx.map(t=>t.id));
   /* the pay day learned from the payslips (payDateP), the typed day only without history; paid on the 31st → in a shorter month the last day */

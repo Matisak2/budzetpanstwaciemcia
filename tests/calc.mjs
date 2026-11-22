@@ -246,6 +246,10 @@ const N=' ';
   eq('Na dziś – brak dla obojga (konto wspólne)',it('2026-11-03').who,null);
   eq('Na dziś – powiadomienie pierwszego dnia (1.11), potem cicho, znowu dzień przed',[it('2026-11-01').quiet,it('2026-11-03').quiet,it('2026-11-09').quiet],[false,true,false]);
   eq('Na dziś – w dniu czynszu pilne',it('2026-11-10').k,'bad');
+  /* „Wiem” 28.11 przy czynszu z 2.12 → nie wraca 1.12 (klucz z miesiącem terminu, audyt 23.11) */
+  { const c2={...czynsz,day:2},paid=[{id:'pn',type:'exp',amount:185000,date:'2026-11-02',acc:'w',fixedId:'fc',sub:'s'}],D2={...D,cfg:{...D.cfg,fixed:[c2]},tx:paid};
+    const k=todayItems(D2,{today:'2026-11-28',checks:false}).find(x=>x.icon=='⚠️')?.key;
+    eq('Na dziś – „Wiem” przy terminie w następnym miesiącu działa po 1.',[k,todayItems({...D2,hraw:{checkIgnore:{[k]:true}}},{today:'2026-12-01',checks:false}).some(x=>x.icon=='⚠️')],['short:w:fc:2026-12',false]); }
 }
 /* ---------- 🔁 powtarzający się przelew → stały przelew ---------- */
 { const accs=[{id:'m',grp:'cur',name:'Konto Mati'},{id:'w',grp:'cur',name:'Konto wspólne'}],T=(id,d,a)=>({id,type:'tr',amount:a,date:d,acc:'m',to:'w',note:'na wspólne'});
