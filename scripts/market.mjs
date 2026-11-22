@@ -67,7 +67,7 @@ if(fundsWant.size)console.log(`✓ fundusze: ${nf} z ${fundsWant.size}`);
 await M.doc('rates').set(out);
 /* 📅 the last prices and rates of each month (overwritten by every run in the month → at the end = the last trading day): the month-end
    valuation done on the 1st–7th of the next month uses them, not that day's prices */
-await tryIt('ceny na koniec miesiąca',()=>M.doc('eom').set({[ym]:{prices:out.prices||{},fx:out.fx||{},fxDate:out.fxDate||null,date:today,gold:out.gold||null,goldDate:out.goldDate||null,funds:out.funds||{}}},{merge:true}));
+await tryIt('ceny na koniec miesiąca',()=>M.doc('eom').set({[today.slice(0,7)]:{prices:out.prices||{},fx:out.fx||{},fxDate:out.fxDate||null,date:today,gold:out.gold||null,goldDate:out.goldDate||null,funds:out.funds||{}}},{merge:true}));
 // 5. price history of each instrument (makes the "paid in vs value" chart denser)
 let nh=0;const fxOf=c=>!c||c=='PLN'?1:out.fx[c];
 for(const d of hold.docs){const x=d.data();if(x.deleted)continue;const q=x.kind=='tfi'?out.funds[x.fund?.id]:x.ticker&&out.prices[x.ticker.trim().toUpperCase()];if(!q)continue;

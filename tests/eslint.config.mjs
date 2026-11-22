@@ -10,5 +10,7 @@ export default [
   /* unused imports and variables (left over after moving code between files) */
   {files:['js/**/*.js'],rules:{'no-unused-vars':['error',{vars:'all',args:'none',varsIgnorePattern:'^_',caughtErrors:'none',ignoreRestSiblings:true}]}},
   {files:['demo/demo.js'],languageOptions:{sourceType:'script'}},
+  /* automats: a variable used before its `const` line throws (TDZ) – tryIt swallowed it and market/eom was never saved (audyt 23.11) */
+  {files:['scripts/**/*.mjs'],languageOptions:{ecmaVersion:'latest',sourceType:'module'},rules:{'no-use-before-define':['error',{functions:false,classes:false,variables:true}]}},
   {files:['sw.js'],languageOptions:{ecmaVersion:'latest',sourceType:'script',globals:sw},rules:{'no-undef':'error'}},
 ];
