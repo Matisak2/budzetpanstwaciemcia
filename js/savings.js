@@ -76,7 +76,7 @@ export async function editInst(id,accId){if(guard())return;const it0=id?S.hold[i
   const body={acc:a.id,kind:k,name:r.n.trim(),ticker:k=='tfi'?'':r.t.trim(),deleted:false,ts:Date.now()};
   if(k=='obl'){const o=bondOffer()?.[r2.bt],now=isNew&&r2.ld?.slice(0,7)==td().slice(0,7);
     const first=r2.b1.trim()?pn(r2.b1):now&&o?o.first:0,mg=r2.bm.trim()?pn(r2.bm):now&&o&&o.margin!=null?o.margin:null;
-    body.bond={...(it0?.bond||{}),type:r2.bt,first,...(mg!=null?{margin:mg}:{})};if(!r2.bm.trim()&&mg==null)delete body.bond.margin;body.cur=CUR(a);
+    body.bond={...(it0?.bond||{}),type:r2.bt,first,...(mg!=null?{margin:mg}:{})};if(!r2.bm.trim()&&mg==null)body.bond.margin=deleteField();body.cur=CUR(a);
     if(!first)toast('Wpisz oprocentowanie 1. okresu z potwierdzenia zakupu – bez niego wartość nie urośnie','bad')}
   else if(k=='tfi'){let fu=null;if(r2.fd&&r2.fd!='url'){const x=fundList().find(x=>x[0]==r2.fd);fu={id:r2.fd,path:`fundusze-ppk/${r2.fd}/${x?.[1]||'x'}`,name:fundName(x?.[1])}}
     else if(r2.fd=='url'){fu=fundFromUrl(r2.fu);if(!fu)return toast('Wklej adres strony funduszu z analizy.pl','bad');fu.name=fundName(fu.path.split('/')[2])}
