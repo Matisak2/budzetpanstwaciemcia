@@ -144,7 +144,7 @@ export function valuesH(){const today=td(),mc=macro(),tx=liveOf(S.tx),accs=S.cfg
       :`<label class="srow2"><span>Wartość dziś<small>z aplikacji brokera</small></span><input class="planin" data-av="${a.id}" placeholder="${f2(bal)}" inputmode="decimal" autocomplete="off"></label>`}</div>`}).join('');
   if(!accs.length)h+=catsEmpty('Nie ma jeszcze kont inwestycyjnych.',1,'lupa');
   return h+`<div class="g2"><button class="btn" onclick="closeInst()">Anuluj</button><button class="btn primary" onclick="saveValues()">Zapisz wszystko</button></div>`}
-export function saveValues(){if(guard())return;const today=td(),q=s=>[...document.querySelectorAll(s)];
+export function saveValues(){if(guard())return;if(document.activeElement)document.activeElement.blur();const today=td(),q=s=>[...document.querySelectorAll(s)];
   const mi=$('vInfl').value.trim(),mn=$('vNbp').value.trim(),m0=macro();
   if((mi&&pn(mi)!==m0.infl)||(mn&&pn(mn)!==m0.nbp)){const m={...m0};if(mi){m.infl=pn(mi);m.inflAt=today}if(mn){m.nbp=pn(mn);m.nbpAt=today}S.hraw={...S.hraw,macro:m};merge(H,{macro:m})}
   const hold=clone(S.hold),ch=new Set();

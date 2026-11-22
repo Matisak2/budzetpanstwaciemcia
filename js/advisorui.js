@@ -277,7 +277,7 @@ function whereCtx(mode){const who=S.who,A=ankOf(who),ctx=ankCtx(who),people=mode
   return{P,ctx:{debt:{sum:cons.reduce((s,d)=>s+d.left,0),rate:Math.max(0,...cons.map(d=>+d.rate||0))||null,name:cons.map(d=>d.name).join(', ')},cheap:cheapL.map(d=>d.name),podMini:Math.max(0,Math.round(ctx.exp-ctx.cush)),podGap:Math.max(0,Math.round(ctx.exp*tg-ctx.cush)),
     mort:W.q20=='yes'&&mort?{rate:+mort.rate||0,fee:W.q20c=='yes'}:null,overpay:W.q20=='yes'&&mort?qn(W.q59,0):0,today:td(),okiOk:td()>='2027-01-01'&&['yes','maybe'].includes(A.q40),
     sandLeft:plan?.sand?sandNow(mode=='both'?'all':who).sand.left:null},A,W}}
-export function calcWhere(){const v=id=>document.getElementById(id)?.value,amt=pg(v('wAmt')||'0');if(!(amt>0))return toast('Wpisz kwotę','bad');
+export function calcWhere(){if(document.activeElement)document.activeElement.blur();const v=id=>document.getElementById(id)?.value,amt=pg(v('wAmt')||'0');if(!(amt>0))return toast('Wpisz kwotę','bad');
   S.advIn={amt,src:v('wSrc'),goal:v('wGoal'),need3:v('wNeed')=='1',mode:v('wMode'),chg:v('wChg')};const{P,ctx,W}=whereCtx(S.advIn.mode);
   S.advRes=whereP({...S.advIn,homeSoon:qn(W.q32a,99)<=3},P,ctx);S.advRes.P=P;use('f:policz');render();setTimeout(()=>document.getElementById('wRes')?.scrollIntoView({behavior:'smooth'}),60)}
 export function wherePageH(){const I=S.advIn||{amt:0,src:'surplus',goal:'plan',need3:false,mode:'me',chg:'no'},R=S.advRes,sel=(id,val,o)=>`<select id="${id}">${o.map(([k,l])=>`<option value="${k}"${k==val?' selected':''}>${esc(l)}</option>`).join('')}</select>`;
@@ -434,7 +434,7 @@ export function advTodoMine(){const who=S.who,A=ankOf(who),plan=planOfWho(who),c
 const wishes=()=>S.hraw?.advSand||{};
 export function sandNow(owner){const o=owner||'all',P=planFor(o==S.who?S.who:o)||planFor('all'),A=allocNow(o),base=P?devP(A,P).base:A.total;return{P,A,base,sand:sandP(A.rows,P,base,custom())}}
 export function openSand(){use('f:piaskownica');S.adv='sand';S.sandRes=null;window.scrollTo(0,0);render()}
-export function sandCalc(){const v=id=>document.getElementById(id)?.value||'',amt=pg(v('sAmt')||'0');if(!(amt>0))return toast('Wpisz kwotę','bad');if(!v('sName').trim())return toast('Wpisz nazwę','bad');
+export function sandCalc(){if(document.activeElement)document.activeElement.blur();const v=id=>document.getElementById(id)?.value||'',amt=pg(v('sAmt')||'0');if(!(amt>0))return toast('Wpisz kwotę','bad');if(!v('sName').trim())return toast('Wpisz nazwę','bad');
   S.sandIn={name:v('sName').trim().slice(0,60),ticker:v('sTick').trim().toUpperCase().slice(0,20),amt,kind:v('sKind'),region:v('sReg'),why:v('sWhy').trim().slice(0,400),sell:v('sSell').trim().slice(0,300),target:+String(v('sTgt')).replace(',','.')||0};
   const N=sandNow('all'),world=N.A.rows.filter(r=>r.cls=='s_world').reduce((s,r)=>s+r.v,0);S.sandRes=sandCheckP({amt,kind:S.sandIn.kind,region:S.sandIn.region,sand:N.sand,base:N.base,worldVal:world});use('f:analiza');render();setTimeout(()=>document.getElementById('sRes')?.scrollIntoView({behavior:'smooth'}),60)}
 export function saveWish(){if(guard())return;const I=S.sandIn;if(!I)return;if(!I.why)return toast('🐾 Najpierw zapisz, dlaczego chcesz to kupić – to najważniejsze pole','bad');
