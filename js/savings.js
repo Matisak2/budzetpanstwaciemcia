@@ -105,7 +105,7 @@ export async function addLot(id,sell){if(guard())return;const it=S.hold[id],a=ac
   if(!(lot.qty>0)||!(lot.price>0))return toast('Podaj liczbę i cenę','bad');
   /* a sale can only take what was held on its date (a buy on the same day counts) */
   if(sell&&lot.qty>position(it,addDays(lot.date,1)).qty+1e-9)return toast(`Nie masz tylu sztuk na dzień ${dmy(lot.date)}`,'bad');
-  merge(doc(HOLD(),id),{lots:{['l'+rid()]:lot},...(k!='obl'&&k!='lokata'?{price:lot.price,fxNow:lot.fx,priceDate:lot.date}:{})});toast(sell?'Zapisano sprzedaż':'Zapisano zakup')}
+  merge(doc(HOLD(),id),{lots:{['l'+rid()]:lot},...(k!='obl'&&k!='lokata'&&(!it.priceDate||lot.date>=it.priceDate)?{price:lot.price,fxNow:lot.fx,priceDate:lot.date}:{})});toast(sell?'Zapisano sprzedaż':'Zapisano zakup')} // an older purchase does not replace a newer price
 export async function setPrice(id){if(guard())return;const it=S.hold[id],a=accById(it?.acc);if(!a)return;const fx=it.cur&&it.cur!=CUR(a);
   const r=await ask({title:'Cena: '+it.name,text:'Wpisz aktualną cenę z aplikacji brokera.',fields:[{id:'p',label:`Cena za sztukę (${curSym(it.cur||CUR(a))})`,type:'decimal',value:it.price?nf(it.price):''},...(fx?[{id:'x',label:`Kurs ${it.cur} (${curSym(CUR(a))})`,type:'decimal',value:it.fxNow?nf(it.fxNow,4):''}]:[])],ok:'Zapisz'});
   if(!r)return;const p=pn(r.p),x=fx?pn(r.x)||it.fxNow||1:1;if(!(p>0))return toast('Podaj cenę','bad');
