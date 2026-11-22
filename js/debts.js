@@ -184,7 +184,7 @@ export async function editRem(id){if(guard())return;const r0=id?rems().find(x=>x
     if(r0){S.cfg.rems=rems().filter(x=>x!==r0);delRemDb(r0.id)}newYear(nm,amt,r.d,ev,r.s,r.wh||'');return toast('Przeniesione do odkładania: '+nm+' 📅')}
   const name=r.n.trim(),every=+r.e;
   if(!name)return toast('Podaj nazwę','bad');const km=Math.round(pnum(r.k||''))||0;if(!isDate(r.d)&&!km)return toast('Podaj termin albo liczbę km','bad');
-  const car=r.c?projById(r.c):null,body={id:r0?.id||'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),who:r.wh||'',lastOdo:r0?.lastOdo??(car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0)};
+  const car=r.c?projById(r.c):null,body={id:r0?.id||'r'+rid(),name,next:isDate(r.d)?r.d:'',every,proj:r.c||'',km,note:r.t.trim(),who:r.wh||'',lastOdo:r0?.km&&(r0.proj||'')==(r.c||'')?r0.lastOdo:(car&&km?carStats(S.cfg,liveOf(S.tx),car.id,car.odo0).odo:0)}; // km just added / other car → count from today's odometer
   S.cfg.rems=rems();let x=r0;if(x)Object.assign(x,body);else{x=body;S.cfg.rems.push(x)}render();saveRem(x);toast(r0?'Zapisano':'Dodano przypomnienie 🔔')}
 export async function doneRem(id){const r=rems().find(x=>x.id==id);if(!r)return;const st=remState(r);
   if(!+r.every&&!r.km){if(!await ask({title:'Zrobione: '+r.name,text:'To przypomnienie było jednorazowe – usunąć je?',ok:'Usuń'}))return;S.cfg.rems=rems().filter(x=>x!==r);render();delRemDb(r.id);return toast('Gotowe ✓')}
