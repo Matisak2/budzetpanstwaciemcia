@@ -38,5 +38,33 @@ Każda pozycja: co było źle, dowód, co zmienione, commit. Wszystkie poprawki:
 - **Test:** `tests/restore.mjs --demo` na starym `core.js` z nową atrapą – nie przechodzi; po poprawce – zielony (172/172 wpisy, 16/16 ustawień).
 - **Commit:** `9e699af`
 
-## Wysyłka
-CACHE `budzet-mw-v98` → `v99`. Przed push lokalnie: eslint (z `scripts/`), `node --check`, `cache.mjs`, `imports.mjs`, `calc.mjs` (432), `screens.mjs` (4 × 103 ekrany), `restore.mjs --demo` – wszystko zielone.
+## 6. „📈 Aktualizuj wartości” wyceniało po cenie automatu zamiast wpisanej ręcznie
+- **Było źle:** `saveValues` (`js/savings.js`) zapisywał w bazie nową cenę z dzisiejszą datą, ale wycenę konta liczył z lokalnej kopii, w której została stara data ceny. `marketQuote` uznawał wtedy cenę automatu za nowszą – wpis „Zmiana wartości” szedł ze złej ceny, a po zapisie znowu pojawiało się „Zapisz wycenę”.
+- **Dowód:** demo (Playwright, skrypt poza repo): ETF z ceną automatu 50 i wpisaną ręcznie 300 → przed poprawką wpis wyceny **−1 836,61 zł**, po poprawce **+10 103,39 zł**.
+- **Zmiana:** lokalna kopia dostaje `priceDate = dziś`, tak jak zapis w bazie.
+- **Commit:** `2152f71`
+
+## 7. „Rok temu” i „Wasza inflacja” 28 lutego po roku przestępnym pomijały 29 lutego
+- **Było źle:** `yearAgoP` i `ytdSpanP` (`js/logic.js`) w ostatnim dniu miesiąca liczyły zeszłoroczny miesiąc do tego samego numeru dnia – 28.02.2029 bez wpisów z 29.02.2028 (karta „Rok temu” mogła zniknąć). Pierwszy raz zdarzyłoby się w 2029 r.
+- **Dowód:** skrypt R1; testy poniżej na starym kodzie czerwone (`[null,null]` i `0`).
+- **Zmiana:** ostatni dzień miesiąca = cały miesiąc rok wcześniej.
+- **Test:** `tests/calc.mjs` – dwa nowe sprawdzenia.
+- **Commit:** `6221044`
+
+## 8. „Nie wiem” w liczbowych pytaniach ankiety doradcy dawało NaN
+- **Było źle:** odpowiedź „?” w pytaniach liczbowych zamieniała się na NaN: piaskownica „NaN” (limit 0), „ok. NaN%” nieruchomości w planie (i NaN zapisany do Firestore), fałszywe „✓ Wkład i koszty już są” w 🎯 Celach, rentowność najmu NaN.
+- **Dowód:** skrypt R6 `t4.mjs`; test poniżej na starym kodzie czerwony.
+- **Zmiana:** pomocnik `qn(v,d)` w `js/advisor.js`: brak odpowiedzi, „?” albo nie-liczba → ta sama wartość domyślna, co dotąd przy braku odpowiedzi; każda inna odpowiedź (także „0”) bez zmian. Użyty w 11 miejscach (`advisor.js`, `advisorui.js`).
+- **Test:** `tests/calc.mjs` „Plan: „?” przy nieruchomościach i piaskownicy”.
+- **Commit:** `b04a921`
+
+## 9. Adres …/demo (bez ukośnika) otwierał prawdziwą aplikację
+- **Było źle:** service worker pomijał tylko ścieżki z `/demo/`; wejście na `…/budzetpanstwaciemcia/demo` dostawało z cache prawdziwą aplikację (ekran logowania) zamiast przekierowania na `/demo/`. Link w aplikacji ma ukośnik – dotyczyło adresu wpisanego albo udostępnionego.
+- **Dowód:** Chromium z prawdziwym service workerem (skrypt poza repo, serwer przekierowuje jak GitHub Pages): przed – tytuł „Budżet M&W”, po – „Budżet M&W – demo”.
+- **Zmiana:** `sw.js`: `/\/demo(\/|$)/`.
+- **Commit:** `da0f86e`
+
+## Wysyłki
+- Push 1: CACHE `v98` → `v99` (poprawki 1–5).
+- Push 2: CACHE `v99` → `v100` (poprawki 6–9).
+- CACHE `budzet-mw-v98` → `v99`. Przed push lokalnie: eslint (z `scripts/`), `node --check`, `cache.mjs`, `imports.mjs`, `calc.mjs` (432), `screens.mjs` (4 × 103 ekrany), `restore.mjs --demo` – wszystko zielone.
