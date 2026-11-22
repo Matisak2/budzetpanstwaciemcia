@@ -150,7 +150,7 @@ export function saveValues(){if(guard())return;const today=td(),q=s=>[...documen
   const hold=clone(S.hold),ch=new Set();
   q('[data-ip]').forEach(el=>{if(!el.value.trim())return;const id=el.dataset.ip,p=pn(el.value);if(p>0){hold[id].price=p;ch.add(id)}});
   q('[data-if]').forEach(el=>{if(!el.value.trim())return;const id=el.dataset.if,x=pn(el.value);if(x>0){hold[id].fxNow=x;ch.add(id)}});
-  ch.forEach(id=>{const it=hold[id];merge(doc(HOLD(),id),{price:it.price,fxNow:it.fxNow||1,priceDate:today,hist:{[today]:{p:it.price,fx:it.fxNow||1}}})});
+  ch.forEach(id=>{const it=hold[id];it.priceDate=today;merge(doc(HOLD(),id),{price:it.price,fxNow:it.fxNow||1,priceDate:today,hist:{[today]:{p:it.price,fx:it.fxNow||1}}})});
   const undo=[];let n=0;
   S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived).forEach(a=>{let d=null;const el=document.querySelector(`[data-av="${a.id}"]`);
     if(el&&el.value.trim())d=gr(el.value)-balance(S.cfg,liveOf(S.tx),a.id,addDays(today,1));else d=instDiff(a,hold);
