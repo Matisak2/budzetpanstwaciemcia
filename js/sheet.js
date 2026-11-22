@@ -184,7 +184,7 @@ export function openTx(id,pre){if(guard())return;
   SV={mode:'',ids:'',auto:t?'x':pre?.saveFor||''};$('msaveRows').innerHTML='';updSave();if(t?.save)$('msaveRows').querySelectorAll('input').forEach(i=>{const v=+t.save[i.dataset.sv]||0;if(v)i.value=f2(Math.abs(v))});updSaveHint();
   const left=t&&t.type=='exp'?t.amount-refundsOf(t.id).reduce((a,x)=>a+x.amount,0):0;
   $('shRef').hidden=!(left>0);
-  $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;$('shNext').hidden=!!t;
+  $('shTitle').textContent=t?(t.refundOf?'Edytuj zwrot':'Edytuj transakcję'):pre?.from&&!pre?.to?'Wypłata na konto bieżące':pre?.type=='tr'?'Wpłata':'Nowa transakcja';$('shDel').hidden=!t;$('shNext').hidden=!!t;
   $('sheet').hidden=false;if(!t)setTimeout(()=>$('ma').focus(),80)}
 export const closeSheet=()=>{$('sheet').hidden=true;S.edit=null;S.refEdit=false;SP=[];PH=[];$('phv').hidden=true;closePick()};
 /* 👯 the same entry already there? (both of you typing the same receipt): same kind and amount, a day apart at most,
