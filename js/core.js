@@ -167,17 +167,21 @@ export function fromDoc(d){
   return{accs:d.accs||[],cats:d.cats||[],fixed:d.fixed||[],round:[],incs:[],years:[],projs:[],rems:[],legacy:true}}
 export function toDoc(cfg){const m=(arr,f)=>Object.fromEntries((arr||[]).map((x,i)=>[x.id,f?f(x,i):strip(x,i)]));
   return{v:2,accsM:m(cfg.accs),catsM:m(cfg.cats,(c,i)=>({...strip(c,i),subsM:m(c.subs)})),fixedM:m(cfg.fixed),roundM:m(cfg.round),incM:m(cfg.incs),yearM:m(cfg.years),projM:m(cfg.projs),remM:m(cfg.rems)}}
-/* rewrites accounts, categories and fixed items as a whole; other household fields (monthly saving goal, migration flags) are kept */
-export const saveCfg=()=>{const keep=Object.fromEntries(Object.entries(S.hraw||{}).filter(([k])=>!['v','accsM','catsM','fixedM','roundM','incM','yearM','projM','remM','accs','cats','fixed'].includes(k)));
-  return w(setDoc(H,{...keep,...toDoc(S.cfg),savTarget:S.savTarget||0}))};
-export const saveAcc=a=>merge(H,{accsM:{[a.id]:strip(a,S.cfg.accs.indexOf(a))}});
+/* rewrites accounts, categories, fixed items… as a whole (import, first start, the old format); only these fields are replaced (mergeFields),
+   every other household field stays as it is in the database – also one the other phone saved a moment ago and this one has not seen yet */
+const CFG_F=['v','accsM','catsM','fixedM','roundM','incM','yearM','projM','remM','accs','cats','fixed','savTarget'];
+export const saveCfg=()=>w(setDoc(H,{...toDoc(S.cfg),savTarget:S.savTarget||0},{mergeFields:CFG_F}));
+/* 📱📱 an edit dialog keeps the object it opened with; the other phone can rebuild S.cfg meanwhile (a new object for every item). The position is
+   found by id (never o:-1 = jumping to the top) and the edit lands on the current object, so the screen and the other items stay up to date. */
+export const posOf=(arr,x)=>{arr=arr||[];const i=arr.indexOf(x);if(i>=0)return i;const j=arr.findIndex(y=>y&&y.id===x.id);if(j>=0){if(arr[j]!==x)Object.assign(arr[j],x)}return j>=0?j:arr.length};
+export const saveAcc=a=>merge(H,{accsM:{[a.id]:strip(a,posOf(S.cfg.accs,a))}});
 export const delAccDb=id=>w(updateDoc(H,{['accsM.'+id]:deleteField()}));
-export const saveSub=(c,s)=>merge(H,{catsM:{[c.id]:{...strip(c,S.cfg.cats.indexOf(c)),subsM:{[s.id]:strip(s,c.subs.indexOf(s))}}}});
-export const saveCat=c=>merge(H,{catsM:{[c.id]:strip(c,S.cfg.cats.indexOf(c))}});
+export const saveSub=(c,s)=>merge(H,{catsM:{[c.id]:{...strip(c,posOf(S.cfg.cats,c)),subsM:{[s.id]:strip(s,posOf(c.subs,s))}}}});
+export const saveCat=c=>merge(H,{catsM:{[c.id]:strip(c,posOf(S.cfg.cats,c))}});
 export const delCatDb=id=>w(updateDoc(H,{['catsM.'+id]:deleteField()}));
 export const delSubDb=(c,s)=>w(updateDoc(H,{[`catsM.${c.id}.subsM.${s.id}`]:deleteField()}));
-export const saveFixed=f=>merge(H,{fixedM:{[f.id]:strip(f,S.cfg.fixed.indexOf(f))}});
-export const saveRound=r=>merge(H,{roundM:{[r.id]:strip(r,S.cfg.round.indexOf(r))}});
+export const saveFixed=f=>merge(H,{fixedM:{[f.id]:strip(f,posOf(S.cfg.fixed,f))}});
+export const saveRound=r=>merge(H,{roundM:{[r.id]:strip(r,posOf(S.cfg.round,r))}});
 export const delRoundDb=id=>w(updateDoc(H,{['roundM.'+id]:deleteField()}));
 export const delFixedDb=id=>w(updateDoc(H,{['fixedM.'+id]:deleteField()}));
 /* every write remembers whose phone it came from (shown in the entry and in ⚙️ „Ostatnie zmiany”) */

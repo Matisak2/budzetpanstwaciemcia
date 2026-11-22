@@ -2,13 +2,13 @@
    (learned from the payslips, today.js closeWinP). Bank balances (own + shared accounts), surplus (own accounts) and goals are personal
    (closeM{ym:{p:{who:{steps,done}}}}), „Co było ponad plan” and „Plan” are shared (closeM{ym:{steps}} – ticked by one = ticked for both).
    „✓ Zgadza się” at an account = reconM{accId:date}. Only declarations here – nothing runs when the module loads. */
-import {doc,setDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {CLOSE_STEPS,CLOSE_SHARED,closeDueP,closeStateP,closeWinP,closeYmP} from './today.js';
 import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds,ownerOf} from './logic.js';
 import {MN,MNG,addDays,addMonths,esc,td,zl0,money,dmy} from './util.js';
-import {S,toast,CUR,H,PLC,merge,guard,celebrate,w,infoH} from './core.js';
+import {S,toast,CUR,H,PLC,merge,guard,celebrate,infoH} from './core.js';
 import {goalProgress,goalOwner,unallocated,markRecon,pbudH} from './actions.js';
 import {cascadeH} from './debts.js';
 import {render} from './app.js';
@@ -42,7 +42,7 @@ export function closeStep(k,on){if(guard())return;const ym=S.close;if(!ym)return
 /* the plan of the new month (the one after the closed month – with a payday from the 20th it is the next calendar month) for one position (from step 2);
    a month without a plan yet gets a copy of the last plan with this change – one position alone would stop the automatic copy of the whole plan */
 export function closePlan(sid,val){if(guard())return;const ym=S.close?addMonths(S.close,1):td().slice(0,7),src=S.plans[ym]?null:Object.keys(S.plans).filter(k=>k<ym&&Object.values(S.plans[k]).some(v=>v)).sort().pop();
-  if(S.plans[ym])merge(doc(PLC(),ym),{[sid]:val});else{S.autoPlanned[ym]=1;w(setDoc(doc(PLC(),ym),{...(src?S.plans[src]:{}),[sid]:val}))}
+  if(S.plans[ym])merge(doc(PLC(),ym),{[sid]:val});else{S.autoPlanned[ym]=1;merge(doc(PLC(),ym),{...(src?S.plans[src]:{}),[sid]:val})}
   S.plans={...S.plans,[ym]:{...(S.plans[ym]||(src?S.plans[src]:{})),[sid]:val}};render();toast('Plan na '+MN[+ym.slice(5)-1].toLowerCase()+': '+zl0(val))}
 
 /* the small button at the bottom of Budżet (the reminder itself is in 🔔 „Na dziś”) */

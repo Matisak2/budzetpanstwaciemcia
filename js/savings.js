@@ -7,7 +7,7 @@ import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFrom
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
 import {seasonal,agg,balance,balDrop,liveOf,carStats,yearDueNear,ownerOf} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym,plu} from './util.js';
-import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard,negStop} from './core.js';
+import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard,negStop,posOf} from './core.js';
 import {openTx} from './sheet.js';
 import {gr} from './salary.js';
 import {remsH,warrantiesH,rems,saveRem,projs} from './debts.js';
@@ -196,7 +196,7 @@ export function odloz(owner){use('f:odloz');const o=owner&&owner!='all'?owner:S.
   openTx(null,{type:'tr',to:a?.id})}
 /* ---------- 📅 yearly expenses: one shared subaccount with envelopes (📌 Stałe → Roczne) ---------- */
 export const years=()=>S.cfg.years||[];
-export const saveYear=x=>merge(H,{yearM:{[x.id]:strip(x,years().indexOf(x))}});
+export const saveYear=x=>merge(H,{yearM:{[x.id]:strip(x,posOf(years(),x))}});
 export const delYearDb=id=>w(updateDoc(H,{['yearM.'+id]:deleteField()}));
 export const yearAccId=()=>{const id=S.hraw?.yearAcc;return id&&accById(id)?id:null};
 export function yearState(ym){return yearStateP(S.cfg,liveOf(S.tx),S.hraw,ym,td())}
@@ -257,7 +257,7 @@ export async function editYear(id,pre){if(guard())return;const y0=id?years().fin
     {id:'e',label:'Jak często',type:'select',value:String(y0?.every||12),options:everyOpts(y0?.every)},
     {id:'s',label:'Pozycja budżetu',type:'select',value:y0?.sub||pre.sub||'',options:[['','— wybierz —'],...subOpts('exp')]},
     {id:'wh',label:'👥 Dotyczy – komu przypominać',type:'select',value:y0?.who||pre.who||'',options:[['','Wspólne – oboje'],['Mati','Mati'],['Wercia','Wercia']]}],ok:y0?'Zapisz':'Dodaj',alt:y0?'Usuń':null});
-  if(!r)return;if(r=='alt'){S.cfg.years=years().filter(x=>x!==y0);render();delYearDb(y0.id);return toast('Usunięto')}
+  if(!r)return;if(r=='alt'){S.cfg.years=years().filter(x=>x.id!==y0.id);render();delYearDb(y0.id);return toast('Usunięto')}
   const amount=gr(r.a);if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');
   const dy=Math.round(pnum(r.dy||''))||0,body={id:y0?.id||'y'+rid(),name:r.n.trim(),amount,month:+r.m,day:dy>=1&&dy<=31?dy:0,every:+r.e,sub:r.s,who:r.wh||'',...(y0?.last?{last:y0.last}:{})};
   S.cfg.years=years();let x=y0;if(x)Object.assign(x,body);else{x=body;S.cfg.years.push(x)}

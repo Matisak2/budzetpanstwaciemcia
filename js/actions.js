@@ -1,5 +1,5 @@
 /* Budżet M&W – budget / account actions, look of the phone, fixed costs, goals, reconcile, backup and import, register filters. Part of the former js/app.js (split into modules, same code). */
-import {doc,collection,setDoc,deleteDoc,updateDoc,deleteField,getDocs} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {doc,collection,setDoc,deleteDoc,updateDoc,deleteField,getDocs,increment} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {catIcon,catsEmpty} from './art.js';
 import {CELEBRATE} from './guide.js';
 import {HUES,OWN_COL,catHue,freeHue} from './data.js';
@@ -18,7 +18,9 @@ import {use} from './usage.js';
 /* ---------- budget / accounts actions ---------- */
 export function setPlan(sid,v){if(guard())return;const ym=S.ym,val=pg(v);
   if(((S.plans[ym]||{})[sid]||0)===val)return;
-  merge(doc(PLC(),ym),{[sid]:val})}
+  /* a month without a plan yet (offline, or two months ahead): start it as a copy of the latest plan – one position alone would stop the copy */
+  const src=S.plans[ym]?null:Object.keys(S.plans).filter(k=>k<ym&&Object.values(S.plans[k]).some(v=>v)).sort().pop();if(src)S.autoPlanned[ym]=1;
+  merge(doc(PLC(),ym),{...(src?S.plans[src]:{}),[sid]:val})}
 /* 📌 „Podnieś plan do opłat stałych”: the typed plan of each such position grows so that the plan (with 📅 yearly expenses) covers its fixed payments */
 /* ym – the month to change (the closing of the month passes the new month), else the shown one */
 export async function planToFixed(m){if(guard())return;const ym=typeof m=='string'?m:S.ym,tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),typed=S.plans[ym]||{},d={};
@@ -28,7 +30,7 @@ export async function planToFixed(m){if(guard())return;const ym=typeof m=='strin
 /* 📊 „Popraw plan od następnego miesiąca”: one position of next month's plan; when that month has no plan yet, it starts as a copy
    of the latest plan (otherwise the month would get just this one position – the automatic copy only runs for a month with no plan) */
 export function fixPlan(sid,val){if(guard())return;const nm=addMonths(td().slice(0,7),1),src=S.plans[nm]?null:Object.keys(S.plans).filter(k=>k<nm&&Object.values(S.plans[k]).some(v=>v)).sort().pop();
-  if(S.plans[nm])merge(doc(PLC(),nm),{[sid]:val});else{S.autoPlanned[nm]=1;w(setDoc(doc(PLC(),nm),{...(src?S.plans[src]:{}),[sid]:val}))}
+  if(S.plans[nm])merge(doc(PLC(),nm),{[sid]:val});else{S.autoPlanned[nm]=1;merge(doc(PLC(),nm),{...(src?S.plans[src]:{}),[sid]:val})}
   toast(`Plan na ${MN[+nm.slice(5)-1].toLowerCase()}: ${subsMap(S.cfg)[sid]?.name||''} ${zl0(val)}`)}
 export async function copyPlan(to){if(guard())return;const ym=typeof to=='string'?to:S.ym,[y,m]=ym.split('-').map(Number);const prev=m==1?(y-1)+'-12':y+'-'+p2(m-1);const src=S.plans[prev];
   if(!src||!Object.values(src).some(v=>v))return toast('Poprzedni miesiąc nie ma planu','bad');
@@ -101,13 +103,13 @@ export async function mergeSub(ci,si){if(guard())return;const c=S.cfg.cats[ci],s
   for(const x of incs()){let ch=false;if(x.sub===s.id){x.sub=tgt;ch=true}(x.deds||[]).forEach(d=>{if(d.sub===s.id){d.sub=tgt;ch=true}});
     for(const k of Object.keys(x.dedSub||{}))if(x.dedSub[k]===s.id){x.dedSub[k]=tgt;ch=true}if(ch)saveInc(x)}
   for(const d of debtList().filter(d=>d.sub===s.id))merge(doc(DEBTS(),d.id),{sub:tgt});
-  const ix=c.subs.indexOf(s);if(ix>=0)c.subs.splice(ix,1);render();delSubDb(c,s);
+  {const cc=S.cfg.cats.find(x=>x.id===c.id)||c;cc.subs=cc.subs.filter(x=>x.id!==s.id)}render();delSubDb(c,s);
   toast('Przeniesiono do: '+(subsMap(S.cfg)[tgt]?.name||''))}
 export const HUE_N={150:'Miętowy',205:'Błękitny',28:'Brzoskwiniowy',340:'Różowy',265:'Lawendowy',48:'Miodowy',185:'Morski',12:'Łososiowy',295:'Fiołkowy',95:'Pistacjowy',228:'Chabrowy',320:'Malinowy',62:'Cytrynowy',168:'Szałwiowy',245:'Niebieski',0:'Koralowy'};
 export async function editCat(ci){if(guard())return;const c=S.cfg.cats[ci],empty=!c.subs.length;
   const r=await ask({title:'Kategoria '+(ci+1),fields:[{id:'n',label:'Nazwa (numer dodaje się sam)',value:cleanCat(c.name)},{id:'i',label:'Ikonka (emoji, np. 🍕 🐱 ✈️)',value:catIcon(c)},{id:'h',label:'Kolor',type:'select',value:String(catHue(c,ci)),options:HUES.map(h=>[String(h),HUE_N[h]])},{id:'v',label:'Widoczność',type:'select',value:c.hidden?'0':'1',options:[['1','Widoczna'],['0','🙈 Ukryta – nie ma jej w Budżecie ani przy wpisywaniu (historia zostaje)']]}],alt:empty?'Usuń kategorię':null});
   if(!r)return;
-  if(r=='alt'){if(!await ask({title:'Usunąć kategorię?',text:cleanCat(c.name),ok:'Usuń',danger:true}))return;S.cfg.cats.splice(ci,1);render();delCatDb(c.id);S.cfg.cats.forEach(saveCat);return}
+  if(r=='alt'){if(!await ask({title:'Usunąć kategorię?',text:cleanCat(c.name),ok:'Usuń',danger:true}))return;S.cfg.cats=S.cfg.cats.filter(x=>x.id!==c.id);render();delCatDb(c.id);S.cfg.cats.forEach(saveCat);return}
   if(!r.n.trim())return;c.name=cleanCat(r.n);c.icon=(r.i||'').trim().slice(0,8);c.hue=+r.h;c.hidden=r.v=='0';render();saveCat(c)}
 export async function addCat(){if(guard())return;
   const r=await ask({title:'Nowa kategoria',fields:[{id:'n',label:'Nazwa',ph:'np. EDUKACJA'},{id:'t',label:'Rodzaj',type:'select',value:'exp',options:[['exp','Wydatki'],['inc','Przychody']]}],ok:'Dodaj'});
@@ -207,7 +209,7 @@ export async function editFixedTr(f,pre){const p=f||pre||null,savs=S.cfg.accs.fi
     {id:'t',label:'Na konto',type:'select',value:p?.to||savs[0]?.id||'',options:accOpts()},
     {id:'wh',label:'👥 Dotyczy',type:'select',value:p?.who||'',options:[['','Jak konto'],['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},
     ...(svd.length||f?.saveFor?[{id:'sf',label:'💰 Odkładanie na spłatę pożyczki',type:'select',value:f?.saveFor||'',options:[['','— nie —'],...svd.map(d=>[d.id,`${d.name} (na „${accN(d.saveAcc)}”)`])]}]:[])],ok:f?'Zapisz':'Dodaj',alt:f?'Usuń przelew':null});
-  if(!r)return;if(r=='alt'){S.cfg.fixed=S.cfg.fixed.filter(x=>x!==f);render();delFixedDb(f.id);return}
+  if(!r)return;if(r=='alt'){S.cfg.fixed=S.cfg.fixed.filter(x=>x.id!==f.id);render();delFixedDb(f.id);return}
   const amount=gr(r.a),day=Math.round(pnum(r.d));if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(day<1||day>31)return toast('Dzień miesiąca musi być od 1 do 31','bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
   const sd=r.sf&&S.debts[r.sf];if(sd&&sd.saveAcc!=r.t)return toast(`Na „${sd.name}” odkładasz na koncie „${accN(sd.saveAcc)}” – wybierz je w polu „Na konto”`,'bad');
   const body={id:f?.id||'f'+rid(),name:r.n.trim(),amount,day,sub:'',acc:r.c,to:r.t,kind:'tr',saveFor:sd?r.sf:'',who:r.wh||''};let tgt=f;if(f)Object.assign(f,body);else{tgt=body;S.cfg.fixed.push(body)}render();saveFixed(tgt)}
@@ -311,9 +313,10 @@ export async function allocGoal(gid,dir){if(guard())return;use('f:goal');const g
   if(!r)return;const v=pg(r.v);if(v<=0)return;
   if(dir>0&&v>free)return toast('Możesz przydzielić najwyżej '+zl(free),'bad');
   if(dir<0&&v>have)return toast('W kopercie jest tylko '+zl(have),'bad');
-  const nv=have+dir*v;merge(doc(GOALS(),gid),{alloc:nv,saved:nv});
+  /* 📱📱 both fields already there → increment, so two phones moving money into the same goal at once both count */
+  const nv=have+dir*v,inc=Number.isFinite(g.alloc)&&Number.isFinite(g.saved)&&g.alloc===have&&g.saved===have,by=x=>inc?{alloc:increment(x),saved:increment(x)}:{alloc:have+x,saved:have+x};merge(doc(GOALS(),gid),inc?by(dir*v):{alloc:nv,saved:nv});
   if(dir>0&&nv>=g.target&&have<g.target){setTimeout(()=>celebrate(CELEBRATE.goal(S.who,g.name)),150);return}
-  toast(`${dir>0?'Przydzielono':'Zabrano'} ${zl(v)}`,'',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),{alloc:have,saved:have})})}
+  toast(`${dir>0?'Przydzielono':'Zabrano'} ${zl(v)}`,'',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),inc?by(-dir*v):{alloc:have,saved:have})})}
 export async function setSavTarget(){if(guard())return;const r=await ask({title:'Ile chcecie odkładać co miesiąc?',text:'Liczą się wpłaty na konta oszczędnościowe i inwestycyjne (także PPK) minus wypłaty z nich. Zmiana kursów inwestycji się nie liczy. Wpisz 0, żeby wyłączyć.',fields:[{id:'v',label:'Kwota miesięcznie (zł)',type:'decimal',value:S.savTarget?f2(S.savTarget):'',ph:'np. 2000'}]});
   if(!r)return;merge(H,{savTarget:Math.max(0,pg(r.v))});toast('Zapisano cel miesięczny')}
 export function setSub(k){S.sub=k;S.advG=null;render()}
