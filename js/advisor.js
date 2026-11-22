@@ -236,7 +236,7 @@ export function planP(A){const why=[];
     stock0=Math.min(eqH,eqT,eqR),stock=Math.min(stock0,100-gold-cash);if(stock<stock0)why.push(`złoto i suchy proch zajmują ${gold+cash}% → akcje ${stock}%`);
   const g={stock,gold,cash,bond:100-stock-gold-cash};
   const split={world:{s_world:100},devem:{s_dev:88,s_em:12},pl:{s_world:90,s_pl:10},own:{s_world:100}}[A.q55]||{s_world:100};
-  return{g,split,real:yes(A.q29)&&A.q30!=null&&A.q30!==''?+A.q30:null,pod:+(A.q17||6)||6,save:+A.q13||0,sand:yes(A.q57)?Math.min(10,+(A.q57a||10)):0,why}}
+  return{g,split,real:yes(A.q29)?qn(A.q30,null):null,pod:qn(A.q17,6)||6,save:+A.q13||0,sand:yes(A.q57)?Math.min(10,qn(A.q57a,10)):0,why}}
 export const bandOf=t=>{const b=t>=20?5:2.5;return[Math.max(0,t-b),Math.min(100,t+b)]};
 /* joint plan = the more cautious person's (decision: the joint portfolio fits the more careful one); q64 'sep' – separate parts */
 export const jointPlan=(pM,pW)=>!pM?pW||null:!pW?pM:(pW.g.stock<pM.g.stock?pW:pM);
@@ -265,6 +265,8 @@ export function diagP({cushion,exp,podTarget=6,debts=[],accs=[],tx=[],limits={},
 /* tax threshold from the survey: '0'|'12'|'32'|'19' or a flat rate (ryczałt) number; '?' = unknown */
 export const taxOf=A=>A.q3=='r'?(+A.q3r>0?+A.q3r:'?'):(A.q3||'?');
 const tNum=t=>t=='?'?0:+t;
+/* a number answer: none, „?” (Nie wiem) or not a number → the default (NaN never reaches the plan or Firestore) */
+export const qn=(v,d)=>v==null||v===''||v=='?'||isNaN(+v)?d:+v;
 /* IKZE order: 32%, 19% (linear) and a flat rate ≥ 17% – IKZE first; 12% and a flat rate ≥ 12% – IKE first, IKZE after; 0% or a low flat rate – IKZE never (plan step 4) */
 export const ikzeRank=t=>t=='?'?'after':t=='32'||t=='19'||tNum(t)>=17?'first':tNum(t)>=12?'after':'no'; // ryczałt 17% (IT, lekarze na kontrakcie…) – ulga prawie jak liniowy 19%, IKZE najpierw
 /* 💰 IKE / IKZE / regular account after N years for amount W (grosze) at r a year: IKE without tax; IKZE pays 10% at 65 and its tax return (t%) is reinvested

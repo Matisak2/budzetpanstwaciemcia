@@ -645,6 +645,8 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   // horyzont 5–10 lat → 40%; spadek 40% → 80%; „sprzedaję część” → 40% → akcje 40%; złoto „nie wiem” → ostrożnie 5%
   eq('Plan: horyzont 5–10 lat i reakcja na spadek',planP({q42:'5-10',q44:'0.4',q43:'part',q54:'?'}).g,{stock:40,gold:5,cash:0,bond:55});
   eq('Plan: krótki horyzont = bez akcji; same „nie wiem” = 30% akcji',[planP({q42:'3-5',q44:'0.4'}).g.stock,planP({}).g.stock,planP({q42:'gt20',q44:'0.1'}).g.stock],[0,30,20]);
+  /* „Nie wiem” (?) w pytaniach liczbowych = jak bez odpowiedzi, nigdy NaN (audyt 23.11) */
+  { const P=planP({q42:'gt20',q44:'0.25',q29:'yes',q30:'?',q57:'yes',q57a:'?'});eq('Plan: „?” przy nieruchomościach i piaskownicy',[P.real,P.sand,JSON.stringify(P).includes('null')||!JSON.stringify(P).includes('NaN')],[null,10,true]); }
   eq('Plan: podział akcji, nieruchomości, poduszka, piaskownica',(p=>[p.split,p.real,p.pod,p.sand])(planP({q55:'devem',q29:'yes',q30:40,q17:'9',q57:'yes',q57a:15})),[{s_dev:88,s_em:12},40,9,10]);
   eq('Widełki ±5 pkt, a dla małych części ±2,5',[bandOf(40),bandOf(10),bandOf(0)],[[35,45],[7.5,12.5],[0,2.5]]);
   const pa={g:{stock:60}},pb={g:{stock:30}};eq('Wspólny plan = ostrożniejsza osoba',[jointPlan(pa,pb),jointPlan(pa,null),jointPlan(null,null)],[pb,pa,null]);
