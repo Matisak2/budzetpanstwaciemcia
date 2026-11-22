@@ -179,9 +179,10 @@ export function backupDoc(D,now=new Date(),extra={}){const h=D.hraw||{};
 /* 📅 the same month a year earlier (Analiza → Miesiąc „Rok temu”): income, spending, put aside and the 3 categories that changed most;
    a month that still lasts (today in ym) is compared up to the same day; null = no entries a year ago */
 export function yearAgoP(cfg,tx,ym,today){const yym=addMonths(ym,-12),live=today.slice(0,7)==ym,day=live?Math.min(+today.slice(8),daysIn(yym)):null;
-  const ytx=live?upToDay(tx,yym,day):tx,Y=agg(cfg,ytx,yym);if(!Y.inc&&!Y.exp)return null;const A=agg(cfg,tx,ym),SV=savIds(cfg);
+  /* both sides up to the same day – entries of this month dated later (typed ahead) are not counted now either */
+  const ytx=live?upToDay(tx,yym,day):tx,Y=agg(cfg,ytx,yym);if(!Y.inc&&!Y.exp)return null;const ntx=live?upToDay(tx,ym,+today.slice(8)):tx,A=agg(cfg,ntx,ym),SV=savIds(cfg);
   const cats=cfg.cats.filter(c=>c.type=='exp').map(c=>({id:c.id,name:c.name,d:(A.cat[c.id]||0)-(Y.cat[c.id]||0)})).filter(x=>Math.abs(x.d)>=100).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,3);
-  return{ym:yym,day,now:{inc:A.inc,exp:A.exp,put:savFlow(cfg,tx,SV,ym).flow},then:{inc:Y.inc,exp:Y.exp,put:savFlow(cfg,ytx,SV,yym).flow},cats}}
+  return{ym:yym,day,now:{inc:A.inc,exp:A.exp,put:savFlow(cfg,ntx,SV,ym).flow},then:{inc:Y.inc,exp:Y.exp,put:savFlow(cfg,ytx,SV,yym).flow},cats}}
 /* 📅 the same part of a year and of the year before (Analiza → Rok „Wasza inflacja”, 🖨️ Podsumowanie roku): a year that is over – whole;
    the year that lasts (today in it) – 1 January to today, the current month up to the same day in both years (not a few days against a whole month) */
 export function ytdSpanP(cfg,tx,y,today){y=String(y);const live=today.slice(0,4)==y,last=live?+today.slice(5,7):12,day=live?+today.slice(8):null;
@@ -267,11 +268,13 @@ function budMonth(cfg,{plans,tx,hraw},ym,today,start0,o){const yAcc=hraw?.yearAc
   const pl=planOf(cfg,plans,tx,ym),yp=yAcc?yearPlanOf(cfg,tx,ym).sub:{},auto=payAuto(cfg,tx,ym);
   /* 🧾 each person's part of the plan and what they already spent on it; spending beyond one's own part first covers what is left of the shared part,
      then of the other person's part („paid for” – a hint to give it back, nothing is moved) – that part is no longer to be spent */
-  const mine={},paidFor={},OTH={Mati:'Wercia',Wercia:'Mati'};for(const p of PAYERS){mine[p]={plan:0,spent:0,over:[]};paidFor[p]={}}
+  const hasW=cfg.accs.some(a=>!a.archived&&pool(a.id)=='Wspólne'),mine={},paidFor={},OTH={Mati:'Wercia',Wercia:'Mati'};for(const p of PAYERS){mine[p]={plan:0,spent:0,over:[]};paidFor[p]={}}
   for(const c of cfg.cats.filter(c=>c.type=='exp'))for(const s of c.subs){const rest=Math.max(0,(pl[s.id]||0)-(yp[s.id]||0)-(fixBy[s.id]||0)),sp={};
     for(const p of PAYERS)sp[p]=Math.max(0,spent[p]?.[s.id]||0);
     if(!rest){for(const p of PAYERS)if(sp[p]&&!yp[s.id]&&!fixBy[s.id]){mine[p].spent+=sp[p];mine[p].over.push({sub:s.id,name:s.name,spent:sp[p],plan:0})}continue}
-    const{v}=payOf(cfg,hraw,s,ym,auto),sh={Mati:0,Wercia:0,'Wspólne':0,...payShare(v,rest)},left={};for(const p of PAYERS)left[p]=Math.max(0,sh[p]-sp[p]);
+    const{v}=payOf(cfg,hraw,s,ym,auto),sh={Mati:0,Wercia:0,'Wspólne':0,...payShare(v,rest)},left={};
+    /* no shared account: „Wspólne” = each pays half (not a shared row with a minus and a false „zabraknie”) */
+    if(!hasW&&sh['Wspólne']){const w=sh['Wspólne'],h=Math.floor(w/2);sh.Mati+=h;sh.Wercia+=w-h;sh['Wspólne']=0}for(const p of PAYERS)left[p]=Math.max(0,sh[p]-sp[p]);
     const cov={};for(const p of ['Mati','Wercia']){let ex=Math.max(0,sp[p]-sh[p]);for(const q of ['Wspólne',OTH[p]]){const x=Math.min(ex,left[q]);if(x>0){left[q]-=x;ex-=x;cov[p]=(cov[p]||0)+x;paidFor[p][q]=(paidFor[p][q]||0)+x}}}
     for(const p of PAYERS){const own=sp[p]-(cov[p]||0);mine[p].plan+=sh[p];mine[p].spent+=own;if(own>sh[p])mine[p].over.push({sub:s.id,name:s.name,spent:own,plan:sh[p]});
       if(left[p]&&R[p]){add(p,'out','c:'+c.id,catNm(c),left[p],live?'zostało z planu':'');R[p].plan+=left[p]}}}

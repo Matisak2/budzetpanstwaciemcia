@@ -1,9 +1,9 @@
 /* Layout: one-column mobile ledger — navy header, white cards on cool grey, pastel category blocks, fixed bottom tab bar. Single light theme by choice (matches the original app). */
 :root{
   color-scheme:light;
-  --bg:#f1f5f9; --surface:#ffffff; --surface-2:#f8fafc; --fg:#0f172a; --muted:#64748b; --line:#e2e8f0;
-  --head:#e8edff; --head-fg:#1e293b; --head-muted:#64748b;
-  --inc:#059669; --exp:#e11d48; --tr:#4f46e5; --adj:#d97706; --inv:#7c3aed;
+  --bg:#f1f5f9; --surface:#ffffff; --surface-2:#f8fafc; --fg:#0f172a; --muted:#556275; --line:#e2e8f0;
+  --head:#e8edff; --head-fg:#1e293b; --head-muted:#475569;
+  --inc:#047857; --exp:#e11d48; --tr:#4f46e5; --adj:#b45309; --inv:#7c3aed;
   --font:"Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   /* accent of this phone (⚙️ → Wygląd): buttons, chosen tab, the ➕ button, the greeting */
   --a-btn:#bbf0d6; --a-seg:#c7f0dd; --a-box:#a7f3d0; --a-line:#6ee7b7; --a-ink:#065f46; --a-dk:#047857; --a-sh:16 185 129;
@@ -11,8 +11,8 @@
 }
 body[data-acc=pink]{--a-btn:#fbcfe8;--a-seg:#fce7f3;--a-box:#fbcfe8;--a-line:#f9a8d4;--a-ink:#9d174d;--a-dk:#db2777;--a-sh:236 72 153;--g1:#fff1f7;--g2:#fce7f3;--g3:#fbcfe8;--g-line:#fbcfe8;--g-t:#831843}
 body[data-acc=lav]{--a-btn:#ddd6fe;--a-seg:#ede9fe;--a-box:#ddd6fe;--a-line:#c4b5fd;--a-ink:#5b21b6;--a-dk:#7c3aed;--a-sh:139 92 246;--g1:#faf5ff;--g2:#f3e8ff;--g3:#e0e7ff;--g-line:#e9d5ff;--g-t:#3b0764}
-body[data-acc=sky]{--a-btn:#bae6fd;--a-seg:#e0f2fe;--a-box:#bae6fd;--a-line:#7dd3fc;--a-ink:#075985;--a-dk:#0284c7;--a-sh:14 165 233;--g1:#f0f9ff;--g2:#e0f2fe;--g3:#e0e7ff;--g-line:#bae6fd;--g-t:#0c4a6e}
-body[data-acc=peach]{--a-btn:#fed7aa;--a-seg:#ffedd5;--a-box:#fed7aa;--a-line:#fdba74;--a-ink:#9a3412;--a-dk:#ea580c;--a-sh:249 115 22;--g1:#fff7ed;--g2:#ffedd5;--g3:#fef3c7;--g-line:#fed7aa;--g-t:#7c2d12}
+body[data-acc=sky]{--a-btn:#bae6fd;--a-seg:#e0f2fe;--a-box:#bae6fd;--a-line:#7dd3fc;--a-ink:#075985;--a-dk:#0369a1;--a-sh:14 165 233;--g1:#f0f9ff;--g2:#e0f2fe;--g3:#e0e7ff;--g-line:#bae6fd;--g-t:#0c4a6e}
+body[data-acc=peach]{--a-btn:#fed7aa;--a-seg:#ffedd5;--a-box:#fed7aa;--a-line:#fdba74;--a-ink:#9a3412;--a-dk:#c2410c;--a-sh:249 115 22;--g1:#fff7ed;--g2:#ffedd5;--g3:#fef3c7;--g-line:#fed7aa;--g-t:#7c2d12}
 body[data-acc=lemon]{--a-btn:#fef08a;--a-seg:#fef9c3;--a-box:#fef08a;--a-line:#fde047;--a-ink:#854d0e;--a-dk:#a16207;--a-sh:234 179 8;--g1:#fefce8;--g2:#fef9c3;--g3:#ecfccb;--g-line:#fef08a;--g-t:#713f12}
 /* text size of this phone: A / A+ / A++ (the header and the tab bar stay as they are) */
 body[data-size="1"] #app,body[data-size="1"] .sheet,body[data-size="1"] .dlg{zoom:1.08}
@@ -174,7 +174,7 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .chart .hit.sel{fill:rgb(15 23 42 / .06)}
 .chart .mk{cursor:pointer}
 .chart .mk.sel{stroke-width:36}
-.chart .tip{min-height:1.4em;color:#94a3b8}
+.chart .tip{min-height:1.4em;color:#64748b}
 .chart .tip.on{color:var(--fg);font-weight:700}
 .donut{max-width:190px;margin:0 auto}
 .donut .dc1{font-size:19px;font-weight:800;fill:#0f172a;font-variant-numeric:tabular-nums}
@@ -414,7 +414,7 @@ details.info .mini{background:var(--surface-2);border-radius:12px;padding:8px 10
 @keyframes fromL{from{opacity:0;transform:translateX(-28px)}}
 @keyframes grow{from{transform:scaleX(0)}}
 @keyframes sheetUp{from{transform:translateY(40px);opacity:.6}}
-.login{min-height:100vh;padding:9vh 16px 24px;background:linear-gradient(180deg,var(--head) 0%,var(--bg) 70%)}
+.login{min-height:100vh;min-height:100dvh;padding:9vh 16px 24px;background:linear-gradient(180deg,var(--head) 0%,var(--bg) 70%)}
 .lcard{max-width:360px;margin:0 auto;display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid var(--head-line,#e2e8f0);border-radius:26px;padding:22px 18px 10px;box-shadow:0 10px 30px rgb(15 23 42 / .06)}
 .licon{align-self:center;border-radius:22px;box-shadow:0 6px 16px rgb(15 23 42 / .12)}
 .lcard h1{text-align:center}
@@ -626,7 +626,7 @@ details.hlp summary::-webkit-details-marker{display:none}
 .hlp .hbody p{margin:0 0 6px}.hlp .hbody ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
 .newb{font-style:normal;font-size:11px;font-weight:800;color:var(--a-ink);background:var(--a-seg);border-radius:8px;padding:1px 7px;vertical-align:2px}
 /* 🖨️ year summary: only the page is printed */
-@media print{body{background:#fff!important;padding:0!important}body *{visibility:hidden}.report,.report *{visibility:visible}.report{position:absolute;left:0;top:0;width:100%}
+@media print{.report,.report *{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{background:#fff!important;padding:0!important}body *{visibility:hidden}.report,.report *{visibility:visible}.report{position:absolute;left:0;top:0;width:100%}
   .top,.tabs,.fab,.noprint{display:none!important}@page{margin:12mm}}
 /* big text: switches keep only words */
 body[data-size="2"] .seg .si{display:none}
@@ -670,7 +670,7 @@ body[data-size="2"] .bfilt button{font-size:12.5px;padding:9px 1px}
 .ov.phv{display:flex;align-items:center;justify-content:center;padding:16px;background:rgb(15 23 42/.82);z-index:60}
 .ov.phv[hidden]{display:none}
 .phvin{display:flex;flex-direction:column;gap:10px;width:100%;max-width:560px;max-height:100%}
-.phvin img{width:100%;max-height:calc(100vh - 140px);object-fit:contain;border-radius:14px;background:#fff}
+.phvin img{width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);object-fit:contain;border-radius:14px;background:#fff}
 .phm{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:6px}
 .phm .btn.sm{align-self:flex-start}
 /* ✍️ note suggestions under the note field; 📷 link in the warranty field */
@@ -756,5 +756,5 @@ section.pbud{gap:8px}
 .pbr .pbl .r1{justify-content:space-between;gap:8px}
 .pbr .pbh{margin-top:4px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
 .pbr .pbt{border-top:1px solid var(--line);padding-top:4px;margin-top:2px;font-weight:800}
-.t-tight{color:#c2780a}
+.t-tight{color:#a16207}
 .pbr .phint{background:#fefce8;border-radius:10px;padding:6px 8px;margin-top:4px;color:#713f12}

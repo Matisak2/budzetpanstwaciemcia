@@ -48,9 +48,9 @@ export function yearBody(st,app=''){const bal=st.inc-st.exp,pc=(a,b)=>b?Math.rou
  ${(()=>{const o=st.own||st.who||{};return o.Mati||o.Wercia||o['Wspólne']?box('Mati ↔ Wercia',`<div style="font-size:15px">wydatki z kont: Mati <b>${zl0(o.Mati||0)}</b> · Wercia <b>${zl0(o.Wercia||0)}</b> · wspólnych <b>${zl0(o['Wspólne']||0)}</b></div>`,'#fdf2f8'):''})()}
  ${st.wraps.length?box('🛡️ IKE, IKZE, PPK',wrapsT,'#ecfeff'):''}
  ${st.pit.length?box('🧾 Do zeznania PIT',pitT+`<div style="font-size:12px;color:#64748b;margin-top:4px">To podpowiedź z Waszych wpisów, nie porada podatkowa.</div>`,'#fefce8'):''}
- <div style="text-align:center;color:#94a3b8;font-size:12px;margin-top:12px">Budżet M&amp;W · Bailey i Ivo 🐾</div></div>`}
+ <div style="text-align:center;color:#64748b;font-size:12px;margin-top:12px">Budżet M&amp;W · Bailey i Ivo 🐾</div></div>`}
 /* the e-mail: the page plus a button to the app */
 export function yearHtml(st,app){return`<!doctype html><html><body style="margin:0;background:#fdf6ee">${yearBody(st,app)}
  <div style="text-align:center;margin:18px 0;font-family:Nunito,Segoe UI,Arial,sans-serif"><a href="${app}" style="display:inline-block;background:#a7f3d0;color:#065f46;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:14px">Otwórz Budżet M&amp;W</a>
- <div style="color:#94a3b8;font-size:12px;margin-top:10px">Wysłał automat Budżetu M&amp;W · 1 stycznia</div></div></body></html>`}
+ <div style="color:#64748b;font-size:12px;margin-top:10px">Wysłał automat Budżetu M&amp;W · 1 stycznia</div></div></body></html>`}
 export const yearText=st=>`Podsumowanie roku ${st.year}\nPrzychody: ${zl(st.inc)}\nWydatki: ${zl(st.exp)}\nOdłożone: ${zl(st.saved)}\nMajątek: ${zl(st.wealth0)} → ${zl(st.wealth1)}\n`;
