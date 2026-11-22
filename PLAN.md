@@ -143,7 +143,7 @@ Mati wybrał z listy „co bym zmienił”: 2, 6, 7, 8, z „co bym dodał”: w
 
 ## Poprawka: bez minusa na koncie (uzgodnione 5.11.2026)
 - [x] 🚫 Wydatek / przelew, po którym konto (bieżące, subkonto, oszczędności) zeszłoby poniżej zera w dniu wpisu albo później, się nie zapisuje – tylko informacja „przeanalizuj konta” (bez przycisku przelewu i bez „zapisz mimo to”); też odhaczanie opłat i stałych przelewów, wydatek roczny, spłata długu, pożyczka dla kogoś; 🪙 drobne bez pieniędzy – pominięte
-- [ ] Do decyzji Matiego (z przeglądu 5.11): B – mocniejsze ostrzeżenie „Ujemne saldo” (wszystkie konta, pilne, codzienne powiadomienie), C – „Nie starczy na rachunki” 7 dni w przód z wydatkami rocznymi i ratami, D – ujemne saldo na czerwono w Kontach
+- [x] (22.11, „zrób wszystkie”) B, C, D zrobione: ujemne saldo = pilny punkt i powiadomienie codziennie (`neg:`), „nie starczy” min. 7 dni + wydatki roczne z `yearAcc` (`SHORT_DAYS`), czerwone saldo w Kontach (`.t-neg`). Było do decyzji (z przeglądu 5.11): B – mocniejsze ostrzeżenie „Ujemne saldo” (wszystkie konta, pilne, codzienne powiadomienie), C – „Nie starczy na rachunki” 7 dni w przód z wydatkami rocznymi i ratami, D – ujemne saldo na czerwono w Kontach
 
 ## Poprawki z piątego przeglądu (uzgodnione 5.11.2026)
 - [x] 🚫 Bez minusa także „od drugiej strony”: zmniejszenie / usunięcie / przesunięcie wpływu, odznaczenie przychodu stałego, „Przywróć” i „Cofnij” wydatku (`txOk` w `core.js`, `balDrop` przyjmuje `deleted`)
@@ -201,5 +201,5 @@ Nie robimy: rozliczeń Mati ↔ Wercia (zostają w „Rezygnujemy”); przycisk 
 - [x] 🤖 Automaty: zapasowe terminy, limit czasu, wycena końca miesiąca z cen ostatniej sesji, push bez „Wkrótce”
 - [x] 💼 Zlecenie (12% po progu, ryczałt do 200 zł, chorobowe dobrowolne); 🏦 obligacje i lokaty (ROR/DOR co miesiąc, kupony i wykup jako gotówka, wcześniejszy wykup); 🧭 doradca (tanie długi, poduszka, OKI 25 tys., najem 12,5%)
 - [x] 🎨 Kontrast, druk PDF, „Rok temu”, „Wspólne” bez wspólnego konta; 🐾 drobiazgi (święta, kwoty, Kto, wykresy, testy, dokumentacja)
-- [ ] Do decyzji Matiego: wyjątek grudniowy IKE w doradcy, termometr w zł, ryczałt 17% w kolejności IKZE, miękkie usuwanie celów, przyspieszenie rysunków kotków, brakujące ekrany w teście robota
+- [x] Decyzje Matiego 22.11 („zrób wszystkie”): wyjątek grudniowy IKE w doradcy, termometr w zł, ryczałt 17% → IKZE najpierw, miękkie usuwanie celów (🗑️), kotki rysowane raz (`mountCats`), 10 nowych ekranów w teście robota
 - [ ] Mati w konsoli Firebase: wkleić nowe zasady z `firebase/firestore.rules` (telefony bez dostępu do `secret/`)

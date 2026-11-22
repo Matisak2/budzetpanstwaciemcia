@@ -265,8 +265,8 @@ export function diagP({cushion,exp,podTarget=6,debts=[],accs=[],tx=[],limits={},
 /* tax threshold from the survey: '0'|'12'|'32'|'19' or a flat rate (ryczałt) number; '?' = unknown */
 export const taxOf=A=>A.q3=='r'?(+A.q3r>0?+A.q3r:'?'):(A.q3||'?');
 const tNum=t=>t=='?'?0:+t;
-/* IKZE order: 32% and 19% (linear) – IKZE first; 12% and a flat rate ≥ 12% – IKE first, IKZE after; 0% or a low flat rate – IKZE never (plan step 4) */
-export const ikzeRank=t=>t=='?'?'after':t=='32'||t=='19'?'first':tNum(t)>=12?'after':'no';
+/* IKZE order: 32%, 19% (linear) and a flat rate ≥ 17% – IKZE first; 12% and a flat rate ≥ 12% – IKE first, IKZE after; 0% or a low flat rate – IKZE never (plan step 4) */
+export const ikzeRank=t=>t=='?'?'after':t=='32'||t=='19'||tNum(t)>=17?'first':tNum(t)>=12?'after':'no'; // ryczałt 17% (IT, lekarze na kontrakcie…) – ulga prawie jak liniowy 19%, IKZE najpierw
 /* 💰 IKE / IKZE / regular account after N years for amount W (grosze) at r a year: IKE without tax; IKZE pays 10% at 65 and its tax return (t%) is reinvested
    on a regular account (Belka 19% on the gain); regular – Belka on the gain (notes C: Iwuć's calculator) */
 export function wrapCompare(W,years,t,r=0.05){const f=Math.pow(1+r,years),ike=Math.round(W*f),reg=Math.round(W+(W*f-W)*0.81),rate=tNum(t)/100,back=W*rate;
@@ -281,8 +281,13 @@ export function whereP(inp,P,ctx){let rest=Math.max(0,Math.round(inp.amt||0));co
   if(ctx.debt?.sum>0&&ctx.podMini>0)add(ctx.podMini,'🛟 Mała poduszka – 1 miesiąc wydatków na koncie oszczędnościowym','Zanim spłacisz dług, odłóż choć miesiąc wydatków – inaczej następna awaria znowu pójdzie na kredyt.','','pod');
   if(ctx.cheap?.length)no.push({t:`🔻 Wcześniejsza spłata: ${ctx.cheap.join(', ')}`,why:'Tani dług (poniżej 4% rocznie, np. raty 0%) spłacaj zgodnie z planem – nadwyżka da więcej w poduszce i na IKE.'});
   if(ctx.debt?.sum>0)add(ctx.debt.sum,`🔻 Spłata: ${ctx.debt.name||'długi'}`,`Najpierw dług${ctx.debt.rate?` (${String(ctx.debt.rate).replace('.',',')}% rocznie)`:''}: jego spłata to pewny „zysk”, którego nie da żadna bezpieczna inwestycja.`,'','debt');
-  if(ctx.podGap>0){noStocks=true;add(Math.max(0,ctx.podGap-(rows.find(r=>r.kind=='pod')?.a||0)),'🛟 Poduszka: ok. ¼ konto oszczędnościowe, reszta obligacje skarbowe (EDO / COI)',`Do celu poduszki brakuje ${zlS(ctx.podGap)}. Poduszka przed giełdą – akcje nie teraz.`,'','pod');
-    if(rest>0&&mo==12&&P.some(p=>p.ike?.left>0))no.push({t:'💡 Wyjątek grudniowy',why:'Limit IKE przepada 31 grudnia – możesz wpłacić na IKE i trzymać tam gotówkę albo obligacje (bezpiecznie), a akcje kupić po dokończeniu poduszki.'})}
+  if(ctx.podGap>0){noStocks=true;let gap=Math.max(0,ctx.podGap-(rows.find(r=>r.kind=='pod')?.a||0));
+    /* 💡 the December exception (plan): the IKE limit of this year is lost on 31 December – the cushion money goes to IKE first and stays
+       there safe (cash / bonds), stocks only after the cushion is done; the IKE limit used here is taken off the person's IKE for later rows */
+    if(mo==12)for(const p of P){const left=p.ike?.left||0;if(gap<=0||rest<=0||left<=0)continue;const a=Math.min(gap,left,rest);
+      add(a,`🛡️ IKE ${p.who} – bezpiecznie (gotówka albo obligacje), jako część poduszki`,`Wyjątek grudniowy: limit IKE na ${ctx.today.slice(0,4)} przepada 31 grudnia. Wpłać na IKE i trzymaj tam gotówkę albo obligacje – to dalej Wasza poduszka, a akcje dokupicie, gdy poduszka będzie pełna. Zostało limitu: ${zlS(left)}.`,p.who,'ike');
+      gap-=a;p.ike={...p.ike,left:left-a}}
+    add(gap,'🛟 Poduszka: ok. ¼ konto oszczędnościowe, reszta obligacje skarbowe (EDO / COI)',`Do celu poduszki brakuje ${zlS(ctx.podGap)}. Poduszka przed giełdą – akcje nie teraz.`,'','pod')}
   if(inp.goal=='pod')add(rest,'🛟 Poduszka','Wybrałeś cel „poduszka” – konto oszczędnościowe i obligacje skarbowe.','','pod');
   if(inp.need3||inp.goal=='home'&&inp.homeSoon){noStocks=true;add(rest,`🔒 Bezpiecznie: konto oszczędnościowe / lokata, obligacje 3-letnie TOS${ctx.okiOk?' – na OKI bez podatku do 25 tys. zł w lokatach, kontach i obligacjach detalicznych':''}`,'Pieniądze potrzebne w ciągu 3 lat nie mogą zależeć od giełdy.','','safe');
     no.push({t:'📈 Akcje',why:'Termin krótszy niż ok. 5 lat – akcje potrafią spaść o połowę i odrabiać latami.'})}
@@ -394,10 +399,13 @@ export function costsP(rows,hold,fundPct){const out=[];for(const r of rows){if(r
 /* ======================= D6: 🌡️ termometr, reguła na spadki, przypomnienia ======================= */
 /* facts only, three steps (plan 7): stocks – the whole-world fund vs its peak and its 3-year average; bonds – EDO vs inflation; gold – real NBP rate;
    złoty – USD now vs its average. Influences only: tranches of big purchases and the own rule for drops – never whether to follow the plan. */
-export function thermoP(th,rates,{today,rule}={}){const pts=Object.entries(th?.d||{}).filter(([d,p])=>p>0&&(!today||d<=today)).sort((a,b)=>a[0].localeCompare(b[0])),out={n:pts.length};
+/* 🌡️ in złoty: each EUR price × the EUR rate of that day (or the last one before) – what a Polish investor really sees; without enough rates in EUR */
+export function thermoP(th,rates,{today,rule}={}){const raw=Object.entries(th?.d||{}).filter(([d,p])=>p>0&&(!today||d<=today)).sort((a,b)=>a[0].localeCompare(b[0])),out={n:raw.length};
+  const F=Object.entries(th?.fx||{}).filter(([,v])=>v?.EUR>0).sort((a,b)=>a[0].localeCompare(b[0]));let pts=raw,cur='EUR';
+  if(F.length&&F[0][0]<=(raw[0]?.[0]||'')&&F.length>=raw.length*0.8){let j=0;pts=raw.map(([d,p])=>{while(j+1<F.length&&F[j+1][0]<=d)j++;return[d,p*F[j][1].EUR]});cur='PLN'}
   if(pts.length>=60){const last=pts.at(-1),peak=pts.reduce((m,x)=>x[1]>m[1]?x:m),from3=addDays(last[0],-3*365),L3=pts.filter(x=>x[0]>=from3),avg=L3.reduce((s,x)=>s+x[1],0)/L3.length;
     const dd=Math.round((last[1]/peak[1]-1)*1000)/10,vs=Math.round((last[1]/avg-1)*1000)/10;
-    out.stock={p:last[1],d:last[0],peak:peak[1],peakD:peak[0],dd,vs,lvl:dd<=-20?'sale':dd>-3&&vs>25?'hot':'calm'}}
+    out.stock={p:last[1],d:last[0],peak:peak[1],peakD:peak[0],dd,vs,cur,lvl:dd<=-20?'sale':dd>-3&&vs>25?'hot':'calm'}}
   const infl=+rates?.infl,nbp=+rates?.nbp,edo=rates?.bonds?.EDO;
   if(edo&&isFinite(infl))out.bond={first:+edo.first,real:+(edo.margin??2),infl};
   if(isFinite(infl)&&isFinite(nbp))out.gold={real:Math.round((nbp-infl)*10)/10};

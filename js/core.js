@@ -35,6 +35,10 @@ export function confetti(){if(matchMedia('(prefers-reduced-motion: reduce)').mat
   for(let i=0;i<70;i++){const p=document.createElement('i');p.style.left=Math.random()*100+'%';p.style.background=cols[i%cols.length];p.style.animationDelay=(Math.random()*.6)+'s';p.style.animationDuration=(1.8+Math.random()*1.4)*(pet?1.3:1)+'s';p.style.transform=`rotate(${Math.random()*360}deg)`;if(i%3==0&&!pet)p.style.borderRadius='50%';box.append(p)}
   document.body.append(box);setTimeout(()=>box.remove(),pet?5200:3800)}
 kotki.mode=ls.get('mw_kotki')||'lots';
+let catPend=null,catEl=null,catKey='';
+export function mountCats(){const slot=document.querySelector('.gslot');if(!slot)return;const k=slot.dataset.k;
+  if(k!==catKey||!catEl){const p=catPend&&catPend.k===k?catPend:null;if(!p)return slot.remove();const t=document.createElement('div');t.innerHTML=p.mk();catEl=t.firstElementChild;catKey=k}
+  slot.replaceWith(catEl)}
 /* greeting on the Budget screen: Bailey or Ivo says one thing (special day, something to fix, good news or an everyday line) */
 export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=td(),ym=today.slice(0,7),who=S.who;
   const [hi,em]=hr<5?['Dobranoc','🌙']:hr<12?['Dzień dobry','☀️']:hr<18?['Miłego dnia','🌤️']:hr<23?['Dobry wieczór','🌆']:['Dobranoc','🌙'];
@@ -43,7 +47,10 @@ export function greetH(cfg,txAll){const now=new Date(),hr=now.getHours(),today=t
   const act=actuals(cfg,tx,ym),treats=cfg.cats.reduce((a,c)=>a+c.subs.filter(x=>isTreat(x.name)).reduce((b,x)=>b+Math.max(0,act[x.id]||0),0),0);
   const g=greeting({coins:coinSum(ym),name:who,today,hour:hr,dl:daysIn(ym)-(+today.slice(8))+1,plan:pexp,left:pexp-A.exp,goal:gl,treats,births:S.hraw?.birth||{}});
   if((g.scene.startsWith('birthday')||g.bday)&&kotki.mode!='off'&&!ls.get('mw_bd_'+today)){ls.set('mw_bd_'+today,'1');setTimeout(confetti,400)}
-  const pic=kotki.mode=='off'?'':`<div class="gcats${WIDE.has(g.scene)?' w':''}">${scene(g.scene,'kot',g.arg)}</div>`;
+  /* ⚡ the drawing (~150 KB of SVG with filters) is built once and the same element is put back after every render (mountCats) –
+     only a different scene draws again; the robot / first render get it at once */
+  const ck=g.scene+'|'+(g.arg||'')+'|'+WIDE.has(g.scene);if(kotki.mode!='off')catPend={k:ck,mk:()=>`<div class="gcats${WIDE.has(g.scene)?' w':''}">${scene(g.scene,'kot',g.arg)}</div>`};
+  const pic=kotki.mode=='off'?'':`<div class="gslot" data-k="${esc(ck)}"></div>`;
   const txt=esc(g.text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
   return`<section class="greet"><div class="gtxt"><b>${hi}, ${esc(who)} ${em}</b><span>${kotki.mode=='off'?'':`<em class="who">${g.who}:</em> `}${txt}</span></div>${pic}</section>`}
 /* Bailey & Ivo slides: first steps, "Co nowego", celebrations */

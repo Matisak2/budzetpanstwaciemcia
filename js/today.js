@@ -2,8 +2,8 @@
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy} from './util.js';
-import {balance,carStats,dueAlerts,earlyN,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP,isSal} from './logic.js';
-import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
+import {NEG_GRPS,balance,carStats,dueAlerts,earlyN,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP,isSal} from './logic.js';
+import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,yearDue,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 import {assetOldP} from './advisor.js';
 export {ownerOf};
@@ -100,7 +100,6 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
   for(const[id,d]of Object.entries(D.debts||{}))if(!d.deleted&&!accOk(d.saveAcc))add('refa:d:'+id+':'+d.saveAcc,'❓',`„${d.name}”: odkładanie na spłatę ma ${accTxt(d.saveAcc)} – wybierz inne.`,{a:'owe'});
   for(const a of cfg.accs.filter(a=>!a.archived)){const s=saveSplitP(cfg,tx,D.debts,a.id,today);if(s.L.length&&s.free<=-100)
     add('save:'+a.id+':'+s.sum+':'+s.bal,'💰',`${a.name}: na koncie ${money(s.bal,a.cur)}, a odłożone na spłatę pożyczek to ${zl(s.sum)} – brakuje ${zl(-s.free)}. Może wypłata albo płatność z tego konta bez wybrania pożyczki?`,{a:'owe'})}
-  for(const a of cfg.accs.filter(a=>a.grp=='cur'&&!a.archived)){const b=balance(cfg,tx,a.id,addDays(today,1));if(b<0)add('neg:'+a.id+':'+today.slice(0,7),'➖',`Ujemne saldo: ${a.name} ${money(b,a.cur)} – coś nie wpisane albo wyrównanie?`,{a:'acc'})}
   const ym=today.slice(0,7),pm=addMonths(ym,-1);
   for(const m of [pm,ym])for(const[id,sl]of Object.entries(slips?.[m]||{})){const src=(cfg.incs||[]).find(s=>s.id==id)||sl;if(src.kind=='b2b')continue;const diff=(sl.net||0)-calcNet(src,sl);
     if(Math.abs(diff)>=1)add('slip:'+m+':'+id+':'+sl.ts,'💼',`Pasek ${sl.name||src.name} (${MN[+m.slice(5)-1].toLowerCase()}) – rachunek nie zgadza się o ${zl(Math.abs(diff))}`,{a:'slip',id,ym:m})}
@@ -163,15 +162,20 @@ export function paydayP(cfg,tx,who,ym){let best=null;for(const s of (cfg?.incs||
 /* ⚠️ „nie starczy na rachunki”: each current account walked day by day to the end of the month – unpaid fixed payments, fixed transfers and rates
    in 📌 Stałe go out, money that comes in earlier goes in (a salary expected from its source – the amount of the last one, fixed incomes, fixed
    transfers to this account). The first payment the balance would not cover → {acc, bal, date, name, amount, miss}. Only fixed things, not shopping. */
-export function shortP(cfg,tx,today){const ym=today.slice(0,7),tom=addDays(today,1),fx=cfg.fixed||[],incs=cfg.incs||[],out=[];
-  const paid=f=>inPeriod(tx,ym).some(t=>t.fixedId===f.id),when=d=>d<today?today:d,linked=new Set(incs.map(s=>s.fixed).filter(Boolean));
-  for(const a of cfg.accs.filter(a=>a.grp=='cur'&&!a.archived)){const ev=[];
-    for(const f of fx){if(paid(f))continue;const d=when(fixedDate(f,ym));
+/* the look-ahead: to the end of the month, but at least 7 days (on the 28th the 1st–4th of the next month count too); yearly expenses
+   due in that time go out of the envelope sub-account (yearAcc), which is checked as well (Mati 5.11 C) */
+export const SHORT_DAYS=7;
+export function shortP(cfg,tx,today,yearAcc){const ym=today.slice(0,7),tom=addDays(today,1),fx=cfg.fixed||[],incs=cfg.incs||[],out=[];
+  const last=ym+'-'+p2(daysIn(ym)),end=addDays(today,SHORT_DAYS)>last?addDays(today,SHORT_DAYS):last,MS=end.slice(0,7)>ym?[ym,end.slice(0,7)]:[ym];
+  const paid=(f,m)=>inPeriod(tx,m).some(t=>t.fixedId===f.id),when=d=>d<today?today:d,linked=new Set(incs.map(s=>s.fixed).filter(Boolean));
+  for(const a of cfg.accs.filter(a=>(a.grp=='cur'||a.id===yearAcc)&&!a.archived)){const ev=[];
+    for(const m of MS)for(const f of fx){const fd=fixedDate(f,m);if(m!=ym&&fd>end)continue;if(paid(f,m))continue;const d=when(fd);
       if((f.kind||'exp')!='inc'&&f.acc==a.id)ev.push({d,v:-f.amount,f});
       else if(f.kind=='tr'&&f.to==a.id)ev.push({d,v:f.amount,f});
       else if(f.kind=='inc'&&f.acc==a.id&&!linked.has(f.id)&&!f.vary)ev.push({d,v:f.amount,f})}
-    for(const s of incs.filter(s=>s.acc==a.id)){const p=payDateP(tx,s,ym);if(!p||p.real||p.date<today)continue;
-      const last=tx.filter(t=>isSal(s,t)&&t.acc==a.id).sort((x,y)=>y.date.localeCompare(x.date))[0];if(last)ev.push({d:p.date,v:last.amount})}
+    if(a.id===yearAcc)for(const y of cfg.years||[]){if(!(+y.amount>0))continue;const due=yearDue(y,ym),d=fixedDate({day:y.day||1},due);if(d>end)continue;ev.push({d:when(d),v:-y.amount,f:{id:'y:'+y.id,name:'📅 '+y.name}})}
+    for(const m of MS)for(const s of incs.filter(s=>s.acc==a.id)){const p=payDateP(tx,s,m);if(!p||p.real||p.date<today||p.date>end)continue;
+      const lt=tx.filter(t=>isSal(s,t)&&t.acc==a.id).sort((x,y)=>y.date.localeCompare(x.date))[0];if(lt)ev.push({d:p.date,v:lt.amount})}
     if(!ev.some(e=>e.v<0))continue;ev.sort((x,y)=>x.d.localeCompare(y.d)||y.v-x.v);
     const bal0=balance(cfg,tx,a.id,tom);let b=bal0;for(const e of ev){b+=e.v;if(e.v<0&&b<0){out.push({acc:a.id,bal:bal0,date:e.d,name:e.f.name,amount:-e.v,miss:-b,fid:e.f.id});break}}}
   return out}
@@ -211,9 +215,12 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const x of dueAlerts(cfg.fixed||[],tx,today)){if(x.when=='inc'&&salFixed.has(x.f.id))continue;const tw=x.when!='inc'&&fixedTwin(cfg,tx,x.f,x.due.slice(0,7));
     if(tw){add('💡',`${x.f.name} – jest podobny wpis z ${dmy(tw.date)} (${money(tw.amount,cm[tw.acc])}). To ten rachunek? Odhacz, żeby je połączyć.`,{a:'fixed'},'Połącz','',person(fixedWho(cfg,x.f)));continue}
     add(x.when=='inc'?'📥':x.when=='late'?'⏰':'💳',x.when=='inc'?`${x.f.name} – czeka na odhaczenie`:`${x.f.name} · ${money(x.f.amount,cm[x.f.acc])} – ${x.when=='late'?'po terminie':x.when=='today'?'termin dziś':'termin jutro'}`,{a:'fixed'},'Odhacz',x.when=='late'?'bad':'',person(fixedWho(cfg,x.f)),x.when=='inc'?{}:{n:x.when=='late'?-1:x.when=='today'?0:1});}
+  /* 🔴 a balance below zero (current, sub-accounts, savings – not investments): urgent, every day and in the morning notification, to the owner (Mati 5.11 B) */
+  for(const a of cfg.accs.filter(a=>NEG_GRPS.includes(a.grp)&&!a.archived)){const b=balance(cfg,tx,a.id,addDays(today,1)),key='neg:'+a.id+':'+ym;if(b>=0||hraw?.checkIgnore?.[key])continue;
+    out.push({key,icon:'🔴',text:`Ujemne saldo: ${a.name} ${money(b,a.cur)}. Coś nie wpisane, przelew z innego konta albo wyrównanie z bankiem?`,go:{a:'acc'},label:'Zobacz',k:'bad',n:-1,who:person(ownerOf(a))})}
   /* ⚠️ a fixed payment the account will not cover – a phone notification on the first day of the problem and the day before the payment */
-  {const yd=addDays(today,-1),before=new Set(shortP(cfg,tx.filter(t=>t.date<today),yd).map(x=>x.acc+':'+x.fid+':'+x.date.slice(0,7)));
-    for(const x of shortP(cfg,tx,today)){const a=accOf(x.acc),f=(cfg.fixed||[]).find(f=>f.id==x.fid),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+ym;if(hraw?.checkIgnore?.[key])continue;
+  {const yd=addDays(today,-1),before=new Set(shortP(cfg,tx.filter(t=>t.date<today),yd,hraw?.yearAcc).map(x=>x.acc+':'+x.fid+':'+x.date.slice(0,7)));
+    for(const x of shortP(cfg,tx,today,hraw?.yearAcc)){const a=accOf(x.acc),f=(cfg.fixed||[]).find(f=>f.id==x.fid),n=dd(today,x.date),key='short:'+x.acc+':'+x.fid+':'+ym;if(hraw?.checkIgnore?.[key])continue;
       out.push({key,icon:'⚠️',text:`${a.name}: ${money(x.bal,cm[x.acc])}, a ${n<=0?'dziś':n==1?'jutro':dmy(x.date)} „${x.name}” ${money(x.amount,cm[x.acc])} – zabraknie ${money(x.miss,cm[x.acc])}. Przelej wcześniej na to konto.`,go:{a:'tr',to:x.acc,amount:x.miss},label:'Przelej',k:n<=1?'bad':'short',n,who:person(ownerOf(a))||(f?person(fixedWho(cfg,f)):null),quiet:!(n==1||!before.has(x.acc+':'+x.fid+':'+x.date.slice(0,7)))})}}
   const live=new Set(tx.map(t=>t.id));
   /* the pay day learned from the payslips (payDateP), the typed day only without history; paid on the 31st → in a shorter month the last day */

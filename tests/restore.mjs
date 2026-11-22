@@ -44,7 +44,7 @@ const R=await p.evaluate(async B=>{const{balance,BACKUP_KEYS}=await import('/js/
   const n=o=>Object.keys(o||{}).length,live=o=>Object.values(o||{}).filter(x=>!x.deleted).length,subs=c=>c.cats.reduce((a,k)=>a+k.subs.length,0);
   const bTx=bt.map(t=>({...t}));let bal=0;for(const a of B.cfg.accs)if(balance(B.cfg,bTx,a.id,'9999-99-99')!==balance(S.cfg,S.tx,a.id,'9999-99-99'))bal++;
   return{tx:bt.length,txApp:S.tx.length,miss,diff,acc:[B.cfg.accs.length,S.cfg.accs.length],subs:[subs(B.cfg),subs(S.cfg)],fixed:[(B.cfg.fixed||[]).length,(S.cfg.fixed||[]).length],
-    plans:[n(B.plans),n(S.plans)],slips:[n(B.slips),n(S.slips)],debts:[live(B.debts),live(S.debts)],hold:[live(B.hold),live(S.hold)],goals:[n(B.goals),n(S.goals)],bal,accN:B.cfg.accs.length,
+    plans:[n(B.plans),n(S.plans)],slips:[n(B.slips),n(S.slips)],debts:[live(B.debts),live(S.debts)],hold:[live(B.hold),live(S.hold)],goals:[live(B.goals),n(S.goals)],bal,accN:B.cfg.accs.length,
     /* settings beside the maps: every one in the file must come back (old files without them – nothing to compare) */
     set:[...BACKUP_KEYS.filter(k=>{const v=B[k];if(!v||(typeof v=='object'&&!Object.keys(v).length))return false;
       const x=S.hraw?.[k];return typeof v=='object'?Object.keys(v).some(i=>JSON.stringify(v[i])!==JSON.stringify(x?.[i])):v!==x}),...((B.savTarget||0)!==(S.savTarget||0)?['savTarget']:[])],

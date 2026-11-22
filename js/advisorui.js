@@ -417,7 +417,7 @@ export function goalsPageH(){const who=S.who,A=ankOf(who),W=advW().ank||{},ctx=a
 /* ======================= D6: 🌡️ termometr i przypomnienia ======================= */
 export const thermoNow=()=>thermoP(S.market?.thermo,mkt(),{today:td(),rule:ankOf(S.who).q61});
 export function thermoH(){const T=thermoNow(),A=ankOf(S.who),pc=v=>String(v).replace('.',',');let b='';
-  b+=T.stock?`<div class="mini">📈 <b>Akcje świata</b> (VWCE): ${pc(T.stock.dd)}% od szczytu z ${dmy(T.stock.peakD)}, ${T.stock.vs>=0?'+':''}${pc(T.stock.vs)}% względem średniej z 3 lat.</div>`:`<div class="mini">📈 Akcje: automat zbiera historię ceny funduszu świata (${T.n} dni) – termometr ruszy, gdy będzie jej więcej.</div>`;
+  b+=T.stock?`<div class="mini">📈 <b>Akcje świata</b> (VWCE${T.stock.cur=='PLN'?', w złotych':', w euro'}): ${pc(T.stock.dd)}% od szczytu z ${dmy(T.stock.peakD)}, ${T.stock.vs>=0?'+':''}${pc(T.stock.vs)}% względem średniej z 3 lat.</div>`:`<div class="mini">📈 Akcje: automat zbiera historię ceny funduszu świata (${T.n} dni) – termometr ruszy, gdy będzie jej więcej.</div>`;
   if(T.bond)b+=`<div class="mini">🧾 <b>Obligacje</b>: EDO dziś ${pc(T.bond.first)}% w 1. roku, potem inflacja + ${pc(T.bond.real)} pkt (inflacja ${pc(T.bond.infl)}%). Obligacje detaliczne kupuje się zawsze po 100 zł – nie mają „złego momentu”.</div>`;
   if(T.gold)b+=`<div class="mini">🥇 <b>Złoto</b>: realna stopa (NBP − inflacja) ${T.gold.real>=0?'+':''}${pc(T.gold.real)} pkt${T.gold.real>2?' – wysoka, złoto zwykle ma wtedy pod górkę':T.gold.real<0?' – ujemna, dla złota to zwykle sprzyjające tło':''}.</div>`;
   if(T.pln)b+=`<div class="mini">💵 <b>Złoty</b>: dolar ${pc(T.pln.usd)} zł, ${T.pln.vs>=0?'+':''}${pc(T.pln.vs)}% względem średniej z ${T.pln.n} dni.</div>`;

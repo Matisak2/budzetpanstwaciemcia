@@ -226,6 +226,8 @@ const N=' ';
 /* ---------- ⚠️ nie starczy na rachunki (prognoza salda do końca miesiąca) ---------- */
 { const accs=[{id:'w',grp:'cur',owner:'Wspólne',open:30000},{id:'m',grp:'cur',owner:'Mati',open:500000}],czynsz={id:'fc',name:'Czynsz',amount:185000,day:10,acc:'w',kind:'exp',sub:'s'};
   /* 300 zł na wspólnym, czynsz 1 850 zł 10.11 → brakuje 1 550 zł */
+  eq('Nie starczy – 7 dni do przodu: 28.11 widać czynsz z 2.12',shortP({accs,fixed:[{...czynsz,day:2}]},[{id:'pn',type:'exp',amount:185000,date:'2026-11-02',acc:'m',fixedId:'fc',sub:'s'}],'2026-11-28').map(x=>[x.date,x.miss]),[['2026-12-02',155000]]);
+  eq('Nie starczy – wydatek roczny z subkonta kopert',shortP({accs:[...accs,{id:'y',grp:'sub',owner:'Wspólne',open:10000}],years:[{id:'oc',name:'OC',amount:90000,month:11,day:20,every:12}]},[],'2026-11-15','y').map(x=>[x.acc,x.name,x.miss]),[['y','📅 OC',80000]]);
   eq('Nie starczy – czynsz',shortP({accs,fixed:[czynsz]},[],'2026-11-03'),[{acc:'w',bal:30000,date:'2026-11-10',name:'Czynsz',amount:185000,miss:155000,fid:'fc'}]);
   /* stały przelew 3 000 zł z konta Matiego 5.11 → wystarczy; ten sam przelew dopiero 12.11 → dalej brakuje */
   eq('Nie starczy – zrzutka przed czynszem',shortP({accs,fixed:[czynsz,{id:'fz',name:'Na wspólne',amount:300000,day:5,acc:'m',to:'w',kind:'tr'}]},[],'2026-11-03'),[]);
@@ -665,7 +667,7 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   const r2=whereP({amt:1000000,src:'surplus',goal:'plan'},[M],{...C,mort:{rate:7,fee:false},overpay:30});
   eq('Nadpłata kredytu według ankiety i próg opłacalności',[r2.rows[0].kind,r2.rows[0].a,/8,64%/.test(r2.rows[0].why)],['overpay',300000,true]);
   eq('IKZE przy progu 0% – na liście „na pewno nie”',whereP({amt:100000,src:'surplus',goal:'plan'},[{...M,t:'0'}],C).no.some(x=>/IKZE Mati/.test(x.t)),true);
-  eq('Kolejność IKZE wg progu i ryczałtu',[ikzeRank('32'),ikzeRank('19'),ikzeRank('12'),ikzeRank('0'),ikzeRank(8.5),ikzeRank(15),taxOf({q3:'r',q3r:8.5}),taxOf({})],['first','first','after','no','no','after',8.5,'?']);
+  eq('Kolejność IKZE wg progu i ryczałtu',[ikzeRank('32'),ikzeRank('19'),ikzeRank('12'),ikzeRank('0'),ikzeRank(8.5),ikzeRank(15),ikzeRank(17),taxOf({q3:'r',q3r:8.5}),taxOf({})],['first','first','after','no','no','after','first',8.5,'?']);
   // 10 000 zł, 30 lat, 5%: ×4,3219 → IKE 43 219; zwykły 10 000 + 33 219 × 0,81 = 36 908; IKZE 43 219 × 0,9 + zwrot 3 200 z zyskiem po Belce (3 200 + 10 630 × 0,81) = 50 708
   eq('IKE / IKZE / zwykły rachunek za 30 lat',(c=>[Math.round(c.ike/100),Math.round(c.ikze/100),Math.round(c.reg/100),c.back])(wrapCompare(1000000,30,'32')),[43219,50708,36908,320000]);}
 
@@ -758,5 +760,9 @@ eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWD
   eq('EDO – wcześniejszy wykup z opłatą (najwyżej odsetki)',[instValue(edo,{name:'IKE',wrap:'ike'},'2026-06-01',{}).real,instValue(edo,{name:'IKE',wrap:'ike'},'2026-06-01',{}).value],[3000,0]);
   eq('Seria z własnym oprocentowaniem 1. roku',bondLotValue({type:'EDO',first:6},{date:'2026-01-01',qty:10,price:100,first:5},'2027-01-01',{}).value,105000);
   eq('Kupno i sprzedaż tego samego dnia – sprzedaż się liczy',position({lots:{z:{date:'2026-03-01',kind:'sell',qty:5,price:12},a:{date:'2026-03-01',kind:'buy',qty:5,price:10}}}).qty,0);}
+{ const R=whereP({amt:1000000,src:'surplus',goal:'plan'},[{who:'Mati',t:'12',ike:{left:300000,has:true},ikze:{left:0}}],{podGap:500000,today:'2026-12-05'});
+  eq('Wyjątek grudniowy: poduszka najpierw na IKE (limit przepada), reszta na konto',R.rows.slice(0,2).map(r=>[r.kind,r.a]),[['ike',300000],['pod',200000]]);
+  const L=whereP({amt:1000000,src:'surplus',goal:'plan'},[{who:'Mati',t:'12',ike:{left:300000,has:true},ikze:{left:0}}],{podGap:500000,today:'2026-11-05'});
+  eq('Poza grudniem poduszka zostaje na koncie',L.rows[0].kind,'pod');}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

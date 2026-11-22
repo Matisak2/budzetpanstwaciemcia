@@ -1,5 +1,5 @@
 /* Budżet M&W – budget / account actions, look of the phone, fixed costs, goals, reconcile, backup and import, register filters. Part of the former js/app.js (split into modules, same code). */
-import {doc,collection,setDoc,deleteDoc,updateDoc,deleteField,getDocs,increment} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {doc,collection,setDoc,updateDoc,deleteField,getDocs,increment} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {catIcon,catsEmpty} from './art.js';
 import {CELEBRATE} from './guide.js';
 import {HUES,OWN_COL,catHue,freeHue} from './data.js';
@@ -303,11 +303,13 @@ export async function editGoal(gid,owner){if(guard())return;const g=gid?S.goals[
     {id:'o',label:'Czyj cel',type:'select',value:owner,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]}],
     ok:g?'Zapisz':'Dodaj cel',alt:g?'Usuń cel':null});
   if(!r)return;
-  if(r=='alt'){if(!await ask({title:'Usunąć cel?',text:`${g.name}\nPrzydzielone ${zl(goalAlloc(g))} wróci do puli „do przydzielenia”.`,ok:'Usuń',danger:true}))return;const keep=clone(g);w(deleteDoc(doc(GOALS(),gid)));toast('Usunięto cel','',{label:'Cofnij',fn:()=>w(setDoc(doc(GOALS(),gid),keep))});return}
+  if(r=='alt'){if(!await ask({title:'Usunąć cel?',text:`${g.name}\nPrzydzielone ${zl(goalAlloc(g))} wróci do puli „do przydzielenia”.`,ok:'Usuń',danger:true}))return;merge(doc(GOALS(),gid),{deleted:true,dAt:Date.now(),dby:S.who});toast('Usunięto cel – wróci z 🗑️ „Ostatnio usunięte”','',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),{deleted:false})});return} // 🗑️ soft: the goal can come back
   const target=pg(r.t);if(!r.n.trim())return toast('Podaj nazwę celu','bad');if(target<=0)return toast('Podaj kwotę celu','bad');
   const body={name:r.n.trim(),target,deadline:/^\d{4}-\d{2}$/.test(r.d)?r.d:'',owner:r.o};
   const id=gid||'g'+rid();if(!g){body.alloc=0;body.ts=Date.now()}
   merge(doc(GOALS(),id),body);toast(g?'Zapisano cel':'Dodano cel: '+body.name)}
+/* 🗑️ goal deleted in the last 60 days → „Przywróć” in ⚙️ Ostatnio usunięte */
+export function restoreGoal(gid){if(guard())return;merge(doc(GOALS(),gid),{deleted:false});toast('Przywrócono cel 🎯')}
 export async function allocGoal(gid,dir){if(guard())return;use('f:goal');const g=S.goals[gid],have=goalAlloc(g),own=goalOwner(g),free=unallocated(own);
   if(dir>0&&free<=0)return ask({title:'Brak wolnych pieniędzy',text:`Wszystkie ${own=='Wspólne'?'wspólne oszczędności':'oszczędności ('+own+')'} są już przydzielone do celów. Wpłaćcie coś na takie konto albo zabierzcie z innego celu.`,ok:'OK',cancel:'Zamknij'});
   const sug=dir>0?Math.max(0,Math.min(free,g.target-have)):have;

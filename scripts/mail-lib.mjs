@@ -45,7 +45,7 @@ export function monthStats(D,ym,today=ym+'-28'){const{cfg,tx}=D,sm=subsMap(cfg),
   const end=addMonths(ym,1)+'-01',start=ym+'-01',bal=(a,d)=>balance(cfg,tx,a.id,d),pln=cfg.accs.filter(isPln);
   const savA=pln.filter(a=>a.grp=='sav'||a.grp=='inv'),sav1=savA.reduce((x,a)=>x+bal(a,end),0),sav0=savA.reduce((x,a)=>x+bal(a,start),0);
   const w1=pln.reduce((x,a)=>x+bal(a,end),0),w0=pln.reduce((x,a)=>x+bal(a,start),0);
-  const goals=Object.values(D.goals||{}).filter(g=>g.target>0).map(g=>({n:g.name,saved:g.alloc??g.saved??0,target:g.target,o:g.owner||'Wspólne'})).map(g=>({...g,pct:Math.min(100,Math.max(0,g.saved/g.target*100))}));
+  const goals=Object.values(D.goals||{}).filter(g=>g.target>0&&!g.deleted).map(g=>({n:g.name,saved:g.alloc??g.saved??0,target:g.target,o:g.owner||'Wspólne'})).map(g=>({...g,pct:Math.min(100,Math.max(0,g.saved/g.target*100))}));
   const past=back(6).map(x=>x.exp).filter(v=>v>0),avgE=past.length?past.reduce((a,v)=>a+v,0)/past.length:A.exp;
   const cushPool=pln.filter(a=>a.grp=='sav').reduce((x,a)=>x+bal(a,end),0)-goals.reduce((a,g)=>a+Math.max(0,g.saved),0),cushion=avgE>0?Math.max(0,cushPool)/avgE:null;
   const owe=Object.entries(D.debts||{}).filter(([,d])=>!d.deleted&&d.dir=='owe').reduce((a,[id,d])=>a+debtStateP({id,...d},tx,today).left,0);
