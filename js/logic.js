@@ -178,7 +178,7 @@ export function backupDoc(D,now=new Date(),extra={}){const h=D.hraw||{};
     tx:D.tx,plans:D.plans,inv:D.inv||{},goals:D.goals,slips:D.slips,hold:D.hold,debts:D.debts,...extra}}
 /* 📅 the same month a year earlier (Analiza → Miesiąc „Rok temu”): income, spending, put aside and the 3 categories that changed most;
    a month that still lasts (today in ym) is compared up to the same day; null = no entries a year ago */
-export function yearAgoP(cfg,tx,ym,today){const yym=addMonths(ym,-12),live=today.slice(0,7)==ym,day=live?Math.min(+today.slice(8),daysIn(yym)):null;
+export function yearAgoP(cfg,tx,ym,today){const yym=addMonths(ym,-12),live=today.slice(0,7)==ym,day=live?(+today.slice(8)==daysIn(ym)?daysIn(yym):Math.min(+today.slice(8),daysIn(yym))):null; // the last day of the month = the whole month a year ago (28.02 → also 29.02)
   /* both sides up to the same day – entries of this month dated later (typed ahead) are not counted now either */
   const ytx=live?upToDay(tx,yym,day):tx,Y=agg(cfg,ytx,yym);if(!Y.inc&&!Y.exp)return null;const ntx=live?upToDay(tx,ym,+today.slice(8)):tx,A=agg(cfg,ntx,ym),SV=savIds(cfg);
   const cats=cfg.cats.filter(c=>c.type=='exp').map(c=>({id:c.id,name:c.name,d:(A.cat[c.id]||0)-(Y.cat[c.id]||0)})).filter(x=>Math.abs(x.d)>=100).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,3);
@@ -186,7 +186,7 @@ export function yearAgoP(cfg,tx,ym,today){const yym=addMonths(ym,-12),live=today
 /* 📅 the same part of a year and of the year before (Analiza → Rok „Wasza inflacja”, 🖨️ Podsumowanie roku): a year that is over – whole;
    the year that lasts (today in it) – 1 January to today, the current month up to the same day in both years (not a few days against a whole month) */
 export function ytdSpanP(cfg,tx,y,today){y=String(y);const live=today.slice(0,4)==y,last=live?+today.slice(5,7):12,day=live?+today.slice(8):null;
-  const part=yy=>{const r={inc:0,exp:0,cat:{}};for(let i=1;i<=last;i++){const ym=yy+'-'+p2(i),A=live&&i==last?agg(cfg,upToDay(tx,ym,Math.min(day,daysIn(ym))),ym):agg(cfg,tx,ym);
+  const part=yy=>{const r={inc:0,exp:0,cat:{}};for(let i=1;i<=last;i++){const ym=yy+'-'+p2(i),A=live&&i==last?agg(cfg,upToDay(tx,ym,day==daysIn(today.slice(0,7))?daysIn(ym):Math.min(day,daysIn(ym))),ym):agg(cfg,tx,ym);
     r.inc+=A.inc;r.exp+=A.exp;for(const[k,v]of Object.entries(A.cat))r.cat[k]=(r.cat[k]||0)+v}return r};
   return{cur:part(y),prev:part(String(+y-1)),last,day,live}}
 /* 📋 subscriptions = fixed payments in a category of subscriptions / abonaments / apps / streaming (the same rule as „Opłaty stałe w roku”) */

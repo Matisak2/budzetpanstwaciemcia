@@ -448,6 +448,10 @@ const N=' ';
   eq('Rok temu – kategorie (Dom +400 zł, Koty +50 zł)',L.cats.map(x=>[x.id,x.d]),[['c',40000],['k',5000]]);
   eq('Rok temu – po końcu miesiąca cały miesiąc',yearAgoP(cfg,tx,'2026-10','2026-11-02').then.exp,80000);
   eq('Rok temu – brak wpisów sprzed roku',yearAgoP(cfg,tx,'2026-09','2026-10-20'),null);
+  /* 28.02.2029 = ostatni dzień lutego → rok temu cały luty 2028, razem z 29.02 (audyt 23.11) */
+  { const lt=[T('l1','exp',5000,'2028-02-29','s'),T('l2','exp',7000,'2029-02-10','s')],Y=yearAgoP(cfg,lt,'2029-02','2029-02-28');
+    eq('Rok temu – 28.02 po roku przestępnym liczy też 29.02',[Y&&Y.day,Y&&Y.then.exp],[29,5000]);
+    eq('Ten sam okres – 28.02 po roku przestępnym liczy też 29.02',ytdSpanP(cfg,lt,'2029','2029-02-28').prev.exp,5000); }
 }
 
 /* ---------- 📋 przegląd subskrypcji raz w roku ---------- */
