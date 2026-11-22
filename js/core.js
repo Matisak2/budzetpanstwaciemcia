@@ -177,7 +177,8 @@ export function toDoc(cfg){const m=(arr,f)=>Object.fromEntries((arr||[]).map((x,
 /* rewrites accounts, categories, fixed items… as a whole (import, first start, the old format); only these fields are replaced (mergeFields),
    every other household field stays as it is in the database – also one the other phone saved a moment ago and this one has not seen yet */
 const CFG_F=['v','accsM','catsM','fixedM','roundM','incM','yearM','projM','remM','accs','cats','fixed','savTarget'];
-export const saveCfg=()=>w(setDoc(H,{...toDoc(S.cfg),savTarget:S.savTarget||0},{mergeFields:CFG_F}));
+/* the old array fields (accs, cats, fixed) are removed: every field of mergeFields must be in the data, or the SDK throws at once (audyt 23.11) */
+export const saveCfg=()=>w(setDoc(H,{...toDoc(S.cfg),accs:deleteField(),cats:deleteField(),fixed:deleteField(),savTarget:S.savTarget||0},{mergeFields:CFG_F}));
 /* 📱📱 an edit dialog keeps the object it opened with; the other phone can rebuild S.cfg meanwhile (a new object for every item). The position is
    found by id (never o:-1 = jumping to the top) and the edit lands on the current object, so the screen and the other items stay up to date. */
 export const posOf=(arr,x)=>{arr=arr||[];const i=arr.indexOf(x);if(i>=0)return i;const j=arr.findIndex(y=>y&&y.id===x.id);if(j>=0){if(arr[j]!==x)Object.assign(arr[j],x)}return j>=0?j:arr.length};

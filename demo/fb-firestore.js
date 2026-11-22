@@ -17,9 +17,13 @@ function emit(s){const st=D.store;
 let pend=false;const fire=()=>{if(pend)return;pend=true;setTimeout(()=>{pend=false;subs.forEach(emit);D.save()},1)};
 D.touch=fire;
 export const onSnapshot=(ref,a,b)=>{const cb=typeof a=='function'?a:b,s={ref,cb};subs.push(s);D.ready.then(()=>setTimeout(()=>emit(s),5));return()=>{const i=subs.indexOf(s);if(i>=0)subs.splice(i,1)}};
-/* mergeFields (as in the SDK): only the listed top-level fields are replaced, a listed field missing from the data is removed, the rest stays */
-export const setDoc=async(ref,body,opt)=>{noUndef(body);if(opt&&opt.mergeFields){const t=D.store[ref.p]||{},b=copy(body);for(const f of opt.mergeFields){if(f in b)t[f]=b[f];else delete t[f]}D.store[ref.p]=t}
-  else D.store[ref.p]=opt&&opt.merge?deep(D.store[ref.p]||{},copy(body)):deep({},copy(body));fire()};
+/* mergeFields (as in the SDK): only the listed top-level fields are replaced (deleteField() removes one), the rest stays; a listed field missing
+   from the data throws at once, like the SDK („Field 'x' is specified in your field mask but missing from your input data”) */
+export const setDoc=(ref,body,opt)=>{noUndef(body);if(opt&&opt.mergeFields){for(const f of opt.mergeFields)if(!(f in body)){const e=new Error(`Field '${f}' is specified in your field mask but missing from your input data.`);e.code='invalid-argument';throw e}
+  const t=D.store[ref.p]||{},b=copy(body);for(const f of opt.mergeFields){if(b[f]&&b[f].__del)delete t[f];else t[f]=b[f]}D.store[ref.p]=t;fire();return Promise.resolve()}
+  return setDocM(ref,body,opt)};
+const setDocM=async(ref,body,opt)=>{
+  D.store[ref.p]=opt&&opt.merge?deep(D.store[ref.p]||{},copy(body)):deep({},copy(body));fire()};
 export const updateDoc=async(ref,body)=>{noUndef(body);const d=D.store[ref.p]||{};for(const[k,v]of Object.entries(body)){const ks=k.split('.');let t=d;for(const x of ks.slice(0,-1))t=t[x]=t[x]&&typeof t[x]=='object'?t[x]:{};if(v&&v.__del)delete t[ks.at(-1)];else t[ks.at(-1)]=copy(v)}D.store[ref.p]=d;fire()};
 export const deleteDoc=async(ref)=>{delete D.store[ref.p];fire()};
 export const getDoc=async(ref)=>{await D.ready;const d=D.store[ref.p];return{exists:()=>!!d,data:()=>copy(d),id:ref.p.split('/').pop()}};
