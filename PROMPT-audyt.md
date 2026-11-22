@@ -2,15 +2,25 @@
 
 Zrób pełny, uczciwy audyt naszej aplikacji budżetowej: przejrzyj każdy ekran, funkcję, moduł i plik. Nie szukasz pochwał – szukasz błędów, rzeczy zbędnych, przekombinowanych i brakujących. Cel: perfekcyjna, wielofunkcyjna, szybka i prosta w codziennym użyciu aplikacja budżetowa dla dwojga.
 
-**To jest audyt, nie naprawa.** Nie zmieniaj kodu aplikacji (`js/`, `index.html`, `style.css`, `sw.js`, `demo/`, `scripts/`, `.github/`), nie podbijaj `CACHE`, nie dotykaj prawdziwych danych w Firebase. Wolno Ci tylko:
+**To jest audyt, a nie przebudowa.** Prawdziwych danych w Firebase nie dotykasz nigdy. Wolno Ci:
 - czytać wszystko, uruchamiać testy, wersję demo i własne skrypty pomiarowe (w katalogu tymczasowym, nie w repo),
-- zapisywać raporty w `reports/audyt/` i wysyłać **tylko te pliki** (commit + push na `main` według zasad z `CLAUDE.md`: przed push `git pull --no-rebase origin main`).
+- zapisywać raporty w `reports/audyt/` (commit + push na `main` według zasad z `CLAUDE.md`: przed push `git pull --no-rebase origin main`),
+- **od razu naprawiać oczywiste drobne błędy** – ale tylko takie, które spełniają WSZYSTKIE warunki:
+  - to na pewno błąd (odtworzony testem albo w demo), a nie kwestia gustu czy innego pomysłu na działanie,
+  - poprawka jest mała (kilka linijek), naprawia tylko ten błąd i nie zmienia niczego innego w działaniu ani wyglądzie,
+  - nie zmienia modelu danych, nie usuwa funkcji, nie przestawia ekranów, nie zmienia zasad obliczeń podatków/ZUS/obligacji,
+  - przechodzą wszystkie testy z `CLAUDE.md` uruchomione lokalnie; gdy się da, dopisz test, który ten błąd łapie.
+
+  Każda poprawka to osobny commit z jasnym opisem („Audyt: naprawa – …”). Przy wysyłce zmian w plikach aplikacji podbij `CACHE` w `sw.js` (raz na push). Każdą poprawkę wpisz do `reports/audyt/NAPRAWIONE.md` (co było źle, dowód, co zmienione, commit).
+- **Wszystko inne tylko proponujesz** – większe błędy, porządki w kodzie, przyspieszenia, uproszczenia, usunięcia, nowe funkcje. Bez zgody Matiego tego nie zmieniasz. Masz wątpliwość, czy coś jest „oczywiste i drobne” → nie naprawiaj, opisz w raporcie.
 
 ## Kontekst
 - Najpierw przeczytaj `CLAUDE.md` (architektura, model danych, zasady), `PLAN.md`, `DORADCA-START.md`, `DORADCA-stan.md`, a w razie potrzeby `PLAN-archiwum.md` i `DORADCA-plan.md` (tam są decyzje Matiego). Zrób `git pull origin main` i przeczytaj `git log -20`.
 - Właściciel (Mati) jest lekarzem i nie programuje. Z aplikacji korzystają codziennie dwie osoby (Mati i Wercia) na iPhone'ach, jako PWA. Ważna jest estetyka: delikatne pastele, zaokrąglenia, Nunito, kotki Bailey i Ivo.
 - Kod to ok. 1,2 MB w długich liniach – **nie czytaj go „na raz”**, czytaj modułami i fragmentami.
-- Szanuj decyzje już podjęte (notatki typu „Mati 13.11”, „decyzja 25”). Możesz je zakwestionować, ale napisz wprost, że to zmiana wcześniejszej decyzji, i podaj powód.
+- **Nic nie jest święte** – możesz zaproponować uproszczenie albo usunięcie czegokolwiek (także kotków, Doradcy, zamknięcia miesiąca, ciekawostek), jeśli uczciwie uważasz, że tak będzie lepiej. Ale to tylko propozycja – decyzję podejmuje Mati.
+- W kodzie i planach są zapisane wcześniejsze decyzje (notatki typu „Mati 13.11”, „decyzja 25”). Gdy proponujesz coś, co je zmienia, napisz to wprost i podaj powód.
+- Pytania kieruj tylko do Matiego.
 
 ## Sposób pracy (żeby nic nie umknęło i żebyś się nie przeciążył)
 1. Pracuj **etapami, po kolei**. Każdy etap kończy się zapisanym plikiem `reports/audyt/NN-nazwa.md` i aktualizacją `reports/audyt/POSTEP.md` (co zrobione, co dalej, lista przejrzanych plików z odhaczeniem). Commit i push po każdym etapie.
@@ -51,9 +61,10 @@ Zrób pełny, uczciwy audyt naszej aplikacji budżetowej: przejrzyj każdy ekran
 
 **Etap 10 – Raport końcowy (`reports/audyt/00-RAPORT.md`).**
 1. Podsumowanie dla Matiego po polsku, prosto, bez żargonu (1 strona): stan aplikacji, 5 najważniejszych rzeczy do zrobienia, 5 rzeczy do usunięcia/uproszczenia.
-2. Wszystkie 🔴 i 🟠 błędy z dowodami.
-3. Tabela wszystkich propozycji: obszar · problem/pomysł · waga · wysiłek · korzyść · rekomendacja.
-4. Plan wdrożenia w etapach w stylu `PLAN.md` (A: pilne błędy, B: porządki w kodzie, C: szybkość, D: uproszczenia UX, E: nowe funkcje, F: AI) – każdy etap mały, z kryterium „gotowe”, z kolejnością uwzględniającą pracę w wielu oknach (które etapy dotykają tych samych plików).
-5. Lista otwartych pytań do Matiego (decyzje, których nie możesz podjąć sam).
+2. Co już naprawiłeś w trakcie audytu (skrót z `NAPRAWIONE.md`) – tak, żeby Mati wiedział, co się zmieniło w aplikacji.
+3. Wszystkie pozostałe 🔴 i 🟠 błędy z dowodami.
+4. Tabela wszystkich propozycji: obszar · problem/pomysł · waga · wysiłek · korzyść · rekomendacja.
+5. Plan wdrożenia w etapach w stylu `PLAN.md` (A: pilne błędy, B: porządki w kodzie, C: szybkość, D: uproszczenia UX, E: nowe funkcje, F: AI) – każdy etap mały, z kryterium „gotowe”, z kolejnością uwzględniającą pracę w wielu oknach (które etapy dotykają tych samych plików).
+6. Lista otwartych pytań do Matiego (decyzje, których nie możesz podjąć sam).
 
-Nie dopisuj etapów do `PLAN.md` – to zrobimy po przeczytaniu raportu. Na koniec napisz w czacie krótko, po polsku, co znalazłeś i gdzie jest raport.
+Nie dopisuj etapów do `PLAN.md` – to zrobimy po przeczytaniu raportu. Na koniec napisz w czacie krótko, po polsku, co znalazłeś, co już naprawiłeś i gdzie jest raport.
