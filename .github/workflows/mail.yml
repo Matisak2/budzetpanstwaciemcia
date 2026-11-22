@@ -7,6 +7,10 @@ on:
     - cron: '5 20 * * 0'     # niedziela 21:05 zimą
     - cron: '5 7 1 * *'      # 1. dnia miesiąca 9:05 latem
     - cron: '5 8 1 * *'      # 1. dnia miesiąca 9:05 zimą
+    - cron: '5 19 * * 1'     # zapasowo: poniedziałek po pierwszej niedzieli 21:05 latem (gdy kopia nie wyszła)
+    - cron: '5 20 * * 1'     # … i zimą
+    - cron: '5 7 2 * *'      # zapasowo: 2. dnia 9:05 latem (gdy podsumowanie nie wyszło)
+    - cron: '5 8 2 * *'      # … i zimą
   workflow_dispatch:
     inputs:
       tryb:

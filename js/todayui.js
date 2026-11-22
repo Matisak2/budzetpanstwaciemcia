@@ -4,7 +4,7 @@ import {scene} from './cats.js';
 import {kotki} from './guide.js';
 import {recurringP,automatStale,todayItems as todayItemsP,todayRank,typedToday} from './today.js';
 import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap} from './logic.js';
-import {$,esc,ls,pg,td,zl0,plu,daysIn} from './util.js';
+import {$,esc,ls,pg,td,zl0,plu,daysIn,addDays} from './util.js';
 import {DEMO,S,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
 import {editFixed,goFixed,exportJson,editInt,planToFixed,pbudOf,pbudBad,pbudHalf} from './actions.js';
@@ -93,10 +93,12 @@ export function showToday(){use('f:today');const L=todayItems(),d=$('dlg'),now=L
     <div class="g2" style="grid-template-columns:1fr"><button class="btn primary" id="tdOk">Zamknij</button></div>`;
   d.hidden=false;$('tdOk').onclick=closeToday;d.onclick=e=>{if(e.target===d)closeToday()};updToday()}
 export function updToday(){const n=todayNow().length,b=$('todayBtn');if(!b)return;b.dataset.n=n||'';b.setAttribute('aria-label',n?`Na dziś: ${n}`:'Na dziś')}
+/* 🔔 the app stays quiet only while push really works: notifications on, the automat fresh and the notification automat ran in the last 2 days */
+const pushLive=()=>{const t=td(),L=S.market?.pushlog||{};return!!S.pushOk&&!automatStale(S.market,t)&&[L.m,L.e].some(d=>d&&d>=addDays(t,-2))};
 /* the first time the app is opened on a given day, if anything is waiting */
-export async function maybeToday(){await S.pushReady;if(ls.get('mw_today')==td()||!$('dlg').hidden||!$('sheet').hidden)return;if(S.pushOk&&!automatStale(S.market,td())){ls.set('mw_today',td());return}if(todayNow().length)showToday();else ls.set('mw_today',td())}
+export async function maybeToday(){await S.pushReady;if(ls.get('mw_today')==td()||!$('dlg').hidden||!$('sheet').hidden)return;if(pushLive()){ls.set('mw_today',td());return}if(todayNow().length)showToday();else ls.set('mw_today',td())}
 /* event wiring of this part – app.js calls it once at start (it used to run while app.js was loading) */
 export function wireToday(){
 /* while the app stays open: at 20:00 a gentle nudge when nothing was entered today */
-window.setInterval(()=>{if(!S.cfg)return;updToday();const today=td();if(!(S.pushOk&&!automatStale(S.market,today))&&new Date().getHours()>=20&&ls.get('mw_eve')!=today&&!typedToday(liveOf(S.tx),today)){ls.set('mw_eve',today);toast((kotki.mode=='off'?'':'🐱 ')+'Już 20:00 – wpiszesz dzisiejsze wydatki?','',{label:'Wpisz',fn:()=>openTx()})}},60000);
+window.setInterval(()=>{if(!S.cfg)return;updToday();const today=td();if(!pushLive()&&new Date().getHours()>=20&&ls.get('mw_eve')!=today&&!typedToday(liveOf(S.tx),today)){ls.set('mw_eve',today);toast((kotki.mode=='off'?'':'🐱 ')+'Już 20:00 – wpiszesz dzisiejsze wydatki?','',{label:'Wpisz',fn:()=>openTx()})}},60000);
 }

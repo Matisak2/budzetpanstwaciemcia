@@ -4,7 +4,7 @@
    only then it takes over, and the page reloads itself (js/app.js, controllerchange). That is why CACHE must go up with every change
    (the robot checks it – tests/cache.mjs). Other own files: network first. Firebase SDK (versioned URLs) and fonts: cache first.
    Firestore/Auth traffic is never touched. */
-const CACHE = 'budzet-mw-v93';
+const CACHE = 'budzet-mw-v94';
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const SHELL = ['./', './index.html', './style.css', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png',
   './js/app.js', './js/util.js', './js/data.js', './js/art.js', './js/logic.js', './js/charts.js', './js/cats.js', './js/guide.js', './js/pay.js', './js/inv.js', './js/today.js', './js/report.js', './js/close.js',
@@ -95,7 +95,7 @@ self.addEventListener('notificationclick', e => {
   const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
   e.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of all) if (c.url.startsWith(self.registration.scope)) { c.postMessage({ go: url }); return c.focus(); }
+    for (const c of all) if (c.url.startsWith(self.registration.scope) && !c.url.includes('/demo/')) { c.postMessage({ go: url }); return c.focus(); }
     return self.clients.openWindow(url);
   })());
 });

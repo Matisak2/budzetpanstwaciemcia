@@ -13,9 +13,11 @@ const H=db().doc('households/main'),{today,hour,weekday}=warsaw(),mode=process.e
 const user=process.env.GMAIL_USER,pass=(process.env.GMAIL_APP_PASSWORD||'').replace(/\s/g,'');
 if(!user||!pass){console.error('Brak sekretów GMAIL_USER / GMAIL_APP_PASSWORD.');process.exit(1)}
 const logRef=H.collection('market').doc('maillog'),log=(await logRef.get()).data()||{};
-const doBackup=mode=='test-kopia'||(mode=='auto'&&weekday=='Sun'&&+today.slice(8)<=7&&hour>=21&&log.backup!=ym);
-const doYear=mode=='test-rok'||(mode=='auto'&&today.slice(5)=='01-01'&&hour>=9&&hour<14&&log.year!=today.slice(0,4));
-const doSum=mode=='test-podsumowanie'||(mode=='auto'&&+today.slice(8)==1&&hour>=9&&hour<14&&log.sum!=ym);
+/* a second chance the next day (GitHub sometimes skips a scheduled start, Gmail can fail): Monday after the first Sunday, the 2nd of the month */
+const dom=+today.slice(8),firstSun=(weekday=='Sun'&&dom<=7)||(weekday=='Mon'&&dom>=2&&dom<=8);
+const doBackup=mode=='test-kopia'||(mode=='auto'&&firstSun&&hour>=21&&log.backup!=ym);
+const doYear=mode=='test-rok'||(mode=='auto'&&today.slice(5,7)=='01'&&dom<=2&&hour>=9&&hour<14&&log.year!=today.slice(0,4));
+const doSum=mode=='test-podsumowanie'||(mode=='auto'&&dom<=2&&hour>=9&&hour<14&&log.sum!=ym);
 if(!doBackup&&!doSum&&!doYear){console.log('– to nie pora na maile');process.exit(0)}
 const D=await household(H);
 /* recipients: everyone who can log in (Firebase accounts) plus what the phones remember; the backup only to Mati */

@@ -5,6 +5,7 @@ on:
   schedule:
     - cron: '23 16 * * 1-5'   # w dni robocze 18:23 czasu letniego (po zamknięciu giełd w Europie i tabeli NBP)
     - cron: '23 17 * * 1-5'   # 18:23 czasu zimowego – skrypt sam pomija uruchomienie przed 18:00 i drugie tego samego dnia
+    - cron: '23 18 * * 1-5'   # zapasowo godzinę później (GitHub czasem pomija start) – gdy dziś już pobrane, nic nie robi
   workflow_dispatch: {}        # przycisk „Run workflow” – ręczne uruchomienie
 permissions:
   contents: write   # tylko do miesięcznego „znaku życia” (plik automat-ostatnio.txt)
@@ -37,5 +38,6 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add automat-ostatnio.txt
             git commit -m "Automat: miesięczny znak życia"
-            git push
+            git pull --no-rebase -q origin main || true
+            git push || (sleep 20 && git pull --no-rebase -q origin main && git push)
           fi

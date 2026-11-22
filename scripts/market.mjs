@@ -65,6 +65,9 @@ let nf=0;for(const[id,path]of fundsWant){const f=await tryIt('fundusz',async()=>
 for(const id of Object.keys(out.funds))if(!fundsWant.has(id))delete out.funds[id];
 if(fundsWant.size)console.log(`✓ fundusze: ${nf} z ${fundsWant.size}`);
 await M.doc('rates').set(out);
+/* 📅 the last prices and rates of each month (overwritten by every run in the month → at the end = the last trading day): the month-end
+   valuation done on the 1st–7th of the next month uses them, not that day's prices */
+await tryIt('ceny na koniec miesiąca',()=>M.doc('eom').set({[ym]:{prices:out.prices||{},fx:out.fx||{},fxDate:out.fxDate||null,date:today,gold:out.gold||null,goldDate:out.goldDate||null,funds:out.funds||{}}},{merge:true}));
 // 5. price history of each instrument (makes the "paid in vs value" chart denser)
 let nh=0;const fxOf=c=>!c||c=='PLN'?1:out.fx[c];
 for(const d of hold.docs){const x=d.data();if(x.deleted)continue;const q=x.kind=='tfi'?out.funds[x.fund?.id]:x.ticker&&out.prices[x.ticker.trim().toUpperCase()];if(!q)continue;
@@ -83,15 +86,17 @@ const fl=(await M.doc('funds').get()).data()||{};
 if(fl.checked!=ym){const list={};for(let p=1;p<=40;p++){const L=await tryIt('lista funduszy',async()=>fundLinks(await get(`https://www.analizy.pl/fundusze-ppk/notowania?page=${p}`,'text')));
     if(!L)break;let n=0;for(const[id,slug]of L)if(!list[id]){list[id]=slug;n++}if(!n)break}
   const n=Object.keys(list).length;await M.doc('funds').set({checked:ym,...(n>20?{list,date:today}:{})},{merge:true});console.log(n>20?`✓ lista funduszy PPK: ${n}`:'– lista funduszy PPK: nie udało się')}
-// 8. month-end valuation of accounts with instruments: on the last day of the month (a working day) or the first working days of the next one,
+// 8. month-end valuation of accounts with instruments: on the last day of the month when the automat runs then (a weekday) or on the 1st–7th of the next one,
 //    dated the last day of the month, written once (deleting it in the app is final)
 const lastDay=m=>`${m}-${String(daysIn(m)).padStart(2,'0')}`,pm=(()=>{const[y,m]=ym.split('-').map(Number);return m==1?`${y-1}-12`:`${y}-${String(m-1).padStart(2,'0')}`})();
 const target=today==lastDay(ym)?ym:+today.slice(8)<=7?pm:null,av=(await M.doc('autoval').get()).data()||{};
 if(target&&(av.last||'')<target){const D=await household(H),date=lastDay(target),mc=macroP(D.hraw,out),mref=M.doc('autoval');let n=0;
+  /* valued after the month ended → the prices of its last trading day (eom), not today's */
+  const eom=target<ym?((await M.doc('eom').get()).data()||{})[target]:null,mk=eom?.date&&eom.date<=date?{...out,...eom}:out;
   const txIds=new Set(D.txAll.map(t=>t.id));
   for(const a of D.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived)){const items=Object.entries(D.hold).filter(([,x])=>x.acc==a.id&&!x.deleted).map(([id,x])=>holdAt({id,...x},date));
     if(!items.some(it=>Object.keys(it.lots||{}).length))continue;
-    const d=instDiffP(a,items,D.tx.filter(t=>t.date<=date),date,mc,out),id='av'+target.replace('-','')+a.id;if(!d||txIds.has(id))continue;
+    const d=instDiffP(a,items,D.tx.filter(t=>t.date<=date),date,mc,mk),id='av'+target.replace('-','')+a.id;if(!d||txIds.has(id))continue;
     const w=ownerOf(a);await H.collection('months').doc(target).set({tx:{[id]:{type:'adj',val:true,amount:d,date,sub:'',acc:a.id,to:'',who:w=='Wercia'?'Wercia':'Mati',note:'Wycena instrumentów (automat)',by:'automat',auto:true,deleted:false,ts:Date.now()}}},{merge:true});n++}
   await mref.set({last:target,at:today,n},{merge:true});console.log(`✓ wycena na koniec miesiąca: ${n} ${n==1?'konto':'kont'}`)}
 // 9. 🌡️ thermometer: daily price of the whole-world fund + USD/EUR, the first time (or when short) the last ~5 years from stooq / Yahoo

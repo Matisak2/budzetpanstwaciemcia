@@ -5,8 +5,10 @@ on:
   schedule:
     - cron: '31 5 * * *'   # 7:31 latem (CEST)
     - cron: '31 6 * * *'   # 7:31 zimą (CET)
+    - cron: '31 7 * * *'   # zapasowo 8:31 zimą / 9:31 latem – gdy rano już wysłane, nic nie robi
     - cron: '2 18 * * *'   # 20:02 latem
     - cron: '2 19 * * *'   # 20:02 zimą
+    - cron: '2 20 * * *'   # zapasowo 21:02 zimą / 22:02 latem
   workflow_dispatch:
     inputs:
       tryb:
