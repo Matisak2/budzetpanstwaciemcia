@@ -237,6 +237,9 @@ const N=' ';
   /* pensja na to konto zwykle 8. (8.11 to niedziela → piątek 6.11), ostatnia 2 000 zł → pokryje czynsz */
   const sal=[{id:'s10',type:'inc',amount:200000,date:'2026-10-08',acc:'w',slip:'src'},{id:'e10',type:'exp',amount:200000,date:'2026-10-20',acc:'w',sub:'s'}];
   eq('Nie starczy – pensja przyjdzie przed czynszem',shortP({accs,fixed:[czynsz],incs:[{id:'src',who:'Mati',acc:'w',day:8}]},sal,'2026-11-03'),[]);
+  /* pensja z paska: wpływ 2 000 zł, ale 300 zł potrąceń (osobne wydatki slipOf na tym samym koncie) → na czynsz jest 300 + 1 700 = 2 000 zł, brakuje 150 zł (audyt 23.11) */
+  const salD=[{id:'s10',type:'inc',amount:200000,date:'2026-10-08',acc:'w',slip:'src'},{id:'d10',type:'exp',amount:30000,date:'2026-10-08',acc:'w',sub:'s',slipOf:'s10'},{id:'e10',type:'exp',amount:170000,date:'2026-10-20',acc:'w',sub:'s'}];
+  eq('Nie starczy – pensja bez potrąceń z paska',shortP({accs,fixed:[{...czynsz,amount:215000}],incs:[{id:'src',who:'Mati',acc:'w',day:8}]},salD,'2026-11-03').map(x=>x.miss),[15000]);
   const D={cfg:{accs,cats:[],fixed:[czynsz],years:[]},tx:[],slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2026-11-01T12:00:00').getTime()},hraw:{}};
   const it=d=>todayItems(D,{today:d,checks:false}).find(x=>x.icon=='⚠️');
   eq('Na dziś – brak na czynsz, „Przelej” na brakującą kwotę',it('2026-11-03').go,{a:'tr',to:'w',amount:155000});

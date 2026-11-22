@@ -175,7 +175,7 @@ export function shortP(cfg,tx,today,yearAcc){const ym=today.slice(0,7),tom=addDa
       else if(f.kind=='inc'&&f.acc==a.id&&!linked.has(f.id)&&!f.vary)ev.push({d,v:f.amount,f})}
     if(a.id===yearAcc)for(const y of cfg.years||[]){if(!(+y.amount>0))continue;const due=yearDue(y,ym),d=fixedDate({day:y.day||1},due);if(d>end)continue;ev.push({d:when(d),v:-y.amount,f:{id:'y:'+y.id,name:'📅 '+y.name}})}
     for(const m of MS)for(const s of incs.filter(s=>s.acc==a.id)){const p=payDateP(tx,s,m);if(!p||p.real||p.date<today||p.date>end)continue;
-      const lt=tx.filter(t=>isSal(s,t)&&t.acc==a.id).sort((x,y)=>y.date.localeCompare(x.date))[0];if(lt)ev.push({d:p.date,v:lt.amount})}
+      const lt=tx.filter(t=>isSal(s,t)&&t.acc==a.id).sort((x,y)=>y.date.localeCompare(x.date))[0];if(lt)ev.push({d:p.date,v:lt.amount-tx.filter(t=>t.slipOf===lt.id&&t.acc==a.id&&!t.deleted).reduce((x,t)=>x+t.amount,0)})} // the deductions of the slip go out of this account too
     if(!ev.some(e=>e.v<0))continue;ev.sort((x,y)=>x.d.localeCompare(y.d)||y.v-x.v);
     const bal0=balance(cfg,tx,a.id,tom);let b=bal0;for(const e of ev){b+=e.v;if(e.v<0&&b<0){out.push({acc:a.id,bal:bal0,date:e.d,name:e.f.name,amount:-e.v,miss:-b,fid:e.f.id});break}}}
   return out}
