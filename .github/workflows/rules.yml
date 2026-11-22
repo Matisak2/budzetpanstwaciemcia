@@ -1,0 +1,33 @@
+# 🔐 Zasady dostępu Firestore – uruchamiane tylko ręcznie (Actions → „Zasady Firebase” → Run workflow).
+# Bierze obecne zasady z Firebase (adresy e-mail zostają tylko tam), wstawia je do kopii firebase/firestore.rules,
+# sprawdza na próbach i dopiero w trybie „publikuj” zmienia. „cofnij” wraca do poprzednich. Dziennik – bez adresów.
+name: Zasady Firebase
+on:
+  workflow_dispatch:
+    inputs:
+      tryb:
+        description: 'sprawdz = tylko próba, publikuj = zmień zasady (gdy próby przejdą), cofnij = poprzednie zasady'
+        type: choice
+        options: [sprawdz, publikuj, cofnij]
+        default: sprawdz
+permissions:
+  contents: read
+concurrency:
+  group: rules
+  cancel-in-progress: false
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Instalacja
+        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0
+      - name: Zasady
+        run: node scripts/rules.mjs
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          MODE: ${{ github.event.inputs.tryb || 'sprawdz' }}
