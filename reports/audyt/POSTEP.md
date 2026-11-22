@@ -4,7 +4,7 @@ Wznawiając pracę: przeczytaj ten plik, potem ostatni raport etapu. Nie zaczyna
 
 ## Etapy
 - [x] 0 – Przygotowanie → `00-przygotowanie.md`
-- [ ] 1 – Spis funkcji → `01-funkcje.md` (zaczęte: HELP ma 92 pozycje w 7 sekcjach, NEWS do v68; zrzuty robota w `tests/out/`)
+- [x] 1 – Spis funkcji → `01-funkcje.md` (+ 13 zrzutów w `zrzuty/`)
 - [x] 2 – Przegląd kodu → `02-kod.md`
 - [x] 3 – Pieniądze i przepisy 2026 → `03-przepisy.md`
 - [x] 4 – Dane, bezpieczeństwo, niezawodność → `04-dane-bezpieczenstwo.md`
