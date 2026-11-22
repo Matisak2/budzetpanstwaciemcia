@@ -76,8 +76,25 @@ Każda pozycja: co było źle, dowód, co zmienione, commit. Wszystkie poprawki:
 - **Zmiana:** cena z partii tylko, gdy partia nie jest starsza niż obecna cena.
 - **Commit:** `8274d31`
 
+## 12. „Policz” (Gdzie wpłacić), „Analizuj” (Piaskownica) i „Zapisz” (Aktualizuj wartości) nie działały przy otwartej klawiaturze
+- **Było źle:** `render()` (`app.js:62`) czeka, gdy kursor jest w polu tekstowym, a `calcWhere`, `sandCalc` i `saveValues` – inaczej niż `slipSuggest`/`slipNetto` – nie zdejmowały kursora. Wynik był policzony, ale nie pokazywał się, dopóki nie schowało się klawiatury; wyglądało, jakby przycisk nie działał. Strona „Aktualizuj wartości” nie zamykała się po zapisie.
+- **Dowód:** demo (Playwright, emulacja iPhone 13 – E1 `j3.mjs` i mój skrypt): przed – `{pend:true, kursor w wAmt, wynik niewidoczny}`, po – wynik na ekranie.
+- **Zmiana:** `blur()` na początku tych trzech funkcji (ta sama linijka co w `salary.js`).
+- **Commit:** `1545ad2`
+
+## 13. Przelew z kaskady nadwyżek miał tytuł „Wypłata na konto bieżące”
+- **Było źle:** `sheet.js:187` dawał ten tytuł każdemu przelewowi z podanym kontem źródłowym – także kaskadzie (z konta bieżącego **na** oszczędności/IKE, krok 3 zamknięcia i „→ kwota” w Oszczędnościach).
+- **Dowód:** demo: przed – „Wypłata na konto bieżące”, po – „Wpłata”; wypłata z oszczędności dalej „Wypłata na konto bieżące”.
+- **Commit:** `32ee003`
+
+## 14. Nieaktualne opisy w przewodniku (⚙️ → 📖 Pomoc)
+- „+ Przychód” → „📥 + Przychód stały” (innego przycisku nie ma), strażnik – ujemne saldo dotyczy też subkont i oszczędności (pilnie, codziennie – od 22.11), koło majątku – doradca jest gotowy (nie „w kolejnych etapach”). Sam tekst.
+- **Dowód:** E1 (porównanie HELP z demo), R7 (`helpq.mjs`).
+- **Commit:** `c2e98b9`
+
 ## Wysyłki
 - Push 1: CACHE `v98` → `v99` (poprawki 1–5).
 - Push 2: CACHE `v99` → `v100` (poprawki 6–9).
 - Push 3: CACHE `v100` → `v101` (poprawki 10–11).
+- Push 4: CACHE `v101` → `v102` (poprawki 12–14).
 - CACHE `budzet-mw-v98` → `v99`. Przed push lokalnie: eslint (z `scripts/`), `node --check`, `cache.mjs`, `imports.mjs`, `calc.mjs` (432), `screens.mjs` (4 × 103 ekrany), `restore.mjs --demo` – wszystko zielone.
