@@ -72,7 +72,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin === location.origin && url.pathname.includes('/demo/')) return; // the demo is never cached (it must not replace the real app offline)
+  if (url.origin === location.origin && /\/demo(\/|$)/.test(url.pathname)) return; // the demo is never cached (it must not replace the real app offline)
   if (req.mode === 'navigate' || (url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname))) {
     e.respondWith(shellFirst(req, './index.html'));
   } else if (url.origin === location.origin) {
