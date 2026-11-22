@@ -5,8 +5,8 @@ export const IICON={etf:'📊',tfi:'🧺',akcje:'📈',obl:'🏛️',zloto:'🥇
 /* retail treasury bonds: months to maturity, how later periods are indexed, capitalisation; rates are typed from the purchase confirmation */
 export const BONDS={
   OTS:{n:'OTS – 3-miesięczne, stałe',m:3,idx:'fix',cap:true,margin:0},
-  ROR:{n:'ROR – roczne, zmienne (stopa NBP)',m:12,idx:'nbp',cap:false,margin:0},
-  DOR:{n:'DOR – 2-letnie, zmienne (stopa NBP)',m:24,idx:'nbp',cap:false,margin:0.15},
+  ROR:{n:'ROR – roczne, zmienne (stopa NBP)',m:12,idx:'nbp',cap:false,margin:0,mon:true},
+  DOR:{n:'DOR – 2-letnie, zmienne (stopa NBP)',m:24,idx:'nbp',cap:false,margin:0.15,mon:true},
   TOS:{n:'TOS – 3-letnie, stałe',m:36,idx:'fix',cap:true,margin:0},
   COI:{n:'COI – 4-letnie, inflacja + marża',m:48,idx:'infl',cap:false,margin:1.5},
   EDO:{n:'EDO – 10-letnie, inflacja + marża',m:120,idx:'infl',cap:true,margin:2},
@@ -23,7 +23,7 @@ const monthsBetween=(a,b)=>{const[y1,m1,d1]=a.split('-').map(Number),[y2,m2,d2]=
 export const addM=(date,m)=>{const[y,mo,d]=date.split('-').map(Number),t=new Date(Date.UTC(y,mo-1+m,1)),last=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate();return t.toISOString().slice(0,8)+String(Math.min(d,last)).padStart(2,'0')};
 /* lots: {date,qty,price,fx,fee,kind:'buy'|'sell'}; average cost; qty may be fractional */
 export function position(it,before='9999-99-99'){let qty=0,cost=0,costPx=0,costFx=0,real=0;
-  for(const l of Object.values(it.lots||{}).filter(l=>!l.deleted&&l.date<before).sort((a,b)=>a.date.localeCompare(b.date))){
+  for(const l of Object.values(it.lots||{}).filter(l=>!l.deleted&&l.date<before).sort((a,b)=>a.date.localeCompare(b.date)||(a.kind=='sell')-(b.kind=='sell'))){ // a buy before a sale of the same day
     const q=+l.qty||0,px=+l.price||0,fx=+l.fx||1;
     if(l.kind=='sell'){if(qty<=0)continue;const k=Math.min(q,qty)/qty;real+=Math.round(Math.min(q,qty)*px*fx*100)-(l.fee||0)-cost*k;cost-=cost*k;costPx-=costPx*k;costFx-=costFx*k;qty-=Math.min(q,qty);continue}
     qty+=q;cost+=Math.round(q*px*fx*100)+(l.fee||0);costPx+=q*px;costFx+=q*px*fx}
@@ -42,7 +42,14 @@ export function bondYears(b,macro={},start){const T=BONDS[b.type]||BONDS.EDO,n=M
     if(T.idx=='nbp')return{r:(+(macro.nbp??0))+mg,src:'nbp',from,mg};
     return{r:+(b.first||0),src:'first',from}})}
 export const bondRates=(b,macro={},start)=>bondYears(b,macro,start).map(x=>x.r);
-export function bondLotValue(b,l,today,macro){const T=BONDS[b.type]||BONDS.EDO,months=b.m||T.m,N=Math.round((+l.qty||0)*(+l.price||100)*100),end=addM(l.date,months),at=today<end?today:end;
+/* early redemption fee per bond (grosze – EDO 3 zł, since 09.2024), at most the interest earned */
+export const BOND_FEE={OTS:0,ROR:50,DOR:70,TOS:100,COI:200,EDO:300,ROS:200,ROD:300};
+/* one lot of a bond: its own series data when typed at the purchase (first, margin – EDO bought in another month is another series) */
+export const lotBond=(b,l)=>({...b,...(l&&l.first!=null&&l.first!==''?{first:+l.first}:{}),...(l&&l.margin!=null&&l.margin!==''?{margin:+l.margin}:{})});
+export function bondLotValue(b0,l,today,macro){const b=lotBond(b0,l),T=BONDS[b.type]||BONDS.EDO,months=b.m||T.m,N=Math.round((+l.qty||0)*(+l.price||100)*100),end=addM(l.date,months),at=today<end?today:end;
+  /* ROR / DOR: the 1st month at the fixed rate, then NBP + margin, interest paid out every month (not added to the bond) */
+  if(T.mon){const full=Math.min(months,monthsBetween(l.date,at)),rm=i=>(i==0?+(b.first||0):(+(macro?.nbp??0))+(+(b.margin??T.margin)))/100/12;let paid=0;for(let i=0;i<full;i++)paid+=N*rm(i);
+    const ms=addM(l.date,full),me=addM(l.date,full+1),frac=full>=months?0:Math.max(0,dd(ms,at))/dd(ms,me);return{value:Math.round(N*(1+rm(full)*frac)),paid:Math.round(paid),end,cost:N}}
   if(months<12){const r=(+(b.first||0))/100,f=Math.max(0,dd(l.date,at))/dd(l.date,end);return{value:Math.round(N*(1+r*months/12*f)),paid:0,end,cost:N}}
   const rates=bondRates(b,macro,l.date).map(r=>r/100),full=Math.min(rates.length,Math.floor(monthsBetween(l.date,at)/12));
   const ys=addM(l.date,full*12),ye=addM(l.date,(full+1)*12),frac=full>=rates.length?0:Math.max(0,dd(ys,at))/dd(ys,ye);
@@ -62,13 +69,23 @@ export function marketQuote(it,acc,m){if(!m)return null;const ac=acc.cur||'PLN',
   return{p:newer(d)?p:null,fx:newer(m.fxDate||m.date)&&ic!=ac?f:null,d}}
 /* value of an instrument in the account currency, gains and the amount after the 19% tax */
 export function instValue(it,acc,today,macro={},mkt=null){
-  if(it.kind=='obl'||it.kind=='lokata'){let value=0,cost=0,paid=0,next=null;
-    for(const l of Object.values(it.lots||{}).filter(l=>!l.deleted&&l.kind!='sell')){
-      let r;if(it.kind=='obl')r=bondLotValue(it.bond||{},l,today,macro);
-      else{const N=Math.round((+l.qty||1)*(+l.price||0)*100),end=addM(l.date,+(it.dep?.months||12)),at=today<end?today:end;r={value:Math.round(N*(1+(+(it.dep?.rate||0))/100*Math.max(0,dd(l.date,at))/365)),paid:0,end,cost:N}}
-      value+=r.value;cost+=r.cost;paid+=r.paid;if(r.end>=today&&(!next||r.end<next))next=r.end}
-    const gain=value-cost+paid,tax=taxFree(acc)?0:Math.round(Math.max(0,value-cost)*BELKA/100);
-    return{value,cost,gain,gPx:gain,gFx:0,net:value-tax,tax,paid,next,qty:null,real:0}}
+  if(it.kind=='obl'||it.kind=='lokata'){
+    /* 🏦 bonds and deposits: what is still held counts at today's value; what ended (maturity) or was redeemed early (a „sell” lot, FIFO)
+       became cash on the account – its gain after the 19% tax (none on IKE/IKZE/OKI) is `real`, like a sale of a fund; coupons paid
+       out (COI every year, ROR/DOR every month) are cash too. So the account balance = cash + the bonds still held. */
+    const free=taxFree(acc),net=g=>g>0&&!free?g-Math.round(g*BELKA/100):g,one=(l,at)=>{if(it.kind=='obl')return bondLotValue(it.bond||{},l,at,macro);
+      const N=Math.round((+l.qty||1)*(+l.price||0)*100),end=addM(l.date,+(it.dep?.months||12)),a=at<end?at:end;return{value:Math.round(N*(1+(+(it.dep?.rate||0))/100*Math.max(0,dd(l.date,a))/365)),paid:0,end,cost:N}};
+    const L=Object.values(it.lots||{}).filter(l=>!l.deleted&&l.date<=today).sort((a,b)=>a.date.localeCompare(b.date)||(a.kind=='sell')-(b.kind=='sell'));
+    const held=[];for(const l of L){if(l.kind!='sell'){held.push({...l,qty:+l.qty||0});continue}let q=+l.qty||0;
+      for(const h of held){if(q<=0)break;const k=Math.min(q,h.qty);if(k<=0)continue;const part={...h,qty:k},r=one(part,l.date),early=l.date<r.end;
+        const fee=early?(it.kind=='obl'&&(it.bond||{}).type!='OTS'?Math.min((BOND_FEE[(it.bond||{}).type]||0)*k,Math.max(0,r.value-r.cost+r.paid)):Math.max(0,r.value-r.cost)):0;
+        h.sold=(h.sold||0)+k;h.qty-=k;q-=k;h.real=(h.real||0)+net(r.value-r.cost+r.paid-fee)}}
+    let value=0,cost=0,paid=0,real=0,next=null,done=0;
+    for(const h of held){real+=h.real||0;if(h.qty<=0)continue;const r=one(h,today);
+      if(r.end<=today){real+=net(r.value-r.cost+r.paid);done+=r.value+r.paid;continue}
+      value+=r.value;cost+=r.cost;paid+=r.paid;real+=net(r.paid);if(!next||r.end<next)next=r.end}
+    const tax=free?0:Math.round(Math.max(0,value-cost)*BELKA/100),gain=value-cost+real;
+    return{value,cost,gain,gPx:gain,gFx:0,net:value-tax,tax,paid,next,qty:null,real:Math.round(real),done}}
   const p=position(it),mq=marketQuote(it,acc,mkt),px=+(mq?.p??it.price??p.avgPx),fx=it.cur&&it.cur!=(acc.cur||'PLN')?+(mq?.fx||it.fxNow||p.avgFx||1):1;
   const value=Math.round(p.qty*px*fx*100)/100,costNoFee=Math.round(p.qty*p.avgPx*p.avgFx*100)/100;
   const gPx=Math.round(p.qty*(px-p.avgPx)*fx*100)/100,gFx=Math.round(p.qty*p.avgPx*(fx-p.avgFx)*100)/100;
@@ -77,7 +94,7 @@ export function instValue(it,acc,today,macro={},mkt=null){
 /* value adjustment that makes an account balance show its instruments at today's value (instrument gains minus value changes already booked) */
 export function instDiffP(acc,items,tx,today,macro,mkt){if(!items.length)return null;let unreal=0,val=0;
   items.forEach(it=>{const v=instValue(it,acc,today,macro,mkt);unreal+=v.value-v.cost+(v.real||0)});
-  for(const t of tx)if(t.acc===acc.id&&t.type=='adj'&&t.val)val+=t.amount;return unreal-val}
+  for(const t of tx)if(t.acc===acc.id&&t.type=='adj'&&t.val&&!t.int)val+=t.amount;return unreal-val} // 💰 booked interest of the cash is real money, not a valuation
 /* an instrument as it was at the end of a day (later purchases and sales left out) */
 export const holdAt=(it,date)=>({...it,lots:Object.fromEntries(Object.entries(it.lots||{}).filter(([,l])=>l.date<=date))});
 /* a readable fund name from its address: "ppk-inpzu-2040" -> "PPK inPZU 2040"; the institution = the name without the year */

@@ -6,7 +6,7 @@ import {gainSvg} from './charts.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue,intOf,intPeriod,intCalc,intTax,intMonthly,intLabel} from './inv.js';
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
 import {seasonal,agg,balance,balDrop,liveOf,carStats,yearDueNear,ownerOf} from './logic.js';
-import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym,plu} from './util.js';
+import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym,plu,dmy} from './util.js';
 import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard,negStop,posOf} from './core.js';
 import {openTx} from './sheet.js';
 import {gr} from './salary.js';
@@ -44,9 +44,9 @@ export function instPageH(){const a=accById(S.instAcc);if(!a){S.instAcc=null;ret
     const br=it.kind=='obl'?bondRates(it.bond||{},mc,lots[0]?.[1].date):null,yi=it.kind=='obl'&&lots.length?Math.min(br.length-1,Math.floor((new Date(today)-new Date(lots[0][1].date))/(365.25*864e5))):0;
     return`<div class="inst"><div class="r1"><b>${IICON[it.kind]} ${esc(it.name)}${it.ticker?` <span class="mini">${esc(it.ticker)}</span>`:''}</b><b class="num">${M(v.value)}</b></div>
       <div class="mini">${IKINDS[it.kind]}${mk?` · ${it.kind=='tfi'?nf(v.qty,2)+' j.u.':nf(v.qty,0)+' szt.'} × ${nf(v.px)} ${curSym(ic)}${ic!=cur?` · kurs ${nf(v.fx,4)}`:''}${it.priceDate?` · cena z ${it.priceDate.split('-').reverse().join('.')}`:''}`:''}${it.kind=='obl'?` · ${esc(BONDS[it.bond?.type]?.n||'')} · w tym roku ${nf(br[yi])}%`:''}${it.kind=='lokata'?` · ${nf(it.dep?.rate)}% na ${it.dep?.months} mies.`:''}${v.next?` · koniec ${v.next.split('-').reverse().join('.')}`:''}</div>
-      <div class="mini">zysk <b class="${v.gain>=0?'t-inc':'t-exp'}">${v.gain>=0?'+':''}${M(v.gain)}</b>${mk&&ic!=cur?` (z ceny ${v.gPx>=0?'+':''}${M(v.gPx)} · z kursu ${v.gFx>=0?'+':''}${M(v.gFx)})`:''}${v.real?` · zrealizowany ${M(v.real)}`:''} · na rękę ${M(v.net)}</div>
-      <div class="lots">${lots.map(([,l])=>`<span>${l.kind=='sell'?'↗️ sprzedaż':'🛒'} ${l.date.split('-').reverse().join('.')} · ${it.kind=='lokata'?M(Math.round(l.price*100)):`${nf(l.qty,0)} × ${nf(l.price)} ${curSym(ic)}`}</span>`).join('')}</div>
-      <div class="btns" style="gap:6px"><button class="chip" onclick="addLot('${it.id}')">+ ${it.kind=='lokata'?'Lokata':'Zakup'}</button>${mk?`<button class="chip" onclick="addLot('${it.id}',1)">Sprzedaż</button><button class="chip" onclick="setPrice('${it.id}')">✎ Cena</button>`:''}${it.kind=='tfi'?`<button class="chip" onclick="setUnits('${it.id}')">✎ Liczba jednostek</button>`:''}${it.kind=='obl'?`<button class="chip" onclick="bondRatesDlg('${it.id}')">📅 Oprocentowanie</button>`:''}<button class="chip" onclick="editInst('${it.id}')">⋯</button></div></div>`}).join('');
+      <div class="mini">zysk <b class="${v.gain>=0?'t-inc':'t-exp'}">${v.gain>=0?'+':''}${M(v.gain)}</b>${mk&&ic!=cur?` (z ceny ${v.gPx>=0?'+':''}${M(v.gPx)} · z kursu ${v.gFx>=0?'+':''}${M(v.gFx)})`:''}${v.real?` · zrealizowany ${M(v.real)}`:''} · na rękę ${M(v.net)}</div>${v.done?`<div class="mini">✅ ${it.kind=='lokata'?'zakończone lokaty':'wykupione obligacje'}: ${M(v.done)} wróciło na konto jako gotówka${it.kind=='obl'?' (kupony i wykup – nie wpisuj ich ręcznie)':''}</div>`:''}
+      <div class="lots">${lots.map(([,l])=>`<span>${l.kind=='sell'?(it.kind=='obl'?'↗️ wykup':it.kind=='lokata'?'↗️ zerwana':'↗️ sprzedaż'):'🛒'} ${l.date.split('-').reverse().join('.')} · ${it.kind=='lokata'?(l.kind=='sell'?'':M(Math.round(l.price*100))):`${nf(l.qty,0)} × ${nf(l.price)} ${curSym(ic)}`}</span>`).join('')}</div>
+      <div class="btns" style="gap:6px"><button class="chip" onclick="addLot('${it.id}')">+ ${it.kind=='lokata'?'Lokata':'Zakup'}</button>${!mk&&v.value>0?`<button class="chip" onclick="addLot('${it.id}',1)">${it.kind=='lokata'?'Zerwij':'Wykup wcześniej'}</button>`:''}${mk?`<button class="chip" onclick="addLot('${it.id}',1)">Sprzedaż</button><button class="chip" onclick="setPrice('${it.id}')">✎ Cena</button>`:''}${it.kind=='tfi'?`<button class="chip" onclick="setUnits('${it.id}')">✎ Liczba jednostek</button>`:''}${it.kind=='obl'?`<button class="chip" onclick="bondRatesDlg('${it.id}')">📅 Oprocentowanie</button>`:''}<button class="chip" onclick="editInst('${it.id}')">⋯</button></div></div>`}).join('');
   if(!L.length)h+=catsEmpty('Dodaj ETF-y, akcje, obligacje, złoto, krypto albo lokaty. Aplikacja policzy zysk i kwotę „na rękę”.',1,'lupa');
   h+=`<button class="btn dark" onclick="editInst(null,'${a.id}')">+ Dodaj instrument</button>
     <details class="more mini" style="padding:0 4px"><summary>Jak to liczę? więcej ›</summary>Ceny z symbolem i fundusze pobiera automat w dni robocze; inne wpisujesz ręcznie (✎ Cena albo „📈 Aktualizuj wartości”). Obligacje i lokaty liczą się same według zasad. „Zapisz wycenę” przenosi wynik do salda konta – nie wpływa na wydatki. Na koniec miesiąca automat zapisuje wycenę sam.</details>`;
@@ -91,15 +91,20 @@ export async function editInst(id,accId){if(guard())return;const it0=id?S.hold[i
   merge(doc(HOLD(),iid),body);toast(isNew?'Dodano instrument':'Zapisano instrument')}
 export async function addLot(id,sell){if(guard())return;const it=S.hold[id],a=accById(it?.acc);if(!a)return;const k=it.kind,fx=it.cur&&it.cur!=CUR(a);
   const f=[{id:'d',label:'Data',type:'date',value:td()}];
-  if(k=='obl')f.push({id:'q',label:'Liczba obligacji (1 szt. = 100 zł)',type:'int',value:''});
-  else if(k=='lokata')f.push({id:'p',label:`Kwota (${curSym(CUR(a))})`,type:'decimal',value:''});
+  /* 🏦 a bond bought in another month = another series: its own 1st-year rate and margin; „Wykup wcześniej” = a sell lot (fee counted) */
+  if(k=='obl'){f.push({id:'q',label:sell?'Ile obligacji wykupujesz wcześniej':'Liczba obligacji (1 szt. = 100 zł)',type:'int',value:''});
+    if(!sell)f.push({id:'b1',label:'Oprocentowanie 1. okresu tej serii (%)',type:'decimal',value:'',ph:'puste = jak w instrumencie'},{id:'bm',label:'Marża tej serii (%)',type:'decimal',value:'',ph:'puste = jak w instrumencie'})}
+  else if(k=='lokata'){if(!sell)f.push({id:'p',label:`Kwota (${curSym(CUR(a))})`,type:'decimal',value:''})}
   else{f.push({id:'q',label:'Liczba sztuk',type:'decimal',value:''},{id:'p',label:`Cena za sztukę (${curSym(it.cur||CUR(a))})`,type:'decimal',value:it.price?nf(it.price):''});
     if(fx)f.push({id:'x',label:'Kurs waluty',type:'decimal',value:it.fxNow?nf(it.fxNow,4):''});f.push({id:'f',label:`Prowizja (${curSym(CUR(a))})`,type:'decimal',value:''})}
-  const r=await ask({title:(sell?'Sprzedaż: ':k=='lokata'?'Nowa lokata: ':'Zakup: ')+it.name,fields:f,ok:'Zapisz'});if(!r)return;
+  const r=await ask({title:(sell?(k=='obl'?'Wcześniejszy wykup: ':k=='lokata'?'Zerwanie lokaty: ':'Sprzedaż: '):k=='lokata'?'Nowa lokata: ':'Zakup: ')+it.name,
+    text:sell&&k=='obl'?'Opłatę za wcześniejszy wykup policzę sama (najwyżej odsetki). Pieniądze wracają na konto jako gotówka.':sell&&k=='lokata'?'Zerwana lokata zwykle traci odsetki – wraca sama kwota. Zrywam najstarszą.':'',fields:f,ok:'Zapisz'});if(!r)return;
   if(!isDate(r.d))return toast('Wybierz datę','bad');
-  const lot={date:r.d,kind:sell?'sell':'buy',qty:k=='lokata'?1:pn(r.q),price:k=='obl'?100:pn(r.p),fx:fx?pn(r.x)||1:1,fee:gr(r.f||'')};
+  const lot={date:r.d,kind:sell?'sell':'buy',qty:k=='lokata'?1:pn(r.q),price:k=='obl'?100:k=='lokata'&&sell?1:pn(r.p),fx:fx?pn(r.x)||1:1,fee:gr(r.f||'')};
+  if(k=='obl'&&!sell){if(String(r.b1||'').trim())lot.first=pn(r.b1);if(String(r.bm||'').trim())lot.margin=pn(r.bm)}
   if(!(lot.qty>0)||!(lot.price>0))return toast('Podaj liczbę i cenę','bad');
-  if(sell&&lot.qty>position(it).qty+1e-9)return toast('Nie masz tylu sztuk','bad');
+  /* a sale can only take what was held on its date (a buy on the same day counts) */
+  if(sell&&lot.qty>position(it,addDays(lot.date,1)).qty+1e-9)return toast(`Nie masz tylu sztuk na dzień ${dmy(lot.date)}`,'bad');
   merge(doc(HOLD(),id),{lots:{['l'+rid()]:lot},...(k!='obl'&&k!='lokata'?{price:lot.price,fxNow:lot.fx,priceDate:lot.date}:{})});toast(sell?'Zapisano sprzedaż':'Zapisano zakup')}
 export async function setPrice(id){if(guard())return;const it=S.hold[id],a=accById(it?.acc);if(!a)return;const fx=it.cur&&it.cur!=CUR(a);
   const r=await ask({title:'Cena: '+it.name,text:'Wpisz aktualną cenę z aplikacji brokera.',fields:[{id:'p',label:`Cena za sztukę (${curSym(it.cur||CUR(a))})`,type:'decimal',value:it.price?nf(it.price):''},...(fx?[{id:'x',label:`Kurs ${it.cur} (${curSym(CUR(a))})`,type:'decimal',value:it.fxNow?nf(it.fxNow,4):''}]:[])],ok:'Zapisz'});

@@ -133,7 +133,7 @@ export const ULGI={
 /* the relief summary of one person for a year (marked payments + IKZE payments) */
 export function pitSummaryP(cfg,tx,year,who,hraw){const L=tx.filter(t=>t.date.startsWith(year)&&t.ulga&&(t.ulgaWho||t.who)==who&&(t.type=='exp'));
   const by={};L.forEach(t=>{(by[t.ulga]=by[t.ulga]||{sum:0,n:0}).sum+=t.amount;by[t.ulga].n++});
-  const ikze=cfg.accs.filter(a=>a.grp=='inv'&&wrapOf(a)=='ikze'&&ownerOf(a)==who).map(a=>({a,paid:paidInYear(tx,a.id,year),lim:limitOf(a,year,hraw?.limits)})).filter(x=>x.paid>0);
+  const ikze=cfg.accs.filter(a=>(a.grp=='inv'||a.grp=='sav')&&wrapOf(a)=='ikze'&&ownerOf(a)==who).map(a=>({a,paid:paidInYear(tx,a.id,year),lim:limitOf(a,year,hraw?.limits)})).filter(x=>x.paid>0);
   return{by,ikze,n:L.length}}
 /* 🗓️ zamknięcie miesiąca: in the first 10 days of a month the previous one waits to be closed (5 steps, shared by both phones) until done */
 export const CLOSE_STEPS=['bank','prev','casc','plan','goals'];
@@ -198,6 +198,8 @@ export function closeDueP(hraw,tx,today,cfg,who){const w=cfg&&who?closeWinP(cfg,
 export const typedToday=(tx,today)=>tx.some(t=>t.date==today&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val));
 /* everything that needs attention today; n = days until the deadline (−1 late, 0 today, 1 tomorrow), later:true = not for today („Wkrótce” – collapsed, no number on the bell) */
 export const todayRank=x=>x.k=='bad'?0:x.n!=null&&x.n<=0?1:x.n==1?2:3;
+/* ryczałt od najmu: 8,5% up to 100 000 zł of rent a year, 12,5% above (grosze, rounded to full zł) */
+export const RENT_THR=10000000,rentTax=inc=>Math.round((Math.min(inc,RENT_THR)*0.085+Math.max(0,inc-RENT_THR)*0.125)/100)*100;
 export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,hold,debts,market,backup,hraw}=D;if(!cfg)return[];
   const ym=today.slice(0,7),day=+today.slice(8),out=[],cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const accOf=id=>cfg.accs.find(a=>a.id==id);
   /* 🤖 technical matters (automat, backup, IKE/IKZE limits, payslip rules) – only Mati */
@@ -230,7 +232,7 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
     const due=fixedDate(d,ym),n=dd(today,due);if(!s.left||n>1||(d.date&&d.date>due)||s.pays.some(t=>t.date.startsWith(ym)))continue;const r=rataP(d,tx,today);
     add('🔻',`Rata: ${d.name}${r?' – ok. '+zl(r.amt):''} · ${n<0?'po terminie ('+dmy(due)+')':n==0?'termin dziś':'termin jutro'}`,{a:'rata',id},'Wpisz',n<0?'bad':'',person(d.payer),{n})}
   for(const m of maturitiesP(cfg,hold,today,30)){const n=dd(today,m.end);add(IICON[m.it.kind],`${m.it.kind=='obl'?'Wykup':'Koniec lokaty'}: ${m.it.name} – ${dmy(m.end)}`,{a:'inst',acc:m.a.id},'Zobacz','',person(ownerOf(m.a)),{n,later:n>7})}
-  const mo=+today.slice(5,7),y=today.slice(0,4),wr=cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
+  const mo=+today.slice(5,7),y=today.slice(0,4),wr=cfg.accs.filter(a=>(a.grp=='inv'||(a.grp=='sav'&&wrapOf(a)))&&!a.archived); // an IKE kept as a savings account is still an IKE
   if(mo==12)for(const a of wr.filter(a=>wrapOf(a)=='ikze')){const left=limitOf(a,y,hraw?.limits)-paidInYear(tx,a.id,y);if(left>0)add('🛡️',`${a.name}: do 31.12 możesz wpłacić jeszcze ${zl(left)} (ulga w PIT).`,{a:'tr',to:a.id},'Wpłać','',person(ownerOf(a)),{later:day<20})}
   /* 🛡️ a new year without limits in the app (nor set by hand) – the last known ones are used until someone fills them in */
   if(!LIMITS[y]&&!hraw?.limits?.[y]&&!limitPropP(market,hraw)&&wr.some(a=>['ike','ikze'].includes(wrapOf(a))))add('🛡️',`Brak limitów IKE/IKZE na ${y} – aplikacja liczy na razie z limitów z ${Math.max(...Object.keys(LIMITS).map(Number))}. Wpisz nowe w Oszczędnościach (✎ Limity).`,{a:'limits'},'Limity','',TECH);
@@ -265,8 +267,10 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   /* 🏠 rent (a fixed income marked „najem”): the flat-rate tax (ryczałt 8,5% up to 100 000 zł a year) by the 20th after the month or the quarter; PIT-28 by 30 April (since 2023; the December ryczałt is due by 20 January) */
   for(const f of (cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'))){const q=f.najem=='q',mo0=+ym.slice(5);if(q&&![1,4,7,10].includes(mo0))continue;if(day>25)continue;
     const per=q?[3,2,1].map(k=>addMonths(ym,-k)):[addMonths(ym,-1)],got=per.reduce((a,m)=>a+inPeriod(tx,m).filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((b,t)=>b+t.amount,0),0);if(!got)continue;
-    const key='najem:'+f.id+':'+per[0],tax=Math.round(got*0.085/100)*100;if(hraw?.checkIgnore?.[key])continue;
-    out.push({key,icon:'🏠',text:`Ryczałt od najmu („${f.name}”) za ${q?'kwartał '+per.map(m=>MN[+m.slice(5)-1].slice(0,3).toLowerCase()).join('–'):MN[+per[0].slice(5)-1].toLowerCase()}: ok. ${zl(tax)} (8,5% z ${zl(got)}) – zapłać do 20. ${MNG[mo0-1]} na mikrorachunek podatkowy.`,go:{a:'fixed'},label:'Zobacz',k:day>20?'bad':'najem',who:person(fixedWho(cfg,f)),quiet:!(day==10||day==18)})}
+    /* 8,5% up to 100 000 zł of rent in the tax year, 12,5% above it (rent of the same year before this period counts) */
+    const y0=per[0].slice(0,4),before=Array.from({length:12},(_,i)=>y0+'-'+p2(i+1)).filter(m=>m<per[0]).reduce((a,m)=>a+inPeriod(tx,m).filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((b,t)=>b+t.amount,0),0);
+    const key='najem:'+f.id+':'+per[0],tax=Math.round(rentTax(before+got)-rentTax(before));if(hraw?.checkIgnore?.[key])continue;
+    out.push({key,icon:'🏠',text:`Ryczałt od najmu („${f.name}”) za ${q?'kwartał '+per.map(m=>MN[+m.slice(5)-1].slice(0,3).toLowerCase()).join('–'):MN[+per[0].slice(5)-1].toLowerCase()}: ok. ${zl(tax)} (${before+got>RENT_THR?'8,5% do 100 000 zł w roku, 12,5% ponad':'8,5%'} z ${zl(got)}) – zapłać do 20. ${MNG[mo0-1]} na mikrorachunek podatkowy.`,go:{a:'fixed'},label:'Zobacz',k:day>20?'bad':'najem',who:person(fixedWho(cfg,f)),quiet:!(day==10||day==18)})}
   {const ny=(cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'));if(ny.length&&(mo==3||mo==4)){const key='pit28:'+(+y-1),ws=[...new Set(ny.map(f=>person(fixedWho(cfg,f))))];
     if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🏠',text:`PIT-28 za najem w ${+y-1} r. – złóż do 30 kwietnia (Twój e-PIT na podatki.gov.pl).`,go:{a:'fixed'},label:'Zobacz',k:mo==4&&day>=20?'bad':'pit',later:!(mo==4&&day>=20),who:ws.length==1?ws[0]:null,quiet:!((mo==3&&day==1)||(mo==4&&day==20))})}}
   /* 🧾 the yearly PIT: from 1 March until „✓ Złożone” (each of you apart), deadline 30 April; a phone notification on 1 March, 1 and 20 April */

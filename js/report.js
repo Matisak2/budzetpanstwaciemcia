@@ -18,7 +18,7 @@ export function yearStats(D,year,today='9999-12-31'){const{cfg,tx,hraw}=D,y=Stri
   const subName={};cfg.cats.forEach(c=>c.subs.forEach(s=>{subName[s.id]=s.name}));
   const top=Object.entries(A.sub).filter(([id,v])=>v>0&&cfg.cats.some(c=>c.type=='exp'&&c.subs.some(s=>s.id==id))).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([id,v])=>({n:subName[id]||'',v}));
   const withData=months.filter(m=>m.exp>0),maxM=withData.slice().sort((a,b)=>b.exp-a.exp)[0]||null;
-  const wraps=cfg.accs.filter(a=>a.grp=='inv'&&!a.archived&&['ike','ikze','ppk','oki'].includes(wrapOf(a))).map(a=>({n:a.name,w:wrapOf(a),paid:paidInYear(tx,a.id,y),lim:limitOf(a,y,hraw?.limits),value:bal(a,end)})).filter(x=>x.paid||x.value);
+  const wraps=cfg.accs.filter(a=>(a.grp=='inv'||a.grp=='sav')&&!a.archived&&['ike','ikze','ppk','oki'].includes(wrapOf(a))).map(a=>({n:a.name,w:wrapOf(a),paid:paidInYear(tx,a.id,y),lim:limitOf(a,y,hraw?.limits),value:bal(a,end)})).filter(x=>x.paid||x.value);
   const pit=['Mati','Wercia'].map(w=>({w,...pitSummaryP(cfg,tx,y,w,hraw)})).filter(p=>p.n||p.ikze.length);
   return{year:y,inc:A.inc,exp:A.exp,who:A.who,own:A.own,gain,/* the year before – over the same days while this one lasts (a few months against a whole year was misleading) */prev:{inc:SP.prev.inc,exp:SP.prev.exp,now:SP.cur.exp,same:SP.live},months,saved,wealth0,wealth1,cats,top,maxM,avgExp:withData.length?Math.round(withData.reduce((a,m)=>a+m.exp,0)/withData.length):0,
     wraps,pit,n:tx.filter(t=>t.date.startsWith(y)).length,partial:last<12}}

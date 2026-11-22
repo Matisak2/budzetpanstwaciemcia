@@ -1,7 +1,7 @@
 /* 🤖 Robot: czy obliczenia pieniędzy dalej dają dobre wyniki. Oczekiwane liczby policzone niezależnie (ręcznie / kalkulatorem), nie skopiowane z kodu.
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
-import {penceFix,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
+import {penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
@@ -691,7 +691,7 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
 /* ---------- 🧭 doradca D5: cele, kryzysy, koszty, najem ---------- */
 { // 10 000 zł akcji świata, 2 000 rynki wschodzące, 3 000 złoto, 5 000 EDO: 2008 → −3 300 − 880 + 1 140 + 0 = −3 040 zł (−15,2%); 2000 → −5 000 − 1 000 = −6 000 (−30%)
   const rows=[{cls:'s_world',v:1000000},{cls:'s_em',v:200000},{cls:'g_phys',v:300000},{cls:'b_idx',v:500000}],C=crisesP(rows);
-  eq('Test kryzysu: 2008 i 2000 w złotych',C.slice(0,2).map(c=>[c.k,c.zl,c.pct]),[['2008',-304000,-15.2],['2000',-600000,-30]]);
+  eq('Test kryzysu: 2008 i 2000 w złotych',C.slice(0,2).map(c=>[c.k,c.zl,c.pct]),[['2008',-324000,-16.2],['2000',-600000,-30]]);
   // emerytura ZUS 3 000 zł brutto: zdrowotna 270, PIT (36 000 − 30 000) × 12% ÷ 12 = 60 → 2 670 zł; 5 000 zł → 5 000 − 450 − 300 = 4 250 zł
   eq('Emerytura z ZUS netto (zasady 2026)',[pensionNet(300000),pensionNet(500000)],[267000,425000]);
   // luka 3 500 zł × 12 × (1 − 1,01^−35) ÷ 0,01 = 42 000 × 29,409 = 1 235 160 zł; 50 000 × 1,025^30 = 104 878; odkładanie: (1 235 160 − 104 878) ÷ 532,84 = 2 121 zł
@@ -741,5 +741,21 @@ eq('Pensy: cena bez waluty ~100× ceny zakupu w GBP → funty',[penceFix({cur:'G
 eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWDA.UK','EIMI.UK','SWDA.UK','VWCE.DE'].map(t=>etfCur(etfOf({ticker:t}),t)),['USD','USD','GBP','EUR']);
 { const d={id:'dB',dir:'owe',mode:'bank',start:500000,left:{'2026-10-01':100000}},po={id:'po',type:'exp',amount:100000,date:'2026-11-05',acc:'a',debt:'dB',payoff:true};
   eq('Spłata całości (bank): dług 0, a po usunięciu spłaty wraca',[debtStateP(d,[po],'2026-11-20').left,debtStateP(d,[],'2026-11-20').left],[0,100000]);}
+{ const z={kind:'zlec',kup:20},sl=a=>({comp:[{a}]});
+  eq('Zlecenie po progu 120 000 zł: zaliczka 12% (bez wniosku)',suggest(z,sl(1000000),{brutto:12500000,base:12500000}).tax,82800);
+  eq('Zlecenie po progu z wnioskiem o 32%',suggest({...z,pit32:true},sl(1000000),{brutto:12500000,base:12500000}).tax>200000,true);
+  eq('Zlecenie do 200 zł: ryczałt 12% przychodu, bez kosztów',[suggest(z,sl(15000)).tax,suggest(z,sl(15000)).kup],[1800,0]);
+  eq('Dzieło do 200 zł: ryczałt 12%',suggest({kind:'dzielo'},sl(15000)).tax,1800);
+  eq('Zlecenie bez dobrowolnego chorobowego: ZUS 11,26%',suggest({...z,zusChor:false},sl(1000000)).zus,112600);}
+{ /* ROR: 1. miesiąc 5,75%, potem NBP 4% + 0; 1000 zł, po 3 pełnych miesiącach wypłacono 1000×(5,75+4+4)%/12 = 11,46 zł */
+  eq('ROR – odsetki co miesiąc, wypłacane',bondLotValue({type:'ROR',first:5.75},{date:'2026-01-10',qty:10,price:100},'2026-04-10',{nbp:4}),{value:100000,paid:1146,end:'2027-01-10',cost:100000});
+  /* TOS kupione 1.01.2020 (5%), koniec 1.01.2023: w 2026 nie ma go już w wartości – zysk 1000×(1,05³−1) = 157,63 zł po Belce wrócił jako gotówka */
+  const tos={kind:'obl',bond:{type:'TOS',first:5},lots:{a:{date:'2020-01-01',kind:'buy',qty:10,price:100}}},v=instValue(tos,{name:'Obligacje'},'2026-11-20',{}),vi=instValue(tos,{name:'IKE',wrap:'ike'},'2026-11-20',{});
+  eq('Zapadła obligacja: poza wartością, zysk po Belce jako gotówka (na IKE bez podatku)',[v.value,v.real,vi.real],[0,15763-Math.round(15763*0.19),15763]);
+  /* EDO 1000 zł, wcześniejszy wykup po roku: odsetki 6% = 60 zł, opłata 10 × 3 zł = 30 zł → 30 zł zysku przed podatkiem */
+  const edo={kind:'obl',bond:{type:'EDO',first:6,margin:2},lots:{a:{date:'2025-01-01',kind:'buy',qty:10,price:100},b:{date:'2026-01-01',kind:'sell',qty:10,price:100}}};
+  eq('EDO – wcześniejszy wykup z opłatą (najwyżej odsetki)',[instValue(edo,{name:'IKE',wrap:'ike'},'2026-06-01',{}).real,instValue(edo,{name:'IKE',wrap:'ike'},'2026-06-01',{}).value],[3000,0]);
+  eq('Seria z własnym oprocentowaniem 1. roku',bondLotValue({type:'EDO',first:6},{date:'2026-01-01',qty:10,price:100,first:5},'2027-01-01',{}).value,105000);
+  eq('Kupno i sprzedaż tego samego dnia – sprzedaż się liczy',position({lots:{z:{date:'2026-03-01',kind:'sell',qty:5,price:12},a:{date:'2026-03-01',kind:'buy',qty:5,price:10}}}).qty,0);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

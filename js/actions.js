@@ -286,7 +286,7 @@ export const goalAlloc=g=>g.alloc??g.saved??0;
 export const goalOwner=g=>g.owner||'Wspólne';
 /* 🛟 the safety cushion account („Poduszka…”) is not for goals – the same złoty cannot be the cushion and a holiday */
 export const isPod=a=>/poduszk/i.test(a?.name||'');
-export const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||(a.grp=='inv'&&!wrapOf(a)))&&!isPod(a)&&isP(a)&&(!owner||ownerOf(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
+export const poolNow=(cfg,tx,owner)=>cfg.accs.filter(a=>(a.grp=='sav'||a.grp=='inv')&&!wrapOf(a)&&!isPod(a)&&isP(a)&&(!owner||ownerOf(a)==owner)).reduce((s,a)=>s+balance(cfg,tx,a.id,addDays(td(),1)),0);
 export function goalProgress(g,cfg,tx,today){const saved=goalAlloc(g);
   const pct=g.target?Math.max(0,saved/g.target*100):0,left=Math.max(0,g.target-saved);
   let months=null,perMonth=null;
@@ -353,7 +353,7 @@ export async function addSavAcc(owner){if(guard())return;
   const r=await ask({title:'Nowe konto – '+owner,fields:[{id:'n',label:'Nazwa',ph:owner=='Wspólne'?'np. Fundusz wakacyjny':'np. Konto oszczędnościowe '+owner}, {id:'g',label:'Rodzaj',type:'select',value:'sav',options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'c',label:'Waluta',type:'select',value:'PLN',options:CUR_OPTS}],ok:'Dodaj konto'});
   if(!r||!r.n.trim())return;const a={id:'a'+rid(),name:r.n.trim(),grp:r.g,owner,open:0,...(r.c!='PLN'?{cur:r.c}:{})};S.cfg.accs.push(a);render();saveAcc(a);toast('Dodano konto: '+a.name)}
 export async function editSavAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x.id==id);
-  const r=await ask({title:'Konto: '+a.name,fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'w',label:'Czyje',type:'select',value:ownerOf(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS},...(a.grp=='inv'?[WRAP_F(a)]:[])],alt:'Usuń konto'});
+  const r=await ask({title:'Konto: '+a.name,...(a.grp=='sav'&&wrapOf(a)?{text:'💡 To konto wygląda na IKE/IKZE/OKI. Żeby kupować na nim ETF-y i obligacje, a automat sam je wyceniał, wybierz rodzaj „Inwestycje / IKE / IKZE”.'}:{}),fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:[['sav','Oszczędności (stała kwota)'],['inv','Inwestycje / IKE / IKZE (zmienna wartość)']]},{id:'w',label:'Czyje',type:'select',value:ownerOf(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS},...(a.grp=='inv'?[WRAP_F(a)]:[])],alt:'Usuń konto'});
   if(!r)return;if(r=='alt')return removeSavAcc(id);
   if(r.c!=CUR(a)&&liveOf(S.tx).some(t=>t.acc===id||t.to===id)&&!await ask({title:'Zmienić walutę konta?',text:`${a.name}: ${CUR(a)} → ${r.c}\nKwoty nie zostaną przeliczone – zmieni się tylko waluta, w której są pokazane.`,ok:'Zmień walutę'}))return;
   if(r.n.trim())a.name=r.n.trim();a.grp=r.g;a.owner=r.w;if(r.c!=CUR(a))a.cur=r.c;if(r.x!=null)setWrap(a,r.x);render();saveAcc(a)}

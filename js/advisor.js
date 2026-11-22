@@ -3,7 +3,7 @@
    „what the wealth is made of” (allocP) and the analysis of held ETFs (criteria, doubled „whole worlds”, flags). PPK is left out everywhere (decision 5). */
 import {addDays,plDay,zl0} from './util.js';
 import {balance,ownerOf} from './logic.js';
-import {BONDS,instValue,instDiffP,wrapOf,limitOf,paidInYear} from './inv.js';
+import {BONDS,BOND_FEE,instValue,instDiffP,wrapOf,limitOf,paidInYear} from './inv.js';
 import {debtStateP} from './today.js';
 
 /* groups = the first ring of the wheel; c = pastel colour */
@@ -80,7 +80,7 @@ export function allocP(cfg,tx,hold,today,macro={},mkt=null,{owner=null,custom={}
       rows.push({key:'h:'+it.id,kind:'h',id:it.id,acc:a.id,accName:a.name,owner:ownerOf(a),name:it.name||'Instrument',ticker:it.ticker||'',cls:c,grp:all[c].g,v:Math.round(v*r)})}
     const diff=items.length?(instDiffP(a,items,tx,today,macro,mkt)||0):0,cash=bal+diff-inst;
     if(cash<0&&items.length)neg.push(a.name);
-    if(cash>0){const c=accClsOf(a,custom);rows.push({key:'a:'+a.id,kind:'a',id:a.id,acc:a.id,accName:a.name,owner:ownerOf(a),name:items.length?a.name+' – gotówka':a.name,cls:c,grp:all[c].g,v:Math.round(cash*r)})}}
+    if(cash>0){const c=accClsOf(a,custom);rows.push({key:'a:'+a.id,kind:'a',id:a.id,acc:a.id,accName:a.name,pod:isPodAcc(a),owner:ownerOf(a),name:items.length?a.name+' – gotówka':a.name,cls:c,grp:all[c].g,v:Math.round(cash*r)})}}
   /* other assets (not real estate) from assetM – the owner's share */
   for(const x of assetsP(assets,debts,tx,today,{owner,custom}))if(!x.real)rows.push({key:'x:'+x.id,kind:'x',id:x.id,acc:'',accName:'',owner:x.owner,name:x.name,cls:x.cls,grp:all[x.cls].g,v:x.net,old:x.old});
   const G={};for(const x of rows){const g=G[x.grp]||(G[x.grp]={g:x.grp,v:0,cls:{}});g.v+=x.v;const k=g.cls[x.cls]||(g.cls[x.cls]={c:x.cls,v:0,rows:[]});k.v+=x.v;k.rows.push(x)}
@@ -190,7 +190,7 @@ export const ANK=[
   {id:'q36',s:'F',type:'one',t:'Twoje IKE:',hint:c=>c.ikeTxt||'',o:[['xtb','maklerskie (XTB)'],['bond','IKE-Obligacje'],['fund','w funduszach / ubezpieczeniu'],['other','inne maklerskie'],['none','nie mam']]},
   {id:'q37',s:'F',type:'one',t:'Twoje IKZE:',hint:c=>c.ikzeTxt||'',o:[['xtb','maklerskie (XTB)'],['bond','IKZE-Obligacje'],['fund','w funduszach / ubezpieczeniu'],['other','inne maklerskie'],['none','nie mam']]},
   {id:'q38',s:'F',type:'num',unit:'%',t:'Ile kosztuje rocznie IKE/IKZE w funduszach (z dokumentu KID)?',why:'Powyżej ok. 1% rocznie warto przenieść (wypłata transferowa – bez utraty ulg).',if:A=>A.q36=='fund'||A.q37=='fund'},
-  {id:'q40',s:'F',type:'one',t:'OKI (od 1.01.2027) – chcesz korzystać?',why:'Konto bez podatku do 100 tys. zł: dobre na poduszkę, wkład własny i polskie aktywa.',o:GATE('tak','może','nie')},
+  {id:'q40',s:'F',type:'one',t:'OKI (od 1.01.2027) – chcesz korzystać?',why:'Konto bez podatku do 100 tys. zł (z tego najwyżej 25 tys. zł w lokatach, na kontach i w obligacjach detalicznych): dobre na wkład własny, polskie aktywa i część poduszki.',o:GATE('tak','może','nie')},
   {id:'q41',s:'F',w:1,type:'one',t:'Dostajecie 800+?',o:YN,if:A=>A.q9=='yes'},
   {id:'q41a',s:'F',w:1,type:'num',unit:'zł',t:'Ile z 800+ wykorzystaliście już na obligacje rodzinne?',if:A=>A.q41=='yes'},
   {id:'q42',s:'G',type:'one',t:'Za ile lat NAJWCZEŚNIEJ możesz potrzebować pieniędzy z części długoterminowej?',why:'Pieniądze potrzebne wcześniej niż za ok. 5 lat nie powinny być w akcjach.',o:[['lt3','mniej niż 3'],['3-5','3–5'],['5-10','5–10'],['10-20','10–20'],['gt20','ponad 20']]},
@@ -240,12 +240,15 @@ export function planP(A){const why=[];
 export const bandOf=t=>{const b=t>=20?5:2.5;return[Math.max(0,t-b),Math.min(100,t+b)]};
 /* joint plan = the more cautious person's (decision: the joint portfolio fits the more careful one); q64 'sep' – separate parts */
 export const jointPlan=(pM,pW)=>!pM?pW||null:!pW?pM:(pW.g.stock<pM.g.stock?pW:pM);
-/* ⚡ the crisis 2007–2009 in złoty, cautious variant (DORADCA-notatki u07: stocks ≈ −33…−44% in PLN; gold +76% → half): stocks −35%, gold +38%, the rest 0 */
-export const crisisP=(g,base)=>{const r=(g.stock*-0.35+g.gold*0.38)/100;return{pct:Math.round(r*1000)/10,zl:Math.round(base*r)}};
+/* ⚡ the crisis 2007–2009 in złoty, cautious variant (DORADCA-notatki u07: stocks ≈ −33…−44% in PLN; gold +76% → half): the same numbers as CRISES['2008'] – stocks −35%, gold +38%, the rest 0 */
+export const crisisP=(g,base)=>{const c=CRISES[0],r=(g.stock*c.s+g.gold*c.gold)/10000;return{pct:Math.round(r*1000)/10,zl:Math.round(base*r)}};
 
-/* 🎯 now vs the plan on the koło: base = market assets without the cushion account (it is the safety net, not the long-term portfolio) */
+/* 🎯 now vs the plan on the koło: base = market assets without the cushion (it is the safety net, not the long-term portfolio).
+   One definition of the cushion everywhere (the 🛟 tile, „gdzie wpłacić”, the koło): savings accounts (grp 'sav') without IKE/IKZE/OKI/PPK,
+   or any account with „poduszka” in its name – the money of goals sits there too and is short-term as well */
 export const isPodName=n=>/poduszk/i.test(n||'');
-export function devP(A,plan){const rows=A.rows.filter(r=>!(r.kind=='a'&&isPodName(r.accName))),base=rows.reduce((s,r)=>s+r.v,0),by={};
+export const isPodAcc=a=>!!a&&(isPodName(a.name)||(a.grp=='sav'&&!wrapOf(a)));
+export function devP(A,plan){const rows=A.rows.filter(r=>!(r.kind=='a'&&(r.pod||isPodName(r.accName)))),base=rows.reduce((s,r)=>s+r.v,0),by={};
   for(const r of rows)by[r.grp]=(by[r.grp]||0)+r.v;
   const G=PLAN_G.map(g=>{const t=plan.g[g],[lo,hi]=bandOf(t),now=base?by[g]/base*100||0:0;return{g,t,lo,hi,now,st:now<lo-1e-9?'low':now>hi+1e-9?'high':'ok',gap:Math.round(base*t/100-(by[g]||0))}});
   const other=base?Object.entries(by).filter(([g])=>!PLAN_G.includes(g)).reduce((s,[,v])=>s+v,0)/base*100:0;
@@ -274,11 +277,14 @@ export function wrapCompare(W,years,t,r=0.05){const f=Math.pow(1+r,years),ike=Ma
 export function whereP(inp,P,ctx){let rest=Math.max(0,Math.round(inp.amt||0));const rows=[],no=[],add=(a,where,why,who='',kind='')=>{a=Math.min(rest,Math.round(a));if(a>0){rows.push({a,where,why,who,kind});rest-=a}};
   let noStocks=false;const mo=+ctx.today.slice(5,7);
   if(inp.src=='pod'){add(rest,'🛟 Zostaje w poduszce','Poduszki nie inwestujemy – to pieniądze na awarie. Do inwestowania bierzemy nadwyżkę, premię albo zwrot podatku.','','pod');no.push({t:'📈 Giełda z poduszki',why:'Gdy przyjdzie awaria w czasie spadku, trzeba by sprzedać ze stratą.'});return{rows,no,noStocks:true,rest}}
+  /* a small emergency fund (1 month of spending) before paying debts – without it the next car repair goes on the credit card again */
+  if(ctx.debt?.sum>0&&ctx.podMini>0)add(ctx.podMini,'🛟 Mała poduszka – 1 miesiąc wydatków na koncie oszczędnościowym','Zanim spłacisz dług, odłóż choć miesiąc wydatków – inaczej następna awaria znowu pójdzie na kredyt.','','pod');
+  if(ctx.cheap?.length)no.push({t:`🔻 Wcześniejsza spłata: ${ctx.cheap.join(', ')}`,why:'Tani dług (poniżej 4% rocznie, np. raty 0%) spłacaj zgodnie z planem – nadwyżka da więcej w poduszce i na IKE.'});
   if(ctx.debt?.sum>0)add(ctx.debt.sum,`🔻 Spłata: ${ctx.debt.name||'długi'}`,`Najpierw dług${ctx.debt.rate?` (${String(ctx.debt.rate).replace('.',',')}% rocznie)`:''}: jego spłata to pewny „zysk”, którego nie da żadna bezpieczna inwestycja.`,'','debt');
-  if(ctx.podGap>0){noStocks=true;add(ctx.podGap,'🛟 Poduszka: ok. ¼ konto oszczędnościowe, reszta obligacje skarbowe (EDO / COI)',`Do celu poduszki brakuje ${zlS(ctx.podGap)}. Poduszka przed giełdą – akcje nie teraz.`,'','pod');
+  if(ctx.podGap>0){noStocks=true;add(Math.max(0,ctx.podGap-(rows.find(r=>r.kind=='pod')?.a||0)),'🛟 Poduszka: ok. ¼ konto oszczędnościowe, reszta obligacje skarbowe (EDO / COI)',`Do celu poduszki brakuje ${zlS(ctx.podGap)}. Poduszka przed giełdą – akcje nie teraz.`,'','pod');
     if(rest>0&&mo==12&&P.some(p=>p.ike?.left>0))no.push({t:'💡 Wyjątek grudniowy',why:'Limit IKE przepada 31 grudnia – możesz wpłacić na IKE i trzymać tam gotówkę albo obligacje (bezpiecznie), a akcje kupić po dokończeniu poduszki.'})}
   if(inp.goal=='pod')add(rest,'🛟 Poduszka','Wybrałeś cel „poduszka” – konto oszczędnościowe i obligacje skarbowe.','','pod');
-  if(inp.need3||inp.goal=='home'&&inp.homeSoon){noStocks=true;add(rest,`🔒 Bezpiecznie: konto oszczędnościowe / lokata, obligacje 3-letnie TOS${ctx.okiOk?' – najlepiej na OKI (bez podatku)':''}`,'Pieniądze potrzebne w ciągu 3 lat nie mogą zależeć od giełdy.','','safe');
+  if(inp.need3||inp.goal=='home'&&inp.homeSoon){noStocks=true;add(rest,`🔒 Bezpiecznie: konto oszczędnościowe / lokata, obligacje 3-letnie TOS${ctx.okiOk?' – na OKI bez podatku do 25 tys. zł w lokatach, kontach i obligacjach detalicznych':''}`,'Pieniądze potrzebne w ciągu 3 lat nie mogą zależeć od giełdy.','','safe');
     no.push({t:'📈 Akcje',why:'Termin krótszy niż ok. 5 lat – akcje potrafią spaść o połowę i odrabiać latami.'})}
   if(inp.goal=='sand')add(Math.min(rest,ctx.sandLeft??rest),'🧪 Piaskownica – zwykły rachunek maklerski (XTB)','Pojedyncze spółki i „tematy” tylko w piaskownicy z limitem z planu. Szczegóły w etapie piaskownicy.','','sand');
   if(rest>0&&ctx.mort&&ctx.overpay>0){const a=Math.round(rest*ctx.overpay/100),be=Math.round(ctx.mort.rate/0.81*100)/100;
@@ -289,12 +295,12 @@ export function whereP(inp,P,ctx){let rest=Math.max(0,Math.round(inp.amt||0));co
   for(const[p,w]of order){if(rest<=0)break;const left=p[w]?.left||0;if(left<=0)continue;const a=Math.min(rest,left);
     if(w=='ikze')add(a,`🛡️ IKZE ${p.who}${p.ikze?.has?'':' (do założenia, np. w XTB)'}`,`Próg ${p.t=='19'?'liniowy 19%':p.t+'%'}: w PIT wróci ok. ${zlS(Math.round(a*tNum(p.t)/100))} – ten zwrot też zainwestuj. Wypłata po 65. roku życia z 10% podatku.${ikzeRank(p.t)=='after'?' Dopiero po IKE i tylko gdy pieniądze doczekają 65 lat.':''} Zostało limitu: ${zlS(left)}.`,p.who,'ikze');
     else add(a,`🛡️ IKE ${p.who}${p.ike?.has?'':' (do założenia, np. w XTB)'}`,`Bez podatku Belki od zysków przy wypłacie po 60. roku życia. Zostało limitu: ${zlS(left)}.`,p.who,'ike')}
-  if(rest>0)add(rest,`📂 Zwykły rachunek maklerski${ctx.okiOk?' / OKI (polskie aktywa, obligacje)':''}`,'Limity IKE/IKZE na ten rok są wykorzystane. Na zwykłym rachunku: ETF akumulujący (podatek dopiero przy sprzedaży) albo obligacje 10-letnie EDO.','','reg');
+  if(rest>0)add(rest,`📂 Zwykły rachunek maklerski${ctx.okiOk?' / OKI (polskie aktywa; obligacje i gotówka – razem do 25 tys. zł)':''}`,'Limity IKE/IKZE na ten rok są wykorzystane. Na zwykłym rachunku: ETF akumulujący (podatek dopiero przy sprzedaży) albo obligacje 10-letnie EDO.','','reg');
   for(const p of P)if(ikzeRank(p.t)=='no'&&p.t!='?')no.push({t:`🛡️ IKZE ${p.who}`,why:`Przy progu ${p.t}% ulga jest zerowa albo bardzo mała, a przy wypłacie zapłacisz 10% – zostań przy IKE.`});
   no.push({t:'💸 Fundusze z kosztem ponad ok. 1% rocznie, polisy inwestycyjne, IKE w ubezpieczeniu',why:'Koszty to pewnik, zysk nie: +1 pkt opłat zjada przez 30 lat kilkadziesiąt tysięcy.'},
     {t:'🎢 ETF-y z dźwignią, tematyczne, CFD',why:'Dźwignia działa w obie strony, „tematy” powstają po modzie. CFD w XTB to nie akcje.'},
     {t:'🏦 Lokata na pieniądze na 10+ lat',why:'Po podatku i inflacji zwykle realnie traci.'},{t:'💳 Inwestowanie za pożyczone',why:'Kredyt na giełdę zwielokrotnia skutki błędów.'});
-  if(!ctx.okiOk&&ctx.today<'2027-01-01')no.push({t:'📦 OKI',why:'Ruszy 1 stycznia 2027 – wtedy dobre na poduszkę, wkład własny i polskie aktywa.'});
+  if(!ctx.okiOk&&ctx.today<'2027-01-01')no.push({t:'📦 OKI',why:'Ruszy 1 stycznia 2027 – bez podatku do 100 tys. zł, ale lokaty, konta i obligacje detaliczne tylko do 25 tys. zł z tego.'});
   return{rows,no,noStocks,rest}}
 const zlS=g=>zl0(g);
 
@@ -302,14 +308,15 @@ const zlS=g=>zl0(g);
 /* 🧮 retail bonds: value of an amount after n months (grosze). Year 1 = first, later inflation + margin (COI/EDO/ROS/ROD), NBP rate + margin (ROR/DOR)
    or fixed (TOS); capitalised series compound, the others pay interest out (counted, not reinvested). At maturity – taxed and rolled over into the same terms;
    sold earlier – the early redemption fee per bond (at most the interest earned). Belka 19% unless in IKE. Rates stay as today – it is a comparison, not a forecast. */
-export const BOND_FEE={OTS:0,ROR:50,DOR:70,TOS:100,COI:200,EDO:300,ROS:200,ROD:300};
+export {BOND_FEE};
 export function bondAfter(type,months,{first=0,margin}={},macro={},{taxFree=false,amount=1000000}={}){const T=BONDS[type];if(!T)return null;const mg=margin??T.margin,tax=taxFree?0:0.19;
   const r=y=>(y==0?+first:T.idx=='infl'?Math.max(0,+(macro.infl??0))+mg:T.idx=='nbp'?(+(macro.nbp??0))+mg:+first)/100;
-  const cyc=len=>{if(T.m<12)return{g:r(0)*Math.min(len,T.m)/12,paid:0};let v=1,paid=0;const full=Math.floor(len/12),part=(len%12)/12;
+  /* ROR / DOR: the 1st month fixed, then NBP + margin, paid out every month */
+  const cyc=len=>{if(T.mon){let paid=0;for(let i=0;i<len;i++)paid+=(i==0?+first:(+(macro.nbp??0))+mg)/100/12;return{g:0,paid}}if(T.m<12)return{g:r(0)*Math.min(len,T.m)/12,paid:0};let v=1,paid=0;const full=Math.floor(len/12),part=(len%12)/12;
     for(let y=0;y<full;y++){if(T.cap)v*=1+r(y);else paid+=r(y)}if(part){if(T.cap)v*=1+r(full)*part;else paid+=r(full)*part}return{g:v-1,paid}};
   let A=amount,cash=0;const k=Math.floor(months/T.m),rem=months%T.m;
   for(let i=0;i<k;i++){const c=cyc(T.m);cash+=A*c.paid*(1-tax);A+=A*c.g*(1-tax)}
-  if(rem>0){const c=cyc(rem),n=Math.floor(A/10000),fee=Math.min((BOND_FEE[type]||0)*n,A*(c.g+c.paid));const gain=A*(c.g+c.paid)-fee;A+=gain>0?gain*(1-tax):gain}
+  if(rem>0){const c=cyc(rem),n=Math.floor(A/10000),fee=type=='OTS'?A*(c.g+c.paid):Math.min((BOND_FEE[type]||0)*n,A*(c.g+c.paid));const gain=A*(c.g+c.paid)-fee;A+=gain>0?gain*(1-tax):gain}
   return Math.round(A+cash)}
 export function bondPickP(months,amount,offer,macro,taxFree){return Object.entries(offer||{}).filter(([t])=>BONDS[t]&&!['ROS','ROD'].includes(t)).map(([t,o])=>({t,v:bondAfter(t,months,o,macro,{taxFree,amount})}))
   .filter(x=>x.v!=null).sort((a,b)=>b.v-a.v)}
@@ -341,7 +348,7 @@ export function adviceDoneP(adv,hold,tx,cfg){const since=plDay(adv.at),lots=Obje
 /* ======================= D5: cele – emerytura, mieszkanie, kryzysy, koszty, najem, „czy stać na zakup” ======================= */
 /* ⚡ three crises (DORADCA-notatki D/G u07, u00): 2007–2009 in złoty (developed −32,8%, emerging −43,9%, gold +76,2% → cautious half +38%);
    2000–2002 and 2020 only in dollars (stocks −50% and −34%) – used as they are, gold 0 (it did not protect in 2000–2002), bonds and cash 0. Cautious variant. */
-export const CRISES=[{k:'2008',n:'Kryzys finansowy 2007–2009',s:-33,em:-44,gold:38,bond:5,note:'w złotych (słaby złoty złagodził spadek)'},
+export const CRISES=[{k:'2008',n:'Kryzys finansowy 2007–2009',s:-35,em:-44,gold:38,bond:5,note:'w złotych (słaby złoty złagodził spadek)'},
   {k:'2000',n:'Bańka internetowa 2000–2002',s:-50,em:-50,gold:0,bond:0,note:'spadek akcji w dolarach – w złotych brak danych, liczę ostrożnie'},
   {k:'2020',n:'COVID 2020',s:-34,em:-34,gold:0,bond:0,note:'spadek akcji w dolarach, szybko odrobiony'}];
 const crRate=(cls,c,all)=>{const k=all[cls]||all.todo,risk=k.risk;if(cls=='s_em')return c.em;if(risk=='safe')return 0;if(risk=='bond')return c.bond;if(risk=='gold')return c.gold;if(risk=='high')return Math.max(-80,Math.round(c.s*1.4));return c.s};
@@ -366,15 +373,15 @@ export function homeP({price,downPct=20,first=true,saved=0,surplus=0,income=0,ra
   const loan=loanOk?price-down:0,rata=loan?rataOf(loan,rate,years):0,stress=loan?rataOf(loan,rate+2.5,years):0;
   return{down,costs,need,missing,months:missing?(surplus>0?Math.ceil(missing/surplus):null):0,loan,rata,stress,share:income?Math.round(stress/income*1000)/10:null,
     ok30:income?stress<=income*0.3:null,pod:Math.round((exp+rata)*podM)}}
-/* 🏘️ a rented flat (plan 15.3): net yield on the whole value = (rent × months − costs × 12 − ryczałt 8,5% of the rent) ÷ value */
-export function rentP({value,rent,costs=0,months=10.5,debt=0}){const inc=rent*months,tax=Math.round(inc*0.085),net=Math.round(inc-costs*12-tax);
+/* 🏘️ a rented flat (plan 15.3): net yield on the whole value = (rent × months − costs × 12 − ryczałt 8,5% of the rent, 12,5% above 100 000 zł) ÷ value */
+export function rentP({value,rent,costs=0,months=10.5,debt=0}){const inc=rent*months,tax=Math.round(Math.min(inc,10000000)*0.085+Math.max(0,inc-10000000)*0.125),net=Math.round(inc-costs*12-tax);
   return{inc:Math.round(inc),tax,net,yld:value?Math.round(net/value*1000)/10:0,own:value-debt>0?Math.round(net/(value-debt)*1000)/10:null}}
 /* 🏠 „może warto pomyśleć o zakupie” (plan 15.4, decision 17): every condition with ok / why; no – never blocks, only informs */
 export function buyCheckP({price,kind,liquid,near=0,exp,podM,income,surplus,consDebt,rate,loanOk,downPct=20,first=true,stay,rent=0,costs=0}){
   const H=homeP({price,downPct,first,saved:0,surplus,income,rate,exp,podM,loanOk}),need=H.need,rest=liquid-need-near,podNeed=Math.round((exp+H.rata)*podM),c=[];
   c.push({ok:rest>=podNeed,s:'za mało pieniędzy na wkład i koszty przy nietkniętej poduszce',t:`Wkład${loanOk?` ${downPct}%`:' (cała cena – bez kredytu)'} i koszty ${zlS(need)} z pieniędzy, które można na to przeznaczyć (bez IKE/IKZE), a poduszka na ${podM} mies. z nową ratą (${zlS(podNeed)})${near?` i cele do 3 lat (${zlS(near)})`:''} zostaje nietknięta`});
   if(loanOk)c.push({ok:H.ok30!==false&&!!income,s:'rata ponad 30% dochodów',t:`Rata z buforem banku (+2,5 pkt) ${zlS(H.stress)} – najwyżej 30% dochodów netto${H.share!=null?` (teraz ${String(H.share).replace('.',',')}%)`:''}; kredyt na 20 lat`});
-  if(kind=='rent'&&loanOk){const cover=Math.round(rent*10/12);c.push({ok:cover>=H.rata+costs||surplus>=H.rata+costs-cover,s:'czynsz nie pokrywa raty i kosztów',t:`Czynsz z 10 miesięcy (${zlS(cover)}/mies.) pokrywa ratę i koszty (${zlS(H.rata+costs)}) albo nadwyżka budżetu dopłaca różnicę`})}
+  if(kind=='rent'&&loanOk){const cover=Math.round(rent*10.5/12);c.push({ok:cover>=H.rata+costs||surplus>=H.rata+costs-cover,s:'czynsz nie pokrywa raty i kosztów',t:`Czynsz z 10,5 miesiąca (${zlS(cover)}/mies.) pokrywa ratę i koszty (${zlS(H.rata+costs)}) albo nadwyżka budżetu dopłaca różnicę`})}
   c.push({ok:!consDebt,s:'najpierw spłata długów',t:'Bez długów konsumenckich (karty, raty, pożyczki)'});
   if(kind=='home')c.push({ok:stay!='lt5',s:'za krótko na mieszkanie (mniej niż 5 lat)',t:'Plan mieszkania tam co najmniej 5–10 lat'});
   return{H,c,ok:c.every(x=>x.ok)}}

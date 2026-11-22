@@ -59,7 +59,8 @@ export function suggest(src,sl,ytd={brutto:0,base:0},young=null){const b=brutto(
   if(src.kind=='uop'||src.kind=='zlec'){
     /* 🎓 a student / pupil under 26 on umowa zlecenie: no ZUS and no health contribution */
     const stu=src.kind=='zlec'&&!!src.student,zusOn=src.kind=='uop'||(src.zusOn!==false&&!stu),cap=Math.min(b,Math.max(0,ZUS_LIMIT-ytd.brutto));
-    o.zus=zusOn?pct(cap,9.76)+pct(cap,1.5)+pct(b,2.45):0;
+    /* chorobowe 2,45%: obligatory on umowa o pracę, voluntary on zlecenie (zusChor:false = without; older sources – with, as before) */
+    o.zus=zusOn?pct(cap,9.76)+pct(cap,1.5)+(src.kind=='uop'||src.zusChor!==false?pct(b,2.45):0):0;
     o.health=stu?0:pct(b-o.zus,9);
     o.ppkOwn=src.ppk?pct(b,src.ppkOwnPct??2):0;o.ppkEmp=src.ppk?pct(b,src.ppkEmpPct??1.5):0;
     const pit2=src.kind=='uop'?src.pit2!==false:!!src.pit2,ex=youngPart({comp:[{a:b}],ppkEmp:o.ppkEmp},young);o.young=ex;
@@ -68,8 +69,11 @@ export function suggest(src,sl,ytd={brutto:0,base:0},young=null){const b=brutto(
     else{const rev=b+o.ppkEmp,tr=rev-ex,sh=tr/rev,zd=Math.round(o.zus*sh);
       o.kup=src.kind=='uop'?Math.min(src.kup==300?30000:25000,Math.max(0,tr-zd)):pct(Math.max(0,tr-zd),src.kup==50?50:20);
       o.base=Math.max(0,r0(tr-zd-o.kup))}
-    o.tax=o.base>0?progressive(o.base,ytd.base,pit2?30000:0):0}
-  else if(src.kind=='dzielo'){o.zus=0;o.health=0;o.ppkOwn=0;o.ppkEmp=0;o.kup=pct(b,src.kup==50?50:20);o.base=Math.max(0,r0(b-o.kup));o.tax=r0(pct(o.base,12))}
+    /* zlecenie: the payer takes 12% also above 120 000 zł (32% only on the contractor's request – pit32; the difference is settled in PIT);
+       a contract up to 200 zł: a flat 12% of the revenue, no costs and no reducing amount (art. 30 ust. 1 pkt 5a) */
+    if(src.kind=='zlec'&&!ex&&b+o.ppkEmp<=20000){o.kup=0;o.base=b+o.ppkEmp;o.tax=r0(pct(o.base,12))}
+    else o.tax=o.base>0?(src.kind=='zlec'&&!src.pit32?Math.max(0,r0(pct(o.base,12)-(pit2?30000:0))):progressive(o.base,ytd.base,pit2?30000:0)):0}
+  else if(src.kind=='dzielo'){o.zus=0;o.health=0;o.ppkOwn=0;o.ppkEmp=0;if(b<=20000){o.kup=0;o.base=b;o.tax=r0(pct(b,12))}else{o.kup=pct(b,src.kup==50?50:20);o.base=Math.max(0,r0(b-o.kup));o.tax=r0(pct(o.base,12))}}
   else{const ym=ytd.ym,T=jdgT(ym),costs=sl.costs||0,Z=jdgZus(src,ym),inc=Math.max(0,b-costs-Z.soc-Z.fp);o.zus=Z.soc+Z.fp;o.kup=0;o.ppkOwn=0;o.ppkEmp=0;o.hded=0;
     if(src.taxf=='liniowy'){o.health=Math.max(pct(inc,4.9),hMin(ym));o.hded=Math.min(o.health,Math.max(0,T.linLimit-(ytd.hded||0)));o.base=Math.max(0,r0(inc-o.hded));o.tax=r0(pct(o.base,19))}
     else if(src.taxf=='ryczalt'){const R=(ytd.brutto||0)+b;o.health=src.healthAmt||T.rycz[R<=6000000?0:R<=30000000?1:2];
