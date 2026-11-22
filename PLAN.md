@@ -192,3 +192,14 @@ Nie robimy: rozliczeń Mati ↔ Wercia (zostają w „Rezygnujemy”); przycisk 
 - [x] 🥧 „Nieruchomości” nieucinane przy dużej czcionce
 - [x] 👛 Konta: wybór osoby jako guziki w karcie z sumą, „Wyrównaj” pod listą
 
+
+## Poprawki z dużego przeglądu 21.11.2026 (na polecenie Matiego 22.11, raport `reports/` tylko lokalnie)
+- [x] 🗓️ Zamknięcie miesiąca wg zwykłego dnia wypłaty (weekend), „Zgadza się” od początku okna, pensja z 31. nie 2× w „Czy starczy?”
+- [x] 🛡️ Limity IKE/IKZE 2027 + przypomnienie o braku limitów; 🧭 plan doradcy = 100%
+- [x] 💷 ETF z Londynu (pensy, waluta innych linii notowań); 🧾 paski: usuwanie z kopią, potrącenia tylko przez pasek; 🔻 spłata całości (bank)
+- [x] 📱📱 Dwa telefony: zapis po id, `saveCfg` z `mergeFields`, plan i cele bez gubienia zmian
+- [x] 🤖 Automaty: zapasowe terminy, limit czasu, wycena końca miesiąca z cen ostatniej sesji, push bez „Wkrótce”
+- [x] 💼 Zlecenie (12% po progu, ryczałt do 200 zł, chorobowe dobrowolne); 🏦 obligacje i lokaty (ROR/DOR co miesiąc, kupony i wykup jako gotówka, wcześniejszy wykup); 🧭 doradca (tanie długi, poduszka, OKI 25 tys., najem 12,5%)
+- [x] 🎨 Kontrast, druk PDF, „Rok temu”, „Wspólne” bez wspólnego konta; 🐾 drobiazgi (święta, kwoty, Kto, wykresy, testy, dokumentacja)
+- [ ] Do decyzji Matiego: wyjątek grudniowy IKE w doradcy, termometr w zł, ryczałt 17% w kolejności IKZE, miękkie usuwanie celów, przyspieszenie rysunków kotków, brakujące ekrany w teście robota
+- [ ] Mati w konsoli Firebase: wkleić nowe zasady z `firebase/firestore.rules` (telefony bez dostępu do `secret/`)
