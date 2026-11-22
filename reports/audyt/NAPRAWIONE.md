@@ -64,7 +64,20 @@ Każda pozycja: co było źle, dowód, co zmienione, commit. Wszystkie poprawki:
 - **Zmiana:** `sw.js`: `/\/demo(\/|$)/`.
 - **Commit:** `da0f86e`
 
+## 10. Wyczyszczona marża obligacji wracała z bazy
+- **Było źle:** `editInst` (`js/savings.js:79`) przy pustym polu „Marża” usuwał pole tylko z lokalnego obiektu (`delete body.bond.margin`), a zapis z `merge` zostawia w Firestore pole, którego nie ma w danych – stara marża dalej liczyła się w wycenie obligacji.
+- **Dowód:** atrapa Firestore w demo (łączy mapy jak Firestore): zapis bez pola → `margin: 2` zostaje; z `deleteField()` → pole znika. Zasada `merge` w Firestore – ta sama.
+- **Zmiana:** `body.bond.margin=deleteField()`.
+- **Commit:** `e041118`
+
+## 11. Zakup/sprzedaż z wcześniejszą datą nadpisywał nowszą cenę instrumentu
+- **Było źle:** `addLot` (`js/savings.js:108`) zawsze zapisywał cenę i datę partii jako bieżącą cenę – dopisanie starego zakupu cofało wycenę instrumentu bez automatu do starej ceny.
+- **Dowód:** demo (Playwright): przed poprawką zakup z 10.01 po 111 zastępował cenę z 5.08 (95); po poprawce cena z 5.08 zostaje, a zakup z 21.11 po 222 ją aktualizuje.
+- **Zmiana:** cena z partii tylko, gdy partia nie jest starsza niż obecna cena.
+- **Commit:** `8274d31`
+
 ## Wysyłki
 - Push 1: CACHE `v98` → `v99` (poprawki 1–5).
 - Push 2: CACHE `v99` → `v100` (poprawki 6–9).
+- Push 3: CACHE `v100` → `v101` (poprawki 10–11).
 - CACHE `budzet-mw-v98` → `v99`. Przed push lokalnie: eslint (z `scripts/`), `node --check`, `cache.mjs`, `imports.mjs`, `calc.mjs` (432), `screens.mjs` (4 × 103 ekrany), `restore.mjs --demo` – wszystko zielone.

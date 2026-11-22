@@ -5,9 +5,9 @@ Wznawiając pracę: przeczytaj ten plik, potem ostatni raport etapu. Nie zaczyna
 ## Etapy
 - [x] 0 – Przygotowanie → `00-przygotowanie.md`
 - [ ] 1 – Spis funkcji → `01-funkcje.md` (zaczęte: HELP ma 92 pozycje w 7 sekcjach, NEWS do v68; zrzuty robota w `tests/out/`)
-- [ ] 2 – Przegląd kodu → `02-kod.md`
-- [ ] 3 – Pieniądze i przepisy 2026 → `03-przepisy.md`
-- [ ] 4 – Dane, bezpieczeństwo, niezawodność → `04-dane-bezpieczenstwo.md`
+- [x] 2 – Przegląd kodu → `02-kod.md`
+- [x] 3 – Pieniądze i przepisy 2026 → `03-przepisy.md`
+- [x] 4 – Dane, bezpieczeństwo, niezawodność → `04-dane-bezpieczenstwo.md`
 - [x] 5 – Szybkość → `05-szybkosc.md` (pomiary zrobione; wąskie gardło `fitNums`)
 - [ ] 6 – Sens funkcji i UX → `06-ux.md`
 - [x] 7 – Testy → `07-testy.md`
@@ -18,40 +18,40 @@ Wznawiając pracę: przeczytaj ten plik, potem ostatni raport etapu. Nie zaczyna
 Naprawy w trakcie: `NAPRAWIONE.md`.
 
 ## Przejrzane pliki (etap 2)
-- [ ] `js/util.js`
-- [ ] `js/data.js`
-- [ ] `js/pay.js`
-- [ ] `js/inv.js`
-- [ ] `js/logic.js`
-- [ ] `js/today.js`
-- [ ] `js/close.js`
-- [ ] `js/core.js`
-- [ ] `js/sheet.js`
-- [ ] `js/actions.js`
-- [ ] `js/app.js`
-- [ ] `js/salary.js`
-- [ ] `js/savings.js`
-- [ ] `js/debts.js`
-- [ ] `js/analysis.js`
-- [ ] `js/todayui.js`
-- [ ] `js/usage.js`
-- [ ] `js/report.js`
-- [ ] `js/advisor.js`
-- [ ] `js/advisorui.js`
-- [ ] `js/guide.js`
-- [ ] `js/facts.js`
-- [ ] `js/cats.js`
-- [ ] `js/art.js`
-- [ ] `js/charts.js`
-- [ ] `style.css`
-- [ ] `index.html`
-- [ ] `demo/`
-- [ ] `sw.js`
-- [ ] `manifest.json`
-- [ ] `scripts/`
-- [ ] `.github/workflows/`
-- [ ] `firebase/`
-- [ ] `tests/`
+- [x] `js/util.js`
+- [x] `js/data.js`
+- [x] `js/pay.js`
+- [x] `js/inv.js`
+- [x] `js/logic.js`
+- [x] `js/today.js`
+- [x] `js/close.js`
+- [x] `js/core.js`
+- [x] `js/sheet.js`
+- [x] `js/actions.js`
+- [x] `js/app.js`
+- [x] `js/salary.js`
+- [x] `js/savings.js`
+- [x] `js/debts.js`
+- [x] `js/analysis.js`
+- [x] `js/todayui.js`
+- [x] `js/usage.js`
+- [x] `js/report.js`
+- [x] `js/advisor.js`
+- [x] `js/advisorui.js`
+- [x] `js/guide.js`
+- [x] `js/facts.js`
+- [x] `js/cats.js`
+- [x] `js/art.js`
+- [x] `js/charts.js`
+- [x] `style.css`
+- [x] `index.html`
+- [x] `demo/`
+- [x] `sw.js`
+- [x] `manifest.json`
+- [x] `scripts/`
+- [x] `.github/workflows/`
+- [x] `firebase/`
+- [x] `tests/`
 
 ## Notatki
 - Etap 0: wszystkie testy zielone (punkt odniesienia w `00-przygotowanie.md`).
@@ -63,3 +63,4 @@ Naprawy w trakcie: `NAPRAWIONE.md`.
 - Etap 8: badacze (funkcje aplikacji; polskie banki i PSD2; iOS PWA) – do ponownego uruchomienia przez skill deep-research, tytuł „Porównanie aplikacji budżetowych 2026”.
 - Każde zgłoszenie podagenta sprawdzić samemu przed wpisaniem do raportu.
 - 23.11 00:05: wznowieni R1, R2, R3, R4, L3 (SendMessage). Do wznowienia potem: R5, R6, R7, R8, E1 + badacze etapu 8.
+- 23.11 ok. 01:30: wszystkie przeglądy R1–R8, L3, E1 skończone; 11 poprawek na main (CACHE v101). Zostały: 01 (spis funkcji – raport E1 gotowy), 06 UX, 08 porównanie (badacze do ponownego uruchomienia), 00-RAPORT.
