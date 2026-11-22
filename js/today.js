@@ -148,8 +148,14 @@ export function payPatternP(tx,src,ym){const D=[];for(let k=1;k<=3;k++){const m=
   if(!D.length)return +src.day>0?{day:Math.min(31,+src.day)}:null;
   if(D.every(x=>x.d>=x.L-2))return{end:true};const v=D.map(x=>x.d).sort((a,b)=>a-b);return{day:v[Math.floor(v.length/2)]}}
 /* the expected pay date of one source in ym: the real one when it already came, otherwise from the pattern (a weekend → the Friday before) */
-export function payDateP(tx,src,ym){const real=firstSal(tx,src,ym);if(real)return{date:real,real:true};const p=payPatternP(tx,src,ym);if(!p)return null;
-  let d=ym+'-'+p2(p.end?daysIn(ym):Math.min(p.day,daysIn(ym)));while(isWknd(d))d=addDays(d,-1);return{date:d,real:false}}
+/* nom = the usual day of the month (before the weekend shift) – the closed month is decided by it, so a pay on Sunday the 20th moved to Friday
+   the 18th, or a pay on the 1st that came on the 31st before, still belongs to its own month. The real salary is looked for ±10 days around
+   the expected day (also in the month before), not only inside ym. */
+const salIn=(tx,src,from,to)=>{let d='';for(const m of new Set([from.slice(0,7),to.slice(0,7)]))for(const t of inPeriod(tx,m))if(isSal(src,t)&&t.date>=from&&t.date<=to&&(!d||t.date<d))d=t.date;return d};
+export function payDateP(tx,src,ym){const p=payPatternP(tx,src,ym);
+  if(!p){const real=firstSal(tx,src,ym);return real?{date:real,real:true,nom:+real.slice(8)}:null}
+  const nd=p.end?daysIn(ym):Math.min(p.day,daysIn(ym)),nom=ym+'-'+p2(nd);let d=nom;while(isWknd(d))d=addDays(d,-1);
+  const real=salIn(tx,src,addDays(d,-10),addDays(nom,10));return real?{date:real,real:true,nom:nd}:{date:d,real:false,nom:nd}}
 /* a person's earliest pay day in ym (from all their income sources); null = no sources */
 export function paydayP(cfg,tx,who,ym){let best=null;for(const s of (cfg?.incs||[]).filter(s=>s.who==who)){const p=payDateP(tx,s,ym);if(p&&(!best||p.date<best.date))best={...p,src:s.id}}return best}
 /* ⚠️ „nie starczy na rachunki”: each current account walked day by day to the end of the month – unpaid fixed payments, fixed transfers and rates
@@ -171,13 +177,13 @@ export function shortP(cfg,tx,today){const ym=today.slice(0,7),tom=addDays(today
    is for the next one), earlier → the month before. No income source → the first 10 days of a month close the month before (as before). */
 export function closeWinP(cfg,tx,who,today){const cm=today.slice(0,7);let any=false;
   for(const m of [addMonths(cm,-1),cm,addMonths(cm,1)]){const p=paydayP(cfg,tx,who,m);if(!p)continue;any=true;const start=addDays(p.date,-1),end=addDays(p.date,9);
-    if(today>=start&&today<=end)return{start,pay:p.date,real:p.real,ym:+p.date.slice(8)>=20?m:addMonths(m,-1)}}
+    if(today>=start&&today<=end)return{start,pay:p.date,real:p.real,ym:(p.nom??+p.date.slice(8))>=20?m:addMonths(m,-1)}}
   if(!any&&+today.slice(8)<=10)return{start:cm+'-01',pay:null,ym:addMonths(cm,-1)};return null}
 /* the next day a closing (and the surplus) will be counted – for „Nadwyżkę policzę …” */
 export function nextCloseP(cfg,tx,who,today){const cm=today.slice(0,7);for(const m of [cm,addMonths(cm,1),addMonths(cm,2)]){const p=paydayP(cfg,tx,who,m);if(p&&addDays(p.date,-1)>today)return addDays(p.date,-1)}return null}
 /* the month to show when the closing is opened by hand: the one of the last window that started */
 export function closeYmP(cfg,tx,who,today){const w=closeWinP(cfg,tx,who,today);if(w)return w.ym;const cm=today.slice(0,7);
-  for(const m of [cm,addMonths(cm,-1)]){const p=paydayP(cfg,tx,who,m);if(p&&addDays(p.date,-1)<=today)return +p.date.slice(8)>=20?m:addMonths(m,-1)}return addMonths(cm,-1)}
+  for(const m of [cm,addMonths(cm,-1)]){const p=paydayP(cfg,tx,who,m);if(p&&addDays(p.date,-1)<=today)return (p.nom??+p.date.slice(8))>=20?m:addMonths(m,-1)}return addMonths(cm,-1)}
 /* the state of a closing for one person: „Co było ponad plan” and „Plan” are shared (closeM[ym].steps), the rest is personal (closeM[ym].p[who].steps).
    Steps ticked before the closings were split (closeM[ym].steps.bank… with „by”) count for the person who ticked them; a month closed then (done) – for both. */
 export const CLOSE_SHARED=['prev','plan'];
@@ -226,6 +232,8 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const m of maturitiesP(cfg,hold,today,30)){const n=dd(today,m.end);add(IICON[m.it.kind],`${m.it.kind=='obl'?'Wykup':'Koniec lokaty'}: ${m.it.name} – ${dmy(m.end)}`,{a:'inst',acc:m.a.id},'Zobacz','',person(ownerOf(m.a)),{n,later:n>7})}
   const mo=+today.slice(5,7),y=today.slice(0,4),wr=cfg.accs.filter(a=>a.grp=='inv'&&!a.archived);
   if(mo==12)for(const a of wr.filter(a=>wrapOf(a)=='ikze')){const left=limitOf(a,y,hraw?.limits)-paidInYear(tx,a.id,y);if(left>0)add('🛡️',`${a.name}: do 31.12 możesz wpłacić jeszcze ${zl(left)} (ulga w PIT).`,{a:'tr',to:a.id},'Wpłać','',person(ownerOf(a)),{later:day<20})}
+  /* 🛡️ a new year without limits in the app (nor set by hand) – the last known ones are used until someone fills them in */
+  if(!LIMITS[y]&&!hraw?.limits?.[y]&&!limitPropP(market,hraw)&&wr.some(a=>['ike','ikze'].includes(wrapOf(a))))add('🛡️',`Brak limitów IKE/IKZE na ${y} – aplikacja liczy na razie z limitów z ${Math.max(...Object.keys(LIMITS).map(Number))}. Wpisz nowe w Oszczędnościach (✎ Limity).`,{a:'limits'},'Limity','',TECH);
   const lp=limitPropP(market,hraw);if(lp)add('🛡️',`Automat znalazł limity IKE i IKZE na ${lp.year} – potwierdź w Oszczędnościach.`,{a:'sav'},'Zobacz','',TECH);
   if(mo==1&&wr.some(a=>['ike','ikze'].includes(wrapOf(a))))add('🛡️',`Nowy rok – sprawdź limity IKE i IKZE na ${y}.`,{a:'limits'},'Limity','',TECH);
   if(tx.length){const days=backup?Math.floor((new Date(today+'T12:00:00')-backup.at)/864e5):null;if(!backup||days>=30)add('💾',backup?`Ostatnia kopia danych: ${days} dni temu.`:'Nie zrobiliście jeszcze kopii danych.',{a:'backup'},'Kopia','',TECH)}

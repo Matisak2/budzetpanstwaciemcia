@@ -192,12 +192,24 @@ const N=' ';
   eq('Zamknięcie – Wercia nie 10.10',closeDueP({},tx,'2026-10-10',cfg,'Wercia'),null);
   /* the salary came earlier than expected (7.10) → the real day counts */
   const tx2=[...tx,inc('m10','2026-10-07','sM')];
-  eq('Wypłata – prawdziwy dzień, gdy już wpłynęła',paydayP(cfg,tx2,'Mati','2026-10'),{date:'2026-10-07',real:true,src:'sM'});
+  eq('Wypłata – prawdziwy dzień, gdy już wpłynęła',paydayP(cfg,tx2,'Mati','2026-10'),{date:'2026-10-07',real:true,nom:10,src:'sM'});
   eq('Zamknięcie – okno od dnia przed prawdziwą wypłatą',closeDueP({},tx2,'2026-10-06',cfg,'Mati')?.start,'2026-10-06');
   /* no payslip yet → the day typed at the source; no source → the first 10 days of a month */
   eq('Wypłata – bez pasków dzień ze źródła',paydayP(cfg,[],'Mati','2026-11').date,'2026-11-10');
   eq('Zamknięcie – bez źródła dochodu od 1. dnia',closeDueP({},tx,'2026-10-03',{...cfg,incs:[]},'Mati')?.ym,'2026-09');
   eq('Następne liczenie nadwyżki – Mati',nextCloseP(cfg,tx,'Mati','2026-10-20'),'2026-11-09');
+  /* 20.12.2026 = niedziela → wypłata w piątek 18.12, ale zamyka się grudzień (dzień zwykły = 20.), a nie znowu listopad */
+  const c20={...cfg,incs:[{id:'s20',who:'Mati',kind:'uop',day:20}]},t20=[...['2026-09-21','2026-10-20','2026-11-20'].map((d,i)=>inc('x'+i,d,'s20')),{id:'xe',type:'exp',amount:100,date:'2026-12-02',sub:'s',acc:'a'}];
+  eq('Wypłata 20. w niedzielę → piątek 18.12',paydayP(c20,t20,'Mati','2026-12').date,'2026-12-18');
+  eq('Zamknięcie – wypłata 20. przesunięta na 18.12 zamyka grudzień',closeDueP({},t20,'2026-12-17',c20,'Mati')?.ym,'2026-12');
+  eq('Zamknięcie – grudzień też gdy pensja naprawdę wpłynęła 18.12',closeDueP({},[...t20,inc('x9','2026-12-18','s20')],'2026-12-20',c20,'Mati')?.ym,'2026-12');
+  /* wypłata 1. dnia: 1.08.2026 = sobota → 31.07; zamyka lipiec, a pensja z 31.07 należy do sierpnia */
+  const c1={...cfg,incs:[{id:'s1',who:'Mati',kind:'uop',day:1}]},t1=['2026-05-01','2026-06-01','2026-07-01'].map((d,i)=>inc('y'+i,d,'s1'));
+  eq('Wypłata 1. w sobotę → 31.07',paydayP(c1,t1,'Mati','2026-08').date,'2026-07-31');
+  eq('Zamknięcie – wypłata 1.08 przesunięta na 31.07 zamyka lipiec',closeDueP({},t1,'2026-07-30',c1,'Mati')?.ym,'2026-07');
+  const t1b=[...t1,inc('y9','2026-07-31','s1')];
+  eq('Pensja z 31.07 to prawdziwa wypłata sierpnia',paydayP(c1,t1b,'Mati','2026-08'),{date:'2026-07-31',real:true,nom:1,src:'s1'});
+  eq('Wypłata 20.06.2026 (sobota) → 19.06, zamyka czerwiec',closeDueP({},[...['2026-03-20','2026-04-20','2026-05-20'].map((d,i)=>inc('z'+i,d,'s20')),{id:'ze',type:'exp',amount:100,date:'2026-06-02',sub:'s',acc:'a'}],'2026-06-18',c20,'Mati')?.ym,'2026-06');
   /* personal and shared steps; steps from before the split count for whoever ticked them */
   const old={closeM:{'2026-09':{steps:{bank:{by:'Mati'},prev:{by:'Wercia'},casc:{by:'Wercia'}}}}};
   eq('Zamknięcie – stare kroki: Mati (bank + wspólny „ponad plan”)',closeStateP(old,'2026-09','Mati').n,2);
@@ -723,5 +735,7 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Analiza pomysłu: przekroczenie limitu, udział USA przez fundusz świata, pytania adwokata diabła',[c.over,/30 000/.test(c.facts[0].replace(/\s/g,' ')),c.devil.length,c.facts.length],[100000,true,5,3]);
   eq('Piaskownica 0% w planie – uwaga',sandCheckP({amt:100000,kind:'theme',region:'none',sand:{now:0,limit:0},base:100}).flags.length,2);
   eq('Lista życzeń: cena doszła do celu',wishHitP({a:{name:'X',ticker:'nvda.us',target:100},b:{name:'Y',ticker:'CDR',target:200},c:{name:'Z',ticker:'BTC',target:9,bought:true}},{'NVDA.US':{p:99},'CDR':{p:250},'BTC':{p:5}}).map(w=>w.id),['a']);}
+{ const g=planP({q42:'gt20',q44:'0.5',q43:'more',q54:'10',q58:'0'}).g;eq('Plan doradcy – razem zawsze 100% (akcje 100 + złoto 10)',[g.stock+g.gold+g.cash+g.bond,g.stock,g.gold,g.bond],[100,90,10,0]);
+  eq('Limity 2027 – IKE i IKZE',[limitOf({grp:'inv',wrap:'ike'},'2027'),limitOf({grp:'inv',wrap:'ikze'},'2027'),limitOf({grp:'inv',wrap:'ikze',jdg:true},'2027')],[3009900,1203960,1805940]);}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

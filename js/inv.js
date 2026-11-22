@@ -13,7 +13,8 @@ export const BONDS={
   ROS:{n:'ROS – 6-letnie rodzinne, inflacja + marża',m:72,idx:'infl',cap:true,margin:2},
   ROD:{n:'ROD – 12-letnie rodzinne, inflacja + marża',m:144,idx:'infl',cap:true,margin:2.5}};
 /* limits of yearly payments (MRPiPS notices); OKI has no payment limit – 100 000 zł of assets is the tax-free threshold (0,85% above it in 2027) */
-export const LIMITS={2026:{ike:2826000,ikze:1130400,ikzeB:1695600},2025:{ike:2601900,ikze:1040760,ikzeB:1561140}};
+/* 2027: IKE 3 × przeciętne wynagrodzenie (prognoza 10 033 zł), IKZE 1,2 × / 1,8 × – komunikaty MRPiPS z jesieni 2026 */
+export const LIMITS={2027:{ike:3009900,ikze:1203960,ikzeB:1805940},2026:{ike:2826000,ikze:1130400,ikzeB:1695600},2025:{ike:2601900,ikze:1040760,ikzeB:1561140}};
 export const OKI_FREE=10000000,OKI_RATE=0.85,BELKA=19;
 export const wrapOf=a=>a.wrap??(/\bIKZE\b/i.test(a.name)?'ikze':/\bIKE\b/i.test(a.name)?'ike':/\bOKI\b/i.test(a.name)?'oki':/\bPPK\b/i.test(a.name)?'ppk':'');
 export const taxFree=a=>['ike','ikze','oki','ppk'].includes(wrapOf(a));

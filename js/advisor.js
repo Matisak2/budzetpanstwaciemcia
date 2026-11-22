@@ -228,8 +228,10 @@ export function planP(A){const why=[];
   const h={lt3:0,'3-5':0,'5-10':40,'10-20':100,gt20:100}[A.q42],eqH=h??40;why.push(h==null?'horyzont nieznany – ostrożnie do 40% akcji':`horyzont ${A.q42.replace('lt','<').replace('gt','>')} lat → akcje do ${eqH}%`);
   const d=+A.q44,eqT=d>0?Math.min(100,r5(2*d*100)):30;why.push(d>0?`spadek do ${Math.round(d*100)}% → akcje do ${eqT}% (akcje potrafią spaść o połowę)`:'tolerancja straty nieznana – ostrożnie 30%');
   const eqR={all:20,part:40,'?':40}[A.q43]??100;if(eqR<100)why.push(`reakcja na spadek → akcje do ${eqR}%`);
-  const stock=Math.min(eqH,eqT,eqR),gold=Math.min(15,+(A.q54=='?'||A.q54==null?5:A.q54)||0),cash=+(A.q58=='?'||A.q58==null?0:A.q58)||0;
-  let g={stock,gold,cash,bond:100-stock-gold-cash};if(g.bond<0){g.cash=Math.max(0,g.cash+g.bond);g.bond=0}
+  /* the parts always add up to 100%: dry powder first, then gold, stocks take what is left at most (no 100% stocks + 10% gold = 110%) */
+  const cash=Math.min(100,Math.max(0,+(A.q58=='?'||A.q58==null?0:A.q58)||0)),gold=Math.min(15,100-cash,Math.max(0,+(A.q54=='?'||A.q54==null?5:A.q54)||0)),
+    stock0=Math.min(eqH,eqT,eqR),stock=Math.min(stock0,100-gold-cash);if(stock<stock0)why.push(`złoto i suchy proch zajmują ${gold+cash}% → akcje ${stock}%`);
+  const g={stock,gold,cash,bond:100-stock-gold-cash};
   const split={world:{s_world:100},devem:{s_dev:88,s_em:12},pl:{s_world:90,s_pl:10},own:{s_world:100}}[A.q55]||{s_world:100};
   return{g,split,real:yes(A.q29)&&A.q30!=null&&A.q30!==''?+A.q30:null,pod:+(A.q17||6)||6,save:+A.q13||0,sand:yes(A.q57)?Math.min(10,+(A.q57a||10)):0,why}}
 export const bandOf=t=>{const b=t>=20?5:2.5;return[Math.max(0,t-b),Math.min(100,t+b)]};

@@ -5,7 +5,7 @@
 import {doc,setDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {scene} from './cats.js';
 import {kotki} from './guide.js';
-import {CLOSE_STEPS,CLOSE_SHARED,closeDueP,closeStateP,closeYmP} from './today.js';
+import {CLOSE_STEPS,CLOSE_SHARED,closeDueP,closeStateP,closeWinP,closeYmP} from './today.js';
 import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds,ownerOf} from './logic.js';
 import {MN,MNG,addDays,addMonths,esc,td,zl0,money,dmy} from './util.js';
 import {S,toast,CUR,H,PLC,merge,guard,celebrate,w,infoH} from './core.js';
@@ -23,7 +23,8 @@ const bankAccs=()=>S.cfg.accs.filter(a=>!a.archived&&a.grp!='inv'&&['Wspólne',S
 /* the last time an account was checked with the bank: „✓ Zgadza się” or a reconciliation entry */
 export function lastCheck(id){let d=S.hraw?.reconM?.[id]||'';
   for(const t of liveOf(S.tx))if(t.acc===id&&t.type=='adj'&&!t.val&&t.date>d)d=t.date;return d}
-const fresh=(id,ym)=>lastCheck(id)>=ym+'-25';
+/* checked from the 25th of the closed month – or from the start of the closing window when it starts earlier (pay on the 20th–25th) */
+const fresh=(id,ym)=>{const st=closeWinP(S.cfg,liveOf(S.tx),S.who,td())?.start,from=st&&st<ym+'-25'&&st>=ym+'-01'?st:ym+'-25';return lastCheck(id)>=from};
 
 export function openClose(ym){if(guard())return;S.tab='dash';S.proj=null;S.close=ym||closeYm();S.ym=td().slice(0,7);window.scrollTo(0,0);render()}
 export function closeClose(){S.close=null;window.scrollTo(0,0);render()}

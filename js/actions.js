@@ -550,7 +550,7 @@ export function setPay(sid){if(guard())return;const sm=subsMap(S.cfg),s0=sm[sid]
     render();toast(`${s.name}: ${payLabel(val)}${one?' – tylko '+mon:''}`)};
   draw();d.hidden=false;$('dlgBody').scrollTop=0;d.onclick=e=>{if(e.target===d)close()}}
 /* the month of each person from what is on the accounts now (actions + 🔔 planTodo use the same numbers); salaries come on the expected pay day */
-export function pbudOf(ym){const tx=liveOf(S.tx);return personBudP(S.cfg,{plans:S.plans,tx,hraw:S.hraw},ym,{today:td(),payDate:(s,m)=>payDateP(tx,s,m)?.date})}
+export function pbudOf(ym){const tx=liveOf(S.tx);return personBudP(S.cfg,{plans:S.plans,tx,hraw:S.hraw},ym,{today:td(),payDate:(s,m)=>payDateP(tx,s,m)})}
 const sg=x=>(x<0?'−':'+')+zl0(Math.abs(x)),accById0=id=>S.cfg.accs.find(a=>a.id==id);
 /* is it tight? → the text for the card and for „Na dziś” (null = fine) */
 /* 💡 how much the shared accounts miss (at the end or at the lowest point) and the half each – a hint only, nothing is moved */

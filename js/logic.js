@@ -242,8 +242,11 @@ function budMonth(cfg,{plans,tx,hraw},ym,today,start0,o){const yAcc=hraw?.yearAc
   /* in: salaries */
   for(const s of incs){const p=pool(s.acc);if(!p)continue;const real=M.filter(t=>isSal(s,t)&&t.acc==s.acc).reduce((a,t)=>a+t.amount,0),nm='💼 '+(s.name||'Pensja');
     if(real){if(!live)add(p,'inc','sal:'+s.id,nm,real,'',M.find(t=>isSal(s,t))?.date);continue}
+    /* o.payDate → a date or {date,real}: a salary of this month that already came at the end of the month before (a pay on the 1st moved
+       by a weekend) is already in the balance – not counted again */
+    const pd=o.payDate?.(s,ym),pdd=pd&&typeof pd=='object'?pd.date:pd;if(pd?.real&&pdd<ym)continue;
     const last=tx.filter(t=>isSal(s,t)&&t.acc==s.acc&&t.date<ym).sort((x,y)=>y.date.localeCompare(x.date))[0];
-    if(last)add(p,'inc','sal:'+s.id,nm,last.amount,'jak ostatnio',o.payDate?.(s,ym)||fixedDate({day:s.day||10},ym))}
+    if(last)add(p,'inc','sal:'+s.id,nm,last.amount,'jak ostatnio',pdd||fixedDate({day:s.day||10},ym))}
   /* in: fixed incomes (rent…) */
   for(const f of fx.filter(f=>f.kind=='inc'&&!linked.has(f.id))){const p=pool(f.acc);if(!p)continue;const real=M.filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((a,t)=>a+t.amount,0);
     if(real){if(!live)add(p,'inc','fi:'+f.id,'📌 '+(f.name||'Przychód stały'),real,'',fixedDate(f,ym));continue}add(p,'inc','fi:'+f.id,'📌 '+(f.name||'Przychód stały'),+f.amount||0,'stały, jeszcze nie wpłynął',fixedDate(f,ym))}
