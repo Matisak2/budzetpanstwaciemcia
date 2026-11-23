@@ -1,6 +1,6 @@
 // E-mails of Budżet M&W: the backup file (same format as ⚙️ „Pobierz kopię”) and a pastel summary of a month. Pure functions – easy to test.
 import {MN,MNG,zl,zl0,addMonths,daysIn,esc,plu,dmy} from '../js/util.js';
-import {actuals,agg,subsMap,cleanCat,savFlow,savIds,planOf,balance,anomalies,firstYm,yearDueIn,backupDoc as backupOf} from '../js/logic.js';
+import {shopsP,yearPlanOf,cushionP,actuals,agg,subsMap,cleanCat,savFlow,savIds,planOf,balance,anomalies,firstYm,backupDoc as backupOf} from '../js/logic.js';
 import {debtStateP} from '../js/today.js';
 import {catIcon} from '../js/art.js';
 export const APP='https://matisak2.github.io/budzetpanstwaciemcia/';
@@ -11,8 +11,6 @@ const OWN=['Mati','Wercia','Wspólne'];
 const isPln=a=>!a.cur||a.cur=='PLN';
 const nice=n=>{n=cleanCat(n);return n.charAt(0)+n.slice(1).toLowerCase()};/* „ZDROWIE I URODA” → „Zdrowie i uroda” */
 const pc=(a,b)=>b?Math.round((a/Math.abs(b)-1)*100):null;
-/* 🏪 a shop / place from the note: the same name written a bit differently counts as one */
-const placeKey=n=>String(n||'').replace(/💱.*$/,'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l').replace(/[.,!?;:"'„”()]/g,'').replace(/\s+/g,' ').trim();
 /* all numbers of one month (ym) for the summary e-mail – compared with the previous month, the averages of 3 and 6 months before it and the same month a year ago */
 export function monthStats(D,ym,today=ym+'-28'){const{cfg,tx}=D,sm=subsMap(cfg),first=firstYm(tx),SV=savIds(cfg),plans=D.plans||{};
   const memo={},M=m=>memo[m]||(memo[m]=(()=>{const A=agg(cfg,tx,m);return{m,inc:A.inc,exp:A.exp,bal:A.inc-A.exp,put:savFlow(cfg,tx,SV,m).flow,cat:A.cat,sub:A.sub,has:!!(A.inc||A.exp)}})());
@@ -34,9 +32,7 @@ export function monthStats(D,ym,today=ym+'-28'){const{cfg,tx}=D,sm=subsMap(cfg),
   const anom=anomalies(cfg,tx,ym).slice(0,5).map(x=>({n:x.sub.name,v:x.v,avg:x.avg,pct:x.pct}));
   const big=A.big.map(t=>({v:t.amount,n:sm[t.sub]?.name||'',note:t.note||'',d:t.date}));
   /* shops and places from the notes (złoty expenses, no fixed payments, no loan instalments) */
-  const G={};for(const t of tx){if(t.type!='exp'||!t.date.startsWith(ym)||t.fixedId||t.debt||t.payoff||!isPln(cfg.accs.find(a=>a.id==t.acc)||{}))continue;const raw=String(t.note||'').replace(/💱.*$/,'').trim();
-    if(raw.length<2||/^[🪙↩📅💼]/u.test(raw)||/^potrącenie/i.test(raw))continue;const k=placeKey(raw);if(!k)continue;const g=G[k]||(G[k]={v:0,n:0,names:{}});g.v+=t.amount;g.n++;g.names[raw]=(g.names[raw]||0)+1}
-  const shops=Object.values(G).filter(g=>g.v>0).sort((a,b)=>b.v-a.v).slice(0,5).map(g=>({n:Object.entries(g.names).sort((a,b)=>b[1]-a[1])[0][0],v:g.v,k:g.n}));
+  const shops=shopsP(cfg,tx,ym).slice(0,5).map(g=>({n:g.name,v:g.v,k:g.n}));
   /* days */
   const nd=daysIn(ym),dayMax=Object.entries(A.day).sort((a,b)=>b[1]-a[1])[0]||null;
   /* Mati ↔ Wercia: whose account the money came from (as in the app), and what each put aside */
@@ -46,13 +42,13 @@ export function monthStats(D,ym,today=ym+'-28'){const{cfg,tx}=D,sm=subsMap(cfg),
   const savA=pln.filter(a=>a.grp=='sav'||a.grp=='inv'),sav1=savA.reduce((x,a)=>x+bal(a,end),0),sav0=savA.reduce((x,a)=>x+bal(a,start),0);
   const w1=pln.reduce((x,a)=>x+bal(a,end),0),w0=pln.reduce((x,a)=>x+bal(a,start),0);
   const goals=Object.values(D.goals||{}).filter(g=>g.target>0&&!g.deleted).map(g=>({n:g.name,saved:g.alloc??g.saved??0,target:g.target,o:g.owner||'Wspólne'})).map(g=>({...g,pct:Math.min(100,Math.max(0,g.saved/g.target*100))}));
-  const past=back(6).map(x=>x.exp).filter(v=>v>0),avgE=past.length?past.reduce((a,v)=>a+v,0)/past.length:A.exp;
-  const cushPool=pln.filter(a=>a.grp=='sav').reduce((x,a)=>x+bal(a,end),0)-goals.reduce((a,g)=>a+Math.max(0,g.saved),0),cushion=avgE>0?Math.max(0,cushPool)/avgE:null;
+  const cushion=cushionP(cfg,tx,D.goals,{ym,at:end}).months; // 🛟 the same cushion as the app (Savings card, advisor)
   const owe=Object.entries(D.debts||{}).filter(([,d])=>!d.deleted&&d.dir=='owe').reduce((a,[id,d])=>a+debtStateP({id,...d},tx,today).left,0);
   /* the new month: fixed payments, yearly expenses due, the plan if there is one */
-  const nym=addMonths(ym,1),fixedN=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&isPln(cfg.accs.find(a=>a.id==f.acc)||{})).reduce((a,f)=>a+(+f.amount||0),0);
-  const yearsN=(cfg.years||[]).filter(it=>+it.amount>0&&yearDueIn(it,nym)).map(it=>({n:it.name,v:+it.amount}));
-  const planN=plans[nym]?Object.entries(plans[nym]).filter(([id])=>sm[id]?.cat.type=='exp').reduce((a,[,v])=>a+(+v||0),0):0;
+  /* as in the app: fixed payments still running then (until), yearly expenses not paid early (yearPlanOf), the plan with them (planOf) */
+  const nym=addMonths(ym,1),fixedN=(cfg.fixed||[]).filter(f=>(f.kind||'exp')=='exp'&&!(f.until&&f.until<nym+'-01')&&isPln(cfg.accs.find(a=>a.id==f.acc)||{})).reduce((a,f)=>a+(+f.amount||0),0);
+  const yearsN=yearPlanOf(cfg,tx,nym).items.map(({it,amt})=>({n:it.name,v:amt}));
+  const planN=plans[nym]?Object.entries(planOf(cfg,plans,tx,nym)).filter(([id])=>sm[id]?.cat.type=='exp').reduce((a,[,v])=>a+(+v||0),0):0;
   const st={ym,inc:A.inc,exp:A.exp,bal:A.inc-A.exp,put:cur.put,gain:savFlow(cfg,tx,SV,ym).gain,rate:A.inc?cur.put/A.inc*100:null,cmp:{prev,a3,a6,ya},pexp,over,out,fit,
     left:fit.reduce((a,x)=>a+x.p-x.a,0),cats,up,down,record,anom,big,shops,fixed:A.fixed,avgDay:A.exp/nd,dayMax:dayMax?{d:+dayMax[0],v:dayMax[1]}:null,persons,
     target:D.hraw?.savTarget||0,sav0,sav1,w0,w1,goals,cushion,owe,fixedN,yearsN,planN,n:tx.filter(t=>t.date.startsWith(ym)).length};

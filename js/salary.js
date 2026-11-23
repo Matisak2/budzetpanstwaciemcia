@@ -17,10 +17,10 @@ export const incs=()=>S.cfg.incs||[],incById=id=>incs().find(s=>s.id==id);
 export const slipOf=(ym,id)=>(S.slips[ym]||{})[id];
 /* 🎓 ulga dla młodych: the limit left for this payslip (null = the relief does not apply – no date of birth, after the 26th birthday, other contract) */
 const payDate=(src,ym,d)=>isDate(d?.date)&&d.date.startsWith(ym)?d.date:ym+'-'+p2(Math.min(+src.day||10,daysIn(ym)));
-export const youngOf=(src,ym,d)=>youngLeft(S.slips,incs(),src,S.hraw?.birth?.[src.who],ym,payDate(src,ym,d));
-export const putSlip=(ym,id,body)=>merge(doc(SLIPS(),ym),{s:{[id]:body}});
+const youngOf=(src,ym,d)=>youngLeft(S.slips,incs(),src,S.hraw?.birth?.[src.who],ym,payDate(src,ym,d));
+const putSlip=(ym,id,body)=>merge(doc(SLIPS(),ym),{s:{[id]:body}});
 export const saveInc=x=>merge(H,{incM:{[x.id]:strip(x,posOf(incs(),x))}});
-export const delIncDb=id=>w(updateDoc(H,{['incM.'+id]:deleteField()}));
+const delIncDb=id=>w(updateDoc(H,{['incM.'+id]:deleteField()}));
 export const gr=v=>{const x=pg(v||'0');return isFinite(x)?x:0};
 export const segL=l=>l.replace(/^(\S+) /,'<i class="si">$1</i> ');
 /* 📌 Stałe: payments · salaries · 📅 yearly expenses and other dates (the former „🔔 Przyp.” tab is part of it) */
@@ -29,7 +29,7 @@ export const fixSegH=()=>`<div class="seg seg3">${[['fix','📌 Opłaty'],['pay'
 export function setFixWho(k){S.fixWho=k;ls.set('mw_fixwho',k);render()}
 export function setFixSub(k){S.fixSub=k=='rem'?'year':k;S.slip=null;window.scrollTo(0,0);render()}
 export function setPayView(k){S.payView=k;render()}
-export const payTabH=T=>`<div class="ptbl">${[['Brutto / faktury',T.brutto],['ZUS (społeczne)',-T.zus],['Zdrowotna',-T.health],['Zaliczka na podatek',-T.tax],['PPK – moje wpłaty',-T.ppkOwn],['PPK – pracodawca (na PPK)',T.ppkEmp],['Potrącenia',-T.ded],['Netto na konto',T.net]].filter(([,v],i)=>v||i==0||i==7).map(([l,v],i,a)=>`<div class="r1${i==a.length-1?' tot':''}"><span>${l}</span><b class="num">${v<0?'−'+zl(-v):zl(v)}</b></div>`).join('')}${T.hours?`<div class="mini">${String(T.hours).replace('.',',')} h wpisanych godzin</div>`:''}</div>`;
+const payTabH=T=>`<div class="ptbl">${[['Brutto / faktury',T.brutto],['ZUS (społeczne)',-T.zus],['Zdrowotna',-T.health],['Zaliczka na podatek',-T.tax],['PPK – moje wpłaty',-T.ppkOwn],['PPK – pracodawca (na PPK)',T.ppkEmp],['Potrącenia',-T.ded],['Netto na konto',T.net]].filter(([,v],i)=>v||i==0||i==7).map(([l,v],i,a)=>`<div class="r1${i==a.length-1?' tot':''}"><span>${l}</span><b class="num">${v<0?'−'+zl(-v):zl(v)}</b></div>`).join('')}${T.hours?`<div class="mini">${String(T.hours).replace('.',',')} h wpisanych godzin</div>`:''}</div>`;
 export function payH(){const y=S.ym.slice(0,4);
   return`<div class="seg" style="align-self:center">${[['m','Miesiąc'],['y','Rok '+y]].map(([k,l])=>`<button aria-pressed="${(S.payView||'m')==k}" onclick="setPayView('${k}')">${l}</button>`).join('')}</div>`+(S.payView=='y'?payYearH():payMonthH())}
 /* 📌 an old fixed income („Pensja …”) and an income source for the same budget position – linked, ticking it opens the payslip and the pay is never booked twice */
@@ -38,11 +38,11 @@ export function pensLinkH(){const linked=new Set(incs().map(x=>x.fixed).filter(B
     return`<div class="note">💼 „${esc(f.name)}” w 📌 Stałe to pewnie ta sama pensja co źródło dochodu „${esc(s.name)}”. Połączyć? Odhaczenie otworzy wtedy pasek, a pensja nie wpisze się dwa razy. <button class="btn sm primary" onclick="linkInc('${s.id}','${f.id}')">Połącz</button></div>`}).join('')}
 export function linkInc(sid,fid){const s=incById(sid);if(!s)return;s.fixed=fid;render();saveInc(s);toast('Połączono – odhaczenie otworzy pasek')}
 /* ➕ income that is not from a payslip: selling things, a bonus outside the payslip, a tax refund, rent */
-export function otherIncH(ym){const sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>t.date.startsWith(ym)&&t.type=='inc'&&!t.slip&&sm[t.sub]?.cat.type=='inc').sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
+function otherIncH(ym){const sm=subsMap(S.cfg),L=liveOf(S.tx).filter(t=>t.date.startsWith(ym)&&t.type=='inc'&&!t.slip&&sm[t.sub]?.cat.type=='inc').sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const sum=L.filter(t=>accCur(t.acc)=='PLN').reduce((a,t)=>a+t.amount,0);
   return`<div class="r1" style="padding:0 4px"><span class="h2" style="margin:0">➕ Przychody spoza pasków</span><button class="btn sm dark" onclick="openTx(null,{type:'inc'})">+ Inny przychód</button></div>`+(sum?`<div class="mini" style="padding:0 6px">razem w tym miesiącu <b class="t-inc">${zl(sum)}</b></div>`:'')+
     (L.length?`<div class="list">${L.map(t=>txRowH(t,sm)).join('')}</div>`:`<div class="mini" style="padding:0 6px">Sprzedaż rzeczy, premia poza paskiem, zwrot PIT, najem – dodasz przyciskiem obok.</div>`)}
-export function payMonthH(){const ym=S.ym,live=new Set(liveOf(S.tx).map(t=>t.id));let h=pensLinkH();
+function payMonthH(){const ym=S.ym,live=new Set(liveOf(S.tx).map(t=>t.id));let h=pensLinkH();
   const b2b=incs().filter(s=>s.kind=='b2b');
   if(b2b.length&&ym==td().slice(0,7)){const res=b2b.reduce((a,s)=>a+(slipOf(ym,s.id)?reserve(slipOf(ym,s.id)):0),0);
     h+=`<div class="note">📅 JDG: do 20. dnia miesiąca zapłać ZUS, zdrowotną i zaliczkę na podatek${res?` – według pasków ok. <b>${zl(res)}</b>`:''}.</div>`}
@@ -59,7 +59,7 @@ export function payMonthH(){const ym=S.ym,live=new Set(liveOf(S.tx).map(t=>t.id)
   const T=totals(Object.values(S.slips[ym]||{}));
   if(T.n)h+=`<section class="chart"><div class="ct"><b>Razem w miesiącu</b><span class="mini">${T.n} ${plu(T.n,'pasek','paski','pasków')} · ZUS, zdrowotna i podatek nie są wydatkami w budżecie</span></div>${payTabH(T)}</section>`;
   return h}
-export function payYearH(){const y=S.ym.slice(0,4),ms=Array.from({length:12},(_,i)=>y+'-'+p2(i+1)),rows=[];
+function payYearH(){const y=S.ym.slice(0,4),ms=Array.from({length:12},(_,i)=>y+'-'+p2(i+1)),rows=[];
   ms.forEach(m=>Object.entries(S.slips[m]||{}).forEach(([id,sl])=>rows.push({m,id,sl})));
   if(!rows.length)return catsEmpty(`Brak pasków w roku ${y}.<br>Wpisz pierwszy w widoku „Miesiąc”.`,0,'papers')+pitH(y);
   const T=totals(rows.map(r=>r.sl)),nm=new Set(rows.map(r=>r.m)).size;
@@ -72,7 +72,7 @@ export function payYearH(){const y=S.ym.slice(0,4),ms=Array.from({length:12},(_,
     return`<section class="chart"><div class="ct"><b>${esc(src.name||'?')}</b><span class="mini">${KINDS[src.kind]||''} · ${esc(src.who||'')} · ${t.n} ${plu(t.n,'pasek','paski','pasków')}</span></div><div class="ptbl">${L.map(([l,v])=>`<div class="r1"><span>${l}</span><b class="num">${zl(v)}</b></div>`).join('')}</div>${b2b?'<div class="mini">JDG rozliczasz we własnym zeznaniu (PIT-36, PIT-36L albo PIT-28), nie z PIT-11.</div>':''}</section>`}).join('');
   return h+`<div class="mini" style="padding:0 4px">Liczone według miesiąca wypłaty. Porównaj z PIT-11 od pracodawcy – drobne różnice mogą wynikać z zaokrągleń.</div>`+pitH(y)}
 /* 🧾 tax reliefs of each person for the year (marked payments, IKZE payments) – a hint, not tax advice */
-export function pitH(y){const tx=liveOf(S.tx);
+function pitH(y){const tx=liveOf(S.tx);
   return`<div class="h2">🧾 Pomocnik PIT ${y}</div>`+['Mati','Wercia'].map(w=>{const p=pitSummaryP(S.cfg,tx,y,w,S.hraw),rows=Object.entries(p.by);
     return`<section class="chart"><div class="ct"><b>${w}</b><span class="mini">rozliczenie osobne</span></div>
       ${rows.length?rows.map(([k,v])=>{const u=ULGI[k]||ULGI.inne,cap=u.lim&&v.sum>u.lim;return`<div class="r1"><span>${esc(u.n)} <button class="ib" onclick="ulgaInfo('${k}')" aria-label="Co to jest">ⓘ</button><span class="mini"> ${v.n} ${plu(v.n,'wpis','wpisy','wpisów')}</span></span><b class="num">${zl(cap?u.lim:v.sum)}</b></div>${cap?`<div class="mini">wydano ${zl(v.sum)}, odliczyć można najwyżej ${zl0(u.lim)}</div>`:''}`}).join(''):'<div class="mini">Brak wydatków oznaczonych „🧾 do ulgi” – oznaczysz je w okienku wydatku.</div>'}
@@ -100,12 +100,12 @@ export async function subDrop(id){if(guard())return;const f=S.cfg.fixed.find(x=>
   if(await ask({title:'Rezygnujecie z „'+f.name+'”?',text:'Usunę ją z 📌 Stałe – dawne płatności zostają w Rejestrze.\nPamiętajcie, żeby wyłączyć ją też w samym serwisie (ustawienia konta, App Store, Google Play).',ok:'Usuń z opłat stałych',danger:true})){
     S.cfg.fixed=S.cfg.fixed.filter(x=>x.id!=id);delFixedDb(id);render();toast('Usunięte z opłat stałych ✓')}
   openSubs()}
-export function subsDone(){if(guard())return;const key='subs:'+S.who+':'+td().slice(0,7);S.hraw={...S.hraw,checkIgnore:{...(S.hraw?.checkIgnore||{}),[key]:true}};merge(H,{checkIgnore:{[key]:true}});
+function subsDone(){if(guard())return;const key='subs:'+S.who+':'+td().slice(0,7);S.hraw={...S.hraw,checkIgnore:{...(S.hraw?.checkIgnore||{}),[key]:true}};merge(H,{checkIgnore:{[key]:true}});
   SUBKEEP.clear();$('dlg').hidden=true;render();toast('Przejrzane ✓ Przypomnę za rok')}
 /* 🗑️ recently deleted (60 days): a deleted entry is only marked deleted:true, so it can always come back.
    Entries deleted together with their parent (PPK, refunds, interest, paystub deductions) come back with it; paystub entries replaced by a re-saved paystub are not listed. */
-export const DEL_DAYS=60,parOf=t=>t.ppkOf||t.refundOf||t.payOf||t.slipOf;
-export const withParent=(t,p)=>p&&p.deleted===true&&Math.abs((p.dAt||0)-(t.dAt||0))<15000;
+const DEL_DAYS=60,parOf=t=>t.ppkOf||t.refundOf||t.payOf||t.slipOf;
+const withParent=(t,p)=>p&&p.deleted===true&&Math.abs((p.dAt||0)-(t.dAt||0))<15000;
 export function deletedList(){const byId=new Map(S.tx.map(t=>[t.id,t])),cut=Date.now()-DEL_DAYS*864e5;
   const replaced=t=>{if(t.slip){const sl=slipOf(t.date.slice(0,7),t.slip);return!!(sl&&sl.booked&&sl.booked!==t.id)}const p=parOf(t)&&byId.get(parOf(t));return!!(p&&p.slip&&replaced(p))};
   return S.tx.filter(t=>t.deleted===true&&!t.moved&&t.dAt>cut&&isDate(t.date)&&!withParent(t,byId.get(parOf(t)))&&!replaced(t)).sort((a,b)=>b.dAt-a.dAt)}
@@ -192,7 +192,7 @@ export function openSlip(id,ym){if(guard())return;use('f:slip');const src=incByI
   d.comp=d.comp||[];d.ded=d.ded||[];
   S.slip={id,ym,d,isNew:!old};S.ym=ym;S.tab='fix';S.fixSub='pay';window.scrollTo(0,0);render()}
 export function closeSlip(){S.slip=null;render()}
-export function slipRead(){const d=S.slip.d,root=document.querySelector('.slip');if(!root)return d;
+function slipRead(){const d=S.slip.d,root=document.querySelector('.slip');if(!root)return d;
   root.querySelectorAll('[data-k]').forEach(el=>d[el.dataset.k]=gr(el.value));
   root.querySelectorAll('[data-c]').forEach(el=>{const c=d.comp[+el.dataset.c];if(!c)return;const f=el.dataset.f;c[f]=f=='a'?gr(el.value):f=='h'?(pnum(el.value)||0):el.value});
   root.querySelectorAll('[data-d]').forEach(el=>{const x=d.ded[+el.dataset.d];if(!x)return;const f=el.dataset.f;x[f]=f=='a'?gr(el.value):el.value});
@@ -258,7 +258,7 @@ export function slipH(){const {id,ym,d}=S.slip,src=incById(id);if(!src){S.slip=n
     ${S.slip.isNew?'':'<button class="btn sm" style="align-self:center;background:none;color:var(--exp)" onclick="delSlip()">Usuń pasek</button>'}</div>`;
   return h}
 /* earlier booking of a payslip: the income and everything linked to it (deductions, PPK) */
-export const slipTxs=iid=>iid?liveOf(S.tx).filter(t=>t.id===iid||t.slipOf===iid||t.ppkOf===iid):[];
+const slipTxs=iid=>iid?liveOf(S.tx).filter(t=>t.id===iid||t.slipOf===iid||t.ppkOf===iid):[];
 export async function saveSlip(){if(guard())return;const {id,ym}=S.slip,src=incById(id),d=slipRead();
   d.comp=d.comp.filter(c=>c.a||String(c.n||'').trim());d.ded=src.kind=='b2b'?[]:d.ded.filter(x=>x.a||String(x.n||'').trim());
   if(!src.ppk||src.kind=='b2b'){d.ppkOwn=0;d.ppkEmp=0}
@@ -266,7 +266,9 @@ export async function saveSlip(){if(guard())return;const {id,ym}=S.slip,src=incB
   if(!isDate(d.date)||!d.date.startsWith(ym))return toast('Data wpływu musi być w miesiącu: '+MN[+ym.slice(5)-1].toLowerCase(),'bad');
   if(d.ded.some(x=>x.a>0&&!x.sub))return toast('Wybierz pozycję budżetu dla każdego potrącenia','bad');
   const calc=calcNet(src,d),net=d.net||calc;if(net<=0)return toast('Kwota na konto musi być większa od zera','bad');
-  const twice=liveOf(S.tx).find(t=>t.type=='inc'&&t.date.startsWith(ym)&&!t.slip&&t.fixedId&&(t.fixedId==src.fixed||t.sub==src.sub));
+  /* the same pay ticked in 📌 Stałe: its linked fixed income, or the same position of the same person (the other person's salary on the same position is not it) */
+  const whoT=t=>{const f=S.cfg.fixed.find(x=>x.id==t.fixedId);return f?fixedWho(S.cfg,f):ownerOf(S.cfg.accs.find(a=>a.id==t.acc))};
+  const twice=liveOf(S.tx).find(t=>t.type=='inc'&&t.date.startsWith(ym)&&!t.slip&&t.fixedId&&(t.fixedId==src.fixed||(t.sub==src.sub&&[src.who,'Wspólne'].includes(whoT(t)))));
   if(twice&&!await ask({title:'Ta pensja już jest w tym miesiącu?',text:`W ${MN[+ym.slice(5)-1].toLowerCase()} jest już wpływ „${twice.note||'przychód stały'}” ${zl(twice.amount)} (odhaczony w 📌 Stałe).\nJeśli to ta sama wypłata, najpierw odznacz go w 📌 Stałe – inaczej pensja policzy się dwa razy.`,ok:'Zapisz mimo to',cancel:'Nie zapisuj'}))return;
   const old=slipOf(ym,id);slipTxs(old?.booked).forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));
   const iid='t'+rid(),ts=Date.now(),dd=d.ded.filter(x=>x.a>0),inc=net+dd.reduce((a,x)=>a+x.a,0);
@@ -288,7 +290,8 @@ export function slipOfTx(t){if(!t?.slip)return null;for(const[ym,m]of Object.ent
 export const slipDrop=b=>b&&w(updateDoc(doc(SLIPS(),b.ym),{['s.'+b.id]:deleteField()}));
 export const slipBack=b=>{if(b&&!slipOf(b.ym,b.id))putSlip(b.ym,b.id,b.d)};
 export async function delSlip(){const {id,ym}=S.slip,old=slipOf(ym,id);if(!old)return closeSlip();
-  if(!await ask({title:'Usunąć pasek?',text:`${old.name||''} – ${MN[+ym.slice(5)-1].toLowerCase()}\nUsunę też wpływ, potrącenia i wpłaty PPK z tego paska. W 🗑️ „Ostatnio usunięte” można go przywrócić.`,ok:'Usuń',danger:true}))return;
   const bak={ym,id,d:old},L=slipTxs(old.booked);
+  /* a payslip without a booked income has no entry to keep its copy – only „Cofnij” right after deleting brings it back (said so) */
+  if(!await ask({title:'Usunąć pasek?',text:`${old.name||''} – ${MN[+ym.slice(5)-1].toLowerCase()}\n${L.length?'Usunę też wpływ, potrącenia i wpłaty PPK z tego paska. W 🗑️ „Ostatnio usunięte” można go przywrócić.':'Ten pasek nie ma jeszcze wpływu w Rejestrze – cofnąć usunięcie można tylko zaraz potem („Cofnij”).'}`,ok:'Usuń',danger:true}))return;
   L.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true,...(t.id===old.booked?{slipBak:bak}:{})}));slipDrop(bak);
   S.slip=null;render();toast('Usunięto pasek','',{label:'Cofnij',fn:()=>{L.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}));slipBack(bak)}})}

@@ -7,7 +7,7 @@ import {addM} from './inv.js';
 import {ULGI,savedP,saveSplitP} from './today.js';
 import {cleanCat,liveOf,roundUp,subsMap,fixedMatch,yearMatch,ownerOf,balDrop} from './logic.js';
 import {$,esc,f2,isDate,ls,pg,pnum,rid,td,zl,money,curSym,addDays,plu,dmy} from './util.js';
-import {S,accWho,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,liveById,guard,negStop,txOk} from './core.js';
+import {S,accWho,toast,ask,accCur,am,fxRate,stripFx,accOpts,H,DEBTS,w,merge,putTx,putTxs,liveById,guard,negStop,txOk} from './core.js';
 import {downloadBlob,fixedDupStop} from './actions.js';
 import {incById,openSlip,slipOfTx,slipDrop,slipBack} from './salary.js';
 import {markYearPaid,yearUndo} from './savings.js';
@@ -23,7 +23,7 @@ export const calcAmt=v=>(String(v||'').replace(/\s/g,'').replace(/−/g,'-').mat
 /* refunds are income booked on the expense's own position, so they lower that expense instead of adding income */
 export const refundsOf=id=>liveOf(S.tx).filter(x=>x.refundOf===id);
 /* the picker offers positions of this kind; a refund keeps its expense position */
-export const pickKind=()=>S.etype=='inc'&&!S.refEdit?'inc':'exp';
+const pickKind=()=>S.etype=='inc'&&!S.refEdit?'inc':'exp';
 
 export function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==t));
   if(S.cfg){updCoin();updFx();updDebt();updProj();updX();updSave();renderPh()}
@@ -31,9 +31,9 @@ export function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(
   const s=S.cfg&&subsMap(S.cfg)[$('ms').value];if(s&&s.cat.type!=pickKind())setMs('');
   if(t=='tr'&&SP.length){SP=[];renderSplit()}updSplit()}
 /* 🪙 drobne: the rule of the chosen account, the rounding of this amount, on/off for this one expense (on by default) */
-export const ruleOf=acc=>(S.cfg.round||[]).find(r=>r.from==acc&&S.cfg.accs.some(a=>a.id==r.to)&&accCur(r.from)==accCur(r.to));
+const ruleOf=acc=>(S.cfg.round||[]).find(r=>r.from==acc&&S.cfg.accs.some(a=>a.id==r.to)&&accCur(r.from)==accCur(r.to));
 /* 🛡️ warranty (asked from 300 zł) and 🧾 tax relief in the sheet */
-export function updX(){if(!S.cfg)return;const exp=S.etype=='exp'&&!S.refEdit,amt=calcAmt($('ma').value);
+function updX(){if(!S.cfg)return;const exp=S.etype=='exp'&&!S.refEdit,amt=calcAmt($('ma').value);
   $('mwarWrap').hidden=!(exp&&(amt>=30000||$('mwar').value));$('mward').hidden=$('mwar').value!='date';
   $('mwarPh').hidden=!$('mwar').value||PH.some(p=>!p.removed);
   $('mulgaWrap').hidden=!(exp&&(S.ulgaOpen||$('mulga').value));$('mulgaBtn').hidden=!exp||!$('mulgaWrap').hidden;
@@ -51,7 +51,7 @@ export function updFx(){if(!S.cfg)return;const t=S.etype,cA=accCur($('mc').value
     $('fxCardRate').textContent=a>0&&b>0?`💱 ${fxRate($('fxc').value,b,'PLN',a)} – dopiszę do notatki`:'„Kwota (zł)” to tyle, ile pobrał bank. Wpisz też kwotę w walucie – kurs policzę sam.'}}
 /* 💰 a transfer into / out of an account that collects money for paying off liabilities: how much of it is for which one */
 export let SV={mode:'',ids:'',auto:''};
-export const saveDebtsOf=acc=>{const tx=liveOf(S.tx).filter(t=>t.id!==S.edit),own=(S.edit&&liveById(S.edit)?.save)||{};
+const saveDebtsOf=acc=>{const tx=liveOf(S.tx).filter(t=>t.id!==S.edit),own=(S.edit&&liveById(S.edit)?.save)||{};
   return acc?debtList('owe').filter(d=>d.saveAcc==acc).map(d=>({d,saved:savedP(d.id,tx),left:debtState(d).left})).filter(x=>x.left>0||x.saved>0||own[x.d.id]):[]};
 export function updSave(){if(!S.cfg)return;const tr=S.etype=='tr',to=tr?saveDebtsOf($('mto').value):[],from=tr&&!to.length?saveDebtsOf($('mc').value):[],L=to.length?to:from,mode=to.length?'in':from.length?'out':'';
   $('msaveWrap').hidden=!mode;if(!mode){SV={mode:'',ids:'',auto:SV.auto};return}
@@ -62,7 +62,7 @@ export function updSave(){if(!S.cfg)return;const tr=S.etype=='tr',to=tr?saveDebt
     $('msaveRows').querySelectorAll('input').forEach(i=>i.oninput=()=>{if(i.dataset.sv==SV.auto)SV.auto='x';updSaveHint()});SV.ids=ids;SV.mode=mode;SV.L=L}
   const a=$('msaveRows').querySelector(`input[data-sv="${SV.auto}"]`);if(a){const v=calcAmt($('ma').value);a.value=v>0?f2(v):''}
   $('msaveLab').textContent=mode=='in'?'💰 Odkładasz na spłatę? Ile z tej wpłaty na którą pożyczkę:':'💰 Zabierasz z odłożonych na spłatę? Wpisz, z której pożyczki:';updSaveHint()}
-export function updSaveHint(){if(!SV.mode)return;const amt=calcAmt($('ma').value),sum=[...$('msaveRows').querySelectorAll('input')].reduce((a,i)=>a+Math.max(0,calcAmt(i.value)),0),acc=SV.mode=='in'?$('mto').value:$('mc').value;
+function updSaveHint(){if(!SV.mode)return;const amt=calcAmt($('ma').value),sum=[...$('msaveRows').querySelectorAll('input')].reduce((a,i)=>a+Math.max(0,calcAmt(i.value)),0),acc=SV.mode=='in'?$('mto').value:$('mc').value;
   const tx=liveOf(S.tx).filter(t=>t.id!==S.edit),s=saveSplitP(S.cfg,tx,S.debts,acc,td());
   $('msaveHint').textContent=SV.mode=='in'?(sum>amt?`Wpisano ${zl(sum)} – więcej niż cała wpłata.`:amt>sum?`Reszta (${zl(amt-sum)}) zostaje wolna na koncie.`:'Cała wpłata idzie na spłatę.')
     :`Zostaw puste, jeśli bierzesz wolne pieniądze (wolne teraz: ${zl(Math.max(0,s.free))}).`}
@@ -70,11 +70,11 @@ export function autoWho(){const a=S.cfg.accs.find(x=>x.id==$('mc').value),o=a&&o
 
 /* position picker: search, recently used, the note's usual position, category tiles */
 export const P={kind:'exp',cat:null,cb:null,cur:''};
-export function openPick(cur,cb){P.kind=pickKind();P.cb=cb;P.cur=cur||'';P.cat=null;$('pq').value='';renderPick();$('pick').hidden=false;$('pkBody').scrollTop=0}
+function openPick(cur,cb){P.kind=pickKind();P.cb=cb;P.cur=cur||'';P.cat=null;$('pq').value='';renderPick();$('pick').hidden=false;$('pkBody').scrollTop=0}
 export const closePick=()=>{$('pick').hidden=true;P.cb=null};
 /* 🙈 a hidden position (or one in a hidden category) is not offered when choosing */
-export const hidS=s=>!!(s&&(s.hidden||s.cat?.hidden));
-export function recentSubs(kind,n){const sm=subsMap(S.cfg),seen=new Map();
+const hidS=s=>!!(s&&(s.hidden||s.cat?.hidden));
+function recentSubs(kind,n){const sm=subsMap(S.cfg),seen=new Map();
   liveOf(S.tx).filter(t=>sm[t.sub]&&!hidS(sm[t.sub])&&sm[t.sub].cat.type==kind&&(t.type=='exp'||t.type=='inc')&&!t.fixedId&&!t.refundOf).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,80)
     .forEach((t,i)=>{const x=seen.get(t.sub)||{n:0,i};x.n++;seen.set(t.sub,x)});
   return[...seen].sort((a,b)=>b[1].n-a[1].n||a[1].i-b[1].i).slice(0,n).map(([id])=>sm[id])}
@@ -93,10 +93,10 @@ function noteSub(note,kind){const k=norm(note);if(k.length<2)return null;const w
     if(n==k)ex[t.sub]=(ex[t.sub]||0)+1;else if(w.length>=3&&n.split(/\s+/)[0]==w)fw[t.sub]=(fw[t.sub]||0)+1}
   for(const m of[ex,fw]){const e=Object.entries(m).sort((a,b)=>b[1]-a[1]),tot=e.reduce((a,x)=>a+x[1],0);if(e.length&&e[0][1]/tot>=.6)return sm[e[0][0]]}
   return null}
-export function paintPick(btn,sid){const s=sid&&subsMap(S.cfg)[sid];btn.className='pickbtn'+(s?' on':'');btn.style.cssText=s?catColor(s.cat):'';
+function paintPick(btn,sid){const s=sid&&subsMap(S.cfg)[sid];btn.className='pickbtn'+(s?' on':'');btn.style.cssText=s?catColor(s.cat):'';
   btn.innerHTML=s?`<span class="cico">${catIcon(s.cat)}</span><span class="pt"><small>${esc(cleanCat(s.cat.name))}</small><b>${esc(s.name)}</b></span>`:`<span class="ph">${btn.dataset.i!=null?'wybierz pozycję':'— stuknij, żeby wybrać pozycję —'}</span>`}
-export function setMs(sid,hint){$('ms').value=sid||'';paintPick($('msBtn'),sid);$('msHint').textContent=hint||'';updSplit();updProj()}
-export function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.cats.filter(c=>c.type==kind&&!c.hidden),sm=subsMap(S.cfg);
+function setMs(sid,hint){$('ms').value=sid||'';paintPick($('msBtn'),sid);$('msHint').textContent=hint||'';updSplit();updProj()}
+function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.cats.filter(c=>c.type==kind&&!c.hidden),sm=subsMap(S.cfg);
   const chip=(s,cls='')=>`<button type="button" class="pchip ${cls}" style="${catColor(s.cat)}" data-sid="${s.id}"><span>${esc(s.name)}</span></button>`;
   const row=s=>`<button type="button" class="prow" style="${catColor(s.cat)}" data-sid="${s.id}"${s.id==P.cur?' aria-current="true"':''}><i></i><span><b>${esc(s.name)}</b><small>${catIcon(s.cat)} ${esc(cleanCat(s.cat.name))}</small></span></button>`;
   let h='';
@@ -112,10 +112,10 @@ export function renderPick(){const q=norm($('pq').value),kind=P.kind,cats=S.cfg.
 
 /* receipt split: extra rows with their own position and amount; the main position gets the rest */
 export let SP=[];
-export const splitLeft=()=>calcAmt($('ma').value)-SP.reduce((a,x)=>a+Math.max(0,calcAmt(x.amt)),0);
-export function updSplit(){const on=SP.length>0;$('splitWrap').hidden=!on;$('splitBtn').hidden=on||!!S.edit||S.etype=='tr';
+const splitLeft=()=>calcAmt($('ma').value)-SP.reduce((a,x)=>a+Math.max(0,calcAmt(x.amt)),0);
+function updSplit(){const on=SP.length>0;$('splitWrap').hidden=!on;$('splitBtn').hidden=on||!!S.edit||S.etype=='tr';
   if(on){const left=splitLeft(),amt=calcAmt($('ma').value),parts=SP.some(x=>calcAmt(x.amt)>0);$('msHint').textContent=amt?`na tę pozycję zostaje ${zl(left)}`:'wpisz u góry kwotę całego paragonu';$('msHint').style.color=amt&&parts&&left<=0?'var(--exp)':''}else $('msHint').style.color=''}
-export function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class="srow"><button type="button" class="pickbtn" data-i="${i}"></button><input inputmode="decimal" placeholder="0,00" value="${esc(x.amt)}" data-i="${i}" aria-label="Kwota tej pozycji" autocomplete="off"><button type="button" class="x" data-x="${i}" aria-label="Usuń tę pozycję">×</button></div>`).join('');
+function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class="srow"><button type="button" class="pickbtn" data-i="${i}"></button><input inputmode="decimal" placeholder="0,00" value="${esc(x.amt)}" data-i="${i}" aria-label="Kwota tej pozycji" autocomplete="off"><button type="button" class="x" data-x="${i}" aria-label="Usuń tę pozycję">×</button></div>`).join('');
   $('splitRows').querySelectorAll('.pickbtn').forEach(b=>paintPick(b,SP[+b.dataset.i].sub));
   if(!SP.length&&!$('ms').value)$('msHint').textContent='';updSplit()}
 
@@ -123,27 +123,27 @@ export function renderSplit(){$('splitRows').innerHTML=SP.map((x,i)=>`<div class
    (never listened to as a whole – a photo is read only when its entry is opened); the entry keeps the ids in rcpt[];
    meta/receipts counts photos and bytes for ⚙️. A deleted entry keeps its photos, so „Przywróć” brings them back too. */
 export const RCPT=()=>collection(H,'receipts'),RMETA=()=>doc(H,'meta','receipts'),PH_MAX=3,PH_BYTES=180000;
-export const kb=b=>b>=1e6?(b/1e6).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1000))+' KB';
-export let PH=[];export const phCache=new Map();
-export async function shrinkPhoto(file){const url=URL.createObjectURL(file);
+const kb=b=>b>=1e6?(b/1e6).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1000))+' KB';
+let PH=[];export const phCache=new Map();
+async function shrinkPhoto(file){const url=URL.createObjectURL(file);
   try{const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});let max=1800,q=.72,out='',c;
     for(let k=0;k<8;k++){const sc=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*sc));c.height=Math.max(1,Math.round(img.naturalHeight*sc));
       const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);out=c.toDataURL('image/jpeg',q);
       if(out.length*.75<=PH_BYTES)break;if(q>.5)q-=.1;else max=Math.round(max*.8)}
     return{data:out,size:Math.round(out.length*.75),w:c.width,h:c.height}}finally{URL.revokeObjectURL(url)}}
-export async function phLoad(id){if(phCache.has(id))return phCache.get(id);try{const s=await getDoc(doc(RCPT(),id)),d=s.exists()?s.data():null;if(d)phCache.set(id,d);return d}catch(e){return null}}
-export function renderPh(){if(!$('mph'))return;if($('mwarPh'))$('mwarPh').hidden=!$('mwar').value||PH.some(p=>!p.removed);const tr=S.etype=='tr',L=tr?[]:PH.filter(p=>!p.removed);$('mphWrap').hidden=!L.length;$('mphBtn').hidden=tr||L.length>=PH_MAX;$('mphBtn').textContent=L.length?'📷 Kolejne zdjęcie':'📷 Zdjęcie paragonu';
+async function phLoad(id){if(phCache.has(id))return phCache.get(id);try{const s=await getDoc(doc(RCPT(),id)),d=s.exists()?s.data():null;if(d)phCache.set(id,d);return d}catch(e){return null}}
+function renderPh(){if(!$('mph'))return;if($('mwarPh'))$('mwarPh').hidden=!$('mwar').value||PH.some(p=>!p.removed);const tr=S.etype=='tr',L=tr?[]:PH.filter(p=>!p.removed);$('mphWrap').hidden=!L.length;$('mphBtn').hidden=tr||L.length>=PH_MAX;$('mphBtn').textContent=L.length?'📷 Kolejne zdjęcie':'📷 Zdjęcie paragonu';
   $('mph').innerHTML=L.map(p=>`<span class="ph"><button type="button" class="phi" data-ph="${p.id}" aria-label="Pokaż zdjęcie">${p.data?`<img src="${p.data}" alt="">`:`<span class="mini">${p.missing?'brak':'…'}</span>`}</button><button type="button" class="x" data-phx="${p.id}" aria-label="Usuń zdjęcie">×</button></span>`).join('');
   const nw=L.filter(p=>p.isNew).reduce((a,p)=>a+p.size,0);$('mphHint').textContent=nw?`zapiszę razem z wpisem (${kb(nw)})`:'stuknij zdjęcie, żeby je powiększyć';
   L.filter(p=>!p.data&&!p.loading&&!p.missing).forEach(p=>{p.loading=true;phLoad(p.id).then(d=>{p.loading=false;if(d){p.data=d.data;p.size=d.size||0}else p.missing=true;renderPh()})})}
 export const phMeterH=()=>{const n=Math.max(0,S.rcptMeta?.n||0),b=Math.max(0,S.rcptMeta?.bytes||0);if(!n)return'';
   return`<div class="phm"><div class="r1"><b>📷 Zdjęcia paragonów</b><span class="mini">${n} ${plu(n,'zdjęcie','zdjęcia','zdjęć')} · ${kb(b)} z 1 GB</span></div><div class="bar"><i style="width:${Math.max(1,Math.min(100,b/1e7)).toFixed(1)}%;background:#86efac"></i></div>
     <div class="mini">Darmowe miejsce w Firebase to 1 GB – starczy na kilka tysięcy zdjęć. Comiesięczny mail z kopią nie zawiera zdjęć (byłby za duży).</div><button class="btn sm" onclick="exportJson(true)">📷 Pobierz kopię ze zdjęciami</button></div>`};
-export function openPhoto(data){$('phvImg').src=data;$('phv').hidden=false}
-export async function savePhoto(){const src=$('phvImg').src;if(!src)return;const blob=await (await fetch(src)).blob(),name='paragon-'+td()+'.jpg',file=typeof File=='function'?new File([blob],name,{type:'image/jpeg'}):null;
+function openPhoto(data){$('phvImg').src=data;$('phv').hidden=false}
+async function savePhoto(){const src=$('phvImg').src;if(!src)return;const blob=await (await fetch(src)).blob(),name='paragon-'+td()+'.jpg',file=typeof File=='function'?new File([blob],name,{type:'image/jpeg'}):null;
   if(file&&navigator.canShare&&navigator.canShare({files:[file]})&&matchMedia('(pointer:coarse)').matches){try{await navigator.share({files:[file]})}catch(e){}}else downloadBlob(blob,name)}
 /* writes the photo changes of an entry (new ones, removed ones) and updates the counter */
-export function phCommit(txId,ym,keep,del){const nw=keep.filter(p=>p.isNew);if(!nw.length&&!del.length)return;
+function phCommit(txId,ym,keep,del){const nw=keep.filter(p=>p.isNew);if(!nw.length&&!del.length)return;
   nw.forEach(p=>{phCache.set(p.id,{data:p.data,size:p.size});w(setDoc(doc(RCPT(),p.id),{tx:txId,ym,data:p.data,size:p.size,w:p.w,h:p.h,at:Date.now(),by:S.who}))});
   del.forEach(p=>{phCache.delete(p.id);w(deleteDoc(doc(RCPT(),p.id)))});
   const db=nw.reduce((a,p)=>a+p.size,0)-del.reduce((a,p)=>a+(p.size||0),0);merge(RMETA(),{bytes:increment(db),n:increment(nw.length-del.length)})}
@@ -197,7 +197,7 @@ function dupOf(type,amount,date,note,sub,acc,to){const n=norm(stripFx(note)),lo=
    Shared accounts never ask; a transfer TO the other person's account is normal, so only the source account counts. */
 const OTHER=[['🙀 Ivo','Halo, halo! To konto {o}, nie Twoje. Na pewno wpisujesz z niego?'],['🐾 Bailey','Chwileczkę… to konto należy do {og}. Wpisujesz za {ob}? Upewniam się, żeby salda się zgadzały.'],
   ['😼 Ivo','Psst… to nie Twoja miska! Konto {o}. Mam udawać, że nic nie widziałem?'],['🐱 Bailey','Zauważyłam, że wybrane jest konto {o}. Jeśli to celowe – w porządku, zapiszę.']];
-export async function otherAccOk(acc){const a=S.cfg.accs.find(x=>x.id==acc),o=a&&ownerOf(a);if(!o||o=='Wspólne'||o==S.who||S.edit&&liveById(S.edit)?.acc===acc)return true;
+async function otherAccOk(acc){const a=S.cfg.accs.find(x=>x.id==acc),o=a&&ownerOf(a);if(!o||o=='Wspólne'||o==S.who||S.edit&&liveById(S.edit)?.acc===acc)return true;
   const today=td();let m={};try{m=JSON.parse(ls.get('mw_oth')||'{}')}catch(e){}if(m.d==today&&(m.a||[]).includes(acc))return true;
   const [who,t]=OTHER[Math.floor(Date.now()/1000)%OTHER.length],gen=o=='Wercia'?'Werci':'Matiego';
   const r=await ask({title:who+': to konto '+gen+'!',text:t.replace(/\{og\}/g,gen).replace(/\{ob\}/g,o=='Wercia'?'Wercię':'Matiego').replace(/\{o\}/g,`„${a.name}” (${gen})`),ok:'Tak, wiem, co robię',cancel:'Zmień konto'});
@@ -258,12 +258,11 @@ export async function saveTx(next){if(guard())return;
   const g=parts.length?'g'+rid():'';if(g)body.split=g;Object.assign(body,link);
   const phKeep=type=='tr'?[]:PH.filter(p=>!p.removed),phDel=PH.filter(p=>!p.isNew&&(p.removed||type=='tr'));if(phKeep.length||old?.rcpt?.length)body.rcpt=phKeep.map(p=>p.id);
   closeSheet();
-  const ym=date.slice(0,7),ok=await putTx(ym,id,body);
+  const ym=date.slice(0,7),moved=old&&old.date.slice(0,7)!=ym,ok=moved?await putTxs([[ym,id,body],[old.date.slice(0,7),id,{deleted:true,moved:true}]]):await putTx(ym,id,body);
   if(ok)phCommit(id,ym,phKeep,phDel);
   if(ok&&yItem)markYearPaid(yItem,date);
   if(ok)for(const x of parts)putTx(ym,'t'+rid(),{...base,amount:x.amount,sub:x.sub,split:g});
   if(ok&&coin)putTx(ym,'t'+rid(),{type:'tr',amount:coin.v,date,sub:'',acc:coin.r.from,to:coin.r.to,who:base.who,note:'🪙 drobne',roundOf:id,deleted:false,ts:Date.now()});
-  if(ok&&old&&old.date.slice(0,7)!=ym)await putTx(old.date.slice(0,7),id,{deleted:true,moved:true});
   const sm2=subsMap(S.cfg);if(ok&&!old&&kotki.mode=='lots'&&[body.sub,...parts.map(x=>x.sub)].some(x=>isTreat(sm2[x]?.name)))setTimeout(()=>toast(treatJoke(Math.floor(Date.now()/1000))),1900);
   if(ok&&debt&&S.debts[debt]?.mode=='bank'&&!old)setTimeout(()=>toast('Rata zapisana. Wpisz, ile zostało wg banku.','',{label:'✎ Pozostało',fn:()=>setDebtLeft(debt)}),1500);
   if(ok&&next===true){openTx(null,{type:keep.type});$('mc').value=keep.acc;$('md').value=keep.date;$('mw').value=keep.who;updX()}

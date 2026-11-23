@@ -2,9 +2,9 @@
    D1a: asset groups and classes (built-in + own `assetCls`), the list of known ETFs (checked in XTB), the class of every instrument and account,
    „what the wealth is made of” (allocP) and the analysis of held ETFs (criteria, doubled „whole worlds”, flags). PPK is left out everywhere (decision 5). */
 import {addDays,plDay,zl0} from './util.js';
-import {balance,ownerOf} from './logic.js';
-import {BONDS,BOND_FEE,instValue,instDiffP,wrapOf,limitOf,paidInYear} from './inv.js';
-import {debtStateP} from './today.js';
+import {balance,ownerOf,isPodAcc,isPodName} from './logic.js';
+import {BONDS,bondRates,bondMonRate,bondFee,instValue,instDiffP,wrapOf,limitOf,paidInYear} from './inv.js';
+import {debtStateP,rentTaxRaw} from './today.js';
 
 /* groups = the first ring of the wheel; c = pastel colour */
 export const AGRP={cash:{n:'Gotówka i bezpieczne',i:'💵',c:'hsl(160 48% 70%)'},bond:{n:'Obligacje',i:'🧾',c:'hsl(208 62% 74%)'},stock:{n:'Akcje',i:'📈',c:'hsl(272 50% 76%)'},
@@ -14,7 +14,7 @@ export const AGRP_ORDER=['cash','bond','stock','gold','real','alt','own','todo']
 /* risk = how the class behaves in a crisis (the crisis test in D5): safe / bond / stock / gold / high */
 export const RISKS=[['safe','bezpieczne (jak konto)'],['bond','jak obligacje'],['stock','jak akcje'],['gold','jak złoto'],['high','bardzo ryzykowne']];
 const C=(n,i,g,risk)=>({n,i,g,risk});
-export const ACLS={
+const ACLS={
   cash:C('Konta i gotówka','🏦','cash','safe'),deposit:C('Lokaty','🔒','cash','safe'),mmf:C('Fundusze krótkoterminowych papierów skarbowych','🧺','cash','safe'),
   b_fix:C('Obligacje skarbowe stałe (OTS, ROR, DOR, TOS)','🏛️','bond','safe'),b_idx:C('Obligacje skarbowe indeksowane (COI, EDO, ROS, ROD)','🏛️','bond','safe'),
   b_mkt:C('Obligacje rynkowe / ETF obligacji','📜','bond','bond'),b_corp:C('Obligacje korporacyjne','🏢','bond','bond'),b_fund:C('Inne fundusze dłużne','🧺','bond','bond'),
@@ -42,7 +42,7 @@ export const ETFS=[
   {t:'EMIM',ex:'UK',al:['EIMI','IS3N'],n:'iShares Core MSCI EM IMI (Acc)',isin:'IE00BKM4GZ66',idx:'MSCI EM IMI',fam:'MSCI',cov:'em',cls:'s_em',ter:0.18,cur:'GBP',aum:41.49},
   {t:'VFEA',ex:'DE',al:[],n:'Vanguard FTSE Emerging Markets (Acc)',isin:'IE00BK5BR733',idx:'FTSE Emerging',fam:'FTSE',cov:'em',cls:'s_em',ter:0.17,cur:'EUR',aum:2.46}];
 /* the trading currency of other listings of the same fund (XTB: IWDA, EIMI, VWRA in USD; EUNL, IS3N in EUR) – not the main listing's */
-export const ETF_ALCUR={IWDA:'USD',EIMI:'USD',VWRA:'USD',EUNL:'EUR',IS3N:'EUR'};
+const ETF_ALCUR={IWDA:'USD',EIMI:'USD',VWRA:'USD',EUNL:'EUR',IS3N:'EUR'};
 export const etfCur=(e,ticker)=>e?(ETF_ALCUR[symOf(ticker)]&&e.t!=symOf(ticker)?ETF_ALCUR[symOf(ticker)]:e.cur):null;
 export const COV={world:'cały świat',dev:'kraje rozwinięte',em:'rynki wschodzące'};
 export const symOf=t=>String(t||'').trim().toUpperCase().split(/[.:\s]/)[0];
@@ -230,7 +230,7 @@ export const PLAN_G=['cash','bond','stock','gold'];
 export function planP(A){const why=[];
   const h={lt3:0,'3-5':0,'5-10':40,'10-20':100,gt20:100}[A.q42],eqH=h??40;why.push(h==null?'horyzont nieznany – ostrożnie do 40% akcji':`horyzont ${A.q42.replace('lt','<').replace('gt','>')} lat → akcje do ${eqH}%`);
   const d=+A.q44,eqT=d>0?Math.min(100,r5(2*d*100)):30;why.push(d>0?`spadek do ${Math.round(d*100)}% → akcje do ${eqT}% (akcje potrafią spaść o połowę)`:'tolerancja straty nieznana – ostrożnie 30%');
-  const eqR={all:20,part:40,'?':40}[A.q43]??100;if(eqR<100)why.push(`reakcja na spadek → akcje do ${eqR}%`);
+  const eqR={all:20,part:40,'?':40}[A.q43??'?']??100; // no answer = as cautious as „Nie wiem”if(eqR<100)why.push(`reakcja na spadek → akcje do ${eqR}%`);
   /* the parts always add up to 100%: dry powder first, then gold, stocks take what is left at most (no 100% stocks + 10% gold = 110%) */
   const cash=Math.min(100,Math.max(0,+(A.q58=='?'||A.q58==null?0:A.q58)||0)),gold=Math.min(15,100-cash,Math.max(0,+(A.q54=='?'||A.q54==null?5:A.q54)||0)),
     stock0=Math.min(eqH,eqT,eqR),stock=Math.min(stock0,100-gold-cash);if(stock<stock0)why.push(`złoto i suchy proch zajmują ${gold+cash}% → akcje ${stock}%`);
@@ -246,8 +246,6 @@ export const crisisP=(g,base)=>{const c=CRISES[0],r=(g.stock*c.s+g.gold*c.gold)/
 /* 🎯 now vs the plan on the koło: base = market assets without the cushion (it is the safety net, not the long-term portfolio).
    One definition of the cushion everywhere (the 🛟 tile, „gdzie wpłacić”, the koło): savings accounts (grp 'sav') without IKE/IKZE/OKI/PPK,
    or any account with „poduszka” in its name – the money of goals sits there too and is short-term as well */
-export const isPodName=n=>/poduszk/i.test(n||'');
-export const isPodAcc=a=>!!a&&(isPodName(a.name)||(a.grp=='sav'&&!wrapOf(a)));
 export function devP(A,plan){const rows=A.rows.filter(r=>!(r.kind=='a'&&(r.pod||isPodName(r.accName)))),base=rows.reduce((s,r)=>s+r.v,0),by={};
   for(const r of rows)by[r.grp]=(by[r.grp]||0)+r.v;
   const G=PLAN_G.map(g=>{const t=plan.g[g],[lo,hi]=bandOf(t),now=base?by[g]/base*100||0:0;return{g,t,lo,hi,now,st:now<lo-1e-9?'low':now>hi+1e-9?'high':'ok',gap:Math.round(base*t/100-(by[g]||0))}});
@@ -264,7 +262,7 @@ export function diagP({cushion,exp,podTarget=6,debts=[],accs=[],tx=[],limits={},
 /* ======================= D3: „Gdzie” – kwota → bramki → pokrowce ======================= */
 /* tax threshold from the survey: '0'|'12'|'32'|'19' or a flat rate (ryczałt) number; '?' = unknown */
 export const taxOf=A=>A.q3=='r'?(+A.q3r>0?+A.q3r:'?'):(A.q3||'?');
-const tNum=t=>t=='?'?0:+t;
+export const tNum=t=>t=='?'?0:+t;
 /* a number answer: none, „?” (Nie wiem) or not a number → the default (NaN never reaches the plan or Firestore) */
 export const qn=(v,d)=>v==null||v===''||v=='?'||isNaN(+v)?d:+v;
 /* IKZE order: 32%, 19% (linear) and a flat rate ≥ 17% – IKZE first; 12% and a flat rate ≥ 12% – IKE first, IKZE after; 0% or a low flat rate – IKZE never (plan step 4) */
@@ -276,7 +274,7 @@ export function wrapCompare(W,years,t,r=0.05){const f=Math.pow(1+r,years),ike=Ma
 /* 🚦 the gates and the places for one amount (plan point 5 steps 0–4). P = people [{who,t,ike:{left},ikze:{left},age}], in: {amt,src,goal,need3},
    ctx: {debt:{sum,rate,name}, podGap (grosze to the cushion target), podHave, mort:{rate,fee}, overpay (% of the long-term part, q59), today, okiOk}
    → {rows[{a,where,why,who,kind}],no[{t,why}],noStocks,rest} – amounts in grosze, the sum of rows = amt */
-export function whereP(inp,P,ctx){let rest=Math.max(0,Math.round(inp.amt||0));const rows=[],no=[],add=(a,where,why,who='',kind='')=>{a=Math.min(rest,Math.round(a));if(a>0){rows.push({a,where,why,who,kind});rest-=a}};
+export function whereP(inp,P,ctx){P=(P||[]).map(p=>({...p})); /* own copies – the caller's people (limits) stay as they were */ let rest=Math.max(0,Math.round(inp.amt||0));const rows=[],no=[],add=(a,where,why,who='',kind='')=>{a=Math.min(rest,Math.round(a));if(a>0){rows.push({a,where,why,who,kind});rest-=a}};
   let noStocks=false;const mo=+ctx.today.slice(5,7);
   if(inp.src=='pod'){add(rest,'🛟 Zostaje w poduszce','Poduszki nie inwestujemy – to pieniądze na awarie. Do inwestowania bierzemy nadwyżkę, premię albo zwrot podatku.','','pod');no.push({t:'📈 Giełda z poduszki',why:'Gdy przyjdzie awaria w czasie spadku, trzeba by sprzedać ze stratą.'});return{rows,no,noStocks:true,rest}}
   /* a small emergency fund (1 month of spending) before paying debts – without it the next car repair goes on the credit card again */
@@ -287,13 +285,15 @@ export function whereP(inp,P,ctx){let rest=Math.max(0,Math.round(inp.amt||0));co
     /* 💡 the December exception (plan): the IKE limit of this year is lost on 31 December – the cushion money goes to IKE first and stays
        there safe (cash / bonds), stocks only after the cushion is done; the IKE limit used here is taken off the person's IKE for later rows */
     if(mo==12)for(const p of P){const left=p.ike?.left||0;if(gap<=0||rest<=0||left<=0)continue;const a=Math.min(gap,left,rest);
-      add(a,`🛡️ IKE ${p.who} – bezpiecznie (gotówka albo obligacje), jako część poduszki`,`Wyjątek grudniowy: limit IKE na ${ctx.today.slice(0,4)} przepada 31 grudnia. Wpłać na IKE i trzymaj tam gotówkę albo obligacje – to dalej Wasza poduszka, a akcje dokupicie, gdy poduszka będzie pełna. Zostało limitu: ${zlS(left)}.`,p.who,'ike');
+      add(a,`🛡️ IKE ${p.who}${p.ike?.has?'':' (do założenia, np. w XTB)'} – bezpiecznie (gotówka albo obligacje), jako część poduszki`,`Wyjątek grudniowy: limit IKE na ${ctx.today.slice(0,4)} przepada 31 grudnia. Wpłać na IKE i trzymaj tam gotówkę albo obligacje – to dalej Wasza poduszka, a akcje dokupicie, gdy poduszka będzie pełna. Zostało limitu: ${zlS(left)}.`,p.who,'ike');
       gap-=a;p.ike={...p.ike,left:left-a}}
     add(gap,'🛟 Poduszka: ok. ¼ konto oszczędnościowe, reszta obligacje skarbowe (EDO / COI)',`Do celu poduszki brakuje ${zlS(ctx.podGap)}. Poduszka przed giełdą – akcje nie teraz.`,'','pod')}
   if(inp.goal=='pod')add(rest,'🛟 Poduszka','Wybrałeś cel „poduszka” – konto oszczędnościowe i obligacje skarbowe.','','pod');
   if(inp.need3||inp.goal=='home'&&inp.homeSoon){noStocks=true;add(rest,`🔒 Bezpiecznie: konto oszczędnościowe / lokata, obligacje 3-letnie TOS${ctx.okiOk?' – na OKI bez podatku do 25 tys. zł w lokatach, kontach i obligacjach detalicznych':''}`,'Pieniądze potrzebne w ciągu 3 lat nie mogą zależeć od giełdy.','','safe');
     no.push({t:'📈 Akcje',why:'Termin krótszy niż ok. 5 lat – akcje potrafią spaść o połowę i odrabiać latami.'})}
-  if(inp.goal=='sand')add(Math.min(rest,ctx.sandLeft??rest),'🧪 Piaskownica – zwykły rachunek maklerski (XTB)','Pojedyncze spółki i „tematy” tylko w piaskownicy z limitem z planu. Szczegóły w etapie piaskownicy.','','sand');
+  if(inp.goal=='sand'){add(Math.min(rest,ctx.sandLeft??rest),'🧪 Piaskownica – zwykły rachunek maklerski (XTB)','Pojedyncze spółki i „tematy” tylko w piaskownicy z limitem z planu.','','sand');
+    /* the sandbox is full: the rest is a normal long-term payment – said aloud, not silently */
+    if(rest>0)no.push({t:'🧪 Ponad limit piaskownicy',why:`W piaskownicy jest miejsce tylko na ${zlS(Math.max(0,ctx.sandLeft||0))} (limit z planu). Resztę (${zlS(rest)}) liczę niżej jak zwykłą wpłatę długoterminową.`})}
   if(rest>0&&ctx.mort&&ctx.overpay>0){const a=Math.round(rest*ctx.overpay/100),be=Math.round(ctx.mort.rate/0.81*100)/100;
     add(a,'🏠 Nadpłata kredytu hipotecznego',`Tak ustaliliście w ankiecie (${ctx.overpay}% nadwyżek). Kredyt ${String(ctx.mort.rate).replace('.',',')}% – żeby się opłacało inwestować poza IKE, trzeba by zarabiać ponad ${String(be).replace('.',',')}% rocznie.${ctx.mort.fee?' Sprawdźcie prowizję za nadpłatę.':''} Najlepiej dzień po racie.`,'Wspólne','overpay')}
   /* long-term: wrappers by threshold, people in order (the higher threshold first for IKZE), then regular account */
@@ -315,15 +315,15 @@ const zlS=g=>zl0(g);
 /* 🧮 retail bonds: value of an amount after n months (grosze). Year 1 = first, later inflation + margin (COI/EDO/ROS/ROD), NBP rate + margin (ROR/DOR)
    or fixed (TOS); capitalised series compound, the others pay interest out (counted, not reinvested). At maturity – taxed and rolled over into the same terms;
    sold earlier – the early redemption fee per bond (at most the interest earned). Belka 19% unless in IKE. Rates stay as today – it is a comparison, not a forecast. */
-export {BOND_FEE};
-export function bondAfter(type,months,{first=0,margin}={},macro={},{taxFree=false,amount=1000000}={}){const T=BONDS[type];if(!T)return null;const mg=margin??T.margin,tax=taxFree?0:0.19;
-  const r=y=>(y==0?+first:T.idx=='infl'?Math.max(0,+(macro.infl??0))+mg:T.idx=='nbp'?(+(macro.nbp??0))+mg:+first)/100;
-  /* ROR / DOR: the 1st month fixed, then NBP + margin, paid out every month */
-  const cyc=len=>{if(T.mon){let paid=0;for(let i=0;i<len;i++)paid+=(i==0?+first:(+(macro.nbp??0))+mg)/100/12;return{g:0,paid}}if(T.m<12)return{g:r(0)*Math.min(len,T.m)/12,paid:0};let v=1,paid=0;const full=Math.floor(len/12),part=(len%12)/12;
+export function bondAfter(type,months,{first=0,margin}={},macro={},{taxFree=false,amount=1000000}={}){const T=BONDS[type];if(!T)return null;const tax=taxFree?0:0.19;
+  /* the same rules as the valuation in inv.js: rates of the interest years (bondRates – inflation / NBP + margin; no history yet = the reading in macro),
+     ROR / DOR monthly (bondMonRate), the early redemption fee (bondFee) */
+  const b={type,first,...(margin!=null?{margin}:{})},R=bondRates(b,{...macro,inflH:{}}),r=y=>(R[y]??R[R.length-1])/100;
+  const cyc=len=>{if(T.mon){let paid=0;for(let i=0;i<len;i++)paid+=bondMonRate(b,macro,i);return{g:0,paid}}if(T.m<12)return{g:r(0)*Math.min(len,T.m)/12,paid:0};let v=1,paid=0;const full=Math.floor(len/12),part=(len%12)/12;
     for(let y=0;y<full;y++){if(T.cap)v*=1+r(y);else paid+=r(y)}if(part){if(T.cap)v*=1+r(full)*part;else paid+=r(full)*part}return{g:v-1,paid}};
   let A=amount,cash=0;const k=Math.floor(months/T.m),rem=months%T.m;
   for(let i=0;i<k;i++){const c=cyc(T.m);cash+=A*c.paid*(1-tax);A+=A*c.g*(1-tax)}
-  if(rem>0){const c=cyc(rem),n=Math.floor(A/10000),fee=type=='OTS'?A*(c.g+c.paid):Math.min((BOND_FEE[type]||0)*n,A*(c.g+c.paid));const gain=A*(c.g+c.paid)-fee;A+=gain>0?gain*(1-tax):gain}
+  if(rem>0){const c=cyc(rem),int=A*(c.g+c.paid),gain=int-bondFee(type,Math.floor(A/10000),int);A+=gain>0?gain*(1-tax):gain}
   return Math.round(A+cash)}
 export function bondPickP(months,amount,offer,macro,taxFree){return Object.entries(offer||{}).filter(([t])=>BONDS[t]&&!['ROS','ROD'].includes(t)).map(([t,o])=>({t,v:bondAfter(t,months,o,macro,{taxFree,amount})}))
   .filter(x=>x.v!=null).sort((a,b)=>b.v-a.v)}
@@ -355,7 +355,7 @@ export function adviceDoneP(adv,hold,tx,cfg){const since=plDay(adv.at),lots=Obje
 /* ======================= D5: cele – emerytura, mieszkanie, kryzysy, koszty, najem, „czy stać na zakup” ======================= */
 /* ⚡ three crises (DORADCA-notatki D/G u07, u00): 2007–2009 in złoty (developed −32,8%, emerging −43,9%, gold +76,2% → cautious half +38%);
    2000–2002 and 2020 only in dollars (stocks −50% and −34%) – used as they are, gold 0 (it did not protect in 2000–2002), bonds and cash 0. Cautious variant. */
-export const CRISES=[{k:'2008',n:'Kryzys finansowy 2007–2009',s:-35,em:-44,gold:38,bond:5,note:'w złotych (słaby złoty złagodził spadek)'},
+const CRISES=[{k:'2008',n:'Kryzys finansowy 2007–2009',s:-35,em:-44,gold:38,bond:5,note:'w złotych (słaby złoty złagodził spadek)'},
   {k:'2000',n:'Bańka internetowa 2000–2002',s:-50,em:-50,gold:0,bond:0,note:'spadek akcji w dolarach – w złotych brak danych, liczę ostrożnie'},
   {k:'2020',n:'COVID 2020',s:-34,em:-34,gold:0,bond:0,note:'spadek akcji w dolarach, szybko odrobiony'}];
 const crRate=(cls,c,all)=>{const k=all[cls]||all.todo,risk=k.risk;if(cls=='s_em')return c.em;if(risk=='safe')return 0;if(risk=='bond')return c.bond;if(risk=='gold')return c.gold;if(risk=='high')return Math.max(-80,Math.round(c.s*1.4));return c.s};
@@ -367,8 +367,11 @@ export function crisesP(rows,custom={}){const all=clsAll(custom),base=rows.reduc
 export const pensionNet=b=>Math.round(b-b*0.09-Math.max(0,(12*b-3000000)*0.12)/12);
 /* 🌴 the retirement gap (plan 8.1, notes u05): today's złoty; real return before 2,5%, during 1% (cautious); capital needed for the payout years,
    what today's capital grows to, the monthly saving needed (end-of-month payments) */
-export function retireP({age,retAge,want,zusNet,until=95,cap=0,save=0,r=0.025,r2=0.01}){const n=Math.max(1,retAge-age),m=Math.max(1,until-retAge),gap=Math.max(0,want-zusNet);
-  const need=Math.round(gap*12*(1-Math.pow(1+r2,-m))/r2),fv=Math.round(cap*Math.pow(1+r,n)),rm=Math.pow(1+r,1/12)-1,k=(Math.pow(1+rm,12*n)-1)/rm;
+export function retireP({age,retAge,want,zusNet,until=95,cap=0,save=0,r=0.025,r2=0.01}){const m=Math.max(1,until-Math.max(retAge,age)),gap=Math.max(0,want-zusNet);
+  const need=Math.round(gap*12*(1-Math.pow(1+r2,-m))/r2);
+  /* the retirement age already reached: nothing more to put aside – only whether today's money covers the gap (it used to say „125 000 zł a month”) */
+  if(!(retAge>age)){const fv=Math.round(cap);return{n:0,m,gap,need,fv,pmt:0,saveFv:0,ok:fv>=need,now:true}}
+  const n=retAge-age,fv=Math.round(cap*Math.pow(1+r,n)),rm=Math.pow(1+r,1/12)-1,k=(Math.pow(1+rm,12*n)-1)/rm;
   const pmt=Math.max(0,Math.round((need-fv)/k)),saveFv=Math.round(save*k);return{n,m,gap,need,fv,pmt,saveFv,ok:fv+saveFv>=need}}
 
 /* 🏦 annuity payment of a loan (grosze, % a year, years) */
@@ -381,7 +384,7 @@ export function homeP({price,downPct=20,first=true,saved=0,surplus=0,income=0,ra
   return{down,costs,need,missing,months:missing?(surplus>0?Math.ceil(missing/surplus):null):0,loan,rata,stress,share:income?Math.round(stress/income*1000)/10:null,
     ok30:income?stress<=income*0.3:null,pod:Math.round((exp+rata)*podM)}}
 /* 🏘️ a rented flat (plan 15.3): net yield on the whole value = (rent × months − costs × 12 − ryczałt 8,5% of the rent, 12,5% above 100 000 zł) ÷ value */
-export function rentP({value,rent,costs=0,months=10.5,debt=0}){const inc=rent*months,tax=Math.round(Math.min(inc,10000000)*0.085+Math.max(0,inc-10000000)*0.125),net=Math.round(inc-costs*12-tax);
+export function rentP({value,rent,costs=0,months=10.5,debt=0}){const inc=rent*months,tax=Math.round(rentTaxRaw(inc)),net=Math.round(inc-costs*12-tax);
   return{inc:Math.round(inc),tax,net,yld:value?Math.round(net/value*1000)/10:0,own:value-debt>0?Math.round(net/(value-debt)*1000)/10:null}}
 /* 🏠 „może warto pomyśleć o zakupie” (plan 15.4, decision 17): every condition with ok / why; no – never blocks, only informs */
 export function buyCheckP({price,kind,liquid,near=0,exp,podM,income,surplus,consDebt,rate,loanOk,downPct=20,first=true,stay,rent=0,costs=0}){
@@ -408,7 +411,7 @@ export function thermoP(th,rates,{today,rule}={}){const raw=Object.entries(th?.d
   if(pts.length>=60){const last=pts.at(-1),peak=pts.reduce((m,x)=>x[1]>m[1]?x:m),from3=addDays(last[0],-3*365),L3=pts.filter(x=>x[0]>=from3),avg=L3.reduce((s,x)=>s+x[1],0)/L3.length;
     const dd=Math.round((last[1]/peak[1]-1)*1000)/10,vs=Math.round((last[1]/avg-1)*1000)/10;
     out.stock={p:last[1],d:last[0],peak:peak[1],peakD:peak[0],dd,vs,cur,lvl:dd<=-20?'sale':dd>-3&&vs>25?'hot':'calm'}}
-  const infl=+rates?.infl,nbp=+rates?.nbp,edo=rates?.bonds?.EDO;
+  const nm=v=>v==null||v===''?NaN:+v,infl=nm(rates?.infl),nbp=nm(rates?.nbp),edo=rates?.bonds?.EDO; // no reading = nothing shown (not „0 pkt”)
   if(edo&&isFinite(infl))out.bond={first:+edo.first,real:+(edo.margin??2),infl};
   if(isFinite(infl)&&isFinite(nbp))out.gold={real:Math.round((nbp-infl)*10)/10};
   const fx=Object.entries(th?.fx||{}).map(([d,v])=>v?.USD).filter(v=>v>0);if(fx.length>=20&&rates?.fx?.USD){const a=fx.reduce((s,v)=>s+v,0)/fx.length;out.pln={usd:rates.fx.USD,avg:Math.round(a*10000)/10000,vs:Math.round((rates.fx.USD/a-1)*1000)/10,n:fx.length}}
@@ -428,12 +431,12 @@ export function advRemindP({who,today,plan,dev,ikeLeft=0,ikzePrevPaid=0,t,podAmt
 
 /* ======================= D7: 🧪 piaskownica ======================= */
 /* what counts as the sandbox: every class with risk „high” (single shares, themes, crypto, metals, commodities, collectibles…) – also own classes marked so */
-export const sandCls=(custom={})=>{const all=clsAll(custom);return new Set(Object.keys(all).filter(c=>all[c].risk=='high'))};
+const sandCls=(custom={})=>{const all=clsAll(custom);return new Set(Object.keys(all).filter(c=>all[c].risk=='high'))};
 /* the limit = plan.sand % of the long-term part (DORADCA-notatki: „piaskownica 5–10%”) */
 export function sandP(rows,plan,base,custom={}){const S=sandCls(custom),L=rows.filter(r=>S.has(r.cls)),now=L.reduce((s,r)=>s+r.v,0),limit=Math.round(base*(plan?.sand||0)/100);
   return{rows:L,now,limit,left:Math.max(0,limit-now),over:Math.max(0,now-limit),pct:base?Math.round(now/base*1000)/10:0}}
 /* world shares (notes u17 / u28): USA over 60%, other developed ~29%, emerging ~11%, Poland 0,11% of MSCI ACWI */
-export const WORLD_SHARE={usa:60,dev:29,em:11,pl:0.11};
+const WORLD_SHARE={usa:60,dev:29,em:11,pl:0.11};
 export const SAND_KIND={single:'🎯 pojedyncza spółka',theme:'🔭 ETF tematyczny / sektorowy',crypto:'🪙 kryptowaluta',commod:'🛢️ surowiec / metal',other:'✨ inne'};
 export const SAND_REG={usa:'USA',dev:'inne kraje rozwinięte',em:'rynki wschodzące',pl:'Polska',none:'bez kraju (krypto, surowce)'};
 /* 🔎 facts about one idea – no „buy / sell”: its weight, the sandbox limit, what you already hold through the world funds, statistics, devil's advocate */

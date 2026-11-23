@@ -27,3 +27,20 @@ Sprawdzone skryptem: lista eksportów czystych modułów, których nazwa nie pad
 - Ekrany w `SCREENS` są skryptami tekstowymi w `eval` wołającymi funkcje z `window` i modyfikującymi `S` bezpośrednio – po zmianie nazwy funkcji test pada z mało czytelnym błędem; kolejne ekrany zależą od poprzednich (`closeAll`, `window.__tw`). Kolejność jest istotna – dopisując ekran w środku, łatwo zepsuć następne. Akceptowalne, ale warto komentarz „ekrany zależne od poprzednich: …”.
 - Dane demo idą za dzisiejszą datą (`clock.setFixedTime` na 15. dnia) – dobrze; ale ekrany zależne od pory dnia (dymek po 20:00, ciekawostka „co popołudnie”) są sprawdzane tylko o 12:00.
 - `cache.mjs` przyjmuje commit sprzed push – przy pushu wielu commitów naraz porównuje z `github.event.before` (dobrze).
+
+## ✅ Stan po Etapie B (23.11.2026)
+| Luka | Co jest teraz |
+|---|---|
+| 1. Zapis i usuwanie wpisów | `tests/flows.mjs` – 12 scenariuszy w demo przez prawdziwe okienko (saldo, dokument miesiąca, zmiana miesiąca tam i z powrotem, „Ostatnio usunięte”, duplikat, zwrot + Cofnij, paragon, przelew, drobne, za mało na koncie, opłata stała + Przywróć). Sprawdzone: zepsuty `fixedDupStop` → test czerwony |
+| 2. Wycena | `calc.mjs`: `marketQuote` (nowsza/starsza cena, inna waluta, złoto, konto w euro), `holdAt`, `instDiffP` (z odsetkami, z ceną automatu) |
+| 3. Strażnik | `calc.mjs`: `checksP` – 7 rodzajów punktów + „To nie błąd” |
+| 4. Daty wypłat | `calc.mjs`: `payDateP` (sobota → piątek, koniec miesiąca w lutym, 1. przesunięta na 31., 31. w lutym, zmiana roku), `closeWinP`, `closeYmP`, `salaryTxP` |
+| 5. Stare formaty | `flows.mjs`: `budzet-mw-tx` jako `.json.gz` i `.json` dwa razy (bez wskrzeszania), pierwsza wersja aplikacji dwa razy |
+| 6. `backupDoc` a nowe pola | `calc.mjs`: każde pole z `merge(H,…)` / `updateDoc(H,…)` jest w `BACKUP_KEYS` albo `CFG_F` |
+| 7. Drobne obliczenia | `calc.mjs`: `yearPlanOf`, `avgActuals`, `anomalies`, `maturitiesP`, `pitSummaryP`, `intRate`/`intOf`, `cushionP`, obligacje doradca = wycena |
+| 8. Daty | `calc.mjs`: `plDay` (zmiana czasu), `addMonths`, `daysIn`, `addDays` w strefie Europe/Warsaw |
+| 9. Automaty | decyzja wyjęta do `scripts/when-lib.mjs` (`pushSlot`, `mailPlan`) + testy |
+| 10. Wartości na ekranie | częściowo: `flows.mjs` sprawdza salda po zapisie (nie kafelki) |
+| Prawdziwe SDK | `tests/sdk.mjs` – 28 przypadków; atrapa poprawiona w 10 miejscach, w których była łagodniejsza |
+| `screens.mjs` | 4 telefony równolegle: 3 min 33 s → 1 min 12 s |
+| `restore.mjs` | porównanie pole po polu (wpisy, ustawienia, plany, paski, zobowiązania, instrumenty, cele), salda z żywych wpisów |

@@ -1,4 +1,5 @@
 import {addDays,addMonths,daysIn,isDate,p2,zl} from './util.js';
+import {wrapOf} from './inv.js';
 export const cleanCat=n=>String(n||'').replace(/^\s*\d+\s*[.)]\s*/,'').trim();
 export const subsMap=cfg=>{const m={};cfg.cats.forEach(c=>c.subs.forEach(s=>m[s.id]={...s,cat:c}));return m};
 /* ⚡ speed with many years of entries: results that depend only on the list of entries are remembered for that list
@@ -12,7 +13,7 @@ export function inPeriod(tx,prefix){if(prefix.length!=7&&prefix.length!=4)return
 /* ⏳ entries of a month up to a day (the previous month „do tego samego dnia” while the current one still lasts) */
 export const upToDay=(tx,ym,day)=>inPeriod(tx,ym).filter(t=>t.date&&+t.date.slice(8)<=day);
 /* currency of every account (PLN when not set) */
-export const curMap=cfg=>{const m={};cfg.accs.forEach(a=>m[a.id]=a.cur||'PLN');return m};
+const curMap=cfg=>{const m={};cfg.accs.forEach(a=>m[a.id]=a.cur||'PLN');return m};
 export function balance(cfg,tx,id,before){const open=cfg.accs.find(a=>a.id===id)?.open||0;
   /* per account: its changes sorted by date with running sums – the balance before a date is one binary search */
   let ix=BAL.get(tx);if(!ix){const per=new Map(),put=(a,d,v)=>{let L=per.get(a);if(!L)per.set(a,L=[]);L.push([d,v])};
@@ -150,6 +151,24 @@ export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outPr
       const d=+t.date.slice(8);r.day[d]=(r.day[d]||0)+t.amount;if(t.fixedId)r.fixed+=t.amount;r.big.push(t)}
     else if(t.refundOf){const w=t.who||'—',o=ow[t.acc]||'Wspólne';r.who[w]=(r.who[w]||0)-t.amount;r.own[o]=(r.own[o]||0)-t.amount;r.acc[t.acc]=(r.acc[t.acc]||0)-t.amount}}
   r.big.sort((a,b)=>b.amount-a.amount);r.big=r.big.slice(0,5);return r}
+/* 🏪 shops and places from the notes – złoty expenses without fixed payments, instalments, 🪙 drobne, ↩️ refunds, 📅 yearly and 💼 payslip notes;
+   the same name written a bit differently counts as one. Analiza „Gdzie wydajemy” and the monthly e-mail; pre = 'YYYY-MM' or 'YYYY' */
+const placeKey=n=>String(n||'').replace(/💱.*$/,'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l').replace(/[.,!?;:"'„”()]/g,'').replace(/\s+/g,' ').trim();
+export function shopsP(cfg,tx,pre){const cm=curMap(cfg),G={},top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0][0];
+  for(const t of inPeriod(liveOf(tx),pre)){if(t.type!='exp'||t.fixedId||t.debt||t.payoff||t.roundOf||(cm[t.acc]||'PLN')!='PLN')continue;const raw=String(t.note||'').replace(/💱.*$/,'').trim();
+    if(raw.length<2||/^[🪙↩📅💼]/u.test(raw)||/^potrącenie/i.test(raw))continue;const k=placeKey(raw);if(!k)continue;
+    const g=G[k]||(G[k]={v:0,n:0,names:{},subs:{}});g.v+=t.amount;g.n++;g.names[raw]=(g.names[raw]||0)+1;g.subs[t.sub]=(g.subs[t.sub]||0)+t.amount}
+  return Object.values(G).filter(g=>g.v>0).sort((a,b)=>b.v-a.v).map(g=>({name:top(g.names),v:g.v,n:g.n,sub:top(g.subs)}))}
+/* 🛟 the safety cushion – one rule for the Savings card, the advisor (🧭 kafelek, ankieta, „Gdzie wpłacić”) and the monthly e-mail:
+   savings accounts in zł without IKE/IKZE/OKI/PPK (or any account with „poduszka” in its name), minus the money assigned to goals;
+   months = that ÷ the average spending of the last 6 months before ym that had any (none → the spending of ym) */
+export const isPodName=n=>/poduszk/i.test(n||'');
+export const isPodAcc=a=>!!a&&(isPodName(a.name)||(a.grp=='sav'&&!wrapOf(a)));
+export function cushionP(cfg,tx,goals,{ym,at,owner}={}){const live=liveOf(tx),accs=cfg.accs.filter(a=>isPodAcc(a)&&(a.cur||'PLN')=='PLN'&&(!owner||ownerOf(a)==owner));
+  const pool=accs.reduce((x,a)=>x+balance(cfg,live,a.id,at),0),inGoals=Object.values(goals||{}).filter(g=>g&&!g.deleted&&(!owner||(g.owner||'Wspólne')==owner)).reduce((x,g)=>x+Math.max(0,g.alloc??g.saved??0),0);
+  const first=firstYm(live),past=[];for(let k=1;k<=6;k++){const m=addMonths(ym,-k);if(m<first)break;const e=agg(cfg,live,m).exp;if(e>0)past.push(e)}
+  const avgE=past.length?past.reduce((a,v)=>a+v,0)/past.length:agg(cfg,live,ym).exp,free=Math.max(0,pool-inGoals);
+  return{accs,pool,inGoals,free,avgE,n:past.length,months:avgE>0?free/avgE:null,pod:accs.find(a=>!a.archived&&isPodName(a.name))||null}}
 /* average of each position over the previous n months that have any data (plan hint, "Wypełnij średnimi", anomalies) */
 /* the first month with any entry (remembered per list; sorting all dates every time was slow) */
 const FIRST=new WeakMap();export const firstYm=tx=>{let f=FIRST.get(tx);if(f==null){let m='9999';for(const t of tx)if(t.date&&t.date<m)m=t.date;f=m.slice(0,7);FIRST.set(tx,f)}return f};

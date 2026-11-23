@@ -276,7 +276,8 @@ const FB={
     export const doc=(b,...s)=>({p:[b&&b.p,...s].filter(Boolean).join('/'),doc:true});export const collection=(b,n)=>({p:[b&&b.p,n].filter(Boolean).join('/'),col:true});
     export const onSnapshot=(ref,a,b)=>{const cb=typeof a=='function'?a:b;setTimeout(()=>cb(ref.doc?{exists:()=>false,data:()=>undefined,id:ref.p.split('/').pop(),metadata:meta}:{docs:[],metadata:meta}),30);return()=>{}};
     export const setDoc=async()=>{};export const updateDoc=async()=>{};export const deleteDoc=async()=>{};export const deleteField=()=>({});export const increment=n=>n;export const waitForPendingWrites=async()=>{};
-    export const getDoc=async()=>({exists:()=>false,data:()=>undefined});export const getDocs=async()=>({docs:[]});`};
+    export const getDoc=async()=>({exists:()=>false,data:()=>undefined});export const getDocs=async()=>({docs:[]});
+    export const writeBatch=()=>({set(){return this},update(){return this},delete(){return this},commit:async()=>{}});`};
 for(const [tag,user] of [['prawdziwa strona – logowanie',null],['prawdziwa strona – pusty budżet',{uid:'test',email:'test@example.com'}]]){
   const ctx=await browser.newContext({viewport:{width:390,height:800},serviceWorkers:'block'});const p=await ctx.newPage();
   p.on('pageerror',e=>fail(`${tag}: błąd JavaScript: ${e.message}`));

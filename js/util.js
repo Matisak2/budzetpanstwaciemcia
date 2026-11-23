@@ -4,7 +4,7 @@ export const MNG=['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca
 export const MN=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
 /* numbers in Polish style, always grouped – also 4-digit ones („5 449,18”, like „14 109,18”; the browser alone writes „5449,18”) */
 const NF={};/* one formatter per number of decimals – creating it on every amount was slow with many years of entries */
-export const fmtN=(x,d=2)=>{const s=(NF[d]||(NF[d]=new Intl.NumberFormat('pl-PL',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false}))).format(+x||0),[i,f]=s.split(',');
+export const fmtN=(x,d=2)=>{const v=+x||0,s=(NF[d]||(NF[d]=new Intl.NumberFormat('pl-PL',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false}))).format(Math.abs(v)<0.5/10**d?0:v),/* no „-0,00” */[i,f]=s.split(',');
   return i.replace(/\B(?=(\d{3})+(?!\d))/g,'\u00a0')+(f!=null?','+f:'')};
 /* 🙈 discreet mode (⚙️ → Wygląd, this phone only): every amount shows as „•••” */
 export const priv={on:false};
@@ -24,8 +24,9 @@ export const pnum=(s,money)=>{s=String(s??'').replace(/\s/g,'').replace(/zł|pln
   const neg=/^[-−]/.test(s);s=s.replace(/^[-−]/,'');
   const nd=(s.match(/\./g)||[]).length,nc=(s.match(/,/g)||[]).length;
   if(nd&&nc){const dec=s.lastIndexOf('.')>s.lastIndexOf(',')?'.':',';s=s.split(dec=='.'?',':'.').join('').replace(',','.')}
-  else if(nd+nc>1)s=s.replace(/[.,]/g,'');
+  else if(nd+nc>1){if(!/^\d{1,3}([.,]\d{3})+$/.test(s))return 0;s=s.replace(/[.,]/g,'')} // „1.234.567” = thousands; „1,2,3” is not a number
   else if(nd+nc==1){const[a,b]=s.split(nd?'.':',');s=money&&nd&&b.length==3&&/^[1-9]\d{0,2}$/.test(a)?a+b:a+'.'+b}
+  if(!/^(\d+\.?\d*|\.\d+)$/.test(s))return 0; // only digits – no „1e3”, „Infinity”
   const v=parseFloat(s);return isNaN(v)?0:neg?-v:v};
 export const pg=s=>Math.round(pnum(s,true)*100);
 export const fmtIn=n=>n?(n/100).toFixed(2).replace(/\.00$/,'').replace('.',','):'';

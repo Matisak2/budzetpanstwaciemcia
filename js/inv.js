@@ -43,12 +43,16 @@ export function bondYears(b,macro={},start){const T=BONDS[b.type]||BONDS.EDO,n=M
     return{r:+(b.first||0),src:'first',from}})}
 export const bondRates=(b,macro={},start)=>bondYears(b,macro,start).map(x=>x.r);
 /* early redemption fee per bond (grosze – EDO 3 zł, since 09.2024), at most the interest earned */
-export const BOND_FEE={OTS:0,ROR:50,DOR:70,TOS:100,COI:200,EDO:300,ROS:200,ROD:300};
+const BOND_FEE={OTS:0,ROR:50,DOR:70,TOS:100,COI:200,EDO:300,ROS:200,ROD:300};
+/* 🏦 rules shared by the valuation (bondLotValue, instValue) and the advisor's forecast (bondAfter in advisor.js):
+   the monthly rate of ROR / DOR (the 1st month fixed, then NBP + margin) and the early redemption fee (OTS: no interest at all; others: the fee per bond, at most the interest) */
+export const bondMonRate=(b,macro,i)=>(i==0?+(b.first||0):(+(macro?.nbp??0))+(+(b.margin??BONDS[b.type]?.margin??0)))/100/12;
+export const bondFee=(type,units,interest)=>type=='OTS'?Math.max(0,interest):Math.min((BOND_FEE[type]||0)*units,Math.max(0,interest));
 /* one lot of a bond: its own series data when typed at the purchase (first, margin – EDO bought in another month is another series) */
-export const lotBond=(b,l)=>({...b,...(l&&l.first!=null&&l.first!==''?{first:+l.first}:{}),...(l&&l.margin!=null&&l.margin!==''?{margin:+l.margin}:{})});
+const lotBond=(b,l)=>({...b,...(l&&l.first!=null&&l.first!==''?{first:+l.first}:{}),...(l&&l.margin!=null&&l.margin!==''?{margin:+l.margin}:{})});
 export function bondLotValue(b0,l,today,macro){const b=lotBond(b0,l),T=BONDS[b.type]||BONDS.EDO,months=b.m||T.m,N=Math.round((+l.qty||0)*(+l.price||100)*100),end=addM(l.date,months),at=today<end?today:end;
   /* ROR / DOR: the 1st month at the fixed rate, then NBP + margin, interest paid out every month (not added to the bond) */
-  if(T.mon){const full=Math.min(months,monthsBetween(l.date,at)),rm=i=>(i==0?+(b.first||0):(+(macro?.nbp??0))+(+(b.margin??T.margin)))/100/12;let paid=0;for(let i=0;i<full;i++)paid+=N*rm(i);
+  if(T.mon){const full=Math.min(months,monthsBetween(l.date,at)),rm=i=>bondMonRate({...b,type:b.type||'EDO'},macro,i);let paid=0;for(let i=0;i<full;i++)paid+=N*rm(i);
     const ms=addM(l.date,full),me=addM(l.date,full+1),frac=full>=months?0:Math.max(0,dd(ms,at))/dd(ms,me);return{value:Math.round(N*(1+rm(full)*frac)),paid:Math.round(paid),end,cost:N}}
   if(months<12){const r=(+(b.first||0))/100,f=Math.max(0,dd(l.date,at))/dd(l.date,end);return{value:Math.round(N*(1+r*months/12*f)),paid:0,end,cost:N}}
   const rates=bondRates(b,macro,l.date).map(r=>r/100),full=Math.min(rates.length,Math.floor(monthsBetween(l.date,at)/12));
@@ -78,7 +82,7 @@ export function instValue(it,acc,today,macro={},mkt=null){
     const L=Object.values(it.lots||{}).filter(l=>!l.deleted&&l.date<=today).sort((a,b)=>a.date.localeCompare(b.date)||(a.kind=='sell')-(b.kind=='sell'));
     const held=[];for(const l of L){if(l.kind!='sell'){held.push({...l,qty:+l.qty||0});continue}let q=+l.qty||0;
       for(const h of held){if(q<=0)break;const k=Math.min(q,h.qty);if(k<=0)continue;const part={...h,qty:k},r=one(part,l.date),early=l.date<r.end;
-        const fee=early?(it.kind=='obl'&&(it.bond||{}).type!='OTS'?Math.min((BOND_FEE[(it.bond||{}).type]||0)*k,Math.max(0,r.value-r.cost+r.paid)):Math.max(0,r.value-r.cost)):0;
+        const fee=early?(it.kind=='obl'?bondFee((it.bond||{}).type,k,r.value-r.cost+r.paid):Math.max(0,r.value-r.cost)):0;
         h.sold=(h.sold||0)+k;h.qty-=k;q-=k;h.real=(h.real||0)+net(r.value-r.cost+r.paid-fee)}}
     let value=0,cost=0,paid=0,real=0,next=null,done=0;
     for(const h of held){real+=h.real||0;if(h.qty<=0)continue;const r=one(h,today);
@@ -86,7 +90,8 @@ export function instValue(it,acc,today,macro={},mkt=null){
       value+=r.value;cost+=r.cost;paid+=r.paid;real+=net(r.paid);if(!next||r.end<next)next=r.end}
     const tax=free?0:Math.round(Math.max(0,value-cost)*BELKA/100),gain=value-cost+real;
     return{value,cost,gain,gPx:gain,gFx:0,net:value-tax,tax,paid,next,qty:null,real:Math.round(real),done}}
-  const p=position(it),mq=marketQuote(it,acc,mkt),px=+(mq?.p??it.price??p.avgPx),fx=it.cur&&it.cur!=(acc.cur||'PLN')?+(mq?.fx||it.fxNow||p.avgFx||1):1;
+  const p=position(holdAt(it,today)),mq=marketQuote(it,acc,mkt), /* a purchase dated later does not count yet */
+    px=+(mq?.p??it.price??p.avgPx),fx=it.cur&&it.cur!=(acc.cur||'PLN')?+(mq?.fx||it.fxNow||p.avgFx||1):1;
   const value=Math.round(p.qty*px*fx*100)/100,costNoFee=Math.round(p.qty*p.avgPx*p.avgFx*100)/100;
   const gPx=Math.round(p.qty*(px-p.avgPx)*fx*100)/100,gFx=Math.round(p.qty*p.avgPx*(fx-p.avgFx)*100)/100;
   const v=Math.round(value*100),c=Math.round(p.cost),gain=v-c,tax=taxFree(acc)?0:Math.round(Math.max(0,gain)*BELKA/100);
@@ -134,7 +139,7 @@ export const intOf=a=>{const I=a?.int;return I&&(Object.values(I.rates||{}).some
 export const intTax=a=>a.int?.tax||(taxFree(a)?'none':'bank');
 /* the normal rate on a day (the latest change on or before it) */
 export function intRate(I,day){let k='',r=0;for(const[d,v]of Object.entries(I.rates||{}))if(d<=day&&d>=k){k=d;r=+v||0}return r}
-export const intPromo=(I,day)=>+I.promo>0&&(!I.promoTo||day<=I.promoTo);
+const intPromo=(I,day)=>+I.promo>0&&(!I.promoTo||day<=I.promoTo);
 /* the period a month belongs to: {from,to,key} – key = its last month */
 export function intPeriod(I,ym){const y=+ym.slice(0,4),m=+ym.slice(5,7),n=I.cap=='q'?3:I.cap=='y'?12:1,end=Math.ceil(m/n)*n,start=end-n+1,p=x=>String(x).padStart(2,'0');
   const key=y+'-'+p(end),last=new Date(Date.UTC(y,end,0)).getUTCDate();return{from:y+'-'+p(start)+'-01',to:key+'-'+p(last),key}}

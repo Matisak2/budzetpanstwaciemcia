@@ -23,10 +23,13 @@ export const instsOf=accId=>Object.entries(S.hold).filter(([,x])=>x.acc==accId&&
 export const nf=(x,d=2)=>(+x||0).toLocaleString('pl-PL',{minimumFractionDigits:d,maximumFractionDigits:Math.max(d,4)});
 export const pn=v=>{const x=pnum(v);return isFinite(x)?x:0};
 /* value adjustment that makes the account balance show its instruments at today's value */
-export function instDiff(a,hold){const L=Object.entries(hold||S.hold).filter(([,x])=>x.acc==a.id&&!x.deleted).map(([id,x])=>({id,...x}));return instDiffP(a,L,liveOf(S.tx),td(),macro(),mkt())}
-export function addVal(a,d,note){if(!d)return null;const ym=td().slice(0,7),id='t'+rid();putTx(ym,id,{type:'adj',val:true,amount:d,date:td(),sub:'',acc:a.id,to:'',who:S.who,note,deleted:false,ts:Date.now()});return[ym,id]}
+function instDiff(a,hold){const all=Object.entries(hold||S.hold).filter(([,x])=>x.acc==a.id),L=all.filter(([,x])=>!x.deleted).map(([id,x])=>({id,...x}));
+  /* the last instrument of the account deleted: its valuation leaves the balance too (it used to stay there for good) */
+  if(!L.length&&all.length){let v=0;for(const t of liveOf(S.tx))if(t.acc===a.id&&t.type=='adj'&&t.val&&!t.int)v+=t.amount;return v?-v:null}
+  return instDiffP(a,L,liveOf(S.tx),td(),macro(),mkt())}
+function addVal(a,d,note){if(!d)return null;const ym=td().slice(0,7),id='t'+rid();putTx(ym,id,{type:'adj',val:true,amount:d,date:td(),sub:'',acc:a.id,to:'',who:S.who,note,deleted:false,ts:Date.now()});return[ym,id]}
 /* bonds and deposits that end soon */
-export function maturities(days){return maturitiesP(S.cfg,S.hold,td(),days)}
+function maturities(days){return maturitiesP(S.cfg,S.hold,td(),days)}
 export const matH=()=>maturities(30).map(m=>`<div class="note">${IICON[m.it.kind]} ${m.it.kind=='obl'?'Wykup obligacji':'Koniec lokaty'} <b>${esc(m.it.name)}</b> (${esc(m.a.name)}): ${m.end.split('-').reverse().join('.')}${m.days?` – za ${m.days} ${plu(m.days,'dzień','dni','dni')}`:' – dziś'}. Zdecydujcie, co dalej z pieniędzmi.</div>`).join('');
 export function openInst(id){S.instAcc=id;S.values=false;window.scrollTo(0,0);render()}
 export function closeInst(){S.instAcc=null;S.values=false;render()}
@@ -113,8 +116,8 @@ export async function setPrice(id){if(guard())return;const it=S.hold[id],a=accBy
 /* bonds on sale this month (the automat reads obligacjeskarbowe.pl) */
 export const bondOffer=()=>{const b=mkt()?.bonds;if(!b?.date||b.date.slice(0,7)!=td().slice(0,7))return null;const{date,...r}=b;return Object.keys(r).length?r:null};
 /* PPK funds to choose from: [[id, slug]] sorted by name; grouped by institution for the select */
-export const fundList=()=>Object.entries(S.market?.funds?.list||{}).sort((a,b)=>a[1].localeCompare(b[1]));
-export const fundGroups=L=>{const g={};L.forEach(([id,s])=>(g[fundHouse(s)]=g[fundHouse(s)]||[]).push([id,fundName(s)]));return Object.entries(g).map(([n,items])=>({group:n,items}))};
+const fundList=()=>Object.entries(S.market?.funds?.list||{}).sort((a,b)=>a[1].localeCompare(b[1]));
+const fundGroups=L=>{const g={};L.forEach(([id,s])=>(g[fundHouse(s)]=g[fundHouse(s)]||[]).push([id,fundName(s)]));return Object.entries(g).map(([n,items])=>({group:n,items}))};
 /* PPK / TFI: the number of units now (from the fund's app); the difference becomes a purchase (or a sale) at today's unit value */
 export async function setUnits(id){if(guard())return;const it=S.hold[id],a=accById(it?.acc);if(!a)return;const p0=position(it),q=mkt()?.funds?.[it.fund?.id];
   const r=await ask({title:'Jednostki: '+it.name,text:'Wpisz liczbę jednostek z aplikacji PPK / TFI. Nowe wpłaty kupują kolejne jednostki – wystarczy poprawiać to raz na jakiś czas.',
@@ -168,7 +171,7 @@ export function limitPropH(){const L=limitPropP(S.market,S.hraw);if(!L)return'';
 export function acceptLimits(yes){const L=S.market?.limits;if(!L)return;if(yes){const v={ike:L.ike,ikze:L.ikze,ikzeB:L.ikzeB};S.hraw={...S.hraw,limits:{...(S.hraw?.limits||{}),[L.year]:v}};merge(H,{limits:{[L.year]:v}});toast('Zaktualizowano limity '+L.year+' ✓')}
   S.hraw={...S.hraw,limitsSeen:{...(S.hraw?.limitsSeen||{}),[L.year]:L.found}};merge(H,{limitsSeen:{[L.year]:L.found}});render()}
 export function limitsH(){const y=td().slice(0,4),tx=liveOf(S.tx),over=S.hraw?.limits,mo=+td().slice(5,7);
-  const L=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived&&['ike','ikze','oki'].includes(wrapOf(a)));if(!L.length)return'';
+  const L=S.cfg.accs.filter(a=>(a.grp=='inv'||a.grp=='sav')&&!a.archived&&['ike','ikze','oki'].includes(wrapOf(a)));if(!L.length)return''; // IKE on a savings account (grp sav) too – as in the year summary and PIT
   const rows=L.map(a=>{const w=wrapOf(a);
     if(w=='oki'){const v=balance(S.cfg,tx,a.id,addDays(td(),1)),ex=Math.max(0,v-OKI_FREE);
       return`<div class="lim"><div class="r1"><b>${esc(a.name)} <span class="curtag">OKI</span></b><span class="num">${zl(v)}</span></div><div class="gbar"><i style="width:${Math.min(100,v/OKI_FREE*100).toFixed(1)}%"></i></div><div class="mini">bez podatku do ${zl0(OKI_FREE)} średniej wartości w roku${ex?` · ponad limit ${zl(ex)} → szacunek podatku ${OKI_RATE.toString().replace('.',',')}%: ok. ${zl(Math.round(ex*OKI_RATE/100))} rocznie`:''}</div></div>`}
@@ -202,9 +205,9 @@ export function odloz(owner){use('f:odloz');const o=owner&&owner!='all'?owner:S.
 /* ---------- 📅 yearly expenses: one shared subaccount with envelopes (📌 Stałe → Roczne) ---------- */
 export const years=()=>S.cfg.years||[];
 export const saveYear=x=>merge(H,{yearM:{[x.id]:strip(x,posOf(years(),x))}});
-export const delYearDb=id=>w(updateDoc(H,{['yearM.'+id]:deleteField()}));
-export const yearAccId=()=>{const id=S.hraw?.yearAcc;return id&&accById(id)?id:null};
-export function yearState(ym){return yearStateP(S.cfg,liveOf(S.tx),S.hraw,ym,td())}
+const delYearDb=id=>w(updateDoc(H,{['yearM.'+id]:deleteField()}));
+const yearAccId=()=>{const id=S.hraw?.yearAcc;return id&&accById(id)?id:null};
+function yearState(ym){return yearStateP(S.cfg,liveOf(S.tx),S.hraw,ym,td())}
 export function goYear(){S.tab='fix';S.fixSub='year';S.slip=null;window.scrollTo(0,0);render()}
 /* 📅 Roczne i terminy: yearly expenses with money put aside (an envelope on one shared subaccount) + dates without money + warranties; one „+ Dodaj” */
 export function yearH(){const ym=S.ym,st=yearState(ym),id=yearAccId();let h='';
@@ -254,7 +257,7 @@ export async function setYearAcc(){if(guard())return;const subs=S.cfg.accs.filte
   S.hraw={...S.hraw,yearAcc:id};merge(H,{yearAcc:id});render()}
 /* „Jak często” – the same choices as in „+ Dodaj”; an unusual period of an existing item stays on the list, so saving never changes it */
 const EVERY=[['1','Co miesiąc'],['3','Co kwartał'],['6','Co pół roku'],['12','Co rok'],['24','Co 2 lata']];
-export const everyOpts=e=>EVERY.some(([k])=>k==String(e))||!(+e>0)?EVERY:[...EVERY,[String(e),'Co '+e+' mies.']];
+const everyOpts=e=>EVERY.some(([k])=>k==String(e))||!(+e>0)?EVERY:[...EVERY,[String(e),'Co '+e+' mies.']];
 export async function editYear(id,pre){if(guard())return;const y0=id?years().find(x=>x.id==id):null;pre=pre||{};
   const r=await ask({title:y0?'Wydatek roczny':'Nowy wydatek roczny',text:y0?'':'Co roku (albo co kilka miesięcy) – policzę, ile odkładać co miesiąc na wspólne subkonto. Jednorazowy duży zakup? Lepszy 🎯 Cel w Oszczędnościach.',fields:[{id:'n',label:'Nazwa',value:y0?.name||pre.name||'',ph:'np. OC samochodu, Prezenty świąteczne'},{id:'a',label:'Kwota (zł)',type:'decimal',value:y0?f2(y0.amount):pre.amount?f2(pre.amount):''},
     {id:'m',label:'Miesiąc płatności',type:'select',value:String(y0?.month||pre.month||+td().slice(5,7)),options:MN.map((n,i)=>[String(i+1),n])},

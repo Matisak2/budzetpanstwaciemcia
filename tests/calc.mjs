@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
 import {marketQuote,holdAt,instDiffP,intOf,intRate,penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,payDateP,closeWinP,closeYmP,salaryTxP,maturitiesP,pitSummaryP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {BACKUP_KEYS,yearPlanOf,avgActuals,anomalies,yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
+import {cushionP,BACKUP_KEYS,yearPlanOf,avgActuals,anomalies,yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays,addMonths,daysIn,plDay} from '../js/util.js';
 import fs from 'node:fs';
@@ -918,5 +918,32 @@ eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWD
   eq('Maile – 1. dnia podsumowanie (i kopia, gdy to pierwsza niedziela)',[P('2026-11-01','Sun',9),P('2026-11-01','Sun',21),P('2026-11-02','Mon',13),P('2026-11-02','Mon',14),P('2026-11-02','Mon',10,{sum:'2026-11'})],[['sum'],['backup'],['sum'],[],[]]);
   eq('Maile – 1 stycznia także rok',[P('2027-01-01','Fri',9),P('2027-01-01','Fri',8),P('2027-01-02','Sat',9,{sum:'2027-01',year:'2027'}),P('2027-01-03','Sun',9)],[['year','sum'],[],[],[]]);
   eq('Maile – tryby ręczne',[P('2026-11-20','Fri',3,{},'test-kopia'),P('2026-11-20','Fri',3,{},'test-rok'),P('2026-11-20','Fri',3,{},'test-podsumowanie')],[['backup'],['year'],['sum']])}
+/* 🛟 jedna poduszka (karta w Oszczędnościach, doradca, mail): konta oszczędnościowe w zł bez IKE/IKZE + konto „Poduszka” z każdej grupy, minus cele;
+   średnie wydatki z miesięcy z wydatkami (do 6 przed miesiącem) */
+{ const cfg={accs:[{id:'c',grp:'cur',owner:'Mati',open:10000000},{id:'o',grp:'sav',owner:'Mati',open:3000000},{id:'k',grp:'sav',owner:'Mati',wrap:'ikze',open:1000000},
+    {id:'p',grp:'inv',owner:'Wspólne',name:'Poduszka',open:500000},{id:'e',grp:'sav',owner:'Mati',cur:'EUR',open:100000}],cats:[{id:'c1',type:'exp',name:'Dom',subs:[{id:'s1',name:'Jedzenie'}]}]};
+  const tx=['2026-01','2026-05','2026-06','2026-08','2026-10'].map((m,i)=>({id:'x'+i,type:'exp',amount:500000,date:m+'-05',sub:'s1',acc:'c'}));
+  const goals={g:{alloc:500000},d:{alloc:999,deleted:true},w:{saved:100000,owner:'Wercia'}};
+  const C=cushionP(cfg,tx,goals,{ym:'2026-11',at:'2026-11-01'});
+  // pula 30 000 + 5 000 = 35 000 zł, cele 5 000 + 1 000 → 29 000 zł; wydatki: 4 miesiące z 6 (maj, czerwiec, sierpień, październik) po 5 000 zł → 5,8 mies.
+  eq('Poduszka – konta, cele, średnia',[C.accs.map(a=>a.id),C.pool,C.inGoals,C.free,C.avgE,C.n,C.months,C.pod?.id],[['o','p'],3500000,600000,2900000,500000,4,5.8,'p']);
+  const M=cushionP(cfg,tx,goals,{ym:'2026-11',at:'2026-11-01',owner:'Mati'});
+  eq('Poduszka osoby – jej konta i jej cele',[M.pool,M.inGoals,M.free],[3000000,0,3000000])}
+/* 🏦 obligacje: prognoza doradcy (bondAfter) i wycena w Oszczędnościach (bondLotValue / instValue) liczą tymi samymi zasadami */
+{ const lot=bondLotValue({type:'ROR',first:5.75},{date:'2026-01-10',qty:10,price:100},'2027-01-10',{nbp:4});
+  eq('ROR po roku: doradca = wycena (odsetki co miesiąc)',bondAfter('ROR',12,{first:5.75},{nbp:4},{taxFree:true,amount:100000}),100000+lot.paid);
+  // EDO 1 000 zł, 6% w 1. roku, wykup po roku na IKE: 60 zł odsetek − 10 × 3 zł opłaty = 30 zł (jak w instValue wyżej)
+  eq('EDO wykup po roku: doradca = wycena (opłata)',bondAfter('EDO',12,{first:6,margin:2},{infl:3},{taxFree:true,amount:100000}),103000);
+  eq('OTS przed końcem – bez odsetek',bondAfter('OTS',2,{first:3},{},{taxFree:true,amount:100000}),100000)}
+/* 🔢 kwoty wpisane albo wklejone: „1,2,3”, „1e3”, „Infinity” to nie kwoty (0 = „Podaj kwotę”), „1.234.567” = tysiące; bez „-0,00” */
+{ eq('Dziwne kwoty',[pg('1,2,3'),pg('1e3'),pg('Infinity'),pg('12,3,4'),pg('1.234.567'),pg('1,234,567'),pg('12.'),pg('.5')],[0,0,0,0,123456700,123456700,1200,50]);
+  eq('Bez „-0,00”',[fmtN(-0.001),fmtN(-0.004),fmtN(-0.006),fmtN(0)],['0,00','0,00','-0,01','0,00'])}
+/* 🧭 doradca: wiek emerytalny już osiągnięty – bez „odkładaj 125 000 zł/mies.”; brak odpowiedzi o spadku = ostrożnie jak „Nie wiem”; termometr bez inflacji / stopy NBP – bez złota */
+{ const R=retireP({age:67,retAge:65,want:600000,zusNet:250000,until:95,cap:5000000});
+  eq('Emerytura po wieku emerytalnym',[R.n,R.pmt,R.now,R.ok,R.fv,R.m],[0,0,true,false,5000000,28]);
+  eq('Brak odpowiedzi o spadku = jak „Nie wiem”',planP({q42:'20'}).g.stock,planP({q42:'20',q43:'?'}).g.stock);
+  eq('Termometr bez inflacji i stopy',thermoP(null,{},{today:'2026-11-20'}).gold,undefined)}
+{ const P=[{who:'Mati',t:'12',ike:{left:300000,has:true},ikze:{left:0}}],a=whereP({amt:1000000,src:'surplus',goal:'plan'},P,{podGap:500000,today:'2026-12-05'});
+  eq('„Gdzie wpłacić” nie zmienia danych osób',[P[0].ike.left,JSON.stringify(whereP({amt:1000000,src:'surplus',goal:'plan'},P,{podGap:500000,today:'2026-12-05'}).rows)==JSON.stringify(a.rows)],[300000,true])}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

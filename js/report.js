@@ -1,6 +1,6 @@
 /* 🖨️ the year summary – the same numbers and the same page in the app (Analiza → Rok → „Podsumowanie roku”, save as PDF / print)
    and in the January e-mail from the automat. Pure functions; inline styles, so e-mail apps show it the same way. */
-import {MN,zl,zl0,esc,plu} from './util.js';
+import {MN,zl,zl0,esc,plu,addDays} from './util.js';
 import {agg,balance,cleanCat,savFlow,savIds,ytdSpanP} from './logic.js';
 import {limitOf,paidInYear,wrapOf} from './inv.js';
 import {ULGI,pitSummaryP} from './today.js';
@@ -10,7 +10,7 @@ export function yearStats(D,year,today='9999-12-31'){const{cfg,tx,hraw}=D,y=Stri
   const last=today.slice(0,4)==y?+today.slice(5,7):12;
   let months=Array.from({length:last},(_,i)=>{const ym=`${y}-${String(i+1).padStart(2,'0')}`,M=agg(cfg,tx,ym);return{ym,inc:M.inc,exp:M.exp}});
   const first=months.findIndex(m=>m.inc||m.exp);months=first<0?[]:months.slice(first);
-  const start=`${y}-01-01`,end=`${+y+1}-01-01`,bal=(a,d)=>balance(cfg,tx,a.id,d),live=cfg.accs.filter(isPln);/* archived accounts too – money moved out of them in the year must not look like new wealth */
+  const start=`${y}-01-01`,end=today.slice(0,4)==y?addDays(today,1):`${+y+1}-01-01`,/* the year still lasts: „Majątek – teraz” is today, not 1.01 (entries dated later are not money yet) */bal=(a,d)=>balance(cfg,tx,a.id,d),live=cfg.accs.filter(isPln);/* archived accounts too – money moved out of them in the year must not look like new wealth */
   /* put aside = money moved in (not price changes – gain is apart) */
   const{flow:saved,gain}=savFlow(cfg,tx,savIds(cfg),y);
   const wealth0=live.reduce((x,a)=>x+bal(a,start),0),wealth1=live.reduce((x,a)=>x+bal(a,end),0);
@@ -20,7 +20,7 @@ export function yearStats(D,year,today='9999-12-31'){const{cfg,tx,hraw}=D,y=Stri
   const withData=months.filter(m=>m.exp>0),maxM=withData.slice().sort((a,b)=>b.exp-a.exp)[0]||null;
   const wraps=cfg.accs.filter(a=>(a.grp=='inv'||a.grp=='sav')&&!a.archived&&['ike','ikze','ppk','oki'].includes(wrapOf(a))).map(a=>({n:a.name,w:wrapOf(a),paid:paidInYear(tx,a.id,y),lim:limitOf(a,y,hraw?.limits),value:bal(a,end)})).filter(x=>x.paid||x.value);
   const pit=['Mati','Wercia'].map(w=>({w,...pitSummaryP(cfg,tx,y,w,hraw)})).filter(p=>p.n||p.ikze.length);
-  return{year:y,inc:A.inc,exp:A.exp,who:A.who,own:A.own,gain,/* the year before – over the same days while this one lasts (a few months against a whole year was misleading) */prev:{inc:SP.prev.inc,exp:SP.prev.exp,now:SP.cur.exp,same:SP.live},months,saved,wealth0,wealth1,cats,top,maxM,avgExp:withData.length?Math.round(withData.reduce((a,m)=>a+m.exp,0)/withData.length):0,
+  return{year:y,inc:A.inc,exp:A.exp,who:A.who,own:A.own,gain,/* the year before – over the same days while this one lasts (a few months against a whole year was misleading) */prev:{inc:SP.prev.inc,exp:SP.prev.exp,now:SP.cur.exp,same:SP.live},months,saved,wealth0,wealth1,cats,top,maxM,avgExp:months.length?Math.round(months.reduce((a,m)=>a+m.exp,0)/months.length):0,/* months from the first one with entries – as in Analiza → Rok */
     wraps,pit,n:tx.filter(t=>t.date.startsWith(y)).length,partial:last<12}}
 /* the page itself (a <div> – the app shows it, the e-mail wraps it) */
 export function yearBody(st,app=''){const bal=st.inc-st.exp,pc=(a,b)=>b?Math.round((a/b-1)*100):null,dE=pc(st.prev.now??st.exp,st.prev.exp);

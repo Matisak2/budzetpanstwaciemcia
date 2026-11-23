@@ -1,11 +1,11 @@
 import {esc,zl,priv} from './util.js';
 export const PAL=['#7fb0ec','#f4a582','#6fd0a8','#f2c45f','#f0a3c3'],P_OTHER='#cbd5e1',C_INC='#6fd0a8',C_EXP='#f4a582';
-export const niceMax=v=>{if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v))),n=v/p;return(n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p};
-export const kfmt=g=>{if(priv.on&&g)return'•••';const z=g/100,a=Math.abs(z);return a>=999500?(z/1e6).toFixed(1).replace('.0','').replace('.',',')+' mln':Math.round(a)>=1e3?(z/1e3).toFixed(a>=1e4?0:1).replace('.0','').replace('.',',')+' tys.':Math.round(z)+''};
+const niceMax=v=>{if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v))),n=v/p;return(n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p};
+const kfmt=g=>{if(priv.on&&g)return'•••';const z=g/100,a=Math.abs(z);return a>=999500?(z/1e6).toFixed(1).replace('.0','').replace('.',',')+' mln':Math.round(a)>=1e3?(z/1e3).toFixed(a>=1e4?0:1).replace('.0','').replace('.',',')+' tys.':Math.round(z)+''};
 export const pctS=(a,b)=>b?(a/b*100).toFixed(1).replace('.',',')+'%':'—';
 export function deltaH(cur,prev,goodUp){if(!prev)return'';const d=(cur-prev)/Math.abs(prev)*100;if(Math.abs(d)<0.5)return`<span class="dl flat">= jak poprzednio</span>`;
   const up=d>0,good=up===goodUp;return`<span class="dl ${good?'good':'bad'}">${up?'▲':'▼'} ${Math.abs(d).toFixed(0)}%</span>`}
-export const rTop=(x,y,w,h,r)=>{r=Math.max(0,Math.min(r,w/2,h));const b=y+h;return`M${x},${b}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${b}Z`};
+const rTop=(x,y,w,h,r)=>{r=Math.max(0,Math.min(r,w/2,h));const b=y+h;return`M${x},${b}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${b}Z`};
 export function donutSvg(segs,c1,c2){const R=78,C=2*Math.PI*R,tot=segs.reduce((a,s)=>a+s.v,0)||1;let off=0;
   const arcs=segs.map(s=>{const len=s.v/tot*C,g=segs.length>1?Math.min(2.5,len/2):0,L=Math.max(0.01,len-g);
     const el=`<circle cx="100" cy="100" r="${R}" fill="none" stroke="${s.c}" stroke-width="30" stroke-dasharray="${L.toFixed(2)} ${(C-L).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 100 100)" data-tip="${esc(s.l)}: ${zl(s.v)} (${pctS(s.v,tot)})" class="mk"/>`;off+=len;return el}).join('');
@@ -43,7 +43,7 @@ export function lineSvg(labels,values,color,{h=170}={}){
 export const chartBox=(title,sub,body,legend='')=>`<section class="chart"><div class="ct"><b>${esc(title)}</b>${sub?`<span class="mini">${sub}</span>`:''}</div>${legend}${body}<div class="tip mini">Dotknij wykresu, żeby zobaczyć kwotę.</div></section>`;
 export const legendH=items=>`<div class="lg">${items.map(i=>`<span><i style="background:${i.c}"></i>${esc(i.l)}</span>`).join('')}</div>`;
 export function hbarsH(rows,total){const mx=Math.max(1,...rows.map(r=>r.v));
-  return`<div class="hbl">${rows.map(r=>`<div class="hr" data-tip="${esc(r.l)}: ${zl(r.v)}${total?' ('+pctS(r.v,total)+')':''}"><div class="r1"><span class="hl">${r.dot?`<i style="background:${r.dot}"></i>`:''}${esc(r.l)}</span><span class="num">${zl(r.v)}${total?`<em> ${pctS(r.v,total)}</em>`:''}</span></div><div class="hbar"><i style="width:${(r.v/mx*100).toFixed(1)}%;background:${r.c||'#334155'}"></i></div>${r.note?`<div class="mini">${r.note}</div>`:''}</div>`).join('')}</div>`}
+  return`<div class="hbl">${rows.map(r=>`<div class="hr" data-tip="${esc(r.l)}: ${zl(r.v)}${total?' ('+pctS(r.v,total)+')':''}"><div class="r1"><span class="hl">${r.dot?`<i style="background:${r.dot}"></i>`:''}${esc(r.l)}</span><span class="num">${zl(r.v)}${total?`<em> ${pctS(r.v,total)}</em>`:''}</span></div><div class="hbar"><i style="width:${(Math.max(0,r.v)/mx*100).toFixed(1)}%;background:${r.c||'#334155'}"></i></div>${r.note?`<div class="mini">${r.note}</div>`:''}</div>`).join('')}</div>`}
 /* "paid in vs value": paid as steps, value as a line, the gap green (gain) or pink (loss); pts=[{d,paid,value}] sorted by date */
 export function gainSvg(pts,{h=190,money=zl}={}){if(!pts.length)return'';
   const W=340,PL=46,PR=10,PT=12,PB=22,ch=h-PT-PB,t=d=>new Date(d+'T12:00:00').getTime();

@@ -2,14 +2,14 @@
 export const KINDS={uop:'Umowa o pracę',zlec:'Umowa zlecenie',dzielo:'Umowa o dzieło',b2b:'Kontrakt / JDG'};
 export const TAXF={skala:'Skala podatkowa (12% / 32%)',liniowy:'Podatek liniowy (19%)',ryczalt:'Ryczałt'};
 /* 2026: limit of the pension + disability contributions (30 × forecast average salary) and the 32% tax threshold */
-export const ZUS_LIMIT=28260000,TAX_THR=12000000;
+const ZUS_LIMIT=28260000,TAX_THR=12000000;
 /* the year these rules are for – in January of a later year „Na dziś” asks Mati to have them updated (then change RULES_YEAR and tests/calc.mjs) */
 export const RULES_YEAR=2026;
 const r0=x=>Math.round(x/100)*100; // tax advances are rounded to full złoty
 const pct=(x,p)=>Math.round(x*p/100);
 export const brutto=sl=>(sl.comp||[]).reduce((a,c)=>a+(c.a||0),0);
 export const dedSum=sl=>(sl.ded||[]).reduce((a,d)=>a+(d.a||0),0);
-export const hoursOf=sl=>(sl.comp||[]).reduce((a,c)=>a+(+c.h||0),0);
+const hoursOf=sl=>(sl.comp||[]).reduce((a,c)=>a+(+c.h||0),0);
 /* what should come to the account: employee contracts – brutto minus contributions, tax, own PPK and deductions; JDG – the invoice */
 export const calcNet=(src,sl)=>src.kind=='b2b'?brutto(sl):brutto(sl)-(sl.zus||0)-(sl.health||0)-(sl.tax||0)-(sl.ppkOwn||0)-dedSum(sl);
 /* JDG: what to put aside for ZUS, health and tax, and what is really left */
@@ -36,12 +36,12 @@ function progressive(base,ytdBase,reduce){const low=Math.max(0,Math.min(base,TAX
 /* 🎓 ulga dla młodych (PIT-0): umowa o pracę i zlecenie – bez podatku od przychodu (z wpłatą PPK pracodawcy) otrzymanego do dnia 26. urodzin włącznie,
    do 85 528 zł w roku razem ze wszystkich umów tej osoby. ZUS i zdrowotna bez zmian. Przy przekroczeniu limitu podatek od nadwyżki:
    ZUS odliczany w części przypadającej na opodatkowany przychód, koszty najwyżej do tej części. */
-export const YOUNG_LIMIT=8552800;
+const YOUNG_LIMIT=8552800;
 export const youngKind=k=>k=='uop'||k=='zlec';
 const leap=y=>y%4==0&&(y%100!=0||y%400==0);
 /* the 26th birthday (the last day of the relief) from the date of birth; 29 February → 28 February in a common year */
 export function youngUntil(birth){if(!/^\d{4}-\d\d-\d\d$/.test(birth||''))return'';const y=+birth.slice(0,4)+26,md=birth.slice(5);return y+'-'+(md=='02-29'&&!leap(y)?'02-28':md)}
-export const revOf=sl=>brutto(sl)+(sl.ppkEmp||0);
+const revOf=sl=>brutto(sl)+(sl.ppkEmp||0);
 /* the limit left for a payslip of `src` paid on `date` (month ym): null = no relief (no date of birth, after the 26th birthday, other contract).
    Other payslips of the same person this year count – stored `young`, or (older ones) their whole income when paid before the birthday. */
 export function youngLeft(slips,incs,src,birth,ym,date){const until=youngUntil(birth);if(!until||!youngKind(src.kind))return null;if((date||ym+'-01')>until)return null;

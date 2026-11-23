@@ -43,3 +43,6 @@ export const deleteDoc=async(ref)=>{delete D.store[ref.p];fire()};
 export const getDoc=async(ref)=>{await D.ready;const d=D.store[ref.p];return{exists:()=>!!d,data:()=>copy(d),id:ref.p.split('/').pop()}};
 export const getDocs=async(ref)=>{await D.ready;const pre=ref.p+'/';return{docs:Object.keys(D.store).filter(k=>k.startsWith(pre)&&!k.slice(pre.length).includes('/')).map(k=>({id:k.slice(pre.length),data:()=>copy(D.store[k])}))}};
 export const waitForPendingWrites=async()=>{};
+/* writeBatch: every write checked first (one bad write = nothing saved, like the SDK), then all applied at once */
+export const writeBatch=()=>{const ops=[];return{set(ref,body,opt){noUndef(body,'',{noDel:!(opt&&(opt.merge||opt.mergeFields))});ops.push(()=>setDoc(ref,body,opt));return this},
+  update(ref,body){ops.push(()=>updateDoc(ref,body));return this},delete(ref){ops.push(()=>deleteDoc(ref));return this},async commit(){for(const f of ops)await f()}}};

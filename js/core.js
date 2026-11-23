@@ -1,7 +1,7 @@
 /* Budżet M&W – state, Firebase, UI helpers and storage (shared by every screen). Part of the former js/app.js (split into modules, same code). */
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,setDoc,updateDoc,deleteField} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,setDoc,updateDoc,deleteField,writeBatch} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {scene} from './cats.js';
 import {NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
 import {CURS,SEASON,tint} from './data.js';
@@ -13,7 +13,7 @@ import {runGo,maybeToday} from './todayui.js';
 import {accN,render} from './app.js';
 import {use} from './usage.js';
 
-export const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
+const fa=initializeApp({apiKey:"AIzaSyBda2N5_9Pdez3kzI4MFR7o2gGSSm8nLZM",authDomain:"budzet-panstwa-ciemcia.firebaseapp.com",projectId:"budzet-panstwa-ciemcia",appId:"1:711621657322:web:d589b95213dd2211328d93"});
 export const auth=getAuth(fa);
 export const fdb=initializeFirestore(fa,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
 
@@ -148,7 +148,7 @@ export const fxSmall=m=>{const t=fxPlus(m).trim();return t?`<small class="fxs">$
 export const WRAP_F=a=>({id:'x',label:'Podatek',type:'select',value:wrapOf(a)=='ikze'&&a.jdg?'ikzeB':wrapOf(a),options:[['','Zwykłe konto – podatek Belki 19%'],['ike','IKE'],['ikze','IKZE'],['ikzeB','IKZE – prowadzę działalność (wyższy limit)'],['oki','OKI (od 2027)'],['ppk','PPK']]});
 export const setWrap=(a,v)=>{a.wrap=v=='ikzeB'?'ikze':v;a.jdg=v=='ikzeB'};
 export const CUR_OPTS=[['PLN','PLN – złoty polski'],...CURS.map(([c,n])=>[c,c+' – '+n])];
-export const r4=x=>x.toLocaleString('pl-PL',{minimumFractionDigits:4,maximumFractionDigits:4});
+const r4=x=>x.toLocaleString('pl-PL',{minimumFractionDigits:4,maximumFractionDigits:4});
 /* "1 EUR = 4,2856 zł" – złoty always on the right; without złoty: 1 of the source currency */
 export function fxRate(c1,a1,c2,a2){if(c1=='PLN'){[c1,c2]=[c2,c1];[a1,a2]=[a2,a1]}return`1 ${c1} = ${r4(a2/a1)} ${curSym(c2)}`}
 export const stripFx=n=>String(n||'').replace(/\s*(·\s*)?💱.*$/,'');
@@ -172,7 +172,7 @@ export const strip=(x,i)=>{const{o,subs,subsM,...r}=x;return{...r,o:i}};
 export function fromDoc(d){
   if(d.accsM||d.catsM||d.fixedM)return{accs:toArr(d.accsM).map(({o,...a})=>a),cats:toArr(d.catsM).map(({o,subsM,...c})=>({...c,subs:toArr(subsM).map(({o,...x})=>x)})),fixed:toArr(d.fixedM).map(({o,...f})=>f),round:toArr(d.roundM).map(({o,...r})=>r),incs:toArr(d.incM).map(({o,...x})=>x),years:toArr(d.yearM).map(({o,...x})=>x),projs:toArr(d.projM).map(({o,...x})=>x),rems:toArr(d.remM).map(({o,...x})=>x)};
   return{accs:d.accs||[],cats:d.cats||[],fixed:d.fixed||[],round:[],incs:[],years:[],projs:[],rems:[],legacy:true}}
-export function toDoc(cfg){const m=(arr,f)=>Object.fromEntries((arr||[]).map((x,i)=>[x.id,f?f(x,i):strip(x,i)]));
+function toDoc(cfg){const m=(arr,f)=>Object.fromEntries((arr||[]).map((x,i)=>[x.id,f?f(x,i):strip(x,i)]));
   return{v:2,accsM:m(cfg.accs),catsM:m(cfg.cats,(c,i)=>({...strip(c,i),subsM:m(c.subs)})),fixedM:m(cfg.fixed),roundM:m(cfg.round),incM:m(cfg.incs),yearM:m(cfg.years),projM:m(cfg.projs),remM:m(cfg.rems)}}
 /* rewrites accounts, categories, fixed items… as a whole (import, first start, the old format); only these fields are replaced (mergeFields),
    every other household field stays as it is in the database – also one the other phone saved a moment ago and this one has not seen yet */
@@ -190,13 +190,17 @@ export const delCatDb=id=>w(updateDoc(H,{['catsM.'+id]:deleteField()}));
 export const delSubDb=(c,s)=>w(updateDoc(H,{[`catsM.${c.id}.subsM.${s.id}`]:deleteField()}));
 export const saveFixed=f=>merge(H,{fixedM:{[f.id]:strip(f,posOf(S.cfg.fixed,f))}});
 export const saveRound=r=>merge(H,{roundM:{[r.id]:strip(r,posOf(S.cfg.round,r))}});
-export const delRoundDb=id=>w(updateDoc(H,{['roundM.'+id]:deleteField()}));
+const delRoundDb=id=>w(updateDoc(H,{['roundM.'+id]:deleteField()}));
 export const delFixedDb=id=>w(updateDoc(H,{['fixedM.'+id]:deleteField()}));
 /* every write remembers whose phone it came from (shown in the entry and in ⚙️ „Ostatnie zmiany”) */
 /* a real deletion also clears „moved” – an entry once moved out of this month and back still had it, and 🗑️ Ostatnio usunięte did not show it */
 /* 👥 „Kto” of an entry made without the „Kto” field (transfers, ticked fixed items): the owner of the account it comes from; a shared account – the phone's person */
 export const accWho=id=>{const a=S.cfg?.accs?.find(x=>x.id===id),o=a?(a.owner||'Wspólne'):'';return o=='Mati'||o=='Wercia'?o:S.who};
-export const putTx=(ym,id,body)=>{if(body.deleted===true&&!body.moved)body={...body,moved:false,dby:S.who,dAt:Date.now()};else if(body.type&&!('by' in body))body={...body,by:S.who};return merge(doc(MC(),ym),{tx:{[id]:body}})};
+const txBody=body=>body.deleted===true&&!body.moved?{...body,moved:false,dby:S.who,dAt:Date.now()}:body.type&&!('by' in body)?{...body,by:S.who}:body;
+export const putTx=(ym,id,body)=>merge(doc(MC(),ym),{tx:{[id]:txBody(body)}});
+/* 📦 several entries written at once – all or nothing (an entry moved to another month: the new document and „moved” in the old one; two separate writes
+   could leave it alive twice for a moment on the other phone) – L = [[ym,id,body],…] */
+export const putTxs=L=>{const b=writeBatch(fdb);for(const[ym,id,body]of L)b.set(doc(MC(),ym),{tx:{[id]:txBody(body)}},{merge:true});return w(b.commit())};
 export const putInv=(id,body)=>merge(doc(INV(),id),body);
 export const liveById=id=>S.tx.find(t=>t.id===id&&!t.deleted);
 export const guard=()=>{if(!S.cfg){toast('Budżet jeszcze się wczytuje');return true}return false};

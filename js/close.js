@@ -15,13 +15,13 @@ import {render} from './app.js';
 
 const STEP_N={bank:'Salda z bankiem',prev:'Co było ponad plan',casc:'Nadwyżka',plan:'Plan na nowy miesiąc',goals:'Cele'};
 /* the month waiting to be closed by this phone's person (the window before the pay day), or the last one when opened by hand */
-export const closeYm=()=>closeDueP(S.hraw,liveOf(S.tx),td(),S.cfg,S.who)?.ym||closeYmP(S.cfg,liveOf(S.tx),S.who,td());
+const closeYm=()=>closeDueP(S.hraw,liveOf(S.tx),td(),S.cfg,S.who)?.ym||closeYmP(S.cfg,liveOf(S.tx),S.who,td());
 const stOf=ym=>closeStateP(S.hraw,ym,S.who);
 const nDone=ym=>stOf(ym).n;
 /* accounts to compare with the bank: own and shared current, sub-accounts and savings (investments are valued by the automat) */
 const bankAccs=()=>S.cfg.accs.filter(a=>!a.archived&&a.grp!='inv'&&['Wspólne',S.who].includes(ownerOf(a)));
 /* the last time an account was checked with the bank: „✓ Zgadza się” or a reconciliation entry */
-export function lastCheck(id){let d=S.hraw?.reconM?.[id]||'';
+function lastCheck(id){let d=S.hraw?.reconM?.[id]||'';
   for(const t of liveOf(S.tx))if(t.acc===id&&t.type=='adj'&&!t.val&&t.date>d)d=t.date;return d}
 /* checked from the 25th of the closed month – or from the start of the closing window when it starts earlier (pay on the 20th–25th) */
 const fresh=(id,ym)=>{const st=closeWinP(S.cfg,liveOf(S.tx),S.who,td())?.start,from=st&&st<ym+'-25'&&st>=ym+'-01'?st:ym+'-25';return lastCheck(id)>=from};

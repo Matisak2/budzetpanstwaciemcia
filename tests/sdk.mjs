@@ -63,6 +63,15 @@ for(const[i,[name,op]]of CASES.entries()){n++;
   if(okErr&&okDoc)continue;bad++;
   console.log(`❌ ${name}: SDK ${eS?'odrzuca ('+eS+')':'przyjmuje'}, demo ${eA?'odrzuca ('+eA+')':'przyjmuje'}`+(okDoc?'':`\n   SDK:  ${JSON.stringify(norm(docS))}\n   demo: ${JSON.stringify(norm(docA))}`))}
 
+/* writeBatch (an entry moved to another month): both documents written; one bad write = nothing written, in both */
+for(const wrong of [false,true]){n++;const m=`b/${wrong?'bad':'ok'}`;let eS=null,eA=null;
+  const run=async(o,ref1,ref2)=>{const b=o.writeBatch(o===A?undefined:db);b.set(ref1,{tx:{x:{amount:1,deleted:false}}},{merge:true});b.set(ref2,{tx:{x:{deleted:true,moved:true,...(wrong?{u:undefined}:{})}}},{merge:true});return b.commit()};
+  run(fs_,fs_.doc(db,m+'1'),fs_.doc(db,m+'2')).catch(e=>{eS=e.code||'błąd'});await flush(); // offline the SDK's commit never resolves – only a rejection comes
+  const s1=await getDocFromCache(fs_.doc(db,m+'1')).catch(()=>null),s2=await getDocFromCache(fs_.doc(db,m+'2')).catch(()=>null);
+  try{await run(A,A.doc({p:''},m+'1'),A.doc({p:''},m+'2'))}catch(e){eA=e.code||'błąd'}await flush();
+  const gotS=[!!(s1&&s1.exists()),!!(s2&&s2.exists())],gotA=[!!D.store[m+'1'],!!D.store[m+'2']];
+  if(!!eS!=!!eA||String(gotS)!=String(gotA)){bad++;console.log(`❌ writeBatch${wrong?' ze złym zapisem':''}: SDK ${eS||'przyjmuje'} ${gotS}, demo ${eA||'przyjmuje'} ${gotA}`)}}
+
 /* updateDoc on a missing document: SDK keeps nothing locally (the server answers not-found) – demo must not create it either */
 n++;{const ref=fs_.doc(db,'brak/x');let eA=null;fs_.updateDoc(ref,{a:1}).catch(()=>{});await flush();
   const s=await getDocFromCache(ref).catch(()=>null);const aref=A.doc({p:''},'brak/x');await A.updateDoc(aref,{a:1}).catch(e=>{eA=e.code||'błąd'});

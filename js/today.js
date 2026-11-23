@@ -113,7 +113,7 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
     if(Math.abs(diff)>=1)add('slip:'+m+':'+id+':'+sl.ts,'💼',`Pasek ${sl.name||src.name} (${MN[+m.slice(5)-1].toLowerCase()}) – rachunek nie zgadza się o ${zl(Math.abs(diff))}`,{a:'slip',id,ym:m})}
   return out.slice(0,10)}
 /* 📌 payments that look regular but are not in 📌 Stałe: the same note once a month, a similar amount (±15%), 3 months in a row */
-export const normNote=s=>String(s||'').toLowerCase().replace(/\d+/g,' ').replace(/[^\p{L} ]+/gu,' ').replace(/\s+/g,' ').trim();
+const normNote=s=>String(s||'').toLowerCase().replace(/\d+/g,' ').replace(/[^\p{L} ]+/gu,' ').replace(/\s+/g,' ').trim();
 export function recurringP(cfg,tx,today,ign={}){const ym=today.slice(0,7),months=[-3,-2,-1,0].map(d=>addMonths(ym,d)),by={};
   for(const t of months.flatMap(m=>inPeriod(tx,m))){if(t.type!='exp'||t.fixedId||t.roundOf||t.ppk||t.split||t.slipOf||t.debt||t.date>today)continue;const i=months.indexOf(t.date.slice(0,7)),k=normNote(t.note);if(i<0||k.length<3)continue;
     (by[k]=by[k]||[[],[],[],[]])[i].push(t)}
@@ -174,7 +174,7 @@ export function paydayP(cfg,tx,who,ym){let best=null;for(const s of (cfg?.incs||
    transfers to this account). The first payment the balance would not cover → {acc, bal, date, name, amount, miss}. Only fixed things, not shopping. */
 /* the look-ahead: to the end of the month, but at least 7 days (on the 28th the 1st–4th of the next month count too); yearly expenses
    due in that time go out of the envelope sub-account (yearAcc), which is checked as well (Mati 5.11 C) */
-export const SHORT_DAYS=7;
+const SHORT_DAYS=7;
 export function shortP(cfg,tx,today,yearAcc){const ym=today.slice(0,7),tom=addDays(today,1),fx=cfg.fixed||[],incs=cfg.incs||[],out=[];
   const last=ym+'-'+p2(daysIn(ym)),end=addDays(today,SHORT_DAYS)>last?addDays(today,SHORT_DAYS):last,MS=end.slice(0,7)>ym?[ym,end.slice(0,7)]:[ym];
   const paid=(f,m)=>inPeriod(tx,m).some(t=>t.fixedId===f.id),when=d=>d<today?today:d,linked=new Set(incs.map(s=>s.fixed).filter(Boolean));
@@ -216,7 +216,8 @@ export const typedToday=(tx,today)=>tx.some(t=>(t.date==today||(t.ts&&plDay(t.ts
 /* everything that needs attention today; n = days until the deadline (−1 late, 0 today, 1 tomorrow), later:true = not for today („Wkrótce” – collapsed, no number on the bell) */
 export const todayRank=x=>x.k=='bad'?0:x.n!=null&&x.n<=0?1:x.n==1?2:3;
 /* ryczałt od najmu: 8,5% up to 100 000 zł of rent a year, 12,5% above (grosze, rounded to full zł) */
-export const RENT_THR=10000000,rentTax=inc=>Math.round((Math.min(inc,RENT_THR)*0.085+Math.max(0,inc-RENT_THR)*0.125)/100)*100;
+/* 🏠 ryczałt od najmu: 8,5% do 100 000 zł w roku, 12,5% ponad – one rule for the reminder here and the advisor's rentP (rentTaxRaw, not rounded to zł) */
+const RENT_THR=10000000;export const rentTaxRaw=inc=>Math.min(inc,RENT_THR)*0.085+Math.max(0,inc-RENT_THR)*0.125;const rentTax=inc=>Math.round(rentTaxRaw(inc)/100)*100;
 export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,hold,debts,market,backup,hraw}=D;if(!cfg)return[];
   const ym=today.slice(0,7),day=+today.slice(8),out=[],cm={};cfg.accs.forEach(a=>cm[a.id]=a.cur||'PLN');const accOf=id=>cfg.accs.find(a=>a.id==id);
   /* 🤖 technical matters (automat, backup, IKE/IKZE limits, payslip rules) – only Mati */

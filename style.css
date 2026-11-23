@@ -82,12 +82,11 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .trio span{display:flex;flex-direction:column;min-width:0}
 .trio em{font-style:normal;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.75}
 .trio b{font-variant-numeric:tabular-nums;font-size:15px;font-weight:800}
-.sub{padding:10px 12px;border-top:1px solid rgb(15 23 42 / .06);display:flex;flex-direction:column;gap:6px}
+.sub{padding:9px 12px;border-top:1px solid rgb(15 23 42 / .06);display:flex;flex-direction:column;gap:5px}
 .sub .n{font-weight:700;font-size:14px;min-width:0}
 /* 🔎 the position name = a link to its entries */
 .sub .subln{background:none;border:0;padding:4px 0;margin:-4px 0;font:inherit;font-weight:700;font-size:14px;color:inherit;text-align:left;cursor:pointer;display:inline-flex;align-items:center;gap:4px;min-height:32px}
 .sub .subln i{font-style:normal;color:var(--muted);font-weight:800;font-size:15px}
-.sub{gap:5px;padding:9px 12px}
 .sub .trio span{flex-direction:row;flex-wrap:wrap;align-items:center;gap:2px 6px}
 .sub .trio em{flex:none}
 .planin{width:100%;max-width:110px;text-align:right;border:1px solid rgb(15 23 42 / .15);background:#fff;border-radius:9px;padding:4px 8px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -211,7 +210,6 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .advk{display:grid;grid-template-columns:1fr 1fr;gap:8px}.advk .kpi{min-width:0}.advk .v{font-size:17px;overflow-wrap:anywhere}
 .advk button.kpi{text-align:left;position:relative;font:inherit;color:inherit;width:100%}.advk .kmore{position:absolute;right:10px;top:10px;color:#94a3b8;font-weight:800}
 .advk .v{white-space:normal;overflow:visible;line-height:1.2}
-.lim{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid #eef0f4}
 .wrow{border-top:1px solid #eef0f4;padding:8px 0}.wrow summary{display:flex;gap:8px;align-items:center;list-style:none;cursor:pointer;font-weight:700}.wrow summary::-webkit-details-marker{display:none}.wrow summary .an{flex:1;min-width:0}.wrow .mini{margin-top:4px}
 .where select{width:100%}
 .seg.seg5{display:grid;grid-template-columns:repeat(5,1fr);width:100%}.seg.seg5 button{padding:8px 2px;font-size:13px}
@@ -281,9 +279,7 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .greet span{font-size:14.5px;color:var(--g-t);line-height:1.4}
 /* the concrete thing in a cats' message is bold (the title above stays the only big text) */
 .greet span b{font-size:inherit;font-weight:800;color:var(--g-t)}
-.greet .gcats svg{width:96px;height:auto;display:block}
 .cico{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:9px;background:rgb(255 255 255 / .7);margin-right:7px;font-size:14px;vertical-align:middle}
-.ecats svg{width:170px;height:auto;display:block;margin:0 auto 10px;opacity:.95}
 .ecats.sm svg{width:110px}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
 .confetti i{position:absolute;top:-14px;width:9px;height:14px;border-radius:3px;animation:fall 2.4s cubic-bezier(.2,.6,.4,1) forwards}
@@ -337,9 +333,9 @@ main{max-width:760px;margin:0 auto;padding-block:12px;display:flex;flex-directio
 .tabs button[aria-current=page]{color:var(--a-dk)}
 .tabs button[aria-current=page] .e{filter:none;opacity:1}
 
-.fab{position:fixed;z-index:25;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(72px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:20px;background:var(--a-box);color:var(--a-ink);font-size:34px;font-weight:500;line-height:1;display:grid;place-items:center;box-shadow:0 6px 16px rgb(var(--a-sh) / .28);border:1px solid var(--a-line);transition:transform .15s}
+.fab{transition:transform .25s ease,opacity .25s ease;position:fixed;z-index:25;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(72px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:20px;background:var(--a-box);color:var(--a-ink);font-size:34px;font-weight:500;line-height:1;display:grid;place-items:center;box-shadow:0 6px 16px rgb(var(--a-sh) / .28);border:1px solid var(--a-line)}
 .fab:active{transform:scale(.95)}
-.fab{transition:transform .25s ease,opacity .25s ease}.fab.away{transform:translateY(110px);opacity:0;pointer-events:none}
+.fab.away{transform:translateY(110px);opacity:0;pointer-events:none}
 /* sheet + dialog */
 .ov{position:fixed;inset:0;z-index:50;background:rgb(2 6 23 / .5);display:flex;align-items:flex-end;justify-content:center}
 /* an open window (sheet, dialog) scrolls only itself – the page underneath stays put (iPhone moved the Budget under a list) */
@@ -493,11 +489,11 @@ details.info .mini{background:var(--surface-2);border-radius:12px;padding:8px 10
 .kot{display:block;width:100%;height:auto}
 .greet .gcats{flex:none;width:86px}
 .greet .gcats.w{width:128px}
-.greet .gcats svg{width:100%}
+.greet .gcats svg{width:100%;height:auto;display:block}
 .greet .who{font-style:normal;font-weight:800}
 .ecats{width:150px;margin:0 auto 10px}
 .ecats.sm{width:104px}
-.ecats svg{width:100%;margin:0}
+.ecats svg{width:100%;height:auto;display:block;margin:0;opacity:.95}
 .load .kot{width:min(260px,80%);margin:0 auto 14px}
 .lcats .kot{width:190px;margin:4px auto 0}
 .cslide{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
