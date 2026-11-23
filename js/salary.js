@@ -7,7 +7,7 @@ import {KINDS,TAXF,RULES_YEAR,brutto,calcNet,dedSum,fromNet,onHand,reserve,sugge
 import {liveOf,subsMap,SUBSCR_RE,subscrOf,fixedWho,seenBy,ownerOf} from './logic.js';
 import {$,MN,clone,daysIn,esc,f2,isDate,p2,pg,pnum,rid,td,zl,zl0,plu,ls} from './util.js';
 import {S,toast,ask,accCur,am,accOpts,subOpts,H,SLIPS,w,merge,strip,putTx,guard,delFixedDb,txOk,posOf} from './core.js';
-import {editFixed,txRowH} from './actions.js';
+import {editFixed,txRowH,fixedDupStop} from './actions.js';
 import {accN,render,goTab} from './app.js';
 import {use} from './usage.js';
 import {yearUndo} from './savings.js';
@@ -117,6 +117,7 @@ export function deletedH(){const L=deletedList(),cut=Date.now()-DEL_DAYS*864e5,G
 export async function restoreTx(id){if(guard())return;const t=S.tx.find(x=>x.id===id&&x.deleted===true&&!x.moved);if(!t)return; // an entry moved to another month has a „moved” copy with the same id
   const kids=S.tx.filter(x=>x.deleted===true&&parOf(x)===id&&withParent(x,t)),ym=t.date.slice(0,7);
   /* 🚫 bringing back a deleted expense / transfer must not leave the account with a minus (the money may already be spent) */
+  if(fixedDupStop(t))return;
   if(!await txOk([t,...kids].map(x=>({...x,deleted:false}))))return;
   /* a payslip income: the month has a new payslip of this source already → bringing the old one back would count the salary twice */
   const bak=t.slip&&t.slipBak;if(bak&&slipOf(bak.ym,bak.id)&&slipOf(bak.ym,bak.id).booked!==id)return toast('Ten miesiąc ma już nowy pasek tej pensji – przywrócenie policzyłoby ją dwa razy','bad');

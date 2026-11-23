@@ -2,14 +2,14 @@
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
 import {penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
-import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
+import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
+import {yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
-import {keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
+import {dropJumps,keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
 import {allocP,clsOf,etfOf,etfCur,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP,sandP,sandCheckP,wishHitP} from '../js/advisor.js';
 
 let n=0,bad=0;
@@ -181,6 +181,8 @@ const N=' ';
   eq('Wypłata – Mati w październiku (sobota → piątek)',paydayP(cfg,tx,'Mati','2026-10').date,'2026-10-09');
   eq('Wypłata – wzór Werci: koniec miesiąca',payPatternP(tx,cfg.incs[1],'2026-10'),{end:true});
   eq('Wypłata – Wercia w październiku',paydayP(cfg,tx,'Wercia','2026-10').date,'2026-10-30');
+  /* zawsze 30.: 30.07 (czw, a 31.07 to piątek – dzień roboczy), 28.08 (30.08 to niedziela), 30.09 → „30.”, nie „koniec miesiąca” (31.12 czekałoby dzień za późno) */
+  eq('Wypłata 30. dnia to nie koniec miesiąca',payPatternP([inc('x7','2026-07-30','sW'),inc('x8','2026-08-28','sW'),inc('x9','2026-09-30','sW')],cfg.incs[1],'2026-10'),{day:30});
   eq('Wypłata – Wercia w listopadzie (30.11 to poniedziałek)',paydayP(cfg,tx,'Wercia','2026-11').date,'2026-11-30');
   eq('Zamknięcie – Mati dzień przed wypłatą',closeDueP({},tx,'2026-10-08',cfg,'Mati'),{ym:'2026-09',n:0,start:'2026-10-08',pay:'2026-10-09'});
   eq('Zamknięcie – Mati jeszcze nie 7.10',closeDueP({},tx,'2026-10-07',cfg,'Mati'),null);
@@ -346,6 +348,13 @@ const N=' ';
   eq('Roczne – kwiecień bez OC',planOf(cfg,plans,tx,'2027-04').ub,undefined);
   eq('Roczne – co pół roku: kwiecień i październik',[yearDueIn(cfg.years[1],'2027-04'),yearDueIn(cfg.years[1],'2027-10'),yearDueIn(cfg.years[1],'2027-07')],[true,true,false]);
   eq('Roczne – co 2 lata od ostatniej zapłaty',[yearDueIn(cfg.years[2],'2027-05'),yearDueIn(cfg.years[2],'2028-05')],[false,true]);
+  /* 📅 a new / edited „every 2 years” without `last`: the first term = the nearest such month (from 23.11.2026: May → 2027-05, November → 2026-11 now) */
+  eq('Co 2 lata – pierwszy termin najbliższy (maj)',yearLastFor(5,24,'2026-11'),'2025-05');
+  eq('Co 2 lata – ten miesiąc to już termin',yearLastFor(11,24,'2026-11'),'2024-11');
+  eq('Co 2 lata – zmiana miesiąca po zapłacie 2026-04 (następny 2028-04 → marzec 2028)',yearLastFor(3,24,'2026-11','2028-04'),'2026-03');
+  eq('Co 2 lata – kwiecień → maj',yearLastFor(5,24,'2026-11','2028-04'),'2026-05');
+  eq('Co 2 lata – z yearLastFor plan tylko co drugi rok',[yearDueIn({month:5,every:24,last:yearLastFor(5,24,'2026-11')},'2027-05'),yearDueIn({month:5,every:24,last:'2025-05'},'2028-05')],[true,false]);
+  eq('Co rok – bez last',yearLastFor(5,12,'2026-11'),null);
   // OC zapłacone już w lutym (1 150 zł) – w lutym plan = zapłacone, w marcu nie drugi raz
   const paid=[{type:'exp',amount:115000,date:'2027-02-20',sub:'ub',yearId:'oc'}];
   eq('Roczne – zapłacone wcześniej: plan w miesiącu zapłaty',planOf(cfg,{},paid,'2027-02').ub,115000);eq('Roczne – zapłacone wcześniej: bez planu w terminie',planOf(cfg,{},paid,'2027-03').ub,undefined);
@@ -370,7 +379,10 @@ const N=' ';
   eq('Najem co kwartał – w kwietniu za styczeń–marzec',/510,00/.test(D([{...naj,najem:'q'}],[...rent,{...rent[0],date:'2027-01-10'}],'2027-04-05').find(x=>/Ryczałt/.test(x.text))?.text||''),true);
   eq('Najem – PIT-28 w lutym jeszcze nie',D([naj],rent,'2027-02-03').some(x=>/PIT-28/.test(x.text)),false);
   {const p28=D([naj],rent,'2027-03-01').find(x=>/PIT-28/.test(x.text));eq('Najem – PIT-28 od 1 marca, termin 30 kwietnia',[/30 kwietnia/.test(p28?.text||''),p28?.later,p28?.quiet],[true,true,false]);
-   eq('Najem – PIT-28 20 kwietnia na dziś',D([naj],rent,'2027-04-20').find(x=>/PIT-28/.test(x.text))?.later,false)}
+   eq('Najem – PIT-28 20 kwietnia na dziś',D([naj],rent,'2027-04-20').find(x=>/PIT-28/.test(x.text))?.later,false);
+   /* wspólny najem: PIT-28 każdego osobno; „Złożone” Matiego nie chowa Werci, stary wspólny klucz chowa oboje */
+   const T=ig=>todayItems({cfg:{accs:[{id:'a',grp:'cur',owner:'Wspólne'}],cats:[],fixed:[naj],years:[]},tx:rent,slips:{},hold:{},debts:{},market:{},backup:{at:new Date('2027-03-05T12:00:00').getTime()},hraw:{checkIgnore:ig}},{today:'2027-03-05',checks:false}).filter(x=>/PIT-28/.test(x.text)).map(x=>x.who);
+   eq('Najem wspólny – PIT-28 dla obojga, osobno',[T({}),T({'pit28:2026:Mati':true}),T({'pit28:2026':true})],[['Mati','Wercia'],['Wercia'],[]])}
   const pit=D([],[],'2027-03-01').filter(x=>x.key?.startsWith('pit:'));eq('PIT – w marcu dla obojga',pit.map(x=>x.who),['Mati','Wercia']);eq('PIT – 1 marca powiadomienie',pit[0].quiet,false);
   eq('PIT – 5 marca bez powiadomienia (tylko w „Na dziś”)',D([],[],'2027-03-05').find(x=>x.key?.startsWith('pit:')).quiet,true);eq('PIT – w maju już nie',D([],[],'2027-05-02').some(x=>x.key?.startsWith('pit:')),false);
 }
@@ -496,6 +508,18 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Mail: wersja tekstowa',/Rok temu: wydatki 1\s000\szł/.test(summaryText(st)),true);
 }
 
+/* ✍️ „dziś coś wpisano”: z dzisiejszą datą albo dopisane dziś (ts w czasie polskim: 22.11 23:30 UTC = 23.11 0:30 w Polsce) */
+{const ts=Date.UTC(2026,10,22,23,30);
+ eq('Wpisano dziś – wczorajszy wydatek dopisany dziś',typedToday([{id:'a',type:'exp',date:'2026-11-21',ts}],'2026-11-23'),true);
+ eq('Wpisano dziś – dopisany wczoraj',typedToday([{id:'a',type:'exp',date:'2026-11-21',ts:Date.UTC(2026,10,22,12)}],'2026-11-23'),false);
+ eq('Wpisano dziś – odhaczona opłata się nie liczy',typedToday([{id:'a',type:'exp',date:'2026-11-23',fixedId:'f',ts}],'2026-11-23'),false)}
+/* 🛡️ strażnik: ten sam wpis żywy dwa razy, pensja z paska, której pasek już nie wskazuje, klucz źródła z każdą brakującą pozycją */
+{const cfg={accs:[{id:'a',grp:'cur'}],cats:[{id:'c',type:'exp',subs:[{id:'s'}]},{id:'ci',type:'inc',subs:[{id:'p'}]}],incs:[{id:'i1',name:'Pensja',sub:'p',deds:[{n:'Karta',sub:'gone1'}]}]};
+ const tx=[{id:'x',type:'exp',amount:100,date:'2026-10-31',acc:'a',sub:'s'},{id:'x',type:'exp',amount:100,date:'2026-11-02',acc:'a',sub:'s'},
+   {id:'w1',type:'inc',amount:500000,date:'2026-11-10',acc:'a',sub:'p',slip:'i1'},{id:'w2',type:'inc',amount:500000,date:'2026-11-10',acc:'a',sub:'p',slip:'i1'}];
+ const K=checksP({cfg,tx,slips:{'2026-11':{i1:{booked:'w2',name:'Pensja'}}},hraw:{}},'2026-11-23').map(x=>x.key);
+ eq('Strażnik – wpis dwa razy, pensja poza paskiem, brak pozycji potrącenia',[K.includes('twin:x'),K.includes('slip2:w1'),K.includes('slip2:w2'),K.includes('ref:i:i1:gone1')],[true,true,false,true]);
+ eq('Strażnik – pasek bez booked (stare dane) bez uwagi',checksP({cfg,tx:tx.slice(2),slips:{'2026-11':{i1:{name:'Pensja'}}},hraw:{}},'2026-11-23').some(x=>/^slip2/.test(x.key)),false)}
 /* 🤖 the automat: a site that did not answer today keeps yesterday's value; „stopped” counts from the last day NBP rates came */
 {const prev={date:'2026-10-29',ok:'2026-10-29',fx:{EUR:4.3},fxDate:'2026-10-29',src:{fx:'NBP'},nbp:5,gold:410,goldDate:'2026-10-29',prices:{'IWDA.UK':{p:100,d:'2026-10-29',src:'stooq'},'OLD.US':{p:1,d:'2026-01-01'}}};
  const out={date:'2026-10-30',fx:{},prices:{'CDR':{p:120,d:'2026-10-30'}},src:{}};
@@ -506,6 +530,14 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
  eq('Automat – kursy przyszły dziś',[o2.fx.EUR,o2.ok],[4.31,'2026-10-30']);
  eq('Automat – działa, ale nic nie przychodzi od 3 dni roboczych',automatStale({rates:{date:'2026-11-05',ok:'2026-11-02'}},'2026-11-05'),3);
  eq('Automat – stary zapis bez ok',automatStale({rates:{date:'2026-11-04'}},'2026-11-05'),0)}
+/* 🚦 a price jump > 40% waits a day: 100 → 150 (+50%) held back, 100 → 135 (+35%) taken; the next day ±10% of the held one → taken */
+{const prev={prices:{A:{p:100,d:'2026-11-02'},B:{p:100,d:'2026-11-02'},C:{p:100,d:'2026-11-02',cur:'GBP'},D:{p:100,d:'2026-11-02'}}};
+ const out={date:'2026-11-03',prices:{A:{p:150,d:'2026-11-03'},B:{p:135,d:'2026-11-03'},C:{p:1,d:'2026-11-03',cur:'GBX'},D:{p:1,d:'2026-11-03'}}};
+ eq('Automat – skok ceny: 2 wstrzymane',dropJumps(out,prev),2);
+ eq('Automat – skok ceny: zostaje wczorajsza, nowa czeka',[out.prices.A.p,out.prices.B.p,out.prices.C.p,out.prices.D.p,out.sus.A.p,out.sus.D.p],[100,135,1,100,150,1]);
+ const out2={date:'2026-11-04',prices:{A:{p:155,d:'2026-11-04'},D:{p:3,d:'2026-11-04'}}};
+ eq('Automat – skok potwierdzony następnego dnia (±10%) = przyjęty, inny = dalej czeka',[dropJumps(out2,out),out2.prices.A.p,out2.prices.D.p,out2.sus.D.p],[1,155,100,3]);
+ const out3={date:'2026-11-05',prices:{A:{p:156,d:'2026-11-05'}}};eq('Automat – bez skoku nie ma pola sus',[dropJumps(out3,out2),'sus' in out3],[0,false])}
 /* ---------- 🚫 bez minusa: wydatek / przelew, na który konta nie stać, nie zapisze się (balDrop) ---------- */
 {const cfg={accs:[{id:'k',name:'Konto',grp:'cur',open:30000},{id:'s',name:'Oszczędności',grp:'sav',open:0},{id:'i',name:'IKE',grp:'inv',open:0},{id:'e',name:'Euro',grp:'cur',cur:'EUR',open:0}]};
   const tx=[{id:'t1',type:'inc',amount:100000,date:'2026-11-10',acc:'k'},{id:'t2',type:'exp',amount:90000,date:'2026-11-20',acc:'k'}];

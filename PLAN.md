@@ -203,3 +203,18 @@ Nie robimy: rozliczeń Mati ↔ Wercia (zostają w „Rezygnujemy”); przycisk 
 - [x] 🎨 Kontrast, druk PDF, „Rok temu”, „Wspólne” bez wspólnego konta; 🐾 drobiazgi (święta, kwoty, Kto, wykresy, testy, dokumentacja)
 - [x] Decyzje Matiego 22.11 („zrób wszystkie”): wyjątek grudniowy IKE w doradcy, termometr w zł, ryczałt 17% → IKZE najpierw, miękkie usuwanie celów (🗑️), kotki rysowane raz (`mountCats`), 10 nowych ekranów w teście robota
 - [ ] 🔐 Zasady Firebase (telefony bez dostępu do `secret/`) – do dokończenia w innym oknie. Droga A: Mati w Google Cloud → IAM nadaje kontu `firebase-adminsdk-…` rolę „Firebase Rules Admin”, potem okno Claude uruchamia `.github/workflows/rules.yml` (`scripts/rules.mjs`): najpierw tryb `sprawdz` (próby dostępu), przy zielonym – `publikuj`, awaryjnie `cofnij`; 22.11 próba skończyła się 403 (brak roli), odczyt zasad działa. Droga B: Mati w konsoli Firebase → Firestore → Rules zamienia blok `match /households/main/{document=**}` na dwa bloki z `firebase/firestore.rules` (adresy zostają) → Publish. Po wszystkim Mati może usunąć rolę.
+
+# Część 9 – po audycie 23.11.2026 (raport `reports/audyt/00-RAPORT.md`, plan A–F)
+Każdy etap dopiero na komendę Matiego, po kopii.
+
+## Etap A. Pilne błędy (Mati: „zrób etap a”, 23.11.2026)
+- [ ] **Mati (2 min):** konsola Firebase → Authentication → Settings → User actions → odznacz „Enable create (sign-up)” → Save
+- [x] 📧 Maile tylko na adresy z `users/{uid}` (konta bez dokumentu – tylko liczba w dzienniku), `sendMail` w try/catch (w publicznym dzienniku sam kod błędu)
+- [x] 🔁 Bez dublowania: „Przywróć” / „Cofnij” opłaty stałej odhaczonej w międzyczasie (`fixedDupStop`), ponowny import listy wpisów i starej wersji pomija istniejące id (też usunięte), usuwane konto przepina powiązania dopiero po „Usuń” (`reassignAcc` zwraca funkcję)
+- [x] 📅 „Co 2 lata” z `last` przy dodaniu/zmianie w „Edytuj” (pierwszy termin = najbliższy taki miesiąc, `yearLastFor`); strażnik `ref:yl:` dla starych bez `last`
+- [x] 🔄 Przeładowanie po aktualizacji nie przy otwartym pasku / wyrównaniu / zamknięciu
+- [x] 📈 Automat: cena różna od ostatniej o > 40% czeka na potwierdzenie następnego dnia (`dropJumps`, `rates.sus`)
+- [x] 🗓️ Drobne daty: wypłata 30. dnia ≠ koniec miesiąca, `typedToday` też po `ts`, PIT-28 na osobę (`pit28:rok:osoba`), klucz strażnika `ref:i:` z każdą brakującą pozycją, strażnik: wpis żywy dwa razy (`twin:`), pensja poza paskiem (`slip2:`)
+- [x] 🤖 Automaty: `npm install --ignore-scripts`, w `market.yml` zapis do repozytorium tylko w osobnym zadaniu „znak życia” (bez sekretów)
+- [x] Testy w `calc.mjs` (dropJumps, yearLastFor, payPatternP 30., typedToday, PIT-28, checksP)
+

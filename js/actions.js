@@ -47,7 +47,7 @@ export async function editAcc(id){if(guard())return;const a=S.cfg.accs.find(x=>x
   const used=liveOf(S.tx).some(t=>t.acc===id||t.to===id);
   const r=await ask({title:'Edytuj konto',fields:[{id:'n',label:'Nazwa',value:a.name},{id:'g',label:'Rodzaj',type:'select',value:a.grp,options:Object.entries(GRPN)},{id:'w',label:'Czyje',type:'select',value:ownerOf(a),options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},{id:'c',label:'Waluta',type:'select',value:CUR(a),options:CUR_OPTS},...(a.grp=='inv'?[WRAP_F(a)]:[]),{id:'o',label:`Saldo początkowe – przed pierwszą transakcją (${curSym(CUR(a))})`,type:'decimal',value:f2(a.open)}],alt:used?null:'Usuń konto'});
   if(!r)return;
-  if(r=='alt'){if(accRefs(id).length){if(!await reassignAcc(a,'Przenieś i usuń konto'))return}else if(!await ask({title:'Usunąć konto?',text:a.name,ok:'Usuń',danger:true}))return;
+  if(r=='alt'){if(accRefs(id).length){const mv=await reassignAcc(a,'Przenieś i usuń konto');if(!mv)return;mv()}else if(!await ask({title:'Usunąć konto?',text:a.name,ok:'Usuń',danger:true}))return;
     S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);render();delAccDb(id);saveOrder();return}
   if(r.c!=CUR(a)&&used&&!await ask({title:'Zmienić walutę konta?',text:`${a.name}: ${CUR(a)} → ${r.c}\nKwoty nie zostaną przeliczone – zmieni się tylko waluta, w której są pokazane wszystkie wpisy tego konta.`,ok:'Zmień walutę'}))return;
   if(r.n.trim())a.name=r.n.trim();a.owner=r.w;a.open=pg(r.o);if(r.c!=CUR(a))a.cur=r.c;if(r.x!=null)setWrap(a,r.x);
@@ -141,8 +141,9 @@ export function accRefs(id){const R=[],add=(t,need,set)=>R.push({t,need,set});
   for(const d of debtList())if(d.saveAcc===id)add(`💰 odkładanie na spłatę „${d.name}”`,'any',v=>merge(doc(DEBTS(),d.id),{saveAcc:v}));
   for(const[hid,h]of Object.entries(S.hold||{}))if(!h.deleted&&h.acc===id)add(`📈 instrument „${h.name}”`,'inv',v=>merge(doc(HOLD(),hid),{acc:v}));
   return R}
-/* an account to be deleted is still used → one window: what uses it and where to move it (an investment account for PPK and instruments); false = cancelled */
-export async function reassignAcc(a,ok){const R=accRefs(a.id);if(!R.length)return true;const inv=R.some(x=>x.need=='inv'),any=R.some(x=>x.need=='any');
+/* an account to be deleted is still used → one window: what uses it and where to move it (an investment account for PPK and instruments).
+   Returns a function that moves it (call it only after the deletion is confirmed – „Anuluj” later changes nothing) or false = cancelled */
+export async function reassignAcc(a,ok){const R=accRefs(a.id);if(!R.length)return()=>{};const inv=R.some(x=>x.need=='inv'),any=R.some(x=>x.need=='any');
   const cand=S.cfg.accs.filter(x=>x.id!=a.id&&!x.archived&&CUR(x)==CUR(a)),own=ownerOf(a);
   const opts=L=>[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']].map(([o,l])=>({group:l,items:L.filter(x=>ownerOf(x)==o).map(x=>[x.id,x.name+' ('+(GRPN[x.grp]||'').toLowerCase()+')'])})).filter(g=>g.items.length);
   const best=L=>(L.find(x=>ownerOf(x)==own&&x.grp==a.grp)||L.find(x=>ownerOf(x)==own)||L[0])?.id||'';
@@ -154,7 +155,7 @@ export async function reassignAcc(a,ok){const R=accRefs(a.id);if(!R.length)retur
   /* a fixed transfer or a 🪙 rule must not end up from and to the same account */
   const to=x=>x.need=='inv'?r.i:r.a,clash=(S.cfg.fixed||[]).some(f=>f.kind=='tr'&&(f.acc===a.id?r.a:f.acc)===(f.to===a.id?r.a:f.to))||(S.cfg.round||[]).some(x=>(x.from===a.id?r.a:x.from)===(x.to===a.id?r.a:x.to));
   if(clash){toast('Po przeniesieniu stały przelew albo reguła drobnych szłaby z konta na to samo konto – wybierz inne konto','bad');return false}
-  R.forEach(x=>x.set(to(x)));toast(`Przeniesiono na „${accN(r.a||r.i)}” ✓`);return true}
+  return()=>{R.forEach(x=>x.set(to(x)));toast(`Przeniesiono na „${accN(r.a||r.i)}” ✓`)}}
 /* 🎨 the look of this phone: accent colour (default: Wercia pink, Mati mint) and text size */
 export const ACCENTS=[['mint','Miętowy','#a7f3d0'],['pink','Różowy','#fbcfe8'],['lav','Lawendowy','#ddd6fe'],['sky','Błękitny','#bae6fd'],['peach','Brzoskwiniowy','#fed7aa'],['lemon','Cytrynowy','#fef08a']];
 export const accOf=()=>ls.get('mw_acc')||(S.who=='Wercia'?'pink':'mint');
@@ -173,6 +174,9 @@ export function setWho(v){if(S.whoLock)return toast('Osoba jest przypisana do lo
 
 /* ---------- fixed costs ---------- */
 export const fixedPaid=(fid,ym)=>liveOf(S.tx).find(t=>t.fixedId===fid&&t.date.startsWith(ym));
+/* 🔁 bringing back a ticked fixed payment („Przywróć”, „Cofnij”) when the month already has another live entry of it (ticked again meanwhile) would count the money twice */
+export function fixedDupStop(t){const o=t?.fixedId&&t.date&&fixedPaid(t.fixedId,t.date.slice(0,7));if(!o||o.id===t.id)return false;
+  const f=S.cfg.fixed.find(x=>x.id==t.fixedId);toast(`„${f?.name||t.note||'Ta opłata'}” jest już odhaczona w tym miesiącu – przywrócenie policzyłoby ją dwa razy`,'bad');return true}
 export async function editFixed(fid,kind,pre){if(guard())return;
   const f0=fid?S.cfg.fixed.find(x=>x.id==fid):null,f=f0||pre||null;kind=f0?(f0.kind||'exp'):(kind||'exp');const inc=kind=='inc';
   if(kind=='tr')return editFixedTr(f0,pre);
@@ -223,7 +227,7 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
     /* 🚫 unticking a fixed income (or a fixed transfer in) must not leave an account with a minus; „Cofnij” of an unticked payment – the same check */
     if(!await txOk([paid,...linked].map(t=>({...t,deleted:true}))))return;
     if(await putTx(ym,paid.id,{deleted:true,...(bak?{slipBak:bak}:{})})){linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));slipDrop(bak);
-      toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:async()=>{if(!await txOk([paid,...linked].map(t=>({...t,deleted:false}))))return;putTx(ym,paid.id,{deleted:false});linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}));slipBack(bak)}})}return}
+      toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:async()=>{if(fixedDupStop(paid))return;if(!await txOk([paid,...linked].map(t=>({...t,deleted:false}))))return;putTx(ym,paid.id,{deleted:false});linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}));slipBack(bak)}})}return}
   const due=fixedDate(f,S.ym),date=td().startsWith(S.ym)?td():due;
   if(f.kind=='tr'){const r=await ask({title:'Przelano: '+f.name,fields:[{id:'a',label:`Kwota (${curSym(accCur(f.acc))})`,type:'decimal',value:f2(f.amount)},{id:'d',label:'Data',type:'date',value:date},{id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()},{id:'t',label:'Na konto',type:'select',value:f.to,options:accOpts()}],ok:'Odhacz'});
     if(!r)return;const amt=pg(r.a);if(amt<=0)return toast('Podaj kwotę','bad');if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');
@@ -361,7 +365,7 @@ export async function editSavAcc(id){if(guard())return;const a=S.cfg.accs.find(x
   if(!r)return;if(r=='alt')return removeSavAcc(id);
   if(r.c!=CUR(a)&&liveOf(S.tx).some(t=>t.acc===id||t.to===id)&&!await ask({title:'Zmienić walutę konta?',text:`${a.name}: ${CUR(a)} → ${r.c}\nKwoty nie zostaną przeliczone – zmieni się tylko waluta, w której są pokazane.`,ok:'Zmień walutę'}))return;
   if(r.n.trim())a.name=r.n.trim();a.grp=r.g;a.owner=r.w;if(r.c!=CUR(a))a.cur=r.c;if(r.x!=null)setWrap(a,r.x);render();saveAcc(a)}
-export async function removeSavAcc(id){if(accRefs(id).length&&!await reassignAcc(S.cfg.accs.find(x=>x.id==id),'Przenieś'))return;const a=S.cfg.accs.find(x=>x.id==id),tx=liveOf(S.tx),tom=addDays(td(),1),bal=balance(S.cfg,tx,id,tom),own=ownerOf(a);
+export async function removeSavAcc(id){const mv=await reassignAcc(S.cfg.accs.find(x=>x.id==id),'Przenieś');if(!mv)return;const a=S.cfg.accs.find(x=>x.id==id),tx=liveOf(S.tx),tom=addDays(td(),1),bal=balance(S.cfg,tx,id,tom),own=ownerOf(a);
   const others=S.cfg.accs.filter(x=>x.id!=id&&!x.archived&&(x.grp=='sav'||x.grp=='inv')&&CUR(x)==CUR(a));
   const pref=others.find(x=>ownerOf(x)==own&&x.grp=='sav'&&/oszcz/i.test(x.name))||others.find(x=>ownerOf(x)==own&&x.grp=='sav')||others.find(x=>ownerOf(x)==own)||others.find(x=>x.grp=='sav');
   let target=null;
@@ -369,7 +373,7 @@ export async function removeSavAcc(id){if(accRefs(id).length&&!await reassignAcc
     const r=await ask({title:'Usunąć konto „'+a.name+'”?',text:`Na koncie jest ${money(bal,CUR(a))}. Przeniosę tę kwotę na wybrane konto. Historia wpłat zostanie zachowana.`,fields:[{id:'t',label:'Przenieś pieniądze na',type:'select',value:pref.id,options:[...['Mati','Wercia','Wspólne'].map(o=>({group:o,items:others.filter(x=>ownerOf(x)==o).map(x=>[x.id,x.name])})).filter(g=>g.items.length)]}],ok:'Przenieś i usuń',danger:true});
     if(!r)return;target=r.t}
   else if(!await ask({title:'Usunąć konto „'+a.name+'”?',text:'Konto jest puste. Historia zostanie zachowana.',ok:'Usuń',danger:true}))return;
-  const ym=td().slice(0,7);
+  mv();const ym=td().slice(0,7);
   if(target)putTx(ym,'t'+rid(),bal>0?{type:'tr',amount:bal,date:td(),sub:'',acc:id,to:target,who:S.who,note:'Zamknięcie konta '+a.name,deleted:false,ts:Date.now()}:{type:'tr',amount:-bal,date:td(),sub:'',acc:target,to:id,who:S.who,note:'Zamknięcie konta '+a.name,deleted:false,ts:Date.now()});
   const used=S.tx.some(t=>t.acc===id||t.to===id)||a.open;
   if(used){a.archived=true;saveAcc(a)}else{S.cfg.accs=S.cfg.accs.filter(x=>x.id!=id);delAccDb(id);saveOrder()}
@@ -403,7 +407,11 @@ export function matchSub(cfg,catName,subName,type){const want=type=='inc'?'inc':
   return best&&(best.exact||best.sc>=1.1)?best:null}
 /* rows without an id get one from their content (plus a counter for identical rows), so loading the same file twice adds nothing */
 export const hashId=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)};
-export async function importTxList(o){const cfg=S.cfg,list=(o.tx||[]).filter(t=>isDate(t.date)&&t.amount>0&&['inc','exp','tr'].includes(t.type));
+export async function importTxList(o){const cfg=S.cfg,all=(o.tx||[]).filter(t=>isDate(t.date)&&t.amount>0&&['inc','exp','tr'].includes(t.type));
+  /* ids from the content (the same as last time) – entries already in the app, also deleted or corrected since, are skipped: loading the file again brings nothing back */
+  const seen={},idOf=t=>{if(t.id)return t.id;const k=[t.date,t.type,t.amount,t.cat,t.sub,t.acc,t.to,t.note,t.who].join('|');seen[k]=(seen[k]||0)+1;return'b'+hashId(k+'#'+seen[k])};
+  const have=new Set(S.tx.map(t=>t.id)),ids=new Map(all.map(t=>[t,idOf(t)])),list=all.filter(t=>!have.has(ids.get(t)));
+  if(!list.length)return ask({title:'Te transakcje już są',text:`Wszystkie transakcje z pliku (${all.length}) są już w aplikacji (także te usunięte lub poprawione) – nic nie dopisuję.`,ok:'OK',cancel:null});
   const acc=n=>cfg.accs.find(a=>a.name.trim().toLowerCase()==String(n||'').trim().toLowerCase());
   const newAccs=[...new Set(list.flatMap(t=>[t.acc,t.to]).filter(n=>n&&!acc(n)))];
   const mapped=[],fuzzy=new Map(),missing=new Map();
@@ -416,15 +424,15 @@ export async function importTxList(o){const cfg=S.cfg,list=(o.tx||[]).filter(t=>
   if(fuzzy.size)text+=`\n\nDopasowane do Waszych pozycji:\n`+[...fuzzy].map(([a,b])=>`• ${a} → ${b}`).join('\n');
   if(missing.size)text+=`\n\nNowe pozycje (zostaną dodane):\n`+[...missing].map(([a,c])=>`• ${a} (${cleanCat(c)})`).join('\n');
   if(newAccs.length)text+=`\n\nNowe konta (zostaną dodane): ${newAccs.join(', ')}`;
+  if(all.length>n)text+=`\n\nPominięte (już są w aplikacji, także usunięte): ${all.length-n}`;
   text+='\n\nTransakcje zostaną dopisane. Wczytanie tego samego pliku drugi raz niczego nie zdubluje.';
   if(!await ask({title:'Wczytać transakcje?',text,ok:'Wczytaj'}))return;
-  for(const name of newAccs){const a={id:'a'+rid(),name,grp:'cur',open:0};cfg.accs.push(a);saveAcc(a)}
+  for(const name of newAccs){const a={id:'a'+rid(),name,grp:'cur',owner:ownerOf({name}),open:0};cfg.accs.push(a);saveAcc(a)}
   for(const[name,catName]of missing){const want=list.find(t=>t.sub==name).type=='inc'?'inc':'exp';
     let c=cfg.cats.filter(k=>k.type==want).map(k=>({k,s:simTok(k.name,catName)})).sort((a,b)=>b.s-a.s)[0];
     let k=c&&c.s>=.5?c.k:null;if(!k){k={id:'c'+rid(),name:cleanCat(catName)||'Inne',type:want,hue:freeHue(cfg.cats),subs:[]};cfg.cats.push(k);saveCat(k)}
     const x={id:'s'+rid(),name,};k.subs.push(x);saveSub(k,x);mapped.forEach(m=>{if(m.t.sub==name&&m.t.type!='tr')m.sub=x.id})}
-  const seen={},idOf=t=>{if(t.id)return t.id;const k=[t.date,t.type,t.amount,t.cat,t.sub,t.acc,t.to,t.note,t.who].join('|');seen[k]=(seen[k]||0)+1;return'b'+hashId(k+'#'+seen[k])};
-  await writeTxs(mapped.map(({t,sub})=>[idOf(t),{type:t.type,amount:t.amount,date:t.date,sub,acc:acc(t.acc)?.id||'',to:t.type=='tr'?(acc(t.to)?.id||''):'',who:t.who||'',note:t.note||'',deleted:false,ts:Date.now()}]));
+  await writeTxs(mapped.map(({t,sub})=>[ids.get(t),{type:t.type,amount:t.amount,date:t.date,sub,acc:acc(t.acc)?.id||'',to:t.type=='tr'?(acc(t.to)?.id||''):'',who:t.who||'',note:t.note||'',deleted:false,ts:Date.now()}]));
   render();toast(`Wczytano: ${n} ${trW} ✓`)}
 /* a backup file: plain .json, or .json.gz from the monthly backup e-mail */
 export async function readBackup(file){const buf=new Uint8Array(await file.arrayBuffer());
@@ -455,7 +463,9 @@ export async function importFile(file){if(guard())return;let o;
         else if(!sm[nm]){let k=S.cfg.cats.find(x=>cleanCat(x.name)==cleanCat(c.nazwa));if(!k){k={id:'c'+rid(),name:cleanCat(c.nazwa),type:c.typ=='PRZYCHOD'?'inc':'exp',hue:freeHue(S.cfg.cats),subs:[]};S.cfg.cats.push(k)}sm[nm]='s'+rid();k.subs.push({id:sm[nm],name:nm})}})});
       const ob=o.openingBalancesBase||o.openingBalancesJan||{};S.cfg.accs.forEach(a=>{if(ob[a.name]!==undefined)a.open=Math.round(ob[a.name]*100)});
       await saveCfg();
-      ok=await writeTxs(o.transactions.filter(t=>isDate(t.date)).map(t=>['imp_'+t.id,{type:t.type=='Przychód'?'inc':t.type=='Wydatek'?'exp':'tr',amount:Math.round(Math.abs(t.amount)*100),date:t.date,sub:sm[t.subcategory]||'',acc:am[t.account]||'',to:am[t.targetAccount]||'',who:(/^\[(Mati|Wercia)\]/.exec(t.note||'')||[])[1]||'',note:String(t.note||'').replace(/^\[(Mati|Wercia)\]\s*/,''),deleted:false,ts:Date.now()}]));
+      /* entries loaded before (also deleted or corrected since) stay as they are – loading the old file again brings nothing back */
+      const have=new Set(S.tx.map(t=>t.id));
+      ok=await writeTxs(o.transactions.filter(t=>isDate(t.date)&&!have.has('imp_'+t.id)).map(t=>['imp_'+t.id,{type:t.type=='Przychód'?'inc':t.type=='Wydatek'?'exp':'tr',amount:Math.round(Math.abs(t.amount)*100),date:t.date,sub:sm[t.subcategory]||'',acc:am[t.account]||'',to:am[t.targetAccount]||'',who:(/^\[(Mati|Wercia)\]/.exec(t.note||'')||[])[1]||'',note:String(t.note||'').replace(/^\[(Mati|Wercia)\]\s*/,''),deleted:false,ts:Date.now()}]));
       const pp=o.plansByYear||{[String(new Date().getFullYear())]:o.plans||{}},pm={};
       Object.keys(pp).forEach(y=>Object.keys(pp[y]||{}).forEach(m=>{const d={};Object.entries(pp[y][m]||{}).forEach(([nm,v])=>{if(sm[nm]&&v)d[sm[nm]]=Math.round(v*100)});pm[y+'-'+p2(+m+1)]=d}));
       ok=(await writePlans(pm))&&ok}

@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: 22
       - name: Instalacja
-        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0 web-push@3.6.7
+        run: npm install --no-save --no-audit --no-fund --ignore-scripts firebase-admin@12.7.0 web-push@3.6.7
       - name: Wysyłka powiadomień
         run: node scripts/notify.mjs
         env:

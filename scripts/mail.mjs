@@ -20,26 +20,31 @@ const doYear=mode=='test-rok'||(mode=='auto'&&today.slice(5,7)=='01'&&dom<=2&&ho
 const doSum=mode=='test-podsumowanie'||(mode=='auto'&&dom<=2&&hour>=9&&hour<14&&log.sum!=ym);
 if(!doBackup&&!doSum&&!doYear){console.log('– to nie pora na maile');process.exit(0)}
 const D=await household(H);
-/* recipients: everyone who can log in (Firebase accounts) plus what the phones remember; the backup only to Mati */
+/* recipients: only the addresses the phones wrote to households/main/users after logging in (the Firestore rules let only the two owners write there).
+   NOT every Firebase account – with sign-up open a stranger could create one and get the summary. Accounts without a users document are only counted in the log. The backup only to Mati */
 const people=Object.values(D.users||{}).filter(u=>u.email);
-const accounts=await getAuth().listUsers(20).then(r=>r.users.filter(u=>u.email&&!u.disabled).map(u=>u.email)).catch(()=>[]);
-const mati=people.find(u=>u.who=='Mati')?.email||user,all=[...new Set([...accounts,...people.map(u=>u.email)])];if(!all.length)all.push(user);
+const known=new Set(Object.keys(D.users||{}));
+const other=await getAuth().listUsers(20).then(r=>r.users.filter(u=>!known.has(u.uid)).length).catch(()=>0);
+if(other)console.log(`⚠️ kont logowania bez dokumentu users (nie dostają maili): ${other}`);
+const mati=people.find(u=>u.who=='Mati')?.email||user,all=[...new Set(people.map(u=>u.email))];if(!all.length)all.push(user);
 const tr=nodemailer.createTransport({host:'smtp.gmail.com',port:465,secure:true,auth:{user,pass}});
 const from={name:'Budżet M&W 🐾',address:user};
+/* an SMTP error contains the recipients' addresses – the GitHub log is public, so only the error code goes there */
+async function send(m){try{await tr.sendMail(m)}catch(e){console.error('✗ wysyłka nie wyszła: '+(e.code||'błąd')+(e.responseCode?' '+e.responseCode:''));process.exit(1)}}
 if(doBackup){const json=JSON.stringify(backupDoc(D)),gz=gzipSync(Buffer.from(json));
   if(process.env.BACKUP_FILE)writeFileSync(process.env.BACKUP_FILE,json); // next step of mail.yml checks that this backup loads (tests/restore.mjs), then deletes the file
-  await tr.sendMail({from,to:mati,subject:`💾 Kopia budżetu – ${today}`,
+  await send({from,to:mati,subject:`💾 Kopia budżetu – ${today}`,
     text:`Comiesięczna kopia Waszego budżetu (${D.txAll.length} wpisów).\n\nJak wczytać: zapisz załącznik w Plikach, potem w aplikacji ⚙️ → „Wczytaj kopię (.json)” i wybierz ten plik.\nZachowaj ten mail – to Wasze zabezpieczenie.\n\nBudżet M&W`,
     attachments:[{filename:`budzet-kopia-${today}.json.gz`,content:gz,contentType:'application/gzip'}]});
   await H.collection('meta').doc('backup').set({at:Date.now(),who:'automat',auto:true});
   if(mode=='auto')await logRef.set({backup:ym,backupAt:today},{merge:true});
   console.log(`✓ kopia wysłana (${Math.round(gz.length/1024)} KB)`)}
 if(doSum){const st=monthStats(D,addMonths(ym,-1),today);
-  await tr.sendMail({from,to:all,subject:`📊 Budżet M&W – podsumowanie miesiąca`,text:summaryText(st),html:summaryHtml(st)});
+  await send({from,to:all,subject:`📊 Budżet M&W – podsumowanie miesiąca`,text:summaryText(st),html:summaryHtml(st)});
   if(mode=='auto')await logRef.set({sum:ym,sumAt:today},{merge:true});
   console.log(`✓ podsumowanie wysłane do ${all.length} ${all.length==1?'osoby':'osób'}`)}
 if(doYear){const y=mode=='test-rok'?today.slice(0,4):String(+today.slice(0,4)-1),st=yearStats(D,y,today);
-  await tr.sendMail({from,to:all,subject:`🎉 Budżet M&W – podsumowanie roku ${y}`,text:yearText(st),html:yearHtml(st,APP)});
+  await send({from,to:all,subject:`🎉 Budżet M&W – podsumowanie roku ${y}`,text:yearText(st),html:yearHtml(st,APP)});
   if(mode=='auto')await logRef.set({year:today.slice(0,4),yearAt:today},{merge:true});
   console.log(`✓ podsumowanie roku wysłane do ${all.length} ${all.length==1?'osoby':'osób'}`)}
 process.exit(0);

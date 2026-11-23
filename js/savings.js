@@ -5,7 +5,7 @@ import {kotki} from './guide.js';
 import {gainSvg} from './charts.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue,intOf,intPeriod,intCalc,intTax,intMonthly,intLabel} from './inv.js';
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
-import {seasonal,agg,balance,balDrop,liveOf,carStats,yearDueNear,ownerOf} from './logic.js';
+import {seasonal,agg,balance,balDrop,liveOf,carStats,yearDueNear,ownerOf,yearLastFor} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym,plu,dmy} from './util.js';
 import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard,negStop,posOf} from './core.js';
 import {openTx} from './sheet.js';
@@ -264,7 +264,10 @@ export async function editYear(id,pre){if(guard())return;const y0=id?years().fin
     {id:'wh',label:'👥 Dotyczy – komu przypominać',type:'select',value:y0?.who||pre.who||'',options:[['','Wspólne – oboje'],['Mati','Mati'],['Wercia','Wercia']]}],ok:y0?'Zapisz':'Dodaj',alt:y0?'Usuń':null});
   if(!r)return;if(r=='alt'){S.cfg.years=years().filter(x=>x.id!==y0.id);render();delYearDb(y0.id);return toast('Usunięto')}
   const amount=gr(r.a);if(!r.n.trim()||amount<=0)return toast('Podaj nazwę i kwotę','bad');if(!r.s)return toast('Wybierz pozycję budżetu','bad');
-  const dy=Math.round(pnum(r.dy||''))||0,body={id:y0?.id||'y'+rid(),name:r.n.trim(),amount,month:+r.m,day:dy>=1&&dy<=31?dy:0,every:+r.e,sub:r.s,who:r.wh||'',...(y0?.last?{last:y0.last}:{})};
+  const dy=Math.round(pnum(r.dy||''))||0,body={id:y0?.id||'y'+rid(),name:r.n.trim(),amount,month:+r.m,day:dy>=1&&dy<=31?dy:0,every:+r.e,sub:r.s,who:r.wh||''};
+  /* 📅 every 2 years etc.: the term comes only from `last` – keep it while the month stays, otherwise the first term = the nearest such month (after the last payment) */
+  const e=+r.e,now=td().slice(0,7),keep=y0?.last&&+y0.month==+r.m,yl=12%e&&!keep?yearLastFor(+r.m,e,now,y0?.last?addMonths(y0.last,e):null):null;
+  if(yl)body.last=yl;else if(y0?.last)body.last=y0.last;
   S.cfg.years=years();let x=y0;if(x)Object.assign(x,body);else{x=body;S.cfg.years.push(x)}
   if(!yearAccId()){const a={id:'a'+rid(),name:'Subkonto – wydatki roczne',grp:'sub',owner:'Wspólne',open:0};S.cfg.accs.push(a);saveAcc(a);S.hraw={...S.hraw,yearAcc:a.id};merge(H,{yearAcc:a.id});toast('Założyłem wspólne subkonto na wydatki roczne')}
   render();saveYear(x)}

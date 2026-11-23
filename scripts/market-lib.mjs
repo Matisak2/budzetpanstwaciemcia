@@ -55,6 +55,15 @@ export function keepPrev(out,prev,want=[],gold=false){const p=prev||{},fxToday=O
   if(!fxToday&&p.fx&&Object.keys(p.fx).length){out.fx=p.fx;out.fxDate=p.fxDate||p.date;if(p.src?.fx)out.src.fx=p.src.fx;kept++}
   if(out.nbp==null&&p.nbp!=null){out.nbp=p.nbp;kept++}
   return kept}
+/* 🚦 a price that jumped by more than 40% since the last known one (wrong scale – pence instead of pounds, a broken page) is not used today:
+   yesterday's stays and the new one waits in out.sus; if the next run brings about the same price again (±10%), it is real and is taken.
+   Prices in two different currencies are not compared. Returns how many prices were held back (the log shows only this number). */
+export function dropJumps(out,prev,lim=0.4){const p=prev?.prices||{},sus=prev?.sus||{};let n=0;out.sus={};
+  for(const[t,q]of Object.entries(out.prices||{})){const o=p[t];if(!o?.p||!q?.p||(o.cur&&q.cur&&o.cur!=q.cur))continue;
+    const r=q.p/o.p;if(r<=1+lim&&r>=1/(1+lim))continue;
+    const s=sus[t];if(s?.p&&Math.abs(q.p/s.p-1)<=0.1)continue;
+    out.sus[t]={p:q.p,d:q.d||out.date};out.prices[t]=o;n++}
+  if(!Object.keys(out.sus).length)delete out.sus;return n}
 /* 🌡️ the thermometer history: stooq daily CSV (Date,Open,High,Low,Close,Volume) or Yahoo chart (timestamps + closes) → {YYYY-MM-DD: close} */
 export function parseStooqHist(csv){const L=String(csv||'').trim().split(/\r?\n/);if(L.length<2)return null;const H=L[0].split(',').map(s=>s.trim().toLowerCase()),di=H.indexOf('date'),ci=H.indexOf('close');if(di<0||ci<0)return null;
   const o={};for(const l of L.slice(1)){const r=l.split(','),d=r[di],c=+r[ci];if(/^\d{4}-\d\d-\d\d$/.test(d||'')&&c>0)o[d]=c}return Object.keys(o).length?o:null}

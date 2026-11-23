@@ -450,7 +450,7 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
 });
 /* 🔄 a new version: sw.js downloads all its files first, then takes over – the page reloads itself when nothing is being typed (sw.js) */
 if(!DEMO&&'serviceWorker' in navigator){const SW=navigator.serviceWorker,had=!!SW.controller;SW.register('./sw.js').then(r=>{document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')r.update().catch(()=>{})})}).catch(()=>{});
-  const reload=()=>{const busy=document.querySelector('.ov:not([hidden])')||!$('sheet').hidden||/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||'');if(busy)return setTimeout(reload,3000);location.reload()};
+  const reload=()=>{const busy=document.querySelector('.ov:not([hidden])')||!$('sheet').hidden||S.slip||S.recon||S.close||/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||''); /* also an open payslip, „Wyrównaj wszystkie” or month closing – typed amounts live only on the screen */if(busy)return setTimeout(reload,3000);location.reload()};
   SW.addEventListener('controllerchange',()=>{if(had)reload()});SW.addEventListener('message',e=>{const u=e.data?.go;if(u){const g=goFromHash(new URL(u,location.href).hash);if(g){use('f:link');runGo(g)}}})}
 window.addEventListener('hashchange',()=>{const g=goFromHash(location.hash);if(g&&S.cfg){use('f:link');window.history.replaceState(null,'',location.pathname+location.search);runGo(g)}});
 S.goPending=goFromHash(location.hash);if(S.goPending)window.history.replaceState(null,'',location.pathname+location.search);

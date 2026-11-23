@@ -1,7 +1,7 @@
 /* 🔔 „Na dziś” and the tidiness guard – pure functions shared by the app and the GitHub automat (no DOM, no Firebase).
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
-import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy} from './util.js';
+import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy,plDay} from './util.js';
 import {NEG_GRPS,balance,carStats,dueAlerts,earlyN,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP,isSal} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,yearDue,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
@@ -84,11 +84,19 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
   for(const t of tx){if(t.date<from)continue;
     if(t.acc&&!acc.has(t.acc)){add('acc:'+t.id,'❓',`Wpis z ${dmy(t.date)} (${zl(t.amount)}) ma konto, którego już nie ma`,{a:'tx',id:t.id});continue}
     if(((t.type=='exp'&&!t.payoff)||(t.type=='inc'&&!t.ppk&&!t.lendOf&&!t.debtIn&&!t.slip))&&!sm[t.sub])add('sub:'+t.id,'🏷️',`${t.type=='exp'?'Wydatek':'Przychód'} ${money(t.amount,cm[t.acc])} z ${dmy(t.date)} nie ma pozycji budżetu`,{a:'tx',id:t.id})}
+  /* 👯 the same entry alive twice (moved to another month while the other phone was offline) and a payslip salary that its payslip no longer
+     points to (two phones saved the payslip at once) – both count the money twice */
+  {const seen=new Map();for(const t of tx){if(seen.has(t.id))add('twin:'+t.id,'👯',`Wpis ${money(t.amount,cm[t.acc])} jest zapisany dwa razy (${dmy(seen.get(t.id).date)} i ${dmy(t.date)}) – usuń jeden z nich`,{a:'tx',id:t.id});else seen.set(t.id,t)}}
+  for(const t of tx){if(!t.slip||t.type!='inc'||t.date<from)continue;const sl=slips?.[t.date.slice(0,7)]?.[t.slip];
+    if(sl?.booked&&sl.booked!==t.id&&tx.some(x=>x.id===sl.booked))add('slip2:'+t.id,'👯',`Pensja „${sl.name||'z paska'}” jest dwa razy (${MN[+t.date.slice(5,7)-1].toLowerCase()} ${t.date.slice(0,4)}) – wpis ${money(t.amount,cm[t.acc])} z ${dmy(t.date)} nie należy już do paska, usuń go`,{a:'tx',id:t.id})}
   /* settings that point to a budget position that no longer exists (e.g. deleted before merging moved everything) */
   const gone=id=>id&&!sm[id];
   for(const y of cfg.years||[])if(!(+y.every>0))add('ref:ye:'+y.id,'📅',`Wydatek roczny „${y.name}” nie ma ustawionej częstotliwości – liczę go jak co rok. Sprawdź w „Edytuj”.`,{a:'year'});
+  /* every 2 years etc. without the last paid term (added through „Edytuj” before 11.2026) would be planned every year */
+  for(const y of cfg.years||[])if(+y.every>0&&12%+y.every&&!y.last)add('ref:yl:'+y.id,'📅',`Wydatek „${y.name}” (co ${+y.every} mies.) nie ma ustalonego pierwszego terminu – wpada do planu co roku. Otwórz go w „Edytuj” i zapisz.`,{a:'year'});
   for(const y of cfg.years||[])if(gone(y.sub))add('ref:y:'+y.id+':'+y.sub,'🏷️',`Wydatek roczny „${y.name}” ma usuniętą pozycję budżetu – wybierz nową.`,{a:'year'});
-  for(const x of cfg.incs||[])if(gone(x.sub)||(x.deds||[]).some(d=>gone(d.sub)))add('ref:i:'+x.id+':'+x.sub,'🏷️',`Źródło dochodu „${x.name}” ma usuniętą pozycję budżetu (wpływ albo potrącenie) – popraw ją.`,{a:'pay'});
+  /* the key names every missing position (the income and each deduction) – „To nie błąd” for one does not hide a later one */
+  for(const x of cfg.incs||[]){const g=[x.sub,...(x.deds||[]).map(d=>d.sub)].filter(gone);if(g.length)add('ref:i:'+x.id+':'+[...new Set(g)].join(','),'🏷️',`Źródło dochodu „${x.name}” ma usuniętą pozycję budżetu (wpływ albo potrącenie) – popraw ją.`,{a:'pay'})}
   for(const f of cfg.fixed||[])if(f.kind!='tr'&&gone(f.sub))add('ref:f:'+f.id+':'+f.sub,'🏷️',`${f.kind=='inc'?'Przychód stały':'Opłata stała'} „${f.name}” ma usuniętą pozycję budżetu – wybierz nową.`,{a:'fixEdit',id:f.id});
   for(const[id,d]of Object.entries(D.debts||{}))if(!d.deleted&&gone(d.sub))add('ref:d:'+id+':'+d.sub,'🏷️',`Zobowiązanie „${d.name}” ma usuniętą pozycję budżetu – nowa ustawi się przy następnej racie.`,{a:'owe'});
   /* settings that point to an account that is gone or in the archive (e.g. deleted before the „move and delete” window existed) */
@@ -145,9 +153,11 @@ const isWknd=iso=>{const w=new Date(iso+'T12:00:00').getDay();return w==0||w==6}
 const firstSal=(tx,src,ym)=>{let d='';for(const t of inPeriod(tx,ym))if(isSal(src,t)&&(!d||t.date<d))d=t.date;return d};
 /* the usual day of one source from the 3 months before ym: „end” when it always came in the last 3 days of the month, otherwise the middle value
    (a salary moved to Friday by a weekend does not change it); no salary yet → the day typed at the source; nothing → null */
-export function payPatternP(tx,src,ym){const D=[];for(let k=1;k<=3;k++){const m=addMonths(ym,-k),d=firstSal(tx,src,m);if(d)D.push({d:+d.slice(8),L:daysIn(m)})}
+export function payPatternP(tx,src,ym){const D=[];for(let k=1;k<=3;k++){const m=addMonths(ym,-k),d=firstSal(tx,src,m);if(d)D.push({m,d:+d.slice(8),L:daysIn(m)})}
   if(!D.length)return +src.day>0?{day:Math.min(31,+src.day)}:null;
-  if(D.every(x=>x.d>=x.L-2))return{end:true};const v=D.map(x=>x.d).sort((a,b)=>a-b);return{day:v[Math.floor(v.length/2)]}}
+  /* „the end of the month” only when it never came on the 30th of a 31-day month whose 31st was a working day (then it is „the 30th”) */
+  const wd=x=>{const w=new Date(Date.UTC(+x.m.slice(0,4),+x.m.slice(5,7)-1,31)).getUTCDay();return w>0&&w<6},on30=D.some(x=>x.L==31&&x.d==30&&wd(x));
+  if(!on30&&D.every(x=>x.d>=x.L-2))return{end:true};const v=D.map(x=>x.d).sort((a,b)=>a-b);return{day:v[Math.floor(v.length/2)]}}
 /* the expected pay date of one source in ym: the real one when it already came, otherwise from the pattern (a weekend → the Friday before) */
 /* nom = the usual day of the month (before the weekend shift) – the closed month is decided by it, so a pay on Sunday the 20th moved to Friday
    the 18th, or a pay on the 1st that came on the 31st before, still belongs to its own month. The real salary is looked for ±10 days around
@@ -201,7 +211,8 @@ export function closeDueP(hraw,tx,today,cfg,who){const w=cfg&&who?closeWinP(cfg,
   if(st.done||ig['close:'+ym]||ig['close:'+ym+':'+who]||!inPeriod(tx,ym).length)return null;return{ym,n:st.n,start:w.start,pay:w.pay||null}}
 /* ✍️ was anything typed today? (automatic entries – fixed payments ticked, PPK, drobne, value changes of investments – do not count);
    one rule for „Na dziś” after 20:00, the evening nudge in the app and the evening notification of the automat */
-export const typedToday=(tx,today)=>tx.some(t=>t.date==today&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val));
+/* ✍️ typed today: dated today or added today (ts in Polish time) – yesterday's shopping typed in the evening counts too */
+export const typedToday=(tx,today)=>tx.some(t=>(t.date==today||(t.ts&&plDay(t.ts)==today))&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val));
 /* everything that needs attention today; n = days until the deadline (−1 late, 0 today, 1 tomorrow), later:true = not for today („Wkrótce” – collapsed, no number on the bell) */
 export const todayRank=x=>x.k=='bad'?0:x.n!=null&&x.n<=0?1:x.n==1?2:3;
 /* ryczałt od najmu: 8,5% up to 100 000 zł of rent a year, 12,5% above (grosze, rounded to full zł) */
@@ -283,8 +294,11 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
     const y0=per[0].slice(0,4),before=Array.from({length:12},(_,i)=>y0+'-'+p2(i+1)).filter(m=>m<per[0]).reduce((a,m)=>a+inPeriod(tx,m).filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((b,t)=>b+t.amount,0),0);
     const key='najem:'+f.id+':'+per[0],tax=Math.round(rentTax(before+got)-rentTax(before));if(hraw?.checkIgnore?.[key])continue;
     out.push({key,icon:'🏠',text:`Ryczałt od najmu („${f.name}”) za ${q?'kwartał '+per.map(m=>MN[+m.slice(5)-1].slice(0,3).toLowerCase()).join('–'):MN[+per[0].slice(5)-1].toLowerCase()}: ok. ${zl(tax)} (${before+got>RENT_THR?'8,5% do 100 000 zł w roku, 12,5% ponad':'8,5%'} z ${zl(got)}) – zapłać do 20. ${MNG[mo0-1]} na mikrorachunek podatkowy.`,go:{a:'fixed'},label:'Zobacz',k:day>20?'bad':'najem',who:person(fixedWho(cfg,f)),quiet:!(day==10||day==18)})}
-  {const ny=(cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'));if(ny.length&&(mo==3||mo==4)){const key='pit28:'+(+y-1),ws=[...new Set(ny.map(f=>person(fixedWho(cfg,f))))];
-    if(!hraw?.checkIgnore?.[key])out.push({key,icon:'🏠',text:`PIT-28 za najem w ${+y-1} r. – złóż do 30 kwietnia (Twój e-PIT na podatki.gov.pl).`,go:{a:'fixed'},label:'Zobacz',k:mo==4&&day>=20?'bad':'pit',later:!(mo==4&&day>=20),who:ws.length==1?ws[0]:null,quiet:!((mo==3&&day==1)||(mo==4&&day==20))})}}
+  /* PIT-28: each person whose rent it is (shared rent – both) files their own, so „✓ Złożone” is per person (the old shared key pit28:year still hides it for both) */
+  {const ny=(cfg.fixed||[]).filter(f=>f.kind=='inc'&&(f.najem=='m'||f.najem=='q'));if(ny.length&&(mo==3||mo==4)&&!hraw?.checkIgnore?.['pit28:'+(+y-1)]){
+    const ws=[...new Set(ny.flatMap(f=>{const p=person(fixedWho(cfg,f));return p?[p]:['Mati','Wercia']}))];
+    for(const w of ws){const key='pit28:'+(+y-1)+':'+w;if(hraw?.checkIgnore?.[key])continue;
+      out.push({key,icon:'🏠',text:`${w}: PIT-28 za najem w ${+y-1} r. – złóż do 30 kwietnia (Twój e-PIT na podatki.gov.pl).`,go:{a:'fixed'},label:'Zobacz',k:mo==4&&day>=20?'bad':'pit',later:!(mo==4&&day>=20),who:w,quiet:!((mo==3&&day==1)||(mo==4&&day==20))})}}}
   /* 🧾 the yearly PIT: from 1 March until „✓ Złożone” (each of you apart), deadline 30 April; a phone notification on 1 March, 1 and 20 April */
   if(mo==3||mo==4)for(const w of ['Mati','Wercia']){const key='pit:'+(+y-1)+':'+w;if(hraw?.checkIgnore?.[key])continue;
     out.push({key,icon:'🧾',text:`${w}: PIT za ${+y-1} r. – termin 30 kwietnia. Twój e-PIT jest już gotowy, a zestawienie ulg i IKZE masz w aplikacji.`,go:{a:'pit',y:String(+y-1)},label:'Zestawienie',k:mo==4&&day>=20?'bad':'pit',later:!(mo==4&&day>=20),who:w,quiet:!((mo==3&&day==1)||(mo==4&&(day==1||day==20)))})}

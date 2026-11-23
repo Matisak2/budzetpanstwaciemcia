@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: 22
       - name: Instalacja
-        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0
+        run: npm install --no-save --no-audit --no-fund --ignore-scripts firebase-admin@12.7.0
       - name: Zasady
         run: node scripts/rules.mjs
         env:

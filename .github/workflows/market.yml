@@ -8,7 +8,7 @@ on:
     - cron: '23 18 * * 1-5'   # zapasowo godzinę później (GitHub czasem pomija start) – gdy dziś już pobrane, nic nie robi
   workflow_dispatch: {}        # przycisk „Run workflow” – ręczne uruchomienie
 permissions:
-  contents: write   # tylko do miesięcznego „znaku życia” (plik automat-ostatnio.txt)
+  contents: read    # zapis do repozytorium tylko w osobnym zadaniu „znak życia” (bez sekretów)
 concurrency:
   group: market
   cancel-in-progress: false
@@ -22,13 +22,22 @@ jobs:
         with:
           node-version: 22
       - name: Instalacja firebase-admin
-        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0
+        run: npm install --no-save --no-audit --no-fund --ignore-scripts firebase-admin@12.7.0
       - name: Pobranie kursów i cen
         run: node scripts/market.mjs
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
           RUN: ${{ github.event_name }}
-      # GitHub wyłącza zaplanowane automaty po 60 dniach bez zmian w repozytorium – raz w miesiącu dopisujemy datę, żeby tak się nie stało
+  # GitHub wyłącza zaplanowane automaty po 60 dniach bez zmian w repozytorium – raz w miesiącu dopisujemy datę, żeby tak się nie stało.
+  # Osobne zadanie: tylko ono może pisać do repozytorium i nie widzi żadnych sekretów.
+  alive:
+    needs: update
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
       - name: Miesięczny znak życia
         run: |
           m=$(TZ=Europe/Warsaw date +%Y-%m)

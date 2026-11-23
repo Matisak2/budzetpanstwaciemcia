@@ -2,7 +2,7 @@
 // the list of PPK funds once a month and the month-end valuation of accounts with instruments.
 // Needs the secret FIREBASE_SA (service account JSON). Logs only counts – never amounts, names or symbols (the repository is public).
 import {db as fdb,ensureVapid,household,warsaw} from './common.mjs';
-import {CRYPTO_IDS,OZ,bondLinks,fundLinks,gusCsvLink,keepPrev,parseBondPage,parseEurostatAll,parseFundPage,parseGusCpi,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym,parseStooqHist,parseYahooHist} from './market-lib.mjs';
+import {CRYPTO_IDS,OZ,bondLinks,dropJumps,fundLinks,gusCsvLink,keepPrev,parseBondPage,parseEurostatAll,parseFundPage,parseGusCpi,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym,parseStooqHist,parseYahooHist} from './market-lib.mjs';
 import {holdAt,instDiffP,macroP} from '../js/inv.js';
 import {ownerOf} from '../js/today.js';
 import {daysIn} from '../js/util.js';
@@ -58,6 +58,8 @@ for(const[t]of want){if(want.get(t).kind=='krypto')continue;const uk=/\.UK$/.tes
   const q=uk?(await fromYahoo(t))||(await fromStooq(t)):(await fromStooq(t))||(await fromYahoo(t));if(q)out.prices[t]=q}
 if(gold){const g=await tryIt('złoto',async()=>parseStooq(await get('https://stooq.pl/q/l/?s=xaupln&f=sd2t2ohlcv&h&e=csv','text')));if(g){out.gold=Math.round(g.p/OZ*100)/100;out.goldDate=g.d}}
 const goldToday=!!out.gold;console.log(`✓ ceny: ${Object.keys(out.prices).length} z ${want.size}${gold?(goldToday?' + złoto':' (złoto: brak)'):''}`);
+/* 4c. a price far from the last known one (> 40%) waits for confirmation by the next run – the month-end valuation and the history never take a wrong-scale price */
+const held=dropJumps(out,prev);if(held)console.log(`– cena za bardzo inna niż ostatnio (czeka na potwierdzenie jutro): ${held}`);
 /* 4b. what did not come today keeps yesterday's value (a valuation never falls back to the purchase price because a site was down for a day) */
 const kept=keepPrev(out,prev,[...want.keys()],gold);if(kept)console.log(`– bez odpowiedzi dziś, zostają ostatnie znane: ${kept}`);
 // 4a. unit values of TFI / PPK funds (analizy.pl; a page address with any name redirects to the fund)

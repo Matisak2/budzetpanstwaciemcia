@@ -77,6 +77,11 @@ export const earlyN=it=>Math.min(3,Math.max(1,+it.every||12)-1);
 const ymN=ym=>+ym.slice(0,4)*12+(+ym.slice(5,7))-1;
 export function yearDueIn(it,ym){const e=Math.max(1,+it.every||12),m=+ym.slice(5,7)-1,m0=(+it.month||1)-1;
   if(12%e==0)return((m-m0)%e+e)%e==0;if(it.last){const d=ymN(ym)-ymN(it.last);return d>=0&&d%e==0}return m==m0}
+/* 📅 every 2 years etc. (not a divisor of 12) has its term only through `last`: a new / edited one without it would be planned every year.
+   The first term = the nearest month with this number not before `anchor` − 6 months and not before `now` (anchor = the old next term after a change of
+   month, otherwise now) → `last` = that term − every. Returns null when `every` divides 12 (no `last` needed). */
+export function yearLastFor(month,every,now,anchor){const e=+every||12;if(12%e==0)return null;let lo=addMonths(anchor||now,-6);if(lo<now)lo=now;
+  let d=lo;while(+d.slice(5,7)!=+month)d=addMonths(d,1);return addMonths(d,-e)}
 export function yearPlanOf(cfg,tx,ym){const sub={},items=[];
   for(const it of cfg.years||[]){if(!it.sub||!(+it.amount>0))continue;const paid=inPeriod(tx,ym).filter(t=>t.yearId===it.id&&t.type=='exp'&&!t.deleted).reduce((a,t)=>a+t.amount,0);
     let amt=0;if(paid)amt=paid;else if(yearDueIn(it,ym)){const early=[1,2,3].slice(0,earlyN(it)).some(k=>{const p=new Date(Date.UTC(+ym.slice(0,4),+ym.slice(5,7)-1-k,1)).toISOString().slice(0,7);return inPeriod(tx,p).some(t=>t.yearId===it.id&&t.type=='exp'&&!t.deleted)});if(!early)amt=+it.amount}
