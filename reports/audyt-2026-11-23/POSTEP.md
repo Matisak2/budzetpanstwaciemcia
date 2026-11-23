@@ -14,7 +14,7 @@ Automatyczne wznowienia ustawione (Mati): 24.11 o 3:51 i 8:52.
 - [x] 7 – Testy → `07-testy.md`
 - [x] 8 – Porównanie → `08-porownanie.md`
 - [x] 9 – AI → `09-ai.md`
-- [ ] 10 – Raport `00-RAPORT.md` + usunięcie `reports/audyt/` + odnośniki w `PLAN.md`
+- [x] 10 – Raport `00-RAPORT.md` + usunięcie `reports/audyt/` + odnośniki w `PLAN.md`
 
 Naprawy w trakcie: `NAPRAWIONE.md`.
 
