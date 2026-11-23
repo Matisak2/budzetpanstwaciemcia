@@ -212,7 +212,7 @@ export function closeDueP(hraw,tx,today,cfg,who){const w=cfg&&who?closeWinP(cfg,
 /* ✍️ was anything typed today? (automatic entries – fixed payments ticked, PPK, drobne, value changes of investments – do not count);
    one rule for „Na dziś” after 20:00, the evening nudge in the app and the evening notification of the automat */
 /* ✍️ typed today: dated today or added today (ts in Polish time) – yesterday's shopping typed in the evening counts too */
-export const typedToday=(tx,today)=>tx.some(t=>(t.date==today||(t.ts&&plDay(t.ts)==today))&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!(t.type=='adj'&&t.val));
+export const typedToday=(tx,today)=>tx.some(t=>(t.date==today||(Number.isFinite(+t.ts)&&+t.ts>0&&plDay(+t.ts)==today))&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!t.slip&&!t.slipOf&&!(t.type=='adj'&&t.val));
 /* everything that needs attention today; n = days until the deadline (−1 late, 0 today, 1 tomorrow), later:true = not for today („Wkrótce” – collapsed, no number on the bell) */
 export const todayRank=x=>x.k=='bad'?0:x.n!=null&&x.n<=0?1:x.n==1?2:3;
 /* ryczałt od najmu: 8,5% up to 100 000 zł of rent a year, 12,5% above (grosze, rounded to full zł) */

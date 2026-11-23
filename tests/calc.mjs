@@ -513,7 +513,9 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
 /* ✍️ „dziś coś wpisano”: z dzisiejszą datą albo dopisane dziś (ts w czasie polskim: 22.11 23:30 UTC = 23.11 0:30 w Polsce) */
 {const ts=Date.UTC(2026,10,22,23,30);
  eq('Wpisano dziś – wczorajszy wydatek dopisany dziś',typedToday([{id:'a',type:'exp',date:'2026-11-21',ts}],'2026-11-23'),true);
- eq('Wpisano dziś – dopisany wczoraj',typedToday([{id:'a',type:'exp',date:'2026-11-21',ts:Date.UTC(2026,10,22,12)}],'2026-11-23'),false);
+ eq('Wpisano dziś – pasek pensji zapisany dziś się nie liczy (audyt 24.11)',typedToday([{id:'p',type:'inc',date:'2026-11-10',slip:'s1',ts},{id:'q',type:'exp',date:'2026-11-10',slipOf:'p',ts}],'2026-11-23'),false);
+eq('Wpisano dziś – zepsuty ts nie wywraca dzwonka',typedToday([{id:'a',type:'exp',date:'2026-11-21',ts:'abc'},{id:'b',type:'exp',date:'2026-11-21',ts:{seconds:1}}],'2026-11-23'),false);
+eq('Wpisano dziś – dopisany wczoraj',typedToday([{id:'a',type:'exp',date:'2026-11-21',ts:Date.UTC(2026,10,22,12)}],'2026-11-23'),false);
  eq('Wpisano dziś – odhaczona opłata się nie liczy',typedToday([{id:'a',type:'exp',date:'2026-11-23',fixedId:'f',ts}],'2026-11-23'),false)}
 /* 🛡️ strażnik: ten sam wpis żywy dwa razy, pensja z paska, której pasek już nie wskazuje, klucz źródła z każdą brakującą pozycją */
 {const cfg={accs:[{id:'a',grp:'cur'}],cats:[{id:'c',type:'exp',subs:[{id:'s'}]},{id:'ci',type:'inc',subs:[{id:'p'}]}],incs:[{id:'i1',name:'Pensja',sub:'p',deds:[{n:'Karta',sub:'gone1'}]}]};
