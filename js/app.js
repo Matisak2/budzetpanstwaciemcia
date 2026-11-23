@@ -1,6 +1,6 @@
 import {onAuthStateChanged,signInWithEmailAndPassword,signOut,setPersistence,browserLocalPersistence} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {doc,collection,onSnapshot,setDoc,getDoc,waitForPendingWrites} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {catIcon,catsEmpty} from './art.js';
+import {catIcon,catsEmpty,mountCats} from './art.js';
 import {scene} from './cats.js';
 import {CELEBRATE,HELP,NEWS_V,kotki} from './guide.js';
 import {hbarsH} from './charts.js';
@@ -10,7 +10,7 @@ import {saveSplitP} from './today.js';
 import {yearBody,yearStats} from './report.js';
 import {cushionP,avgActuals,actuals,agg,balance,cleanCat,liveOf,status,subsMap,savFlow,savIds,firstYm,planOf,yearPlanOf,yearSubs,fixedTwin,fixedPlanGap,fixedWho,ownerOf,payAuto} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,daysIn,esc,f2,fmtIn,ls,sleep,td,zl,zl0,money,curSym,fxPlus,fxTxt,priv,plu} from './util.js';
-import {mountCats,infoH,infoTog,auth,fdb,applySeason,DEMO,S,catL,greetH,showTour,showNews,maybeIntro,askBirth,celebrate,coinSum,editRound,setKotki,toast,err,ask,CUR,accCur,isP,am,fxOf,fxSmall,stripFx,accOpts,H,MARKET,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,fromDoc,saveCfg,saveCat,liveById} from './core.js';
+import {infoH,infoTog,auth,fdb,applySeason,DEMO,S,catL,greetH,showTour,showNews,maybeIntro,askBirth,celebrate,coinSum,editRound,setKotki,toast,err,ask,CUR,accCur,isP,am,fxOf,fxSmall,stripFx,accOpts,H,MARKET,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,fromDoc,saveCfg,saveCat,liveById} from './core.js';
 import {catColor,refundsOf,setType,updCoin,updFx,updSave,autoWho,closePick,RMETA,phMeterH,openTx,closeSheet,saveTx,delTx,markRefund,wireSheet} from './sheet.js';
 import {restoreGoal,subTx,payChipH,setPay,pbudH,lockWho,askWhoLock,editInt,setPlan,planToFixed,fixPlan,copyPlan,addAcc,editAcc,addSub,subMenu,hideSub,editCat,addCat,ACCTAB,setAccTab,moveAcc,moveCat,lookApply,setHide,setLook,lookH,setWho,fixedPaid,editFixed,toggleFixed,invAccStats,goalOwner,poolNow,goalProgress,editGoal,allocGoal,setSavTarget,setSub,recAccs,setRecScope,openRecon,closeRecon,recSum,applyRecon,addSavAcc,editSavAcc,exportJson,META,importFile,amtQuery,txMatches,txRowH,txListH,setQ,setF,clearF,togF} from './actions.js';
 import {segL,fixSegH,setFixSub,setFixWho,setPayView,payH,fixYearH,deletedH,restoreTx,changesH,siriHelp,ulgaInfo,editInc,openSlip,closeSlip,slipCalc,slipRow,slipCopy,slipSuggest,slipNetto,slipReal,slipH,saveSlip,delSlip,pensLinkH,linkInc,openSubs,subKeep,subEdit,subDrop} from './salary.js';
@@ -42,10 +42,18 @@ function showWealth(){S.accView='acc';goTab('acc')}
 function setBF(k){S.bf=k;render()}
 /* long amounts get a smaller font instead of being cut („14 109,1…”); a long month name gets shortened on narrow phones */
 /* a big number must fit its tile whole – even 1 px too wide was cut with „…” (A++, the Nunito font loading later) */
-function fitNums(){document.querySelectorAll('#app .kpi .v,#app .worth .v').forEach(e=>{e.style.fontSize='';let fs=parseFloat(getComputedStyle(e).fontSize),n=0;
-    const over=()=>e.scrollWidth>e.clientWidth||[...e.children].some(c=>c.getBoundingClientRect().right>e.getBoundingClientRect().right+0.5);
-    while(over()&&fs>14&&n++<10){fs-=1.5;e.style.fontSize=fs+'px'}});
-  const L=$('mlabel');if(L&&L.scrollWidth>L.clientWidth+1&&L.dataset.short)L.textContent=L.dataset.short}
+/* ⚡ no layout per tile: one reading pass for all tiles, the size computed from how much is missing, one writing pass, then a check
+   (before: write → read → write… for every tile, each read re-laid the whole page out – about half of every render) */
+function fitNums(){const E=[...document.querySelectorAll('#app .kpi .v,#app .worth .v')],L=$('mlabel');
+  for(const e of E)if(e.style.fontSize)e.style.fontSize='';
+  const need=e=>{const r=e.getBoundingClientRect();let w=Math.max(e.scrollWidth,0);for(const c of e.children)w=Math.max(w,c.getBoundingClientRect().right-r.left);return w>e.clientWidth+0.5?w:0};
+  let todo=E.map(e=>({e,fs:0}));const lab=L&&L.dataset.short&&L.scrollWidth>L.clientWidth+1;
+  for(let n=0;n<4&&todo.length;n++){
+    const over=todo.map(x=>({...x,w:need(x.e)})).filter(x=>x.w&&(!x.fs||x.fs>14));
+    for(const x of over){if(!x.fs)x.fs=parseFloat(getComputedStyle(x.e).fontSize)}
+    for(const x of over){const cw=x.e.clientWidth;x.fs=Math.max(14,n?x.fs-1.5:Math.floor(x.fs*cw/x.w*2)/2);x.e.style.fontSize=x.fs+'px'}
+    todo=over.filter(x=>x.fs>14)}
+  if(lab)L.textContent=L.dataset.short}
 /* 💰 Majątek = 🐷 Oszczędności + 👛 Konta */
 const majSegH=()=>`<div class="seg seg2 majseg">${[['sav','🐷 Oszczędności'],['acc','👛 Konta']].map(([k,l])=>`<button aria-pressed="${S.tab==k}" onclick="${k=='acc'?"S.accView='acc';":''}goTab('${k}')">${segL(l)}</button>`).join('')}</div>`;
 function setAccSub(k){S.accSub=k;window.scrollTo(0,0);render()}
@@ -416,6 +424,12 @@ async function logout(){
   if(!ok){if(!await ask({title:'Uwaga: niewysłane zmiany',text:'Część wpisów z tego telefonu nie dotarła jeszcze do chmury (brak internetu?).\nJeśli się teraz wylogujesz, mogą przepaść. Połącz się z internetem i poczekaj, aż u góry pojawi się „zsynchronizowano”.',ok:'Wyloguj mimo to',cancel:'Zostań zalogowany',danger:true}))return}
   else if(!await ask({title:'Wylogować?',text:'Wszystko jest zapisane w chmurze. Na tym telefonie trzeba będzie zalogować się ponownie.',ok:'Wyloguj',danger:true}))return;
   signOut(auth)}
+/* ⚡ market: the small documents live; 🌡️ market/thermo (~5 years of daily prices, rewritten by the automat every day – each time sent
+   whole to both phones and redrawn) read once at the start and again when the app comes back after 6 h; market/eom is only for the automat */
+const MKT_DOCS=['rates','funds','limits','pushlog','autoval','maillog','vapid'];let thermoAt=0;
+function loadThermo(){if(!S.uid||Date.now()-thermoAt<6*36e5)return;thermoAt=Date.now();
+  getDoc(doc(MARKET(),'thermo')).then(d=>{const m={...S.market};if(d.exists())m.thermo=clone(d.data());else delete m.thermo;S.market=m;renderSoon()}).catch(()=>{thermoAt=0})}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')loadThermo()});
 onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   $('login').hidden=!!u;$('main').hidden=!u;
   if(!u){S.cfg=null;return}
@@ -438,7 +452,8 @@ onAuthStateChanged(auth,u=>{unsub.forEach(f=>f());unsub=[];
   unsub.push(onSnapshot(PLC(),{includeMetadataChanges:true},s=>{const p={};s.docs.forEach(d=>p[d.id]={...d.data()});S.plans=p;S.plansSrv=!s.metadata.fromCache;renderSoon()},onErr));
   unsub.push(onSnapshot(META(),s=>{S.backup=s.exists()?s.data():null;renderSoon()},onErr));
   unsub.push(onSnapshot(RMETA(),s=>{S.rcptMeta=s.exists()?s.data():null;if(S.tab=='set')renderSoon()},onErr));
-  unsub.push(onSnapshot(MARKET(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.market=p;renderSoon()},onErr));
+  for(const k of MKT_DOCS)unsub.push(onSnapshot(doc(MARKET(),k),s=>{const m={...S.market};if(s.exists())m[k]=clone(s.data());else delete m[k];S.market=m;renderSoon()},onErr));
+  thermoAt=0;loadThermo();
   unsub.push(onSnapshot(DEBTS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.debts=p;renderSoon()},onErr));
   unsub.push(onSnapshot(HOLD(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data()));S.hold=p;renderSoon()},onErr));
   unsub.push(onSnapshot(SLIPS(),s=>{const p={};s.docs.forEach(d=>p[d.id]=clone(d.data().s||{}));S.slips=p;renderSoon()},onErr));

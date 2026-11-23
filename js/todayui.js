@@ -45,7 +45,14 @@ export const pushCardH=()=>`<div class="card"><h3>🔔 Powiadomienia</h3><div cl
   <div class="btns" style="gap:6px">${S.pushOk?'<button class="btn sm" onclick="disablePush()">Wyłącz</button>':`<button class="btn sm primary" onclick="enablePush()">${S.pushLost?'Włącz ponownie':'Włącz powiadomienia'}</button>`}</div></div>`;
 const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw});
 /* 🗓️ the closing of the month is personal – each phone shows only its own person's; the most urgent first (late → today → tomorrow → the rest), „Wkrótce” (later) at the end */
-export function todayItems(){if(!S.cfg)return[];const L=[...todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}),...planTodo(),...advTodo()].filter(x=>seenBy(x.who,S.who)).map((x,i)=>({x,i,r:todayRank(x)}));
+/* ⚡ (audyt W14) counted again only when something changed – the bell asks on every render and the clock every minute, and the advisor's part
+   alone (survey, wealth wheel, plan, purchase checks, thermometer) is a third of it; every change replaces the state objects (Firestore and local
+   writes alike), so comparing them is enough – except the settings, which an edit dialog may change in place (posOf) before the save comes back:
+   compared by content (a few kB of text, well under a millisecond); and the result is at most a minute old anyway */
+let itMemo=null;
+export function todayItems(){if(!S.cfg)return[];const k=[JSON.stringify(S.cfg),S.tx,S.slips,S.hold,S.debts,S.market,S.backup,S.hraw,S.plans,S.goals,S.who,td(),new Date().getHours()],M=itMemo;
+  if(!M||M.k.some((x,i)=>x!==k[i])||Date.now()-M.at>60000)itMemo={k,at:Date.now(),v:todayItemsRaw()};return itMemo.v.map(x=>({...x}))}
+function todayItemsRaw(){const L=[...todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}),...planTodo(),...advTodo()].filter(x=>seenBy(x.who,S.who)).map((x,i)=>({x,i,r:todayRank(x)}));
   return L.sort((a,b)=>(!!a.x.later-!!b.x.later)||a.r-b.r||a.i-b.i).map(y=>y.x)}
 const todayNow=()=>todayItems().filter(x=>!x.later);
 /* 📊 the plan of the current month (only in the app – plans are not read by the automat, so no phone notification): it used to be banners and cats' warnings on Budżet */

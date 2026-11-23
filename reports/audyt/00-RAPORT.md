@@ -148,7 +148,7 @@ Kolejność uwzględnia pracę w kilku oknach. Etapy, które dotykają tych samy
 **Gotowe, gdy:** robot ma nowe testy, raporty `02` i `07` odhaczone.
 
 ### Etap C. Szybkość (osobne okno możliwe – pliki: `app.js` (tylko `fitNums`), `cats.js`, `art.js`, `analysis.js`, `advisorui.js`)
-- [ ] `fitNums` bez wymuszania układu; kotki wszędzie przez `mountCats`; doradca zapamiętuje wyniki (W14); termometr bez subskrypcji
+- [x] `fitNums` bez wymuszania układu; kotki wszędzie przez `mountCats`; doradca zapamiętuje wyniki (W14); termometr bez subskrypcji (zrobione 23.11, + W13, W15)
 
 **Gotowe, gdy:** pomiar z `05-szybkosc.md` (Budżet, Analiza) szybszy o min. 30%.
 

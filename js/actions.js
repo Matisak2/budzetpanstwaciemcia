@@ -1,6 +1,6 @@
 /* Budżet M&W – budget / account actions, look of the phone, fixed costs, goals, reconcile, backup and import, register filters. Part of the former js/app.js (split into modules, same code). */
 import {doc,collection,setDoc,updateDoc,deleteField,getDocs,increment} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {catIcon,catsEmpty} from './art.js';
+import {catIcon,catsEmpty,mountCats} from './art.js';
 import {CELEBRATE} from './guide.js';
 import {HUES,OWN_COL,catHue,freeHue} from './data.js';
 import {wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
@@ -527,7 +527,7 @@ export function txListH(){const sm=subsMap(S.cfg),F=S.f,tx=liveOf(S.tx),AQ=amtQu
   if(DE.length>nD)h+=`<button class="btn sm" style="align-self:center" onclick="S.txDays=${nD+400};render()">Pokaż starsze (jeszcze ${DE.length-nD} ${plu(DE.length-nD,'dzień','dni','dni')} z wpisami)</button>`;
   return h}
 let qT=null;
-export function setQ(v){S.f.q=v;clearTimeout(qT);qT=setTimeout(()=>{const el=$('txlist');if(el)el.innerHTML=txListH()},150)}
+export function setQ(v){S.f.q=v;clearTimeout(qT);qT=setTimeout(()=>{const el=$('txlist');if(el){el.innerHTML=txListH();mountCats(el)}},150)}
 export function setF(k,v){S.f[k]=v;if(document.activeElement?.id=='fq')document.activeElement.blur();render()}
 export function togF(){S.fOpen=!S.fShown;render()}
 /* 🔎 a tap on a position in Budżet: its entries of the shown month (refunds too), plan and spent; a tap on an entry opens it */

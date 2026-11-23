@@ -3,8 +3,8 @@
    (closeM{ym:{p:{who:{steps,done}}}}), „Co było ponad plan” and „Plan” are shared (closeM{ym:{steps}} – ticked by one = ticked for both).
    „✓ Zgadza się” at an account = reconM{accId:date}. Only declarations here – nothing runs when the module loads. */
 import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {scene} from './cats.js';
 import {kotki} from './guide.js';
+import {catSlot} from './art.js';
 import {CLOSE_STEPS,CLOSE_SHARED,closeDueP,closeStateP,closeWinP,closeYmP} from './today.js';
 import {actuals,agg,avgActuals,balance,fixedPlanGap,liveOf,planOf,savFlow,savIds,ownerOf} from './logic.js';
 import {MN,MNG,addDays,addMonths,esc,td,zl0,money,dmy} from './util.js';
@@ -56,7 +56,7 @@ const stepH=(i,k,body,label)=>{const st=stOf(S.close).steps?.[k];
 /* cur = the new month: the one after the closed month (closing October before a payday on the 30th → November) */
 export function closePageH(){const ym=S.close,cur=addMonths(ym,1),tx=liveOf(S.tx),mn=MN[+ym.slice(5)-1],mnc=MN[+cur.slice(5)-1],n=nDone(ym),c=stOf(ym);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeClose()">‹ Budżet</button>`;
-  h+=`<section class="greet"><div class="gtxt"><b>🗓️ Zamknięcie: ${esc(mn)} ${ym.slice(0,4)} – ${esc(S.who)}</b><span>${c.done?`Gotowe 🎉 Możesz tu zajrzeć, kiedy chcesz.`:`5 kroków, ok. 10 minut.${infoH('closehow','Najlepiej dzień przed wypłatą: na kontach jest wtedy to, co naprawdę zostało. „Co było ponad plan” i „Plan” są wspólne – odhaczone przez jedno z Was są odhaczone u obojga.','ⓘ Jak to działa')}`}</span></div>${kotki.mode=='off'?'':`<div class="gcats">${scene(c.done?'happy':'lupa','kot')}</div>`}</section>`;
+  h+=`<section class="greet"><div class="gtxt"><b>🗓️ Zamknięcie: ${esc(mn)} ${ym.slice(0,4)} – ${esc(S.who)}</b><span>${c.done?`Gotowe 🎉 Możesz tu zajrzeć, kiedy chcesz.`:`5 kroków, ok. 10 minut.${infoH('closehow','Najlepiej dzień przed wypłatą: na kontach jest wtedy to, co naprawdę zostało. „Co było ponad plan” i „Plan” są wspólne – odhaczone przez jedno z Was są odhaczone u obojga.','ⓘ Jak to działa')}`}</span></div>${kotki.mode=='off'?'':`<div class="gcats">${catSlot(c.done?'happy':'lupa','kot')}</div>`}</section>`;
   h+=`<div class="gbar"><i style="width:${(n/5*100).toFixed(0)}%"></i></div><div class="mini" style="text-align:center">${n} z 5 kroków</div>`;
 
   /* 1. bank balances */

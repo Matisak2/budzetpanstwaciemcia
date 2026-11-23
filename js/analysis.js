@@ -1,6 +1,5 @@
 /* Budżet M&W – 📊 analysis (extras, CSV, Money Wrapped) and the month / year analysis. Part of the former js/app.js (split into modules, same code). */
-import {catsEmpty} from './art.js';
-import {scene} from './cats.js';
+import {catsEmpty,catSlot} from './art.js';
 import {isTreat,kotki} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,gainSvg,hbarsH,legendH,lineSvg,pctS} from './charts.js';
 import {OWN,OWN_COL,catHue,catMark} from './data.js';
@@ -21,7 +20,7 @@ function monthSumH(cfg,tx,ym){const act=actuals(cfg,tx,ym),pl=planOf(cfg,S.plans
   const saved=fit.reduce((a,x)=>a+x.p-x.a,0),lst=(X,f)=>X.slice(0,4).map(f).join(', ');
   const good=!over.length&&!out.length,who=good?'Ivo':'Bailey',cm=td().slice(0,7),live=ym==cm,fut=ym>cm,left=daysIn(ym)-(+td().slice(8)),pall=L.reduce((a,x)=>a+x.p,0);
   return`<section class="chart msum"><div class="ct"><b>Podsumowanie miesiąca</b><span class="mini">${MN[+ym.slice(5)-1]} ${ym.slice(0,4)}</span></div>
-    ${kotki.mode=='off'?'':`<div class="msk">${scene(good?'ivoHappy':'lupa','kot sm')}<span class="mini"><b>${who}:</b> ${good?(fut?'Plan gotowy – ten miesiąc dopiero przed nami 😺':live?`Na razie wszystko w planie 👍 Do końca miesiąca ${left} ${plu(left,'dzień','dni','dni')}.`:'Wszystko w planie! Należy się smaczek 😺'):over.length?`${over.length} ${plu(over.length,'pozycja przekroczyła','pozycje przekroczyły','pozycji przekroczyło')} plan. Zerknijmy razem, co się stało.`:'Kilka wydatków było poza planem – warto je dopisać do planu.'}</span></div>`}
+    ${kotki.mode=='off'?'':`<div class="msk">${catSlot(good?'ivoHappy':'lupa','kot sm')}<span class="mini"><b>${who}:</b> ${good?(fut?'Plan gotowy – ten miesiąc dopiero przed nami 😺':live?`Na razie wszystko w planie 👍 Do końca miesiąca ${left} ${plu(left,'dzień','dni','dni')}.`:'Wszystko w planie! Należy się smaczek 😺'):over.length?`${over.length} ${plu(over.length,'pozycja przekroczyła','pozycje przekroczyły','pozycji przekroczyło')} plan. Zerknijmy razem, co się stało.`:'Kilka wydatków było poza planem – warto je dopisać do planu.'}</span></div>`}
     <div class="facts">${fut?`<div>🗓️ Ten miesiąc jeszcze się nie zaczął – w planie ${zl0(pall)}.</div>`:live?`<div>⏳ Miesiąc jeszcze trwa – „zmieściło się” policzę po jego końcu. W planie zostało ${zl0(saved)}.</div>`:`<div>✅ Zmieściło się: <b>${fit.length}</b> ${plu(fit.length,'pozycja','pozycje','pozycji')}${saved?` · zostało ${zl0(saved)}`:''}</div>`}
     ${over.length?`<div>▲ Przekroczone: <b>${over.length}</b> – ${esc(lst(over,x=>x.s.name+' +'+zl0(x.a-x.p)))}</div>`:''}
     ${less.length&&!live&&!fut?`<div>💚 Wyraźnie mniej niż plan: ${esc(lst(less,x=>x.s.name+' −'+zl0(x.p-x.a)))}</div>`:''}

@@ -7,7 +7,7 @@ import {liveOf,ownerOf,agg,balance,cushionP} from './logic.js';
 import {youngUntil} from './pay.js';
 import {debtStateP} from './today.js';
 import {kotki} from './guide.js';
-import {scene} from './cats.js';
+import {catSlot} from './art.js';
 import {wrapOf,LIMITS,limitOf,paidInYear,BONDS,penceFix} from './inv.js';
 import {esc,rid,td,zl0,dmy,pg,addDays,addMonths,plDay} from './util.js';
 import {S,ask,toast,H,HOLD,merge,saveAcc,guard,infoH} from './core.js';
@@ -173,7 +173,7 @@ export function closeAdv(){S.adv=null;render()}
 /* 📝 one question per screen, the kotki ask; answers are saved at once (you can stop and come back) */
 export function ankPageH(){const who=S.who,ctx=ankCtx(who),A=ankOf(who),L=ankList(A,ctx);let i=L.findIndex(q=>q.id==S.ankQ);if(i<0)i=0;const q=L[i],dn=ankDone(A,ctx);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button><section class="chart ank"><div class="ct"><b>📝 Ankieta · ${esc(ANK_SEC[q.s])}</b><span class="mini">pytanie ${i+1} z ${L.length} · odpowiedzi ${dn.n}${q.w?' · 👥 wspólne – druga osoba też je widzi':''}</span></div>
-    <div class="gbar"><i style="width:${(dn.n/Math.max(1,dn.of)*100).toFixed(1)}%"></i></div>${kotki.mode=='off'?'':`<div class="ankcat">${scene(i%2?'duo':'calc','kot')}</div>`}
+    <div class="gbar"><i style="width:${(dn.n/Math.max(1,dn.of)*100).toFixed(1)}%"></i></div>${kotki.mode=='off'?'':`<div class="ankcat">${catSlot(i%2?'duo':'calc','kot')}</div>`}
     <div class="ankq">${esc(q.t)}</div>${q.hint&&q.hint(ctx)?`<div class="note">🐾 ${esc(q.hint(ctx))}</div>`:''}${q.why?`<div class="mini">ⓘ Po co pytamy: ${esc(q.why)}</div>`:''}`;
   const cur=A[q.id],opts=typeof q.o=='function'?q.o(ctx):q.o||[];
   if(q.type=='one')h+=`<div class="ankopts">${[...opts,...(q.nq?[]:[['?','🤷 Nie wiem']])].map(([v,l])=>`<button class="btn ${String(cur)===String(v)?'primary':''}" onclick="ankSet('${q.id}','${esc(String(v))}')">${esc(l)}</button>`).join('')}</div>`;
@@ -269,7 +269,7 @@ export function advTile(k){use('f:kafelek');const who=S.who,ctx=ankCtx(who),A=an
 /* 💸 „Chcę zainwestować … zł” – a short survey (plan 4.2) and the answer „gdzie” */
 export function openWhere(){if(guard())return;use('f:gdzie');S.adv='where';S.advRes=null;window.scrollTo(0,0);render()}
 function whereCtx(mode){const who=S.who,A=ankOf(who),ctx=ankCtx(who),people=mode=='both'?['Mati','Wercia']:[who],W=advW().ank||{};
-  const P=people.map(p=>{const w=wrapsOf(p),b=S.hraw?.birth?.[p];return{who:p,t:taxOf(ankOf(p)),ike:w.ike,ikze:w.ikze,age:b?+td().slice(0,4)-+b.slice(0,4):null}});
+  const P=people.map(p=>{const w=wrapsOf(p);return{who:p,t:taxOf(ankOf(p)),ike:w.ike,ikze:w.ikze,age:ageOf(p)}});
   /* debts first only when they cost: a known rate under 4% (0% instalments, a family loan) is paid as agreed, not before the cushion and IKE */
   const cheap=d=>d.rate!=null&&d.rate!==''&&+d.rate<4,cons=ctx.debtList.filter(d=>d.kind!='hip'&&d.left>0&&!cheap(d)),cheapL=ctx.debtList.filter(d=>d.kind!='hip'&&d.left>0&&cheap(d)),mort=ctx.debtList.find(d=>d.kind=='hip'&&d.left>0),tg=+(W.q17||A.q17||6)||6,plan=planFor(mode=='both'?'all':who);
   return{P,ctx:{debt:{sum:cons.reduce((s,d)=>s+d.left,0),rate:Math.max(0,...cons.map(d=>+d.rate||0))||null,name:cons.map(d=>d.name).join(', ')},cheap:cheapL.map(d=>d.name),podMini:Math.max(0,Math.round(ctx.exp-ctx.cush)),podGap:Math.max(0,Math.round(ctx.exp*tg-ctx.cush)),
@@ -365,12 +365,15 @@ function buyChecks(){const B=buyCtx(),W=B.W,R=realNow('all'),out=[],loan=W.q20!=
   if(['yes','maybe'].includes(W.q29)&&['yes','maybe'].includes(W.q34)&&W.rentPrice>0)out.push({kind:'rent',price:+W.rentPrice,...buyCheckP({price:+W.rentPrice,kind:'rent',liquid:B.liquid,near:B.near,exp:B.ctx.exp,podM:B.podM,income:B.income,surplus:B.ctx.surplus,consDebt:B.cons,rate:mRate(),loanOk:loan&&W.q34c!='cash',downPct:20,first:false,rent:+(W.rentRent||0),costs:qn(W.q35,0)})});
   return{B,out}}
 /* 🔔 „może warto pomyśleć o zakupie” – a quiet point in Na dziś, at most once a half-year (checkIgnore real:RRRR-H1|H2) */
+/* (⚡ remembered with the rest of Na dziś – todayItems in todayui.js) */
 export function advTodo(){try{if(!S.cfg||!S.hraw?.advM)return[];const ig=S.hraw?.checkIgnore||{},t=td(),key='real:'+t.slice(0,4)+'-H'+(+t.slice(5,7)<=6?1:2),mine=advTodoMine().filter(x=>!ig[x.key]);if(ig[key]||!S.hraw?.advW)return mine;
-  const ok=buyChecks().out.filter(x=>x.ok);if(!ok.length)return mine;return[...mine,{key,icon:'🏠',text:`Kotki policzyły: stać Was na ${ok[0].kind=='home'?'mieszkanie dla siebie':'mieszkanie na wynajem'} (${zl0(ok[0].price)}) bez ruszania poduszki. Może warto pomyśleć o zakupie – zobacz liczby, za i przeciw.`,go:{a:'goals'},label:'Zobacz',k:'plan',who:null,quiet:true}]}catch(e){return[]}}
+  const ok=buyChecks().out.filter(x=>x.ok);if(!ok.length)return mine;return[...mine,{key,icon:'🏠',text:`Kotki policzyły: stać Was na ${ok[0].kind=='home'?'mieszkanie dla siebie':'mieszkanie na wynajem'} (${zl0(ok[0].price)}) bez ruszania poduszki. Może warto pomyśleć o zakupie – zobacz liczby, za i przeciw.`,go:{a:'goals'},label:'Zobacz',k:'plan',who:null,quiet:true}]}catch(e){console.error(e);return[]}}
 export async function setRentPrice(){if(guard())return;const W=advW().ank||{};const r=await ask({title:'🏘️ Mieszkanie na wynajem – liczby do sprawdzenia',text:'Kotki sprawdzą, czy Was stać, i policzą rentowność. Wpisz ceny z ogłoszeń w Waszej okolicy.',fields:[
   {id:'p',label:'Cena mieszkania (zł)',type:'decimal',value:W.rentPrice?String(W.rentPrice/100):''},{id:'r',label:'Czynsz najmu miesięcznie (zł)',type:'decimal',value:W.rentRent?String(W.rentRent/100):''},{id:'c',label:'Koszty miesięcznie (administracja, fundusz remontowy, podatki, ubezpieczenie) (zł)',type:'decimal',value:W.q35?String(W.q35/100):''}],ok:'Zapisz'});
   if(!r)return;const x={rentPrice:pg(r.p||'0'),rentRent:pg(r.r||'0'),q35:pg(r.c||'0')};S.hraw={...S.hraw,advW:{...advW(),ank:{...W,...x}}};merge(H,{advW:{ank:x}});render()}
-export function goalsPageH(){const who=S.who,A=ankOf(who),W=advW().ank||{},ctx=ankCtx(who),y=+td().slice(0,4),birth=S.hraw?.birth?.[who],age=birth?y-+birth.slice(0,4):null,P=planFor(who);
+/* 🎂 age: from the birthday (⚙️ / the kotki), without it from the survey's „rok urodzenia” (q1 – asked only then) */
+function ageOf(who){const y=+td().slice(0,4),b=S.hraw?.birth?.[who],q=+ankOf(who).q1;return b?y-+b.slice(0,4):q>1900&&q<=y?y-q:null}
+export function goalsPageH(){const who=S.who,A=ankOf(who),W=advW().ank||{},ctx=ankCtx(who),age=ageOf(who),P=planFor(who);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button>`;
   /* 🌴 retirement */
   h+=`<section class="chart"><div class="ct"><b>🌴 Emerytura – ${esc(who)}</b><span class="mini">w dzisiejszych złotych · bez PPK · założenie: 2,5% ponad inflację przed emeryturą, 1% w czasie</span></div>`;
