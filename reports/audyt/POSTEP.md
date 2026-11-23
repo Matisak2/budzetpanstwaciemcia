@@ -9,7 +9,7 @@ Wznawiając pracę: przeczytaj ten plik, potem ostatni raport etapu. Nie zaczyna
 - [x] 3 – Pieniądze i przepisy 2026 → `03-przepisy.md`
 - [x] 4 – Dane, bezpieczeństwo, niezawodność → `04-dane-bezpieczenstwo.md`
 - [x] 5 – Szybkość → `05-szybkosc.md` (pomiary zrobione; wąskie gardło `fitNums`)
-- [ ] 6 – Sens funkcji i UX → `06-ux.md`
+- [x] 6 – Sens funkcji i UX → `06-ux.md` (bez danych „Czego używamy” – prośba do Matiego)
 - [x] 7 – Testy → `07-testy.md`
 - [ ] 8 – Porównanie z innymi aplikacjami → `08-porownanie.md` (zaczęte: katalog `research_notes/Porównanie aplikacji budżetowych 2026/` – badacze przerwani limitem, nic nie zapisali)
 - [x] 9 – Sztuczna inteligencja → `09-ai.md`
@@ -64,3 +64,4 @@ Naprawy w trakcie: `NAPRAWIONE.md`.
 - Każde zgłoszenie podagenta sprawdzić samemu przed wpisaniem do raportu.
 - 23.11 00:05: wznowieni R1, R2, R3, R4, L3 (SendMessage). Do wznowienia potem: R5, R6, R7, R8, E1 + badacze etapu 8.
 - 23.11 ok. 01:30: wszystkie przeglądy R1–R8, L3, E1 skończone; 11 poprawek na main (CACHE v101). Zostały: 01 (spis funkcji – raport E1 gotowy), 06 UX, 08 porównanie (badacze do ponownego uruchomienia), 00-RAPORT.
+- 23.11 05:10: etap 6 gotowy; etap 8 – notatki ios_pwa.md i pl_banks_psd2.md są, apps_features.md – badacz wznowiony; potem raport z badań i 00-RAPORT.
