@@ -36,7 +36,7 @@ export function useScreen(){const t=S.tab;let k=t=='dash'?(S.close?'e:close':S.p
     :t=='ana'?(S.report?'e:report':S.ana=='y'?'e:anay':ls.get('mw_anam')!='basic'?'e:anamf':'e:anam'):t=='set'?(S.help?'e:help':S.setPage?'e:set-'+S.setPage:'e:set'):'';
   if(S.help)k='e:help';if(k&&k!=lastScreen){lastScreen=k;counted.clear();use(k)}watchCards()}
 /* a card = section.chart; its title without emoji, year, „: …” or „ – …” */
-const cardKey=t=>{t=(t||'').replace(/^[^\p{L}]+/u,'').split(/:| – | · /)[0].replace(/\s*\d{4}\s*$/,'').replace(/\./g,'').trim();return t.includes('↔')?'Mati ↔ Wercia':t};
+const cardKey=t=>{t=(t||'').replace(/^[^\p{L}]+/u,'').split(/:| – | · /)[0].replace(/\s*\d{4}\s*$/,'').replace(/\./g,'').trim();if(t&&t==t.toUpperCase())t=t[0]+t.slice(1).toLowerCase();/* „CZY STARCZY?” (karta w stylu kategorii) = „Czy starczy?” */return t.includes('↔')?'Mati ↔ Wercia':t};
 /* a card counts once per visit of a screen: the screen is drawn again after every change (new elements), so pending 2-second timers of the old
    elements are cancelled and a card already counted on this screen is not counted again */
 let io=null,pending=new Map();const counted=new Set();
