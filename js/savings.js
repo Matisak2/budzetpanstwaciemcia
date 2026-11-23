@@ -24,8 +24,9 @@ export const nf=(x,d=2)=>(+x||0).toLocaleString('pl-PL',{minimumFractionDigits:d
 export const pn=v=>{const x=pnum(v);return isFinite(x)?x:0};
 /* value adjustment that makes the account balance show its instruments at today's value */
 function instDiff(a,hold){const all=Object.entries(hold||S.hold).filter(([,x])=>x.acc==a.id),L=all.filter(([,x])=>!x.deleted).map(([id,x])=>({id,...x}));
-  /* the last instrument of the account deleted: its valuation leaves the balance too (it used to stay there for good) */
-  if(!L.length&&all.length){let v=0;for(const t of liveOf(S.tx))if(t.acc===a.id&&t.type=='adj'&&t.val&&!t.int)v+=t.amount;return v?-v:null}
+  /* the last instrument of the account deleted: its valuation leaves the balance too (it used to stay there for good) – only the valuations
+     made by instruments („Wycena instrumentów…”, the automat), never a value typed by hand („Zmiana wartości”) – audyt 24.11 */
+  if(!L.length&&all.length){let v=0;for(const t of liveOf(S.tx))if(t.acc===a.id&&t.type=='adj'&&t.val&&!t.int&&(t.auto||/^Wycena instrumentów/.test(t.note||'')))v+=t.amount;return v?-v:null}
   return instDiffP(a,L,liveOf(S.tx),td(),macro(),mkt())}
 function addVal(a,d,note){if(!d)return null;const ym=td().slice(0,7),id='t'+rid();putTx(ym,id,{type:'adj',val:true,amount:d,date:td(),sub:'',acc:a.id,to:'',who:S.who,note,deleted:false,ts:Date.now()});return[ym,id]}
 /* bonds and deposits that end soon */
@@ -155,9 +156,9 @@ export function saveValues(){if(guard())return;if(document.activeElement)documen
   q('[data-if]').forEach(el=>{if(!el.value.trim())return;const id=el.dataset.if,x=pn(el.value);if(x>0){hold[id].fxNow=x;ch.add(id)}});
   ch.forEach(id=>{const it=hold[id];it.priceDate=today;merge(doc(HOLD(),id),{price:it.price,fxNow:it.fxNow||1,priceDate:today,hist:{[today]:{p:it.price,fx:it.fxNow||1}}})});
   const undo=[];let n=0;
-  S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived).forEach(a=>{let d=null;const el=document.querySelector(`[data-av="${a.id}"]`);
-    if(el&&el.value.trim())d=gr(el.value)-balance(S.cfg,liveOf(S.tx),a.id,addDays(today,1));else d=instDiff(a,hold);
-    if(d){undo.push(addVal(a,d,el?'Zmiana wartości':'Wycena instrumentów'));n++}});
+  S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived).forEach(a=>{let d=null;const el=document.querySelector(`[data-av="${a.id}"]`),typed=!!el?.value.trim();
+    if(typed)d=gr(el.value)-balance(S.cfg,liveOf(S.tx),a.id,addDays(today,1));else d=instDiff(a,hold);
+    if(d){undo.push(addVal(a,d,typed?'Zmiana wartości':'Wycena instrumentów'));n++}});
   S.values=false;render();toast(n?`Zapisano wartości ${n} ${plu(n,'konta','kont','kont')}`:'Nic się nie zmieniło',n?'':'',n?{label:'Cofnij',fn:()=>undo.forEach(u=>putTx(u[0],u[1],{deleted:true}))}:null)}
 /* IKE / IKZE / OKI: payments this year against the limit */
 export function autoValH(){const r=mkt();if(!r?.date)return'';const L=S.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived&&instsOf(a.id).length).map(a=>({a,d:instDiff(a)})).filter(x=>x.d);

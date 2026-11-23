@@ -145,6 +145,20 @@ await step('Czy starczy – osoba zostaje rozwinięta',async()=>E(async()=>{goTa
   const d=document.querySelector('#pbud details.pbr');if(!d)return 'brak osoby';d.open=true;await new Promise(r=>setTimeout(r,80));render();await new Promise(r=>setTimeout(r,80));
   return document.querySelector('#pbud details.pbr')?.open===true||'osoba zwinęła się po przerysowaniu'}));
 
+/* 📈 konto inwestycyjne po usunięciu ostatniego instrumentu: wycena instrumentów schodzi raz, a wartość wpisana ręcznie zostaje
+   przy kolejnym „Zapisz wszystko” z pustym polem (audyt 24.11 – wcześniej znikała za każdym razem) */
+await step('Wycena po usunięciu instrumentów',async()=>E(async()=>{const wait=ms=>new Promise(r=>setTimeout(r,ms));goTab('sav');await wait(150);
+  const ids=Object.entries(S.hold).filter(([,x])=>!x.deleted);const a=S.cfg.accs.find(a=>a.grp=='inv'&&!a.archived&&ids.some(([,x])=>x.acc==a.id));if(!a)return 'brak konta z instrumentami';
+  const vs=()=>T.L.liveOf(S.tx).filter(t=>t.acc===a.id&&t.type=='adj'&&t.val).reduce((s,t)=>s+t.amount,0);
+  saveInstVal(a.id);await wait(400);const v0=vs();if(!v0)return 'brak wyceny instrumentów';
+  const C=await import('/js/core.js'),F=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
+  for(const[id,x]of ids)if(x.acc==a.id)C.merge(F.doc(C.HOLD(),id),{deleted:true});await wait(500);
+  openValues();await wait(150);saveValues();await wait(500);if(vs()!==0)return 'wycena instrumentów nie zeszła: '+vs();
+  openValues();await wait(150);const el=document.querySelector(`[data-av="${a.id}"]`);if(!el)return 'brak pola wartości';
+  const b=T.bal(a.id);el.value='1 000';saveValues();await wait(500);const v1=vs();
+  openValues();await wait(150);saveValues();await wait(500);
+  return vs()===v1&&T.bal(a.id)===100000||`ręczna wartość zmieniona: ${v1} → ${vs()}, saldo ${b} → ${T.bal(a.id)}`}));
+
 /* no JS errors on the way; the whole store is still valid for the real SDK (the demo stand-in throws like the SDK) */
 await ctx.close();await browser.close();srv.close();
 console.log(fails.length?`\n❌ Zapis wpisów: ${fails.length} problem(ów) w ${n} scenariuszach.`:`✅ Zapis i usuwanie wpisów działa (${n} scenariuszy).`);
