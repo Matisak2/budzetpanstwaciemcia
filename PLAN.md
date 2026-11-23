@@ -167,6 +167,7 @@ Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przycisk
 
 ## Później
 Kopia zapasowa na domowy NAS (5–10 TB) – Mati odezwie się, gdy kupi sprzęt.
+Następny audyt (np. za pół roku): w nowym oknie „Zrób audyt według `PROMPT-audyt.md`” – zacznie od raportu `reports/audyt/`, przeniesie tylko sprawy otwarte (w tym listę na styczeń 2027, jeśli jeszcze niezrobiona), doda nowe znaleziska w nowym katalogu `reports/audyt-RRRR-MM-DD/`, a stary raport na końcu usunie (Mati 23.11).
 
 # Część 8 – 🧭 Doradca inwestycyjny (plan zaakceptowany 14.11.2026)
 **Nowe okno: najpierw przeczytaj `DORADCA-START.md`.** Pełny plan: `DORADCA-plan.md` (punkt 0 = decyzje Matiego, nadrzędne). Wiedza: `DORADCA-notatki.md`.
