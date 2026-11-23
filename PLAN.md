@@ -240,3 +240,8 @@ Decyzje Matiego: szybsze dodawanie wydatku i „Pomiń resztę” w zamknięciu 
 - [x] 👥 „Czy starczy?” na dole Budżetu jako zwinięta zakładka w stylu karty kategorii (pastel, ▸, pigułka, kwoty w kolumnach) z jednym zdaniem (✅ wszystkim starczy + ile zostanie / 🟡 na styk / ⚠️ komu zabraknie); po stuknięciu szczegóły jak wcześniej, otwarte zostają po przerysowaniu (`S.infoOpen.pbudw`), „Pokaż” z Na dziś otwiera ją sama
 - [x] 🔔 Na dziś: rady o planie, „Czy starczy?”, Doradcy i wycenie nieruchomości zwinięte w „💡 Podpowiedzi” na dole, bez liczby na dzwonku (ostrzeżenia „nie starczy na rachunek” i koniec umowy zostają na górze)
 - [x] 👆 Większe pole stuknięcia (ok. 44 px, bez zmiany wyglądu): ✓ przy opłatach, + / − przy kwocie, „Płaci”, „ⓘ”, rozwijane napisy (Termometr, Lista funduszy); sprawdzone, że nie zasłaniają sąsiednich przycisków
+
+## Etap E. Nowe funkcje – wybór Matiego (23.11.2026: „zrób 2 i 3”)
+- [–] Liczba „Na dziś” na ikonie aplikacji – na razie nie (Mati)
+- [x] 💾 Trwałe przechowywanie: przy starcie `navigator.storage.persist()`, wynik w ⚙️ → Bezpieczeństwo → Diagnostyka („pamięć telefonu: trwała ✓ / zwykła”, `S.persist`)
+- [x] 📲 Instrukcja „Dodaj wydatek” jednym stuknięciem: skrót w aplikacji Skróty (`#go=add`) jako widżet na ekranie głównym / blokady – ⚙️ → 🤖 Automaty → 🗣️ Siri i skróty → „📲 Przycisk na ekranie” (`widgetHelp` w `salary.js`); robot sprawdza na prawdziwej stronie

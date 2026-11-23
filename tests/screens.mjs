@@ -291,7 +291,10 @@ for(const [tag,user] of [['prawdziwa strona – logowanie',null],['prawdziwa str
   /* 🔒 the login gets its person once: „To ja – Mati” → locked, ⚙️ shows „Zalogowano jako”, the switch does nothing */
   if(user){await p.evaluate(()=>{window.askWhoLock('Mati')});await p.waitForTimeout(300);await p.click('#dlg button:has-text("To ja")').catch(()=>{});await p.waitForTimeout(300);
     const ok=await p.evaluate(()=>{goTab('set');setPage('tel');const t=document.getElementById('app').innerText;window.setWho('Wercia');return S.whoLock&&S.who=='Mati'&&/Zalogowano jako/.test(t)});
-    if(!ok)fail(`${tag}: przypisanie osoby do loginu nie działa`)}
+    if(!ok)fail(`${tag}: przypisanie osoby do loginu nie działa`)
+    /* 📲 the widget instructions (Automaty) and 💾 the phone's storage in Diagnostyka – only in the real app */
+    const ex=await p.evaluate(()=>{setPage('auto');const a=document.getElementById('app').innerText;window.widgetHelp();const d=document.getElementById('dlg').innerText;document.getElementById('dlg').hidden=true;setPage('bez');const b=document.getElementById('app').innerText;return{btn:/Przycisk na ekranie/.test(a),dlg:/Dodaj widżet/.test(d)&&/#go=add/.test(d),diag:/pamięć telefonu/.test(b)}});
+    if(!ex.btn||!ex.dlg)fail(`${tag}: brak instrukcji przycisku „Dodaj wydatek” na ekranie`);if(!ex.diag)fail(`${tag}: Diagnostyka nie pokazuje pamięci telefonu`)}
   await p.screenshot({path:path.join(OUT,`${tag.replace(/\W+/g,'-')}.png`),fullPage:true});await ctx.close()}
 
 await browser.close();srv.close();
