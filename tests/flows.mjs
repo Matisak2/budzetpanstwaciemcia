@@ -139,6 +139,12 @@ await step('Wczytanie kopii ze starej wersji aplikacji dwa razy',async()=>{const
   await file('stara.json',o,false);await ok();await wait(500);
   return await E(()=>S.tx.filter(t=>t.id==='imp_7').length===1&&S.cfg.accs.filter(x=>x.name=='Stare konto robota').length===1)||'drugie wczytanie zdublowało'});
 
+/* 👥 „Czy starczy?”: rozwinięta karta i rozwinięta osoba zostają otwarte po przerysowaniu (np. zapis z drugiego telefonu) – audyt 24.11 */
+await step('Czy starczy – osoba zostaje rozwinięta',async()=>E(async()=>{goTab('dash');await new Promise(r=>setTimeout(r,200));
+  const w=document.querySelector('#pbud details.pbw');if(!w)return 'brak karty';w.open=true;await new Promise(r=>setTimeout(r,80));
+  const d=document.querySelector('#pbud details.pbr');if(!d)return 'brak osoby';d.open=true;await new Promise(r=>setTimeout(r,80));render();await new Promise(r=>setTimeout(r,80));
+  return document.querySelector('#pbud details.pbr')?.open===true||'osoba zwinęła się po przerysowaniu'}));
+
 /* no JS errors on the way; the whole store is still valid for the real SDK (the demo stand-in throws like the SDK) */
 await ctx.close();await browser.close();srv.close();
 console.log(fails.length?`\n❌ Zapis wpisów: ${fails.length} problem(ów) w ${n} scenariuszach.`:`✅ Zapis i usuwanie wpisów działa (${n} scenariuszy).`);

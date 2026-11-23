@@ -596,7 +596,7 @@ export function pbudH(ym,rowsOnly){const R=pbudOf(ym);if(!R.some(r=>r.out||r.sta
     return h};
   const rows=R.map(r=>{const In=r.L.filter(x=>x.dir=='inc'&&x.a>=50),Out=r.L.filter(x=>x.dir=='out'&&x.a>=50),St=r.L.find(x=>x.dir=='start'),bad=pbudBad(r),st=pbudSt(r),dip=r.lowDate&&r.low<r.left-10000;
     const ln=x=>`<div class="r1"><span>${esc(x.txt)}${x.est?` <span class="mini">(${esc(x.est)})</span>`:''}</span><b class="num">${x.dir=='start'?'':x.dir=='inc'?'+':'−'}${zl0(x.a)}</b></div>`;
-    return`<details class="pbr" style="--oc:${OWN_COL[r.who]}"><summary><span class="pbn">${esc(r.who)}</span><b class="num ${st.c}">${sg(r.left)} ${st.i}</b>
+    return`<details class="pbr"${S.infoOpen?.['pbr'+r.who]?' open':''} ontoggle="infoTog('pbr${r.who}',this.open)" style="--oc:${OWN_COL[r.who]}"><summary><span class="pbn">${esc(r.who)}</span><b class="num ${st.c}">${sg(r.left)} ${st.i}</b>
       <span class="mini pbs">${live&&r.mine?.plan?`z planu wydane ${zl0(r.mine.spent)} z ${zl0(r.mine.plan)} · `:''}${live?'teraz':'na start ok.'} ${zl0(r.start)} · wpłynie ${zl0(r.inc)} · wyjdzie ${zl0(r.out)}${dip?` · <b class="${r.low<0?'t-exp':r.low<PBUD_TIGHT?'t-tight':''}">najmniej ${sg(r.low)} ok. ${dmy(r.lowDate).slice(0,5)}</b>`:''}</span></summary>
       <div class="pbl">${St?ln(St):''}<div class="mini pbh">${live?'Jeszcze wpłynie':'Wpłynie'}</div>${In.length?In.map(ln).join(''):`<div class="mini">nic${r.who=='Wspólne'&&!(S.cfg.fixed||[]).some(f=>f.kind=='tr'&&ownerOf(accById0(f.to))=='Wspólne')?' – dodaj stałe przelewy na wspólne konto w 📌 Stałe':''}</div>`}
       ${Out.length?`<div class="mini pbh">${live?'Jeszcze wyjdzie':'Wyjdzie'}</div>${Out.map(ln).join('')}`:''}
