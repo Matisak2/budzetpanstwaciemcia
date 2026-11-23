@@ -9,7 +9,7 @@ Automatyczne wznowienia ustawione (Mati): 24.11 o 3:51 i 8:52.
 - [ ] 2 – Przegląd kodu → `02-kod.md`
 - [x] 3 – Pieniądze i przepisy → `03-przepisy.md`
 - [ ] 4 – Dane, bezpieczeństwo → `04-dane-bezpieczenstwo.md`
-- [ ] 5 – Szybkość → `05-szybkosc.md`
+- [x] 5 – Szybkość → `05-szybkosc.md`
 - [ ] 6 – UX → `06-ux.md`
 - [ ] 7 – Testy → `07-testy.md`
 - [ ] 8 – Porównanie → `08-porownanie.md`
