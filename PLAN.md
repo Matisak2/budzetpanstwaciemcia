@@ -208,7 +208,7 @@ Nie robimy: rozliczeń Mati ↔ Wercia (zostają w „Rezygnujemy”); przycisk 
 Każdy etap dopiero na komendę Matiego, po kopii.
 
 ## Etap A. Pilne błędy (Mati: „zrób etap a”, 23.11.2026)
-- [ ] **Mati (2 min):** konsola Firebase → Authentication → Settings → User actions → odznacz „Enable create (sign-up)” → Save
+- [x] Rejestracja nowych kont w Firebase wyłączona (Mati 23.11: „Enable create (sign-up)” było już odznaczone)
 - [x] 📧 Maile tylko na adresy z `users/{uid}` (konta bez dokumentu – tylko liczba w dzienniku), `sendMail` w try/catch (w publicznym dzienniku sam kod błędu)
 - [x] 🔁 Bez dublowania: „Przywróć” / „Cofnij” opłaty stałej odhaczonej w międzyczasie (`fixedDupStop`), ponowny import listy wpisów i starej wersji pomija istniejące id (też usunięte), usuwane konto przepina powiązania dopiero po „Usuń” (`reassignAcc` zwraca funkcję)
 - [x] 📅 „Co 2 lata” z `last` przy dodaniu/zmianie w „Edytuj” (pierwszy termin = najbliższy taki miesiąc, `yearLastFor`); strażnik `ref:yl:` dla starych bez `last`
