@@ -167,7 +167,7 @@ Wczytywanie wyciągów bankowych i historii z XTB, ulubione transakcje, przycisk
 
 ## Później
 Kopia zapasowa na domowy NAS (5–10 TB) – Mati odezwie się, gdy kupi sprzęt.
-Następny audyt (np. za pół roku): w nowym oknie „Zrób audyt według `PROMPT-audyt.md`” – zacznie od raportu `reports/audyt/`, przeniesie tylko sprawy otwarte (w tym listę na styczeń 2027, jeśli jeszcze niezrobiona), doda nowe znaleziska w nowym katalogu `reports/audyt-RRRR-MM-DD/`, a stary raport na końcu usunie (Mati 23.11).
+Następny audyt (np. za pół roku): w nowym oknie „Zrób audyt według `PROMPT-audyt.md`” – zacznie od najnowszego raportu `reports/audyt-2026-11-23/`, przeniesie tylko sprawy otwarte (w tym listę na styczeń 2027, jeśli jeszcze niezrobiona), doda nowe znaleziska w nowym katalogu `reports/audyt-RRRR-MM-DD/`, a stary raport na końcu usunie (Mati 23.11).
 
 # Część 8 – 🧭 Doradca inwestycyjny (plan zaakceptowany 14.11.2026)
 **Nowe okno: najpierw przeczytaj `DORADCA-START.md`.** Pełny plan: `DORADCA-plan.md` (punkt 0 = decyzje Matiego, nadrzędne). Wiedza: `DORADCA-notatki.md`.
@@ -205,7 +205,7 @@ Nie robimy: rozliczeń Mati ↔ Wercia (zostają w „Rezygnujemy”); przycisk 
 - [x] Decyzje Matiego 22.11 („zrób wszystkie”): wyjątek grudniowy IKE w doradcy, termometr w zł, ryczałt 17% → IKZE najpierw, miękkie usuwanie celów (🗑️), kotki rysowane raz (`mountCats`), 10 nowych ekranów w teście robota
 - [x] 🔐 Zasady Firebase (telefony bez dostępu do `secret/`) – zrobione 23.11 drogą A: Mati nadał rolę „Firebase Rules Admin”, `rules.yml` „sprawdz” (39/39 prób) → „publikuj” ✅ (poprzednie zasady zapisane, tryb „cofnij” je przywraca). Opis dróg (dla historii): Droga A: Mati w Google Cloud → IAM nadaje kontu `firebase-adminsdk-…` rolę „Firebase Rules Admin”, potem okno Claude uruchamia `.github/workflows/rules.yml` (`scripts/rules.mjs`): najpierw tryb `sprawdz` (próby dostępu), przy zielonym – `publikuj`, awaryjnie `cofnij`; 22.11 próba skończyła się 403 (brak roli), odczyt zasad działa. Droga B: Mati w konsoli Firebase → Firestore → Rules zamienia blok `match /households/main/{document=**}` na dwa bloki z `firebase/firestore.rules` (adresy zostają) → Publish. Po wszystkim Mati może usunąć rolę.
 
-# Część 9 – po audycie 23.11.2026 (raport `reports/audyt/00-RAPORT.md`, plan A–F)
+# Część 9 – po audycie 23.11.2026 (raport `reports/audyt/00-RAPORT.md` – usunięty, w historii git; otwarte sprawy w `reports/audyt-2026-11-23/00-RAPORT.md`; plan A–F)
 Każdy etap dopiero na komendę Matiego, po kopii.
 
 ## Etap A. Pilne błędy (Mati: „zrób etap a”, 23.11.2026)
@@ -226,7 +226,7 @@ Każdy etap dopiero na komendę Matiego, po kopii.
 - [x] 🛟 Jedna poduszka (`cushionP`) dla karty, doradcy i maila; 📧 mail = aplikacja (sklepy `shopsP`, plan przez `planOf`, opłaty bez zakończonych umów, roczne bez zapłaconych wcześniej); 🏦 wspólne zasady obligacji (`bondMonRate`, `bondFee`, `bondRates` w `bondAfter`); ryczałt najmu jedną funkcją
 - [x] 🟡 Drobne: przyszły miesiąc bez „Zmieściło się”, Mati ↔ Wercia i Wrapped bez projektów spoza budżetu i innych walut, CSV (formuły Excela, kwota w drugiej walucie), „Majątek – teraz” i średnia w podsumowaniu roku, pusty pasek przy ujemnej kwocie; karta Limity z IKE na koncie `sav`, partia z przyszłą datą, wycena po usunięciu ostatniego instrumentu, kaskada przy wypłacie 1. dnia; doradca (brak odpowiedzi q43 = ostrożnie, emerytura po wieku emerytalnym, termometr bez danych, „Gdzie wpłacić” nie zmienia danych, „(do założenia)” w grudniu, nadwyżka ponad piaskownicę); zapis (przeniesienie wpisu jednym `writeBatch`, `posOf` w projektach i przypomnieniach, „Cofnij” usunięcia zobowiązania, „Ta pensja już jest?” tylko dla tej samej osoby, „kto płaci” przy łączeniu pozycji, dwie reguły drobnych przy przenoszeniu konta, tekst przy usuwaniu paska bez wpływu); kwoty „1e3”, „1,2,3”, „Infinity” = 0, bez „-0,00”; czcionka offline (`crossorigin`); „Czego używamy” – brakujące karty
 - [x] 🧹 150 zbędnych `export`, 6 nadpisanych reguł CSS scalonych, `tNumUI` = `tNum`
-- Zostawione świadomie (rzadkie, opis w `reports/audyt/02-kod.md`): przeniesienie IKE→IKE w limicie, `putTx` zawsze `true`, pasek na dwóch telefonach offline (pilnuje strażnik `slip2:`), usunięcie konta używanego tylko przez wpisy w 🗑️ (pilnuje strażnik `acc:`)
+- Zostawione świadomie (rzadkie, opis w `reports/audyt-2026-11-23/00-poprzedni.md`): przeniesienie IKE→IKE w limicie, `putTx` zawsze `true`, pasek na dwóch telefonach offline (pilnuje strażnik `slip2:`), usunięcie konta używanego tylko przez wpisy w 🗑️ (pilnuje strażnik `acc:`)
 
 ## Etap C. Szybkość (Mati: „Zacznij etap c”, 23.11.2026)
 - [x] ⚡ `fitNums` (dopasowanie dużych kwot w kafelkach): jeden odczyt wszystkich kafelków, rozmiar z proporcji, jeden zapis – zamiast układu całej strony przy każdej próbie (wynik identyczny, sprawdzony na dużych kwotach przy A++)
