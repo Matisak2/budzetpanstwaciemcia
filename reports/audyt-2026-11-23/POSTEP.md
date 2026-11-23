@@ -7,7 +7,7 @@ Automatyczne wznowienia ustawione (Mati): 24.11 o 3:51 i 8:52.
 - [x] 0 – Przygotowanie → `00-przygotowanie.md`, rozliczenie → `00-poprzedni.md`
 - [x] 1 – Spis funkcji → `01-funkcje.md`
 - [ ] 2 – Przegląd kodu → `02-kod.md`
-- [ ] 3 – Pieniądze i przepisy → `03-przepisy.md`
+- [x] 3 – Pieniądze i przepisy → `03-przepisy.md`
 - [ ] 4 – Dane, bezpieczeństwo → `04-dane-bezpieczenstwo.md`
 - [ ] 5 – Szybkość → `05-szybkosc.md`
 - [ ] 6 – UX → `06-ux.md`
