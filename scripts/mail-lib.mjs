@@ -42,7 +42,7 @@ export function monthStats(D,ym,today=ym+'-28'){const{cfg,tx}=D,sm=subsMap(cfg),
   const savA=pln.filter(a=>a.grp=='sav'||a.grp=='inv'),sav1=savA.reduce((x,a)=>x+bal(a,end),0),sav0=savA.reduce((x,a)=>x+bal(a,start),0);
   const w1=pln.reduce((x,a)=>x+bal(a,end),0),w0=pln.reduce((x,a)=>x+bal(a,start),0);
   const goals=Object.values(D.goals||{}).filter(g=>g.target>0&&!g.deleted).map(g=>({n:g.name,saved:g.alloc??g.saved??0,target:g.target,o:g.owner||'Wspólne'})).map(g=>({...g,pct:Math.min(100,Math.max(0,g.saved/g.target*100))}));
-  const cushion=cushionP(cfg,tx,D.goals,{ym,at:end}).months; // 🛟 the same cushion as the app (Savings card, advisor)
+  const cushion=cushionP(cfg,tx,D.goals,{ym:addMonths(ym,1),at:end}).months; // 🛟 the same cushion as the app (Savings card, advisor): on the 1st the app averages the 6 months up to the summarised one
   const owe=Object.entries(D.debts||{}).filter(([,d])=>!d.deleted&&d.dir=='owe').reduce((a,[id,d])=>a+debtStateP({id,...d},tx,today).left,0);
   /* the new month: fixed payments, yearly expenses due, the plan if there is one */
   /* as in the app: fixed payments still running then (until), yearly expenses not paid early (yearPlanOf), the plan with them (planOf) */

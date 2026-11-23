@@ -505,6 +505,7 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
   eq('Mail: kategoria z porównaniem',[st.cats[0].n,st.cats[0].prev,st.cats[0].a3,st.cats[0].ya],['Jedzenie',150000,150000,100000]);
   eq('Mail: Mati ↔ Wercia według konta',st.persons.map(p=>p.exp),[260000,300000,0]);
   eq('Mail: sklepy z notatek (bez opłat stałych)',st.shops.map(x=>[x.n,x.v]),[['Biedronka',300000],['Lidl',60000]]);
+  eq('Mail: poduszka = aplikacja 1. dnia następnego miesiąca (średnia z miesięcy do podsumowanego włącznie, audyt 24.11)',st.cushion,cushionP(cfg,tx,{},{ym:'2026-11',at:'2026-11-01'}).months);
   eq('Mail: wnioski na górze',st.notes.length>=3&&/wyższe niż średnio/.test(st.notes[0]),true);
   const h=summaryHtml(st);eq('Mail: części maila',['Na tle innych miesięcy','Plan a rzeczywistość','Na co poszło','Gdzie wydajecie','Mati ↔ Wercia','Oszczędności i majątek','Na nowy miesiąc','rok temu','1 pozycja przekroczyła'].map(x=>h.includes(x)),Array(9).fill(true));
   eq('Mail: wersja tekstowa',/Rok temu: wydatki 1\s000\szł/.test(summaryText(st)),true);
