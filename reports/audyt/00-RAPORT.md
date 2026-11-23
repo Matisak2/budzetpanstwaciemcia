@@ -118,7 +118,11 @@ Wysiłek: S = godzina, M = dzień, L = kilka dni. Korzyść: ★ mała · ★★
 | Testy | `checksP`, `marketQuote`/`holdAt`/`instDiffP`, daty wypłat, import starych formatów, głębsze `restore.mjs` | 🟡 | S każde | ★★ | B |
 | Testy | `screens.mjs` równolegle (4 min → ok. 1,5 min) | 💡 | S | ★★ | B |
 | Dane | kwartalne przypomnienie o kopii ze zdjęciami paragonów | 💡 | S | ★ | E |
-| Nowe | patrz `08-porownanie.md` (import CSV z banku, reguły kategorii, widżet przez Skróty) | 💡 | – | – | E (decyzje) |
+| Nowe | liczba spraw „Na dziś” na ikonie aplikacji (z porannego powiadomienia, iOS 16.4+) | 💡 | S | ★★ | E |
+| Nowe | `navigator.storage.persist()` przy starcie (chroni niewysłane wpisy offline), wynik w Diagnostyce | 💡 | S | ★★ | E |
+| Nowe | instrukcja w Pomocy: skrót „＋ wydatek” jako widżet Skrótów na ekranie głównym / blokady | 💡 | S | ★★ | E |
+| Nowe | połączenie z bankiem (Enable Banking przez GitHub Actions) / import CSV z banku | 💡 | L | ★ | **nie robić** – zostaje „Rezygnujemy” (`08-porownanie.md`) |
+| Nowe | reguły kategoryzacji ustawiane samemu | 💡 | M | ★ | nie teraz (bez importu z banku mało dają) |
 | AI | komentarz kotków w mailu (GitHub Actions) | 💡 | S–M | ★ | F – może później |
 
 ## 5. Plan wdrożenia (w stylu PLAN.md – do akceptacji, **nie wpisany do PLAN.md**)
