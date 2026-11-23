@@ -44,8 +44,14 @@ Każda poprawka: kilka linijek, osobny commit, test robota, który łapie błąd
 - **Zmiana:** dopisana jako „Mój plan” (obie nazwy = jedna karta).
 - **Commit:** `5b6a98c` (v111).
 
+## 8. Przewodnik obiecywał skróty po przytrzymaniu ikony na iPhonie
+- **Było:** `js/guide.js:252` (HELP „Siri i skróty”): „Przytrzymanie ikony aplikacji na ekranie telefonu też pokazuje skróty (Nowy wydatek, Na dziś)”. Safari na iOS nie obsługuje `shortcuts` z manifestu (caniuse / MDN: brak w iOS do 26.6 i 27.0; działa na Macu od Safari 17.4 i na Androidzie) – na Waszych iPhone'ach to nie działa.
+- **Zmiana:** tekst mówi, że skróty z przytrzymania są na Androidzie i Macu, a na iPhonie służy do tego „📲 Przycisk na ekranie”. Wpis `shortcuts` w `manifest.json` zostaje (nie szkodzi).
+- **Commit:** `621c303` (v112).
+
 ## Wysyłki
 | Wersja | Poprawki |
 |---|---|
 | v110 | 1, 2, 3, 4 |
 | v111 | 5, 6, 7 |
+| v112 | 8 |
