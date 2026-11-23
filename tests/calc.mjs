@@ -677,6 +677,7 @@ eq('Kwota „1.234,56”',pg('1.234,56'),123456);eq('Kwota „1 234,56 zł”',p
 { // horyzont > 20 lat (bez limitu), spadek 25% → akcje 2 × 25 = 50%, reakcja „nic” → bez limitu; złoto 10%, suchy proch 5% → obligacje 35%
   eq('Plan: akcje = najniższa granica, reszta obligacje',planP({q42:'gt20',q44:'0.25',q43:'none',q54:'10',q58:'5'}).g,{stock:50,gold:10,cash:5,bond:35});
   // horyzont 5–10 lat → 40%; spadek 40% → 80%; „sprzedaję część” → 40% → akcje 40%; złoto „nie wiem” → ostrożnie 5%
+  eq('Plan: „dlaczego” podaje reakcję na spadek (audyt 24.11 – linijka była w komentarzu)',planP({q42:'10-20',q44:'0.5',q43:'all'}).why.some(w=>/reakcja na spadek → akcje do 20%/.test(w)),true);
   eq('Plan: horyzont 5–10 lat i reakcja na spadek',planP({q42:'5-10',q44:'0.4',q43:'part',q54:'?'}).g,{stock:40,gold:5,cash:0,bond:55});
   eq('Plan: krótki horyzont = bez akcji; same „nie wiem” = 30% akcji',[planP({q42:'3-5',q44:'0.4'}).g.stock,planP({}).g.stock,planP({q42:'gt20',q44:'0.1'}).g.stock],[0,30,20]);
   /* „Nie wiem” (?) w pytaniach liczbowych = jak bez odpowiedzi, nigdy NaN (audyt 23.11) */
