@@ -237,6 +237,6 @@ Każdy etap dopiero na komendę Matiego, po kopii.
 
 ## Etap D. Mniej na wierzchu (Mati: „do dzieła”, 23.11.2026)
 Decyzje Matiego: szybsze dodawanie wydatku i „Pomiń resztę” w zamknięciu – nie robimy; Projekty zostają na Budżecie; VoiceOver – nie robimy; chowanie części Doradcy i połączenie Wrapped z Podsumowaniem roku – może później, po danych z „Czego używamy”.
-- [x] 👥 „Czy starczy?” na dole Budżetu jako zwinięta zakładka z jednym zdaniem (✅ wszystkim starczy + ile zostanie / 🟡 na styk / ⚠️ komu zabraknie); po stuknięciu szczegóły jak wcześniej, otwarte zostają po przerysowaniu (`S.infoOpen.pbudw`), „Pokaż” z Na dziś otwiera ją sama
+- [x] 👥 „Czy starczy?” na dole Budżetu jako zwinięta zakładka w stylu karty kategorii (pastel, ▸, pigułka, kwoty w kolumnach) z jednym zdaniem (✅ wszystkim starczy + ile zostanie / 🟡 na styk / ⚠️ komu zabraknie); po stuknięciu szczegóły jak wcześniej, otwarte zostają po przerysowaniu (`S.infoOpen.pbudw`), „Pokaż” z Na dziś otwiera ją sama
 - [x] 🔔 Na dziś: rady o planie, „Czy starczy?”, Doradcy i wycenie nieruchomości zwinięte w „💡 Podpowiedzi” na dole, bez liczby na dzwonku (ostrzeżenia „nie starczy na rachunek” i koniec umowy zostają na górze)
 - [x] 👆 Większe pole stuknięcia (ok. 44 px, bez zmiany wyglądu): ✓ przy opłatach, + / − przy kwocie, „Płaci”, „ⓘ”, rozwijane napisy (Termometr, Lista funduszy); sprawdzone, że nie zasłaniają sąsiednich przycisków
