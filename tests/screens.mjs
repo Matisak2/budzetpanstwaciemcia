@@ -66,7 +66,8 @@ const SCREENS=[['budzet',"goTab('dash')"],['rejestr',"goTab('tx')"],['rejestr-fi
 const CASES=[{w:390,size:'0',role:'Wercia'},{w:360,size:'2',role:'Mati'},{w:320,size:'0',role:'Mati'},{w:390,size:'1',role:'Wercia'}];
 
 const MID=(d=>new Date(d.getFullYear(),d.getMonth(),15,12))(new Date());
-for(const C of CASES){
+/* the 4 phone settings run at the same time (separate browser contexts) – 4 min → about 1 min (audyt 23.11); every message starts with its tag */
+await Promise.all(CASES.map(async C=>{
   const tag=`${C.w}px-A${['','+','++'][C.size]}-${C.role}`;
   const ctx=await browser.newContext({viewport:{width:C.w,height:800},deviceScaleFactor:1,locale:'pl-PL',timezoneId:'Europe/Warsaw'});
   const p=await ctx.newPage();
@@ -264,7 +265,7 @@ for(const C of CASES){
     else{await p.click('#dlg button:has-text("Nie zapisuj")');await p.waitForTimeout(400);if(await p.evaluate(()=>S.tx.length)!==n0)fail(`${tag}: „Nie zapisuj” mimo to zapisało pensję`)}
   }catch(e){fail(`${tag}: test paska z netto – ${e.message.split('\n')[0]}`)}}
   await ctx.close();
-}
+}));
 /* 3. the real start page (index.html, not the demo): Firebase replaced by small stand-ins with no data –
    a) nobody logged in → the login screen, b) logged in to an empty household → the app starts with the default budget */
 const FB={

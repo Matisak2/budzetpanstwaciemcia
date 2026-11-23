@@ -38,13 +38,20 @@ await p.waitForFunction(()=>!document.getElementById('dlg').hidden&&/Wczytać ko
 await p.click('#dlg button:has-text("Wczytaj")');
 const want=B.tx.filter(t=>/^\d{4}-\d\d-\d\d$/.test(t.date||'')).length;
 await p.waitForFunction(n=>S.tx.length>=n,want,{timeout:120000}).catch(()=>{});await p.waitForTimeout(1500);
-const R=await p.evaluate(async B=>{const{balance,BACKUP_KEYS}=await import('/js/logic.js');const isD=d=>/^\d{4}-\d\d-\d\d$/.test(d||'');
+const R=await p.evaluate(async B=>{const{balance,liveOf,BACKUP_KEYS}=await import('/js/logic.js');const isD=d=>/^\d{4}-\d\d-\d\d$/.test(d||'');
+  /* deep: every field of every entry and of every setting item (keys sorted; empty values and the order number `o` do not count) */
+  const J=x=>JSON.stringify(x,(k,v)=>v&&typeof v=='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).filter(([k,x])=>k!='o'&&x!==undefined&&x!==null&&x!=='').sort(([a],[b])=>a<b?-1:1)):v);
   const bt=B.tx.filter(t=>isD(t.date)),byId=new Map(S.tx.map(t=>[t.id,t]));let miss=0,diff=0;
-  for(const t of bt){const x=byId.get(t.id);if(!x)miss++;else if(x.amount!==t.amount||!!x.deleted!==!!t.deleted||x.date!==t.date||(x.acc||'')!==(t.acc||''))diff++}
+  for(const t of bt){const x=byId.get(t.id);if(!x)miss++;else if(J(x)!==J(t))diff++}
+  const deep={};const cmp=(k,a,b)=>{const ia=new Map((a||[]).map(x=>[x.id,x]));let d=0;for(const x of b||[])if(!ia.has(x.id)||J(ia.get(x.id))!==J(x))d++;if(d||(a||[]).length!==(b||[]).length)deep[k]=d||'liczba'};
+  for(const k of ['accs','cats','fixed','round','incs','years','projs','rems'])cmp('cfg.'+k,B.cfg[k],S.cfg[k]);
+  const map=(k,a,b)=>{let d=0;for(const[id,v]of Object.entries(a||{}))if(J(v)!==J((b||{})[id]))d++;if(d)deep[k]=d};
+  map('plans',B.plans,S.plans);map('slips',B.slips,S.slips);map('debts',B.debts,S.debts);map('hold',B.hold,S.hold);
+  map('goals',Object.fromEntries(Object.entries(B.goals||{}).filter(([,g])=>!g.deleted)),S.goals);
   const n=o=>Object.keys(o||{}).length,live=o=>Object.values(o||{}).filter(x=>!x.deleted).length,subs=c=>c.cats.reduce((a,k)=>a+k.subs.length,0);
-  const bTx=bt.map(t=>({...t}));let bal=0;for(const a of B.cfg.accs)if(balance(B.cfg,bTx,a.id,'9999-99-99')!==balance(S.cfg,S.tx,a.id,'9999-99-99'))bal++;
+  const bTx=liveOf(bt.map(t=>({...t}))),sTx=liveOf(S.tx);let bal=0;for(const a of B.cfg.accs)if(balance(B.cfg,bTx,a.id,'9999-99-99')!==balance(S.cfg,sTx,a.id,'9999-99-99'))bal++;
   return{tx:bt.length,txApp:S.tx.length,miss,diff,acc:[B.cfg.accs.length,S.cfg.accs.length],subs:[subs(B.cfg),subs(S.cfg)],fixed:[(B.cfg.fixed||[]).length,(S.cfg.fixed||[]).length],
-    plans:[n(B.plans),n(S.plans)],slips:[n(B.slips),n(S.slips)],debts:[live(B.debts),live(S.debts)],hold:[live(B.hold),live(S.hold)],goals:[live(B.goals),n(S.goals)],bal,accN:B.cfg.accs.length,
+    plans:[n(B.plans),n(S.plans)],slips:[n(B.slips),n(S.slips)],debts:[live(B.debts),live(S.debts)],hold:[live(B.hold),live(S.hold)],goals:[live(B.goals),n(S.goals)],bal,deep,accN:B.cfg.accs.length,
     /* settings beside the maps: every one in the file must come back (old files without them – nothing to compare) */
     set:[...BACKUP_KEYS.filter(k=>{const v=B[k];if(!v||(typeof v=='object'&&!Object.keys(v).length))return false;
       const x=S.hraw?.[k];return typeof v=='object'?Object.keys(v).some(i=>JSON.stringify(v[i])!==JSON.stringify(x?.[i])):v!==x}),...((B.savTarget||0)!==(S.savTarget||0)?['savTarget']:[])],
@@ -52,7 +59,8 @@ const R=await p.evaluate(async B=>{const{balance,BACKUP_KEYS}=await import('/js/
 await ctx.close();await browser.close();srv.close();
 
 const pairs=['acc','subs','fixed','plans','slips','debts','hold','goals'].filter(k=>R[k][0]!==R[k][1]);
-const ok=!R.miss&&!R.diff&&R.txApp===R.tx&&!pairs.length&&!R.bal&&!R.set.length&&!jsErr;
+const dp=Object.entries(R.deep).map(([k,v])=>`${k} (${v})`);
+const ok=!R.miss&&!R.diff&&R.txApp===R.tx&&!pairs.length&&!dp.length&&!R.bal&&!R.set.length&&!jsErr;
 console.log(`${ok?'✅':'❌'} Kopia: wpisy ${R.txApp} z ${R.tx}${R.miss?`, brakuje ${R.miss}`:''}${R.diff?`, różni się ${R.diff}`:''} · salda ${R.accN-R.bal} z ${R.accN} kont zgodne · konta ${R.acc[1]}/${R.acc[0]} · pozycje ${R.subs[1]}/${R.subs[0]} · plany ${R.plans[1]}/${R.plans[0]} · paski ${R.slips[1]}/${R.slips[0]} · zobowiązania ${R.debts[1]}/${R.debts[0]} · instrumenty ${R.hold[1]}/${R.hold[0]} · cele ${R.goals[1]}/${R.goals[0]} · ustawienia ${R.setN-R.set.length}/${R.setN}${jsErr?` · błędy JavaScript: ${jsErr}`:''}`);
-if(pairs.length||R.set.length)console.log('❌ Nie zgadza się: '+[...pairs,...R.set].join(', '));
+if(pairs.length||R.set.length||dp.length)console.log('❌ Nie zgadza się: '+[...pairs,...R.set,...dp].join(', '));
 process.exit(ok?0:1);

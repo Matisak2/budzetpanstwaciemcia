@@ -4,15 +4,16 @@
 import webpush from 'web-push';
 import {db,ensureVapid,household,warsaw} from './common.mjs';
 import {todayItems,todayRank,typedToday} from '../js/today.js';
+import {pushSlot} from './when-lib.mjs';
 const H=db().doc('households/main'),{today,hour,weekday}=warsaw(),mode=process.env.MODE||'auto';
 const keys=await ensureVapid(H);
 webpush.setVapidDetails('https://matisak2.github.io/budzetpanstwaciemcia/',keys.pub,keys.priv);
 const subs=(await H.collection('push').get()).docs.filter(d=>d.data().on!==false&&d.data().sub?.endpoint);
 if(!subs.length){console.log('– brak telefonów z włączonymi powiadomieniami');process.exit(0)}
 const logRef=H.collection('market').doc('pushlog'),log=(await logRef.get()).data()||{};
-const slot=mode=='test'?'test':hour>=7&&hour<11?'m':hour>=20&&hour<23?'e':null;
+const slot=pushSlot({hour,today,mode,log});
 if(!slot){console.log('– to nie pora na powiadomienia');process.exit(0)}
-if(slot!='test'&&log[slot]==today){console.log('– dziś już wysłane');process.exit(0)}
+if(slot=='sent'){console.log('– dziś już wysłane');process.exit(0)}
 const D=await household(H);
 const msgFor=who=>{
   if(slot=='test')return{title:'🔔 Próba powiadomień',body:'Działa! Bailey i Ivo będą przypominać rano i wieczorem. 🐾',url:'./#go=today',tag:'test'};

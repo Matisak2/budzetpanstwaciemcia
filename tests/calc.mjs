@@ -1,14 +1,16 @@
 /* 🤖 Robot: czy obliczenia pieniędzy dalej dają dobre wyniki. Oczekiwane liczby policzone niezależnie (ręcznie / kalkulatorem), nie skopiowane z kodu.
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
-import {penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
-import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
+import {marketQuote,holdAt,instDiffP,intOf,intRate,penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
+import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,payDateP,closeWinP,closeYmP,salaryTxP,maturitiesP,pitSummaryP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
+import {BACKUP_KEYS,yearPlanOf,avgActuals,anomalies,yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
-import {pg,pnum,zl,zl0,fmtN,priv,money,addDays} from '../js/util.js';
+import {pg,pnum,zl,zl0,fmtN,priv,money,addDays,addMonths,daysIn,plDay} from '../js/util.js';
+import fs from 'node:fs';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
+import {pushSlot,mailPlan} from '../scripts/when-lib.mjs';
 import {dropJumps,keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
 import {allocP,clsOf,etfOf,etfCur,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP,sandP,sandCheckP,wishHitP} from '../js/advisor.js';
 
@@ -809,5 +811,112 @@ eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWD
   eq('Wyjątek grudniowy: poduszka najpierw na IKE (limit przepada), reszta na konto',R.rows.slice(0,2).map(r=>[r.kind,r.a]),[['ike',300000],['pod',200000]]);
   const L=whereP({amt:1000000,src:'surplus',goal:'plan'},[{who:'Mati',t:'12',ike:{left:300000,has:true},ikze:{left:0}}],{podGap:500000,today:'2026-11-05'});
   eq('Poza grudniem poduszka zostaje na koncie',L.rows[0].kind,'pod');}
+/* ---------- Etap B (audyt 23.11): luki z raportu 07-testy.md ---------- */
+/* 📅 podstawy dat: miesiące przez koniec roku, luty w latach przestępnych, dzień w czasie polskim (zmiana czasu), addDays przez zmianę czasu */
+{ eq('addMonths przez koniec roku',[addMonths('2026-12',1),addMonths('2026-01',-1),addMonths('2026-03',-14),addMonths('2026-11',25)],['2027-01','2025-12','2025-01','2028-12']);
+  eq('daysIn – luty',[daysIn('2028-02'),daysIn('2026-02'),daysIn('2100-02'),daysIn('2000-02'),daysIn('2026-12')],[29,28,28,29,31]);
+  // 28.03.2026 23:30 UTC = 29.03 00:30 w Polsce (jeszcze czas zimowy, +1); 24.10.2026 22:30 UTC = 25.10 00:30 (czas letni, +2); 1.07 21:59:59 UTC = 23:59:59 tego dnia
+  eq('plDay – dzień w czasie polskim',[plDay(Date.UTC(2026,2,28,23,30)),plDay(Date.UTC(2026,9,24,22,30)),plDay(Date.UTC(2026,6,1,21,59,59))],['2026-03-29','2026-10-25','2026-07-01']);
+  const tz=process.env.TZ;process.env.TZ='Europe/Warsaw';
+  eq('addDays przez zmianę czasu (telefon w Polsce)',[addDays('2026-03-28',1),addDays('2026-03-29',1),addDays('2026-10-25',-1),addDays('2026-10-24',2),addDays('2026-12-31',1)],['2026-03-29','2026-03-30','2026-10-24','2026-10-26','2027-01-01']);
+  if(tz===undefined)delete process.env.TZ;else process.env.TZ=tz}
+
+/* 💼 dzień wypłaty: weekend → piątek, koniec miesiąca, wypłata z 1. przesunięta na 31., 31. w lutym, zmiana roku; okno zamknięcia */
+{ const src={id:'s1',who:'Mati',kind:'uop'},cfg={incs:[src],accs:[{id:'a1',grp:'cur',owner:'Mati'}]};
+  const sal=(...d)=>d.map((x,i)=>({id:'w'+i+x,type:'inc',slip:'s1',date:x,amount:500000,acc:'a1'}));
+  // 10. dnia: 8.01.2027 (10. to niedziela), 10.02, 10.03 → zwykle 10.; 10.04.2027 to sobota → piątek 9.04
+  eq('Wypłata 10. w sobotę → piątek',payDateP(sal('2027-01-08','2027-02-10','2027-03-10'),src,'2027-04'),{date:'2027-04-09',real:false,nom:10});
+  // ostatni dzień: 30.11, 31.12, 29.01 (31.01.2027 to niedziela) → koniec miesiąca; 28.02.2027 niedziela → piątek 26.02
+  eq('Wypłata na koniec miesiąca, luty',payDateP(sal('2026-11-30','2026-12-31','2027-01-29'),src,'2027-02'),{date:'2027-02-26',real:false,nom:28});
+  // 1. dnia: 1.08.2026 to sobota – pensja przyszła już w piątek 31.07 → to wypłata sierpnia (prawdziwa), zwykły dzień 1
+  const one=sal('2026-05-01','2026-06-01','2026-07-01','2026-07-31');
+  eq('Wypłata z 1. przesunięta na 31. poprzedniego miesiąca',payDateP(one,src,'2026-08'),{date:'2026-07-31',real:true,nom:1});
+  eq('…a lipcowa to ta z 1.07',payDateP(one,src,'2026-07'),{date:'2026-07-01',real:true,nom:1});
+  // okno zamknięcia: od dnia przed wypłatą (30.07); wypłata przed 20. → zamyka miesiąc przed nią, czyli lipiec
+  eq('Zamknięcie przy wypłacie 1. przesuniętej na 31.',closeWinP(cfg,one,'Mati','2026-07-31'),{start:'2026-07-30',pay:'2026-07-31',real:true,ym:'2026-07'});
+  eq('Zamknięcie otwarte ręcznie po oknie',closeYmP(cfg,one,'Mati','2026-08-20'),'2026-07');
+  // bez pasków – dzień ze źródła: 25.04.2026 sobota → 24.04; 31. w lutym 2026 = 28. (sobota) → 27.02
+  eq('Dzień ze źródła, sobota',payDateP([],{...src,day:25},'2026-04'),{date:'2026-04-24',real:false,nom:25});
+  eq('31. w lutym',payDateP([],{...src,day:31},'2026-02'),{date:'2026-02-27',real:false,nom:28});
+  // zmiana roku: 9.10 (10. sobota), 10.11, 10.12 → 10.; 10.01.2027 niedziela → piątek 8.01
+  const ten=sal('2026-08-10','2026-09-10','2026-10-09','2026-11-10','2026-12-10');
+  eq('Wypłata w styczniu (zmiana roku)',payDateP(ten,src,'2027-01'),{date:'2027-01-08',real:false,nom:10});
+  // pensja z 10.11 już jest w danych (real), okno i tak od dnia przed nią
+  eq('Okno zamknięcia: dzień przed wypłatą 10.11 → październik',closeWinP(cfg,ten,'Mati','2026-11-09'),{start:'2026-11-09',pay:'2026-11-10',real:true,ym:'2026-10'});
+  eq('Po oknie (10 dni) – brak zamknięcia',closeWinP(cfg,ten,'Mati','2026-11-20'),null);
+  // 25. dnia (25.10.2026 niedziela → 23.10): 25.11.2026 to środa → okno od 24.11, wypłata od 20. zamyka ten sam miesiąc
+  eq('Wypłata 25. zamyka bieżący miesiąc',closeWinP(cfg,sal('2026-08-25','2026-09-25','2026-10-23'),'Mati','2026-11-24')?.ym,'2026-11');
+  eq('Pensja = wpływ z paska albo z przychodu stałego źródła',[salaryTxP(cfg,{type:'inc',slip:'s1'}),salaryTxP({incs:[{id:'s2',fixed:'f9'}]},{type:'inc',fixedId:'f9'}),salaryTxP(cfg,{type:'exp',slip:'s1'}),salaryTxP(cfg,{type:'inc'})],[true,true,false,false])}
+
+/* 🧹 strażnik porządku: duplikat (części paragonu nie), konto, którego nie ma, wpis bez pozycji, ten sam wpis dwa razy, wydatek roczny bez
+   częstotliwości, opłata z usuniętą pozycją i z kontem w archiwum; „To nie błąd” ukrywa tylko swój punkt */
+{ const cfg={accs:[{id:'a1',grp:'cur',owner:'Mati',name:'Konto'},{id:'a2',grp:'cur',owner:'Mati',name:'Stare',archived:true}],cats:[{id:'c1',type:'exp',name:'Dom',subs:[{id:'s1',name:'Jedzenie'}]}],
+    fixed:[{id:'f1',name:'Prąd',sub:'gone',acc:'a1',kind:'exp'},{id:'f2',name:'Net',sub:'s1',acc:'a2',kind:'exp'}],years:[{id:'y1',name:'OC',sub:'s1',amount:100}],round:[],incs:[]};
+  const e=(id,o)=>({id,type:'exp',amount:1000,date:'2026-11-10',acc:'a1',sub:'s1',...o});
+  const tx=[e('d1'),e('d2'),e('p1',{split:'g',date:'2026-11-12'}),e('p2',{split:'g',date:'2026-11-12'}),e('x1',{acc:'zz',date:'2026-11-05'}),e('x2',{sub:'',date:'2026-11-06'}),
+    e('tw',{date:'2026-11-01',amount:500}),e('tw',{date:'2026-10-15',amount:500}),e('old',{acc:'zz',date:'2026-08-01'})];
+  const keys=h=>checksP({cfg,tx,slips:{},hraw:{checkIgnore:h},debts:{}},'2026-11-20').map(x=>x.key);
+  eq('Strażnik – punkty',keys({}),['dup:d1,d2','acc:x1','sub:x2','twin:tw','ref:ye:y1','ref:f:f1:gone','refa:f:f2:a2']);
+  eq('Strażnik – „To nie błąd” ukrywa tylko swój punkt',keys({'dup:d1,d2':true,'ref:f:f1:gone':true}),['acc:x1','sub:x2','twin:tw','ref:ye:y1','refa:f:f2:a2'])}
+
+/* 📈 wycena: cena automatu tylko, gdy nowsza niż wpisana; inna waluta notowania – bez ceny; złoto; stan instrumentu na dzień; korekta salda konta */
+{ const it={kind:'etf',ticker:'vwce.de',cur:'EUR',price:100,priceDate:'2026-11-01',lots:{a:{date:'2026-01-10',kind:'buy',qty:10,price:100,fx:4.3,fee:0},b:{date:'2026-12-01',kind:'buy',qty:5,price:101,fx:4.3,fee:0}}};
+  const m={date:'2026-11-20',fxDate:'2026-11-20',fx:{EUR:4.25,USD:3.9},prices:{'VWCE.DE':{p:110,d:'2026-11-20'}},gold:450,goldDate:'2026-11-19'};
+  eq('Cena automatu nowsza niż wpisana',marketQuote(it,{cur:'PLN'},m),{p:110,fx:4.25,d:'2026-11-20'});
+  eq('Wpisana ręcznie później – bez ceny i kursu automatu',marketQuote({...it,priceDate:'2026-11-21'},{cur:'PLN'},m),{p:null,fx:null,d:'2026-11-20'});
+  eq('Notowanie w innej walucie – bez ceny',marketQuote(it,{cur:'PLN'},{...m,prices:{'VWCE.DE':{p:120,d:'2026-11-20',cur:'USD'}}}).p,null);
+  eq('Złoto – cena za gram',marketQuote({kind:'zloto'},{cur:'PLN'},m),{p:450,fx:null,d:'2026-11-19'});
+  eq('Konto w euro – bez przeliczania',marketQuote(it,{cur:'EUR'},m),{p:110,fx:null,d:'2026-11-20'});
+  eq('Instrument na koniec dnia (późniejsze partie pominięte)',Object.keys(holdAt(it,'2026-11-30').lots),['a']);
+  // ETF w zł: 10 szt. po 100 zł, dziś 120 zł → +200 zł; zaksięgowana wycena +50 zł (odsetki konta – nie wycena) → brakuje 150 zł
+  const pl={kind:'etf',cur:'PLN',price:120,priceDate:'2026-11-01',lots:{a:{date:'2026-01-10',kind:'buy',qty:10,price:100,fx:1,fee:0}}},acc={id:'i1',cur:'PLN',grp:'inv'};
+  const vt=[{acc:'i1',type:'adj',val:true,amount:5000,date:'2026-06-30'},{acc:'i1',type:'adj',val:true,int:true,amount:700,date:'2026-07-31'},{acc:'x',type:'adj',val:true,amount:999,date:'2026-06-30'}];
+  eq('Korekta wyceny konta',instDiffP(acc,[pl],vt,'2026-11-20',{},null),15000);
+  eq('Korekta z ceną automatu (130 zł)',instDiffP(acc,[{...pl,ticker:'ABC'}],vt,'2026-11-20',{},{date:'2026-11-20',prices:{ABC:{p:130,d:'2026-11-20'}}}),25000)}
+
+/* 💰 oprocentowanie: stawka obowiązująca danego dnia; konto bez stawek > 0 nie ma oprocentowania */
+{ const I={rates:{'2026-01-01':5,'2026-06-01':4}};
+  eq('Stawka w dniu',[intRate(I,'2025-12-31'),intRate(I,'2026-05-31'),intRate(I,'2026-06-01'),intRate(I,'2027-01-01')],[0,5,4,4]);
+  eq('Konto bez oprocentowania',[intOf({int:{rates:{'2026-01-01':0}}}),intOf({}),!!intOf({int:{rates:{},promo:6}})],[null,null,true])}
+
+/* 📅 wydatki roczne w planie, średnia 3 miesięcy, nietypowe wydatki, kończące się obligacje i lokaty, zestawienie ulg */
+{ const cfg={accs:[{id:'a1',grp:'cur',owner:'Mati'},{id:'k1',grp:'inv',owner:'Mati',wrap:'ikze',name:'IKZE'}],cats:[{id:'c1',type:'exp',name:'Dom',subs:[{id:'s1',name:'Jedzenie'},{id:'s2',name:'OC'}]}],
+    years:[{id:'y1',name:'OC',sub:'s2',amount:120000,month:3,every:12}]};
+  eq('Roczny w miesiącu terminu',yearPlanOf(cfg,[],'2027-03').sub,{s2:120000});
+  const pd=[{id:'yp',type:'exp',amount:100000,date:'2027-02-15',sub:'s2',acc:'a1',yearId:'y1'}];
+  eq('Zapłacony w lutym – w lutym zapłacona kwota, w marcu nic',[yearPlanOf(cfg,pd,'2027-02').sub,yearPlanOf(cfg,pd,'2027-03').sub],[{s2:100000},{}]);
+  const ex=(d,a)=>({id:'e'+d,type:'exp',amount:a,date:d,sub:'s1',acc:'a1'});
+  const tx=[ex('2026-08-05',30000),ex('2026-09-05',60000),ex('2026-10-05',90000)];
+  eq('Średnia 3 miesięcy',avgActuals(cfg,tx,'2026-11'),{avg:{s1:60000},months:3});
+  eq('Średnia od pierwszego miesiąca z danymi',avgActuals(cfg,tx.slice(1),'2026-11'),{avg:{s1:75000},months:2});
+  // średnio 600 zł: 1 200 zł = +100% (≥ 40% i ≥ 100 zł) – nietypowe; 800 zł = +33% – nie
+  eq('Nietypowy wydatek',anomalies(cfg,[...tx,ex('2026-11-05',120000)],'2026-11').map(x=>[x.sub.id,x.pct]),[['s1',100]]);
+  eq('Zwykły wydatek',anomalies(cfg,[...tx,ex('2026-11-05',80000)],'2026-11'),[]);
+  // OTS z 1.09 kończy się 1.12 (za 11 dni); lokata 12 mies. z 15.12.2025 – 15.12.2026 (za 25 dni)
+  const hold={o:{kind:'obl',acc:'a1',bond:{type:'OTS'},lots:{l:{date:'2026-09-01',kind:'buy',qty:1,price:100}}},d:{kind:'lokata',acc:'a1',dep:{months:12,rate:5},lots:{l:{date:'2025-12-15',kind:'buy',qty:1,price:1000}}},
+    x:{kind:'obl',acc:'a1',deleted:true,bond:{type:'OTS'},lots:{l:{date:'2026-09-01',kind:'buy'}}}};
+  eq('Wykupy w 14 dni',maturitiesP(cfg,hold,'2026-11-20',14).map(x=>[x.id,x.end,x.days]),[['o','2026-12-01',11]]);
+  eq('Wykupy w 30 dni',maturitiesP(cfg,hold,'2026-11-20',30).map(x=>x.id),['o','d']);
+  const ul=[{type:'exp',amount:5000,date:'2026-03-01',ulga:'internet',who:'Mati'},{type:'exp',amount:6000,date:'2026-04-01',ulga:'internet',who:'Wercia',ulgaWho:'Mati'},
+    {type:'exp',amount:7000,date:'2026-04-01',ulga:'internet',who:'Mati',ulgaWho:'Wercia'},{type:'exp',amount:9000,date:'2025-04-01',ulga:'internet',who:'Mati'},
+    {type:'tr',amount:100000,date:'2026-05-01',acc:'a1',to:'k1'}];
+  const ps=pitSummaryP(cfg,ul,'2026','Mati',{});
+  eq('Ulgi w PIT osoby',[ps.by,ps.n,ps.ikze.map(x=>x.paid)],[{internet:{sum:11000,n:2}},2,[100000]])}
+
+/* 💾 kopia: każde ustawienie zapisywane w households/main jest w kopii (BACKUP_KEYS) albo w zapisie ustawień (CFG_F w core.js) – nowe łatwo zapomnieć */
+{ const src=fs.readdirSync(new URL('../js/',import.meta.url)).filter(f=>f.endsWith('.js')).map(f=>fs.readFileSync(new URL('../js/'+f,import.meta.url),'utf8')).join('\n');
+  const cfgF=(/const CFG_F=\[([^\]]*)\]/.exec(src)||[])[1].match(/'(\w+)'/g).map(x=>x.slice(1,-1));
+  const used=new Set([...src.matchAll(/merge\(H,\{(\w+):/g)].map(m=>m[1]).concat([...src.matchAll(/updateDoc\(H,\{\[?['`](\w+)[.'`]/g)].map(m=>m[1])));
+  eq('Kopia obejmuje każde ustawienie',[...used].filter(k=>!BACKUP_KEYS.includes(k)&&!cfgF.includes(k)).sort(),[])}
+/* ⏰ automaty: powiadomienie najwyżej raz rano i raz wieczorem; kopia w pierwszą niedzielę (druga szansa w poniedziałek), podsumowanie 1.–2. dnia, rok 1.–2.01 */
+{ const T='2026-12-06';
+  eq('Powiadomienia – pora',[6,7,10,11,19,20,22,23].map(hour=>pushSlot({hour,today:T})),[null,'m','m',null,null,'e','e',null]);
+  eq('Powiadomienia – już wysłane dziś / wczoraj',[pushSlot({hour:8,today:T,log:{m:T}}),pushSlot({hour:8,today:T,log:{m:'2026-12-05',e:T}}),pushSlot({hour:3,today:T,mode:'test',log:{m:T}})],['sent','m','test']);
+  const P=(today,weekday,hour,log={},mode)=>Object.entries(mailPlan({today,weekday,hour,log,mode})).filter(([,v])=>v).map(([k])=>k);
+  // 6.12.2026 to pierwsza niedziela grudnia; 7.12 poniedziałek (druga szansa); 13.12 to już druga niedziela; 1.11.2026 niedziela i 1. dnia
+  eq('Maile – kopia w pierwszą niedzielę o 21',[P(T,'Sun',21),P(T,'Sun',20),P(T,'Sun',21,{backup:'2026-12'}),P('2026-12-07','Mon',21),P('2026-12-13','Sun',21),P('2026-12-14','Mon',22)],[['backup'],[],[],['backup'],[],[]]);
+  eq('Maile – 1. dnia podsumowanie (i kopia, gdy to pierwsza niedziela)',[P('2026-11-01','Sun',9),P('2026-11-01','Sun',21),P('2026-11-02','Mon',13),P('2026-11-02','Mon',14),P('2026-11-02','Mon',10,{sum:'2026-11'})],[['sum'],['backup'],['sum'],[],[]]);
+  eq('Maile – 1 stycznia także rok',[P('2027-01-01','Fri',9),P('2027-01-01','Fri',8),P('2027-01-02','Sat',9,{sum:'2027-01',year:'2027'}),P('2027-01-03','Sun',9)],[['year','sum'],[],[],[]]);
+  eq('Maile – tryby ręczne',[P('2026-11-20','Fri',3,{},'test-kopia'),P('2026-11-20','Fri',3,{},'test-rok'),P('2026-11-20','Fri',3,{},'test-podsumowanie')],[['backup'],['year'],['sum']])}
 console.log(bad?`\n❌ Obliczenia: ${bad} z ${n} sprawdzeń się nie zgadza.`:`✅ Obliczenia w porządku (${n} sprawdzeń).`);
 process.exit(bad?1:0);

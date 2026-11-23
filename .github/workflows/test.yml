@@ -1,6 +1,7 @@
 # 🤖 Robot Budżetu M&W: po każdej zmianie sprawdza aplikację, a dopiero potem ją publikuje.
-# 1) „Sprawdzenie”: brakujące importy (eslint), składnia plików, obliczenia na przykładach (tests/calc.mjs), wersja demo w niewidocznej przeglądarce jak na telefonie
-#    (wszystkie ekrany, 4 ustawienia telefonu: błędy JavaScript, napisy wychodzące poza ekran).
+# 1) „Sprawdzenie”: brakujące importy (eslint), składnia plików, obliczenia na przykładach (tests/calc.mjs), atrapa Firebase = prawdziwe SDK (tests/sdk.mjs),
+#    wersja demo w niewidocznej przeglądarce jak na telefonie (wszystkie ekrany, 4 ustawienia telefonu naraz: błędy JavaScript, napisy wychodzące poza ekran),
+#    zapis i usuwanie wpisów (tests/flows.mjs), kopia zapasowa (tests/restore.mjs).
 # 2) „Publikacja”: tylko gdy sprawdzenie jest zielone. Działa, gdy w Settings → Pages → Source wybrano „GitHub Actions”
 #    (przy starym ustawieniu „Deploy from a branch” GitHub publikuje sam, a ten krok się pomija).
 name: Robot – sprawdzenie i publikacja
@@ -28,7 +29,7 @@ jobs:
           node-version: 22
       - name: Instalacja narzędzi
         run: |
-          npm install --no-save --no-audit --no-fund eslint@9.17.0 playwright@1.49.1
+          npm install --no-save --no-audit --no-fund --ignore-scripts eslint@9.17.0 playwright@1.49.1 firebase@10.14.1
           npx playwright install --with-deps chromium
       - name: Brakujące importy (eslint)
         run: npx eslint -c tests/eslint.config.mjs js/ demo/ sw.js scripts/
@@ -40,8 +41,12 @@ jobs:
         run: node tests/imports.mjs
       - name: Obliczenia pieniędzy (pensje, obligacje, raty, salda)
         run: node tests/calc.mjs
+      - name: Wersja demo zapisuje jak prawdziwy Firebase (SDK 10.14.1, bez sieci)
+        run: node tests/sdk.mjs
       - name: Wszystkie ekrany jak na telefonie
         run: node tests/screens.mjs
+      - name: Zapis, zmiana i usuwanie wpisów, wczytanie starych plików
+        run: node tests/flows.mjs
       - name: Kopia zapasowa się wczytuje (przykładowe dane)
         run: node tests/restore.mjs --demo
       - name: Zrzuty ekranów (gdy coś nie przeszło)
