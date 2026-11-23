@@ -763,6 +763,9 @@ details.pbw>summary::-webkit-details-marker{display:none}
 .pbcat .chev::before{content:'▸'}details.pbw[open] .chev::before{content:'▾'}
 .pbcat .pbtrio{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}
 .pbcat .pbtrio b{font-size:14.5px}
+/* a narrow phone / big font: only the icon in the pill, so the title stays on one line */
+.pbcat .ch{container-type:inline-size}
+@container (max-width:300px){.pbcat .pill .pt{display:none}}
 .pbcat .pbin{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px;border-top:1px solid rgb(15 23 42 / .06)}
 /* 👆 small buttons keep their look, but the finger may land a bit around them – an invisible touch area of about 44 px (Apple's minimum) */
 .box,.paych,details.info>summary,details.more>summary{position:relative}
