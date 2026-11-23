@@ -153,11 +153,11 @@ Kolejność uwzględnia pracę w kilku oknach. Etapy, które dotykają tych samy
 **Gotowe, gdy:** pomiar z `05-szybkosc.md` (Budżet, Analiza) szybszy o min. 30%.
 
 ### Etap D. Uproszczenia UX (🔁 po C, bo `app.js`; decyzje Matiego przed startem)
-- [ ] Fokus kwoty od razu po ＋; konto z podpowiedzi notatki
-- [ ] „Czy starczy?” jako jedna linijka; Projekty do Stałych
-- [ ] Zamknięcie: „Pomiń resztę”
-- [ ] Na dziś: „💡 Podpowiedzi” zwinięte
-- [ ] Cele dotyku ≥ 44 px, `aria-label`
+- [–] Fokus kwoty od razu po ＋; konto z podpowiedzi notatki (Mati 23.11: nie robimy)
+- [x] „Czy starczy?” jako jedna linijka (zwinięta zakładka); Projekty zostają na Budżecie (Mati 23.11)
+- [–] Zamknięcie: „Pomiń resztę” (Mati 23.11: nie robimy)
+- [x] Na dziś: „💡 Podpowiedzi” zwinięte
+- [x] Cele dotyku ≥ 44 px; `aria-label` / VoiceOver – nie robimy (Mati 23.11)
 - [ ] (po „Czego używamy”) Doradca: schować/usunąć D5–D7 według użycia; Wrapped + Podsumowanie roku
 
 **Gotowe, gdy:** dodanie wydatku = 3 stuknięcia na iPhonie, Budżet krótszy o min. 1 ekran, Wercia akceptuje wygląd.

@@ -755,3 +755,17 @@ section.pbud{gap:8px}
 .t-tight{color:#a16207}
 .t-neg{color:var(--exp)!important;font-weight:800} /* 🔴 a balance below zero in 👛 Konta (Mati 5.11 D) */
 .pbr .phint{background:#fefce8;border-radius:10px;padding:6px 8px;margin-top:4px;color:#713f12}
+/* 👥 „Czy starczy?” folded: one sentence, details after a tap (Mati 23.11) */
+details.pbw>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;min-height:44px}
+details.pbw>summary::-webkit-details-marker{display:none}
+details.pbw>summary>b{grid-column:1}
+details.pbw .pbone{grid-column:1;font-size:13.5px;font-weight:700;line-height:1.35}
+details.pbw .pbmore{grid-column:2;grid-row:1/3;display:flex;align-items:center;gap:4px;font-weight:800}
+details.pbw .pbmore::after{content:'›';font-size:18px;transition:transform .2s}details.pbw[open] .pbmore::after{transform:rotate(90deg)}
+details.pbw .pbin{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+/* 👆 small buttons keep their look, but the finger may land a bit around them – an invisible touch area of about 44 px (Apple's minimum) */
+.box,.paych,details.info>summary,details.more>summary{position:relative}
+.box::after,.cop::after,.paych::after{content:'';position:absolute;inset:-7px -2px}
+.paych::after{inset:-8px -2px}
+details.info>summary::after{content:'';position:absolute;inset:-6px -6px}
+details.more>summary::after{content:'';position:absolute;inset:-13px 0}

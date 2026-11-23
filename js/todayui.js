@@ -5,7 +5,7 @@ import {kotki} from './guide.js';
 import {recurringP,automatStale,todayItems as todayItemsP,todayRank,typedToday} from './today.js';
 import {liveOf,seenBy,agg,planOf,avgActuals,yearSubs,fixedPlanGap} from './logic.js';
 import {$,esc,ls,pg,td,zl0,plu,daysIn,addDays} from './util.js';
-import {DEMO,S,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
+import {DEMO,S,infoTog,toast,err,ask,H,PUSH,w,merge,liveById,guard} from './core.js';
 import {openTx} from './sheet.js';
 import {editFixed,goFixed,exportJson,editInt,planToFixed,pbudOf,pbudBad,pbudHalf} from './actions.js';
 import {openSlip,openSubs} from './salary.js';
@@ -54,7 +54,10 @@ export function todayItems(){if(!S.cfg)return[];const k=[JSON.stringify(S.cfg),S
   if(!M||M.k.some((x,i)=>x!==k[i])||Date.now()-M.at>60000)itMemo={k,at:Date.now(),v:todayItemsRaw()};return itMemo.v.map(x=>({...x}))}
 function todayItemsRaw(){const L=[...todayItemsP(todayD(),{today:td(),hour:new Date().getHours()}),...planTodo(),...advTodo()].filter(x=>seenBy(x.who,S.who)).map((x,i)=>({x,i,r:todayRank(x)}));
   return L.sort((a,b)=>(!!a.x.later-!!b.x.later)||a.r-b.r||a.i-b.i).map(y=>y.x)}
-const todayNow=()=>todayItems().filter(x=>!x.later);
+/* 💡 hints (the plan, „Czy starczy?”, the advisor – all k:'plan' – and an old valuation of a property) – folded under „💡 Podpowiedzi”, not on the
+   bell (Mati 23.11); not every quiet point: „nie starczy na rachunek” or a contract's end are quiet only for notifications – they stay real points */
+const isHint=x=>!x.later&&(x.k=='plan'||x.go?.a=='asset');
+const todayNow=()=>todayItems().filter(x=>!x.later&&!isHint(x));
 /* 📊 the plan of the current month (only in the app – plans are not read by the automat, so no phone notification): it used to be banners and cats' warnings on Budżet */
 export function planTodo(){const today=td(),ym=today.slice(0,7),tx=liveOf(S.tx),pl=planOf(S.cfg,S.plans,tx,ym),ig=S.hraw?.checkIgnore||{},out=[];
   const add=(key,icon,text,go,label,who=null)=>{if(!ig[key])out.push({key,icon,text,go,label,k:'plan',who,quiet:true})};
@@ -79,7 +82,7 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');
   if(a=='recFix')return addRecFixed(g.key);if(a=='fixEdit'){S.fixSub='fix';goTab('fix');return editFixed(g.id)}
   if(a=='round'){goTab('set');return setPage('cat')}if(a=='close')return openClose();if(a=='subs')return openSubs();
-  if(a=='pbud'){S.ym=td().slice(0,7);goTab('dash');setTimeout(()=>{const e=$('pbud');if(e){e.scrollIntoView({block:'start',behavior:'smooth'});e.querySelector('details.pbr .t-exp')?.closest('details')?.setAttribute('open','')}},60);return}
+  if(a=='pbud'){S.ym=td().slice(0,7);infoTog('pbudw',true);goTab('dash');setTimeout(()=>{const e=$('pbud');if(e){e.scrollIntoView({block:'start',behavior:'smooth'});e.querySelector('details.pbr .t-exp')?.closest('details')?.setAttribute('open','')}},60);return}
   if(a=='dash'||a=='fillAvg'||a=='planFix'){S.ym=td().slice(0,7);if(g.bf)S.bf=g.bf;goTab('dash');if(a=='fillAvg')return fillAvg();if(a=='planFix')return planToFixed();return}
   if(a=='int')return bookInt(g.acc,g.key);if(a=='accInt')return editInt(g.id);
   if(a=='tx'){const t=liveById(g.id);if(t){S.ym=t.date.slice(0,7);openTx(g.id)}}}
@@ -92,11 +95,12 @@ export function ignoreCheck(key,stay){if(guard())return;S.hraw={...S.hraw,checkI
 const recList=()=>S.cfg?recurringP(S.cfg,liveOf(S.tx),td(),S.hraw?.checkIgnore):[];
 function addRecFixed(key){const r=recList().find(x=>x.key==key);if(!r)return;S.fixSub='fix';goTab('fix');if(r.kind=='tr')return editFixed(null,'tr',{name:r.note?r.note.slice(0,1).toUpperCase()+r.note.slice(1):'Przelew '+r.name,amount:r.amount,day:r.day,acc:r.acc,to:r.to});editFixed(null,'exp',{name:r.name.slice(0,1).toUpperCase()+r.name.slice(1),amount:r.amount,day:r.day,sub:r.sub,acc:r.acc})}
 function closeToday(){$('dlg').hidden=true}
-export function showToday(){use('f:today');const L=todayItems(),d=$('dlg'),now=L.filter(x=>!x.later),soon=L.length-now.length,bad=now.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
+export function showToday(){use('f:today');const A=todayItems(),d=$('dlg'),now=A.filter(x=>!x.later&&!isHint(x)),soonL=A.filter(x=>x.later),hints=A.filter(isHint),soon=soonL.length,L=[...now,...soonL,...hints],bad=now.some(x=>x.k=='bad');ls.set('mw_today',td());S.todayL=L;
   const row=(x,i)=>`<div class="titem ${x.k}"><span class="ti">${x.icon}</span><span class="tt">${esc(x.text)}${x.k=='check'?'<small>🧹 strażnik porządku</small>':''}</span><span class="tb"><button class="chip" onclick="todayGo(${i})">${esc(x.label)}</button>${x.key?`<button class="chip ghost" onclick="ignoreCheck('${esc(x.key)}')">${GHOST[x.key.split(':')[0]]||GHOST[x.k]||'To nie błąd'}</button>`:''}</span></div>`;
-  $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(now.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${now.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):soon?'Na dziś nic pilnego. Niżej to, co będzie za kilka dni 😺':'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>
+  $('dlgBody').innerHTML=`<div class="cslide">${kotki.mode=='off'?'':scene(now.length?'duo':'sleep','kot')}<h2>🔔 Na dziś</h2><p class="dtext">${now.length?(bad?'Coś czeka po terminie – zajrzyjmy razem.':'Kilka rzeczy na dziś. Spokojnie, po kolei.'):soon||hints.length?'Na dziś nic pilnego. Niżej to, co będzie za kilka dni, i podpowiedzi 😺':'Na dziś nic. Można się zdrzemnąć 😺'}</p></div>
     ${now.length?`<div class="today">${now.map(row).join('')}</div>`:''}
-    ${soon?`<details class="tsoon"${now.length?'':' open'}><summary>⏳ Wkrótce (${soon})</summary><div class="today">${L.slice(now.length).map((x,j)=>row(x,now.length+j)).join('')}</div></details>`:''}
+    ${soon?`<details class="tsoon"${now.length?'':' open'}><summary>⏳ Wkrótce (${soon})</summary><div class="today">${soonL.map((x,j)=>row(x,now.length+j)).join('')}</div></details>`:''}
+    ${hints.length?`<details class="tsoon thint"><summary>💡 Podpowiedzi (${hints.length})</summary><div class="today">${hints.map((x,j)=>row(x,now.length+soon+j)).join('')}</div></details>`:''}
     <div class="g2" style="grid-template-columns:1fr"><button class="btn primary" id="tdOk">Zamknij</button></div>`;
   d.hidden=false;$('tdOk').onclick=closeToday;d.onclick=e=>{if(e.target===d)closeToday()};updToday()}
 export function updToday(){const n=todayNow().length,b=$('todayBtn');if(!b)return;b.dataset.n=n||'';b.setAttribute('aria-label',n?`Na dziś: ${n}`:'Na dziś')}

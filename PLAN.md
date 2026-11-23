@@ -234,3 +234,9 @@ Każdy etap dopiero na komendę Matiego, po kopii.
 - [x] 🌡️ Termometr rynku bez stałej subskrypcji (przy starcie i po 6 h przerwy), `market/eom` w ogóle niepobierane przez telefony
 - Pomiar (demo, procesor spowolniony 4×, mediana 25 przerysowań, stara i nowa wersja na zmianę): Budżet ok. 58 → 45 ms (−23 do −30%), Analiza 67 → 48 ms (−28%); przy dużych kwotach i A++: Budżet 63 → 44 ms (−30%), Analiza 77 → 50 ms (−35%)
 - Niezrobione (niski priorytet w audycie): HELP/NEWS i doradca ładowane dopiero na żądanie (–35–40 kB, ok. 10–15 ms startu na iPhonie)
+
+## Etap D. Mniej na wierzchu (Mati: „do dzieła”, 23.11.2026)
+Decyzje Matiego: szybsze dodawanie wydatku i „Pomiń resztę” w zamknięciu – nie robimy; Projekty zostają na Budżecie; VoiceOver – nie robimy; chowanie części Doradcy i połączenie Wrapped z Podsumowaniem roku – może później, po danych z „Czego używamy”.
+- [x] 👥 „Czy starczy?” na dole Budżetu jako zwinięta zakładka z jednym zdaniem (✅ wszystkim starczy + ile zostanie / 🟡 na styk / ⚠️ komu zabraknie); po stuknięciu szczegóły jak wcześniej, otwarte zostają po przerysowaniu (`S.infoOpen.pbudw`), „Pokaż” z Na dziś otwiera ją sama
+- [x] 🔔 Na dziś: rady o planie, „Czy starczy?”, Doradcy i wycenie nieruchomości zwinięte w „💡 Podpowiedzi” na dole, bez liczby na dzwonku (ostrzeżenia „nie starczy na rachunek” i koniec umowy zostają na górze)
+- [x] 👆 Większe pole stuknięcia (ok. 44 px, bez zmiany wyglądu): ✓ przy opłatach, + / − przy kwocie, „Płaci”, „ⓘ”, rozwijane napisy (Termometr, Lista funduszy); sprawdzone, że nie zasłaniają sąsiednich przycisków
