@@ -165,6 +165,12 @@ await step('Wycena po usunięciu instrumentów',async()=>E(async()=>{const wait=
   openValues();await wait(150);saveValues();await wait(500);
   return vs()===v1&&T.bal(a.id)===100000||`ręczna wartość zmieniona: ${v1} → ${vs()}, saldo ${b} → ${T.bal(a.id)}`}));
 
+/* 📊 „Czego używamy”: każda karta (section.chart) na głównych ekranach ma swój klucz w katalogu USAGE_CAT – inaczej wyszłaby jako nieużywana (audyt 2) */
+await step('Czego używamy – karty w katalogu',async()=>E(async()=>{const U=await import('/js/usage.js'),wait=ms=>new Promise(r=>setTimeout(r,ms)),miss=new Set();
+  const look=()=>document.querySelectorAll('#app section.chart:not([data-nouse])').forEach(el=>{const k=U.cardKey(el.querySelector('.ct b')?.textContent);if(k&&!U.LABEL['k:'+k])miss.add(k)});
+  for(const f of [()=>goTab('dash'),()=>goTab('sav'),()=>goTab('acc'),()=>goTab('ana'),()=>{goTab('ana');setAna('y')},()=>goTab('fix')]){f();await wait(250);look()}
+  return !miss.size||'brak w katalogu: '+[...miss].join(', ')}));
+
 /* no JS errors on the way; the whole store is still valid for the real SDK (the demo stand-in throws like the SDK) */
 await ctx.close();await browser.close();srv.close();
 console.log(fails.length?`\n❌ Zapis wpisów: ${fails.length} problem(ów) w ${n} scenariuszach.`:`✅ Zapis i usuwanie wpisów działa (${n} scenariuszy).`);

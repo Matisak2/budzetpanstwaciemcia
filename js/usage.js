@@ -22,7 +22,7 @@ const USAGE_CAT=[
     'Z jakich kont','Opłaty stałe a reszta','Gdzie wydajemy','Największe pojedyncze wydatki','Przychody i wydatki','Kategorie w całym roku','Kategorie przez 12 miesięcy','Miesiąc po miesiącu','Najciekawsze miesiące',
     'Plan a rzeczywistość','Majątek na kontach','Oszczędności i inwestycje','Wasza inflacja','Ile odłożyliście','Wszystkie cele','Poduszka bezpieczeństwa','Limity','Odsetki z kont','Wpłacone a wartość',
     'Niezależność finansowa (FIRE)','Kaskada nadwyżek','Czyj majątek','Czy starczy?','Z czego składa się majątek','Analiza funduszy','Doradca','Mój plan','Gdzie','IKE, IKZE czy zwykłe konto?','Na pewno nie tu','W co','Która obligacja da najwięcej?','Zapisane porady','Emerytura','Mieszkanie dla siebie','Test kryzysu w złotych','Strażnik kosztów','Najem','Czy stać Was na zakup?','Piaskownica','Co chcesz kupić?','Lista życzeń','Gdzie wpłacić?','Ankieta','Razem w miesiącu','Netto miesiąc po miesiącu','Cały rok','Struktura kosztów'].map(t=>['k:'+t,t])]]];
-const LABEL=Object.fromEntries(USAGE_CAT.flatMap(([,L])=>L));
+export const LABEL=Object.fromEntries(USAGE_CAT.flatMap(([,L])=>L));
 
 /* ---------- counting ---------- */
 let buf={},bufD={},timer=0,lastScreen='';
@@ -36,14 +36,15 @@ export function useScreen(){const t=S.tab;let k=t=='dash'?(S.close?'e:close':S.p
     :t=='ana'?(S.report?'e:report':S.ana=='y'?'e:anay':ls.get('mw_anam')!='basic'?'e:anamf':'e:anam'):t=='set'?(S.help?'e:help':S.setPage?'e:set-'+S.setPage:'e:set'):'';
   if(S.help)k='e:help';if(k&&k!=lastScreen){lastScreen=k;counted.clear();use(k)}watchCards()}
 /* a card = section.chart; its title without emoji, year, „: …” or „ – …” */
-const cardKey=t=>{t=(t||'').replace(/^[^\p{L}]+/u,'').split(/:| – | · /)[0].replace(/\s*\d{4}\s*$/,'').replace(/\./g,'').trim();if(t&&t==t.toUpperCase())t=t[0]+t.slice(1).toLowerCase();/* „CZY STARCZY?” (karta w stylu kategorii) = „Czy starczy?” */return t.includes('↔')?'Mati ↔ Wercia':t=='Propozycja planu'?'Mój plan':t};
+/* exported for the robot (tests/flows.mjs: every card on the screens has its key in the catalog) */
+export const cardKey=t=>{t=(t||'').replace(/^[^\p{L}]+/u,'').split(/:| – | · /)[0].replace(/\s*\d{4}\s*$/,'').replace(/\./g,'').trim();if(t&&t==t.toUpperCase())t=t[0]+t.slice(1).toLowerCase();/* „CZY STARCZY?” (karta w stylu kategorii) = „Czy starczy?” */return t.includes('↔')?'Mati ↔ Wercia':t=='Propozycja planu'?'Mój plan':t};
 /* a card counts once per visit of a screen: the screen is drawn again after every change (new elements), so pending 2-second timers of the old
    elements are cancelled and a card already counted on this screen is not counted again */
 let io=null,pending=new Map();const counted=new Set();
 function watchCards(){if(!('IntersectionObserver' in window))return;if(!io)io=new window.IntersectionObserver(es=>{for(const e of es){const el=e.target;
     if(e.isIntersecting&&e.intersectionRatio>=0.5){if(!pending.has(el))pending.set(el,setTimeout(()=>{pending.delete(el);const k=cardKey(el.querySelector('.ct b')?.textContent);if(k&&!counted.has(k)){counted.add(k);use('k:'+k)}},2000))}
     else{const v=pending.get(el);if(v){clearTimeout(v);pending.delete(el)}}}},{threshold:[0,0.5]});
-  io.disconnect();pending.forEach(clearTimeout);pending=new Map();document.querySelectorAll('#app section.chart').forEach(el=>io.observe(el))}
+  io.disconnect();pending.forEach(clearTimeout);pending=new Map();document.querySelectorAll('#app section.chart:not([data-nouse])').forEach(el=>io.observe(el))}
 /* what a saved entry used (new / edit / extras) */
 export function useTx(b,{old,parts,coin,next}){use(old?'f:edit':'f:add');if(next)use('f:next');if(parts)use('f:split');if(b.fxCur||b.amount2)use('f:fx');if(b.rcpt?.length&&!old?.rcpt?.length)use('f:photo');
   if(b.refundOf&&!old)use('f:refund');if(b.ulga)use('f:ulga');if(b.proj)use('f:projtx');if(b.debt)use('f:debt');if(b.war)use('f:war');if(coin)use('f:coin');if(b.lit||b.odo)use('f:fuel')}
