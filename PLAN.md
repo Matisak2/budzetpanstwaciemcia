@@ -256,14 +256,14 @@ Mati 24.11: „Zrób etapy a, b i c po kolei”. D2, E2, F i styczeń 2027 – o
 - [x] 💼 Wypłata 30. dnia nie jest brana za „koniec miesiąca” (szukanie dalej wstecz)
 
 ## Etap B2. Drobne poprawki i testy
-- [ ] Wiek w doradcy z pełnej daty urodzin; „W planie zostało” odejmuje przekroczenia; majątek w Analizie do dziś
-- [ ] Import starej wersji drugi raz nie nadpisuje planów i sald, poprawne teksty
-- [ ] „Cofnij” po usunięciu paska sprawdza nowy pasek; bez podwójnych zapisów kont; Diagnostyka bez `persist`
-- [ ] Automaty: `--ignore-scripts` przy kopii, kopia zawsze usuwana, `pushlog` przed wysyłką, `sched` zachowany, kopia do Matiego wg `lock`
-- [ ] „Czego używamy”: karty Pensji bez nazw pracodawców; test kart w katalogu
-- [ ] Testy przepisów (KUP 300, zlecenie 50%, najem 12,5%, IKZE-JDG, wykup COI/ROR/DOR), `writeBatch` atrapy, `eq` z wyjątkiem
-- [ ] HELP: Diagnostyka, przywracanie celów, kaskada; drobiazgi CSS (`details.more`, `preconnect`)
-- [ ] Zasada „krótkie linie” w CLAUDE.md
+- [x] Wiek w doradcy z pełnej daty urodzin; „W planie zostało” odejmuje przekroczenia; majątek w Analizie do dziś
+- [x] Import starej wersji drugi raz nie nadpisuje planów i sald, poprawne teksty
+- [x] „Cofnij” po usunięciu paska sprawdza nowy pasek; bez podwójnych zapisów kont; Diagnostyka bez `persist`
+- [x] Automaty: `--ignore-scripts` przy kopii, kopia zawsze usuwana, `pushlog` przed wysyłką, `sched` zachowany, kopia do Matiego wg `lock`
+- [x] „Czego używamy”: karty Pensji bez nazw pracodawców; test kart w katalogu
+- [x] Testy przepisów (KUP 300, zlecenie 50%, najem 12,5%, IKZE-JDG, wykup COI/ROR/DOR), `writeBatch` atrapy, `eq` z wyjątkiem
+- [x] HELP: Diagnostyka, przywracanie celów, kaskada; drobiazgi CSS (`details.more`, `preconnect`)
+- [x] Zasada „krótkie linie” w CLAUDE.md
 
 ## Etap C2. Szybkość
 - [ ] Oszczędności: `agg` i `instDiffP` zapamiętane; HELP/NEWS na żądanie; `maillog`/`autoval` bez stałej subskrypcji

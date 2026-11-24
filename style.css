@@ -773,3 +773,4 @@ details.pbw>summary::-webkit-details-marker{display:none}
 .paych::after{inset:-8px -2px}
 details.info>summary::after{content:'';position:absolute;inset:-6px -6px}
 details.more>summary::after{content:'';position:absolute;inset:-13px 0}
+details.more[open]>summary::after{bottom:0} /* rozwinięte: pole stuknięcia nie zachodzi na treść (audyt 2) */

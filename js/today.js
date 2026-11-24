@@ -222,7 +222,6 @@ export function closeDueP(hraw,tx,today,cfg,who){const w=cfg&&who?closeWinP(cfg,
 export const typedToday=(tx,today)=>tx.some(t=>(t.date==today||(Number.isFinite(+t.ts)&&+t.ts>0&&plDay(+t.ts)==today))&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!t.slip&&!t.slipOf&&!(t.type=='adj'&&t.val));
 /* everything that needs attention today; n = days until the deadline (−1 late, 0 today, 1 tomorrow), later:true = not for today („Wkrótce” – collapsed, no number on the bell) */
 export const todayRank=x=>x.k=='bad'?0:x.n!=null&&x.n<=0?1:x.n==1?2:3;
-/* ryczałt od najmu: 8,5% up to 100 000 zł of rent a year, 12,5% above (grosze, rounded to full zł) */
 /* 🏠 ryczałt od najmu: 8,5% do 100 000 zł w roku, 12,5% ponad – one rule for the reminder here and the advisor's rentP (rentTaxRaw, not rounded to zł) */
 const RENT_THR=10000000;export const rentTaxRaw=inc=>Math.min(inc,RENT_THR)*0.085+Math.max(0,inc-RENT_THR)*0.125;const rentTax=inc=>Math.round(rentTaxRaw(inc)/100)*100;
 export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,hold,debts,market,backup,hraw}=D;if(!cfg)return[];
