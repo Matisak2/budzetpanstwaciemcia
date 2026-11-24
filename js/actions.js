@@ -9,7 +9,7 @@ import {fixedWho,isPodName,balance,balDrop,cleanCat,fixedDate,liveOf,planRecon,s
 import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu,dmy} from './util.js';
 import {S,accWho,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,saveRound,delFixedDb,putTx,putInv,guard,negStop,txOk,infoH} from './core.js';
 import {catColor,RCPT,RMETA,phCache,openTx} from './sheet.js';
-import {incs,incById,gr,openSlip,saveInc,slipOfTx,slipDrop,slipBack} from './salary.js';
+import {incs,incById,gr,openSlip,saveInc,slipOfTx,slipDrop,slipBack,slipTaken} from './salary.js';
 import {saveYear} from './savings.js';
 import {debtList,debtState} from './debts.js';
 import {accN,render,goTab} from './app.js';
@@ -121,16 +121,16 @@ export async function addCat(){if(guard())return;
 export const ACCTAB={cur:'Konta bieżące',sub:'Subkonta',sav:'Oszczędności',inv:'Inwestycje'};
 /* an account whose kind changed goes to the end of its new kind; every account whose position moved is saved */
 function toEndOfKind(a){const A=S.cfg.accs;A.splice(A.indexOf(a),1);
-  let k=-1;A.forEach((x,i)=>{if(x.grp==a.grp)k=i});A.splice(k+1,0,a);saveAcc(a);saveOrder()}
+  let k=-1;A.forEach((x,i)=>{if(x.grp==a.grp)k=i});A.splice(k+1,0,a);saveAcc(a);saveOrder(a.id)}
 /* the order of accounts / categories is stored as numbers (o); after a move or a deletion every one whose stored number differs from its place
    is saved again – otherwise gaps left by a deleted one could make an account jump to another place after the next reload */
-function saveOrder(){S.cfg.accs.forEach((a,i)=>{if(S.hraw?.accsM?.[a.id]?.o!==i)saveAcc(a)})}
+function saveOrder(done){S.cfg.accs.forEach((a,i)=>{if(a.id!==done&&S.hraw?.accsM?.[a.id]?.o!==i)saveAcc(a)})} /* done = już zapisane (bez drugiego zapisu, audyt 2) */
 const saveCatOrder=()=>S.cfg.cats.forEach((c,i)=>{if(S.hraw?.catsM?.[c.id]?.o!==i)saveCat(c)});
 export function setAccTab(k){S.accTab=k;render()}
 /* swap an account with its neighbour of the same kind (archived accounts are skipped) */
 export function moveAcc(id,d){if(guard())return;const A=S.cfg.accs,i=A.findIndex(a=>a.id==id);if(i<0)return;
   let j=i+d;while(j>=0&&j<A.length&&(A[j].grp!=A[i].grp||A[j].archived))j+=d;if(j<0||j>=A.length)return;
-  [A[i],A[j]]=[A[j],A[i]];render();saveAcc(A[i]);saveAcc(A[j]);saveOrder()}
+  [A[i],A[j]]=[A[j],A[i]];render();saveOrder()}
 export function moveCat(ci,d){if(guard())return;const j=ci+d;if(j<0||j>=S.cfg.cats.length)return;const a=S.cfg.cats;[a[ci],a[j]]=[a[j],a[ci]];render();saveCat(a[ci]);saveCat(a[j]);saveCatOrder()}
 /* 🔗 what still points to an account (besides entries): fixed payments and transfers, income sources, PPK, 🪙 rules, the envelope sub-account, saving up for a payoff,
    instruments – need: 'inv' = only an investment account fits (PPK, instruments) */
@@ -233,7 +233,7 @@ export async function toggleFixed(fid){if(guard())return;const f=S.cfg.fixed.fin
     /* 🚫 unticking a fixed income (or a fixed transfer in) must not leave an account with a minus; „Cofnij” of an unticked payment – the same check */
     if(!await txOk([paid,...linked].map(t=>({...t,deleted:true}))))return;
     if(await putTx(ym,paid.id,{deleted:true,...(bak?{slipBak:bak}:{})})){linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:true}));slipDrop(bak);
-      toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:async()=>{if(fixedDupStop(paid))return;if(!await txOk([paid,...linked].map(t=>({...t,deleted:false}))))return;putTx(ym,paid.id,{deleted:false});linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}));slipBack(bak)}})}return}
+      toast('Odznaczono: '+f.name,'',{label:'Cofnij',fn:async()=>{if(fixedDupStop(paid)||slipTaken(bak,paid.id))return;if(!await txOk([paid,...linked].map(t=>({...t,deleted:false}))))return;putTx(ym,paid.id,{deleted:false});linked.forEach(t=>putTx(t.date.slice(0,7),t.id,{deleted:false}));slipBack(bak)}})}return}
   const due=fixedDate(f,S.ym),date=td().startsWith(S.ym)?td():due;
   if(f.kind=='tr'){const r=await ask({title:'Przelano: '+f.name,fields:[{id:'a',label:`Kwota (${curSym(accCur(f.acc))})`,type:'decimal',value:f2(f.amount)},{id:'d',label:'Data',type:'date',value:date},{id:'c',label:'Z konta',type:'select',value:f.acc,options:accOpts()},{id:'t',label:'Na konto',type:'select',value:f.to,options:accOpts()}],ok:'Odhacz'});
     if(!r)return;const amt=pg(r.a);if(amt<=0)return toast('Podaj kwotę','bad');if(!isDate(r.d)||!r.d.startsWith(S.ym))return toast('Data musi być w miesiącu '+MN[+S.ym.slice(5)-1].toLowerCase(),'bad');if(r.c==r.t)return toast('Wybierz dwa różne konta','bad');

@@ -27,7 +27,7 @@ wireSheet();wireToday();wireUsage();
 /* 🔢 the app version on this phone = the newest offline copy (sw.js CACHE) – shown in ⚙️ → Bezpieczeństwo → Diagnostyka */
 if(!DEMO&&window.caches)caches.keys().then(k=>{const v=k.map(x=>+(/^budzet-mw-v(\d+)$/.exec(x)||[])[1]||0).sort((a,b)=>b-a)[0];S.appVer=v?'v'+v:'—';document.querySelectorAll('.appver').forEach(e=>e.textContent=S.appVer)}).catch(()=>{});document.fonts?.ready?.then(()=>{if(S.cfg)fitNums()});
 /* 💾 ask the phone to keep this app's data for good (an entry made offline and not yet sent can't be cleared away); the answer is in Diagnostyka */
-if(!DEMO&&navigator.storage?.persisted)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).then(p=>{S.persist=p?'trwała ✓':'zwykła';document.querySelectorAll('.persist').forEach(e=>e.textContent=S.persist)}).catch(()=>{});
+if(!DEMO&&navigator.storage?.persisted)navigator.storage.persisted().then(p=>p||(navigator.storage.persist?navigator.storage.persist():false)).then(p=>{S.persist=p?'trwała ✓':'zwykła'}).catch(()=>{S.persist='nieznana'}).then(()=>document.querySelectorAll('.persist').forEach(e=>e.textContent=S.persist));
 let seeding=false;
 
 /* ---------- render ---------- */
