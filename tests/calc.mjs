@@ -11,7 +11,7 @@ import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
 import {pushSlot,mailPlan} from '../scripts/when-lib.mjs';
-import {dropJumps,keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
+import {dropJumps,eomFix,keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
 import {allocP,clsOf,etfOf,etfCur,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP,sandP,sandCheckP,wishHitP} from '../js/advisor.js';
 
 let n=0,bad=0;
@@ -542,7 +542,20 @@ eq('Wpisano dziś – dopisany wczoraj',typedToday([{id:'a',type:'exp',date:'202
  eq('Automat – skok ceny: zostaje wczorajsza, nowa czeka',[out.prices.A.p,out.prices.B.p,out.prices.C.p,out.prices.D.p,out.sus.A.p,out.sus.D.p],[100,135,1,100,150,1]);
  const out2={date:'2026-11-04',prices:{A:{p:155,d:'2026-11-04'},D:{p:3,d:'2026-11-04'}}};
  eq('Automat – skok potwierdzony następnego dnia (±10%) = przyjęty, inny = dalej czeka',[dropJumps(out2,out),out2.prices.A.p,out2.prices.D.p,out2.sus.D.p],[1,155,100,3]);
- const out3={date:'2026-11-05',prices:{A:{p:156,d:'2026-11-05'}}};eq('Automat – bez skoku nie ma pola sus',[dropJumps(out3,out2),'sus' in out3],[0,false])}
+ const out3={date:'2026-11-05',prices:{A:{p:156,d:'2026-11-05'},D:{p:101,d:'2026-11-05'}}};eq('Automat – bez skoku nie ma pola sus',[dropJumps(out3,out2),'sus' in out3],[0,false]);
+ /* audyt 2 (K5): krach 100 → 50 → 44 → 39 – drugi odczyt po tej samej stronie i w 40% od wstrzymanego = przyjęty; dzień bez odpowiedzi nie zeruje czekania */
+ const c0={prices:{V:{p:100,d:'2026-11-02'}}},c1={date:'2026-11-03',prices:{V:{p:50,d:'2026-11-03'}}};dropJumps(c1,c0);
+ const c2={date:'2026-11-04',prices:{}};dropJumps(c2,c1);const c3={date:'2026-11-05',prices:{V:{p:44,d:'2026-11-05'}}};
+ eq('Automat – krach: 50 czeka, dzień bez ceny dalej czeka, 44 przyjęte',[c1.prices.V.p,c1.sus.V.p,c2.sus.V.p,dropJumps(c3,{...c2,prices:c1.prices}),c3.prices.V.p,'sus' in c3],[100,50,50,0,44,false]);
+ const u1={date:'2026-11-03',prices:{V:{p:60,d:'2026-11-03'}}},u0={prices:{V:{p:100}},sus:{V:{p:200}}};
+ eq('Automat – druga cena po drugiej stronie dalej czeka',[dropJumps(u1,u0),u1.prices.V.p,u1.sus.V.p],[1,100,60]);
+ /* złoto i fundusze też */
+ const g0={gold:400,goldDate:'2026-11-02',funds:{F:{p:10,d:'2026-11-02'},G:{p:20,d:'2026-11-02'}},prices:{}};const g1={date:'2026-11-03',gold:4,goldDate:'2026-11-03',funds:{F:{p:1000,d:'2026-11-03'},G:g0.funds.G},prices:{}};
+ eq('Automat – złoto i fundusz: skok czeka, fundusz bez nowej ceny nie jest sprawdzany',[dropJumps(g1,g0),g1.gold,g1.goldDate,g1.funds.F.p,Object.keys(g1.sus).sort()],[2,400,'2026-11-02',10,['fund:F','gold']]);
+ /* wycena końca miesiąca (eom): cena czekająca 31.10 i potwierdzona później liczy się z 31.10; dziś coś czeka → wycena czeka */
+ const eom={prices:{V:{p:100,d:'2026-10-31'},W:{p:10}},sus:{V:{p:50,d:'2026-10-31'},W:{p:30}},gold:400,funds:{}};
+ const ef=eomFix(eom,{prices:{V:{p:47},W:{p:10.5}}});
+ eq('Automat – koniec miesiąca: potwierdzony krach z ceną z 31.10, odrzucony skok zostaje',[ef.prices.V.p,ef.prices.W.p,eomFix(eom,{prices:{},sus:{V:{p:48}}}),eomFix({prices:{V:{p:1}}},{}).prices.V.p],[50,10,null,1])}
 /* ---------- 🚫 bez minusa: wydatek / przelew, na który konta nie stać, nie zapisze się (balDrop) ---------- */
 {const cfg={accs:[{id:'k',name:'Konto',grp:'cur',open:30000},{id:'s',name:'Oszczędności',grp:'sav',open:0},{id:'i',name:'IKE',grp:'inv',open:0},{id:'e',name:'Euro',grp:'cur',cur:'EUR',open:0}]};
   const tx=[{id:'t1',type:'inc',amount:100000,date:'2026-11-10',acc:'k'},{id:'t2',type:'exp',amount:90000,date:'2026-11-20',acc:'k'}];

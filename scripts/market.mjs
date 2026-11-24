@@ -2,7 +2,7 @@
 // the list of PPK funds once a month and the month-end valuation of accounts with instruments.
 // Needs the secret FIREBASE_SA (service account JSON). Logs only counts – never amounts, names or symbols (the repository is public).
 import {db as fdb,ensureVapid,household,warsaw} from './common.mjs';
-import {CRYPTO_IDS,OZ,bondLinks,dropJumps,fundLinks,gusCsvLink,keepPrev,parseBondPage,parseEurostatAll,parseFundPage,parseGusCpi,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym,parseStooqHist,parseYahooHist} from './market-lib.mjs';
+import {CRYPTO_IDS,OZ,bondLinks,dropJumps,eomFix,fundLinks,gusCsvLink,keepPrev,parseBondPage,parseEurostatAll,parseFundPage,parseGusCpi,parseLimits,parseNbpRef,parseNbpTable,parseStooq,parseYahoo,yahooSym,parseStooqHist,parseYahooHist} from './market-lib.mjs';
 import {holdAt,instDiffP,macroP} from '../js/inv.js';
 import {ownerOf} from '../js/today.js';
 import {daysIn} from '../js/util.js';
@@ -58,18 +58,18 @@ for(const[t]of want){if(want.get(t).kind=='krypto')continue;const uk=/\.UK$/.tes
   const q=uk?(await fromYahoo(t))||(await fromStooq(t)):(await fromStooq(t))||(await fromYahoo(t));if(q)out.prices[t]=q}
 if(gold){const g=await tryIt('złoto',async()=>parseStooq(await get('https://stooq.pl/q/l/?s=xaupln&f=sd2t2ohlcv&h&e=csv','text')));if(g){out.gold=Math.round(g.p/OZ*100)/100;out.goldDate=g.d}}
 const goldToday=!!out.gold;console.log(`✓ ceny: ${Object.keys(out.prices).length} z ${want.size}${gold?(goldToday?' + złoto':' (złoto: brak)'):''}`);
-/* 4c. a price far from the last known one (> 40%) waits for confirmation by the next run – the month-end valuation and the history never take a wrong-scale price */
-const held=dropJumps(out,prev);if(held)console.log(`– cena za bardzo inna niż ostatnio (czeka na potwierdzenie jutro): ${held}`);
-/* 4b. what did not come today keeps yesterday's value (a valuation never falls back to the purchase price because a site was down for a day) */
-const kept=keepPrev(out,prev,[...want.keys()],gold);if(kept)console.log(`– bez odpowiedzi dziś, zostają ostatnie znane: ${kept}`);
 // 4a. unit values of TFI / PPK funds (analizy.pl; a page address with any name redirects to the fund)
 let nf=0;for(const[id,path]of fundsWant){const f=await tryIt('fundusz',async()=>parseFundPage(await get('https://www.analizy.pl/'+path,'text')));if(f){out.funds[id]={...f,src:'analizy'};nf++}}
 for(const id of Object.keys(out.funds))if(!fundsWant.has(id))delete out.funds[id];
 if(fundsWant.size)console.log(`✓ fundusze: ${nf} z ${fundsWant.size}`);
+/* 4c. a value far from the last known one (> 40%: prices, gold, funds) waits for confirmation by the next run – the month-end valuation and the history never take a wrong-scale price */
+const held=dropJumps(out,prev);if(held)console.log(`– cena za bardzo inna niż ostatnio (czeka na potwierdzenie jutro): ${held}`);
+/* 4b. what did not come today keeps yesterday's value (a valuation never falls back to the purchase price because a site was down for a day) */
+const kept=keepPrev(out,prev,[...want.keys()],gold);if(kept)console.log(`– bez odpowiedzi dziś, zostają ostatnie znane: ${kept}`);
 await M.doc('rates').set(out);
 /* 📅 the last prices and rates of each month (overwritten by every run in the month → at the end = the last trading day): the month-end
    valuation done on the 1st–7th of the next month uses them, not that day's prices */
-await tryIt('ceny na koniec miesiąca',()=>M.doc('eom').set({[today.slice(0,7)]:{prices:out.prices||{},fx:out.fx||{},fxDate:out.fxDate||null,date:today,gold:out.gold||null,goldDate:out.goldDate||null,funds:out.funds||{}}},{merge:true}));
+await tryIt('ceny na koniec miesiąca',()=>M.doc('eom').set({[today.slice(0,7)]:{prices:out.prices||{},fx:out.fx||{},fxDate:out.fxDate||null,date:today,gold:out.gold||null,goldDate:out.goldDate||null,funds:out.funds||{},sus:out.sus||null}},{merge:true}));
 // 5. price history of each instrument (makes the "paid in vs value" chart denser)
 let nh=0;const fxOf=c=>!c||c=='PLN'?1:out.fx[c];
 for(const d of hold.docs){const x=d.data();if(x.deleted)continue;const q=x.kind=='tfi'?out.funds[x.fund?.id]:x.ticker&&out.prices[x.ticker.trim().toUpperCase()];if(!q)continue;
@@ -94,13 +94,19 @@ const lastDay=m=>`${m}-${String(daysIn(m)).padStart(2,'0')}`,pm=(()=>{const[y,m]
 const target=today==lastDay(ym)?ym:+today.slice(8)<=7?pm:null,av=(await M.doc('autoval').get()).data()||{};
 if(target&&(av.last||'')<target){const D=await household(H),date=lastDay(target),mc=macroP(D.hraw,out),mref=M.doc('autoval');let n=0;
   /* valued after the month ended → the prices of its last trading day (eom), not today's */
-  const eom=target<ym?((await M.doc('eom').get()).data()||{})[target]:null,mk=eom?.date&&eom.date<=date?{...out,...eom}:out;
+  /* a value waiting for confirmation (dropJumps) → the valuation waits for the next run (at the latest the 7th: then with what there is) */
+  const mine=new Set([...hold.docs.map(d=>d.data()).filter(x=>!x.deleted&&x.ticker).map(x=>x.ticker.trim().toUpperCase()),...[...fundsWant.keys()].map(f=>'fund:'+f),...(gold?['gold']:[])]),
+    only=x=>x?Object.fromEntries(Object.entries(x).filter(([k])=>mine.has(k))):x,susNow={...out,sus:only(out.sus)};
+  const eom0=target<ym?((await M.doc('eom').get()).data()||{})[target]:null,eom=eom0?.date&&eom0.date<=date?eomFix({...eom0,sus:only(eom0.sus)},susNow):eom0;
+  const wait=(target==ym?Object.keys(susNow.sus||{}).length>0:eom===null)&&+today.slice(8)!=7;
+  const mk=eom?.date&&eom.date<=date?{...out,...eom}:eom===null?{...out,...eom0}:out;
+  if(wait)console.log('– wycena na koniec miesiąca czeka: cena w poczekalni');else{
   const txIds=new Set(D.txAll.map(t=>t.id));
   for(const a of D.cfg.accs.filter(a=>a.grp=='inv'&&!a.archived)){const items=Object.entries(D.hold).filter(([,x])=>x.acc==a.id&&!x.deleted).map(([id,x])=>holdAt({id,...x},date));
     if(!items.some(it=>Object.keys(it.lots||{}).length))continue;
     const d=instDiffP(a,items,D.tx.filter(t=>t.date<=date),date,mc,mk),id='av'+target.replace('-','')+a.id;if(!d||txIds.has(id))continue;
     const w=ownerOf(a);await H.collection('months').doc(target).set({tx:{[id]:{type:'adj',val:true,amount:d,date,sub:'',acc:a.id,to:'',who:w=='Wercia'?'Wercia':'Mati',note:'Wycena instrumentów (automat)',by:'automat',auto:true,deleted:false,ts:Date.now()}}},{merge:true});n++}
-  await mref.set({last:target,at:today,n},{merge:true});console.log(`✓ wycena na koniec miesiąca: ${n} ${n==1?'konto':'kont'}`)}
+  await mref.set({last:target,at:today,n},{merge:true});console.log(`✓ wycena na koniec miesiąca: ${n} ${n==1?'konto':'kont'}`)}}
 // 9. 🌡️ thermometer: daily price of the whole-world fund + USD/EUR, the first time (or when short) the last ~5 years from stooq / Yahoo
 await tryIt('termometr',async()=>{const th=(await M.doc('thermo').get()).data()||{},d={},q=out.prices[THERMO];if(q?.p&&q.d)d[q.d]=q.p;
   if(Object.keys(th.d||{}).length<200&&th.back!=today){const h=await tryIt('termometr – historia',async()=>parseStooqHist(await get(`https://stooq.pl/q/d/l/?s=${THERMO.toLowerCase()}&i=d`,'text')))

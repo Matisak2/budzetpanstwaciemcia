@@ -56,14 +56,30 @@ export function keepPrev(out,prev,want=[],gold=false){const p=prev||{},fxToday=O
   if(out.nbp==null&&p.nbp!=null){out.nbp=p.nbp;kept++}
   return kept}
 /* 🚦 a price that jumped by more than 40% since the last known one (wrong scale – pence instead of pounds, a broken page) is not used today:
-   yesterday's stays and the new one waits in out.sus; if the next run brings about the same price again (±10%), it is real and is taken.
-   Prices in two different currencies are not compared. Returns how many prices were held back (the log shows only this number). */
-export function dropJumps(out,prev,lim=0.4){const p=prev?.prices||{},sus=prev?.sus||{};let n=0;out.sus={};
-  for(const[t,q]of Object.entries(out.prices||{})){const o=p[t];if(!o?.p||!q?.p||(o.cur&&q.cur&&o.cur!=q.cur))continue;
-    const r=q.p/o.p;if(r<=1+lim&&r>=1/(1+lim))continue;
-    const s=sus[t];if(s?.p&&Math.abs(q.p/s.p-1)<=0.1)continue;
-    out.sus[t]={p:q.p,d:q.d||out.date};out.prices[t]=o;n++}
+   yesterday's stays and the new one waits in out.sus. The next reading is taken when it is again on the same side of the old price and within
+   40% of the waiting one (a real crash 100 → 50 → 44 is taken on day 2; garbage 1 → 3 keeps waiting). A source that does not answer one day
+   does not reset the wait. Also gold (key „gold”) and TFI/PPK funds (key „fund:ID”). Prices in two currencies are not compared.
+   Returns how many values were held back (the log shows only this number). */
+export function dropJumps(out,prev,lim=0.4){const sus=prev?.sus||{},seen=new Set();let n=0;out.sus={};
+  const far=(a,b)=>{const r=a/b;return r>1+lim||r<1/(1+lim)};
+  const one=(k,q,o,back)=>{seen.add(k);if(!o?.p||!q?.p||(o.cur&&q.cur&&o.cur!=q.cur)||!far(q.p,o.p))return;
+    const s=sus[k];if(s?.p&&(s.p>o.p)==(q.p>o.p)&&!far(q.p,s.p))return;
+    out.sus[k]={p:q.p,d:q.d||out.date};back();n++};
+  for(const[t,q]of Object.entries(out.prices||{}))one(t,q,prev?.prices?.[t],()=>{out.prices[t]=prev.prices[t]});
+  for(const[f,q]of Object.entries(out.funds||{}))if(q!==prev?.funds?.[f])one('fund:'+f,q,prev?.funds?.[f],()=>{out.funds[f]=prev.funds[f]});
+  if(out.gold&&prev?.gold)one('gold',{p:out.gold,d:out.goldDate},{p:prev.gold},()=>{out.gold=prev.gold;out.goldDate=prev.goldDate});
+  for(const[k,s]of Object.entries(sus))if(!seen.has(k))out.sus[k]=s;
   if(!Object.keys(out.sus).length)delete out.sus;return n}
+/* 📅 month-end valuation from the prices saved on the month's last run (eom): a value that was waiting then (eom.sus) and has been confirmed
+   since (today's value is on the same side of the held one) counts with the waiting price – it was the real month-end price.
+   null = something is still waiting today (the valuation waits for the next run). */
+export function eomFix(eom,out,lim=0.4){if(!eom?.sus)return eom;const far=(a,b)=>{const r=a/b;return r>1+lim||r<1/(1+lim)};
+  const e={...eom,prices:{...(eom.prices||{})},funds:{...(eom.funds||{})}};
+  for(const[k,s]of Object.entries(eom.sus)){if(out?.sus?.[k])return null;
+    const g=k=='gold',f=k.startsWith('fund:')?k.slice(5):null,old=g?eom.gold:f?eom.funds?.[f]?.p:eom.prices?.[k]?.p,now=g?out?.gold:f?out?.funds?.[f]?.p:out?.prices?.[k]?.p;
+    if(!(old>0)||!(now>0)||!far(now,old)||(now>old)!=(s.p>old))continue;
+    if(g)e.gold=s.p;else if(f)e.funds[f]={...e.funds[f],p:s.p,d:s.d};else e.prices[k]={...e.prices[k],p:s.p,d:s.d}}
+  return e}
 /* 🌡️ the thermometer history: stooq daily CSV (Date,Open,High,Low,Close,Volume) or Yahoo chart (timestamps + closes) → {YYYY-MM-DD: close} */
 export function parseStooqHist(csv){const L=String(csv||'').trim().split(/\r?\n/);if(L.length<2)return null;const H=L[0].split(',').map(s=>s.trim().toLowerCase()),di=H.indexOf('date'),ci=H.indexOf('close');if(di<0||ci<0)return null;
   const o={};for(const l of L.slice(1)){const r=l.split(','),d=r[di],c=+r[ci];if(/^\d{4}-\d\d-\d\d$/.test(d||'')&&c>0)o[d]=c}return Object.keys(o).length?o:null}
