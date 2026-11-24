@@ -251,9 +251,9 @@ Decyzje Matiego: szybsze dodawanie wydatku i „Pomiń resztę” w zamknięciu 
 Mati 24.11: „Zrób etapy a, b i c po kolei”. D2, E2, F i styczeń 2027 – osobno, na komendę.
 
 ## Etap A2. Pieniądze i automat
-- [ ] 🛟 Poduszka nie odejmuje celów, które pokrywają konta inwestycyjne bez IKE/IKZE (cel z XTB nie zmniejsza poduszki) – propozycja z raportu (pytanie 1), Mati: „zrób”
-- [ ] 📈 Automat przy krachu: cena przyjmowana, gdy drugi odczyt z rzędu też jest > 40% od starej (po tej samej stronie); wycena końca miesiąca nie bierze ceny „w poczekalni”; kontrola złota i funduszy
-- [ ] 💼 Wypłata 30. dnia nie jest brana za „koniec miesiąca” (szukanie dalej wstecz)
+- [x] 🛟 Poduszka nie odejmuje celów, które pokrywają konta inwestycyjne bez IKE/IKZE (cel z XTB nie zmniejsza poduszki) – propozycja z raportu (pytanie 1), Mati: „zrób”
+- [x] 📈 Automat przy krachu: cena przyjmowana, gdy drugi odczyt z rzędu też jest > 40% od starej (po tej samej stronie); wycena końca miesiąca nie bierze ceny „w poczekalni”; kontrola złota i funduszy
+- [x] 💼 Wypłata 30. dnia nie jest brana za „koniec miesiąca” (szukanie dalej wstecz)
 
 ## Etap B2. Drobne poprawki i testy
 - [ ] Wiek w doradcy z pełnej daty urodzin; „W planie zostało” odejmuje przekroczenia; majątek w Analizie do dziś
