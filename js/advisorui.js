@@ -372,7 +372,7 @@ export async function setRentPrice(){if(guard())return;const W=advW().ank||{};co
   {id:'p',label:'Cena mieszkania (zł)',type:'decimal',value:W.rentPrice?String(W.rentPrice/100):''},{id:'r',label:'Czynsz najmu miesięcznie (zł)',type:'decimal',value:W.rentRent?String(W.rentRent/100):''},{id:'c',label:'Koszty miesięcznie (administracja, fundusz remontowy, podatki, ubezpieczenie) (zł)',type:'decimal',value:W.q35?String(W.q35/100):''}],ok:'Zapisz'});
   if(!r)return;const x={rentPrice:pg(r.p||'0'),rentRent:pg(r.r||'0'),q35:pg(r.c||'0')};S.hraw={...S.hraw,advW:{...advW(),ank:{...W,...x}}};merge(H,{advW:{ank:x}});render()}
 /* 🎂 age: from the birthday (⚙️ / the kotki), without it from the survey's „rok urodzenia” (q1 – asked only then) */
-function ageOf(who){const y=+td().slice(0,4),b=S.hraw?.birth?.[who],q=+ankOf(who).q1;return b?y-+b.slice(0,4):q>1900&&q<=y?y-q:null}
+function ageOf(who){const y=+td().slice(0,4),b=S.hraw?.birth?.[who],q=+ankOf(who).q1;return b?y-+b.slice(0,4)-(td().slice(5)<b.slice(5,10)?1:0):q>1900&&q<=y?y-q:null} /* pełna data 🎂 → przed urodzinami o rok mniej (audyt 2) */
 export function goalsPageH(){const who=S.who,A=ankOf(who),W=advW().ank||{},ctx=ankCtx(who),age=ageOf(who),P=planFor(who);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeAdv()">‹ Oszczędności</button>`;
   /* 🌴 retirement */

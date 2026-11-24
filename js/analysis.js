@@ -4,7 +4,7 @@ import {isTreat,kotki} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,gainSvg,hbarsH,legendH,lineSvg,pctS} from './charts.js';
 import {OWN,OWN_COL,catHue,catMark} from './data.js';
 import {outProj,shopsP,anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs,yearAgoP,ownerOf,ytdSpanP} from './logic.js';
-import {MN,MNG,addMonths,daysIn,esc,ls,p2,td,zl,zl0,fxTxt,plu} from './util.js';
+import {MN,MNG,addDays,addMonths,daysIn,esc,ls,p2,td,zl,zl0,fxTxt,plu} from './util.js';
 import {S,catSlides,toast,accCur,isP} from './core.js';
 import {downloadBlob,txRowH} from './actions.js';
 import {macro} from './savings.js';
@@ -18,10 +18,10 @@ export function setAnaMode(k){ls.set('mw_anam',k);render()}
 function monthSumH(cfg,tx,ym){const act=actuals(cfg,tx,ym),pl=planOf(cfg,S.plans,tx,ym),L=cfg.cats.filter(c=>c.type=='exp').flatMap(c=>c.subs.map(s=>({s,p:pl[s.id]||0,a:act[s.id]||0}))).filter(x=>x.p||x.a);
   if(!L.length)return'';const fit=L.filter(x=>x.p&&x.a<=x.p),over=L.filter(x=>x.p&&x.a>x.p).sort((a,b)=>(b.a-b.p)-(a.a-a.p)),less=fit.filter(x=>x.a<=x.p*0.8).sort((a,b)=>(b.p-b.a)-(a.p-a.a)),out=L.filter(x=>!x.p&&x.a>0).sort((a,b)=>b.a-a.a);
   const saved=fit.reduce((a,x)=>a+x.p-x.a,0),lst=(X,f)=>X.slice(0,4).map(f).join(', ');
-  const good=!over.length&&!out.length,who=good?'Ivo':'Bailey',cm=td().slice(0,7),live=ym==cm,fut=ym>cm,left=daysIn(ym)-(+td().slice(8)),pall=L.reduce((a,x)=>a+x.p,0);
+  const good=!over.length&&!out.length,who=good?'Ivo':'Bailey',cm=td().slice(0,7),live=ym==cm,fut=ym>cm,left=daysIn(ym)-(+td().slice(8)),pall=L.reduce((a,x)=>a+x.p,0),net=pall-L.reduce((a,x)=>a+x.a,0); /* trwający miesiąc: reszta planu po przekroczeniach i wydatkach poza planem (audyt 2) */
   return`<section class="chart msum"><div class="ct"><b>Podsumowanie miesiąca</b><span class="mini">${MN[+ym.slice(5)-1]} ${ym.slice(0,4)}</span></div>
     ${kotki.mode=='off'?'':`<div class="msk">${catSlot(good?'ivoHappy':'lupa','kot sm')}<span class="mini"><b>${who}:</b> ${good?(fut?'Plan gotowy – ten miesiąc dopiero przed nami 😺':live?`Na razie wszystko w planie 👍 Do końca miesiąca ${left} ${plu(left,'dzień','dni','dni')}.`:'Wszystko w planie! Należy się smaczek 😺'):over.length?`${over.length} ${plu(over.length,'pozycja przekroczyła','pozycje przekroczyły','pozycji przekroczyło')} plan. Zerknijmy razem, co się stało.`:'Kilka wydatków było poza planem – warto je dopisać do planu.'}</span></div>`}
-    <div class="facts">${fut?`<div>🗓️ Ten miesiąc jeszcze się nie zaczął – w planie ${zl0(pall)}.</div>`:live?`<div>⏳ Miesiąc jeszcze trwa – „zmieściło się” policzę po jego końcu. W planie zostało ${zl0(saved)}.</div>`:`<div>✅ Zmieściło się: <b>${fit.length}</b> ${plu(fit.length,'pozycja','pozycje','pozycji')}${saved?` · zostało ${zl0(saved)}`:''}</div>`}
+    <div class="facts">${fut?`<div>🗓️ Ten miesiąc jeszcze się nie zaczął – w planie ${zl0(pall)}.</div>`:live?`<div>⏳ Miesiąc jeszcze trwa – „zmieściło się” policzę po jego końcu. ${net>=0?`W planie zostało ${zl0(net)}`:`Wydatki są już ${zl0(-net)} ponad plan`}.</div>`:`<div>✅ Zmieściło się: <b>${fit.length}</b> ${plu(fit.length,'pozycja','pozycje','pozycji')}${saved?` · zostało ${zl0(saved)}`:''}</div>`}
     ${over.length?`<div>▲ Przekroczone: <b>${over.length}</b> – ${esc(lst(over,x=>x.s.name+' +'+zl0(x.a-x.p)))}</div>`:''}
     ${less.length&&!live&&!fut?`<div>💚 Wyraźnie mniej niż plan: ${esc(lst(less,x=>x.s.name+' −'+zl0(x.p-x.a)))}</div>`:''}
     ${out.length?`<div>⚠️ Poza planem: ${esc(lst(out,x=>x.s.name+' '+zl0(x.a)))}</div>`:''}</div></section>`}
@@ -44,7 +44,7 @@ function sankeyH(cfg,tx,ym,A){const act=actuals(cfg,tx,ym),cats=Object.fromEntri
   const left=A.inc-A.exp;if(left>0)R.push({l:'Zostało',v:left,c:'#7fb0ec'});else if(left<0)L.push({l:'Z oszczędności',v:-left,c:'#fda4af'});
   return chartBox('Przepływ pieniędzy','skąd przyszły i dokąd poszły',sankeySvg(L,R))}
 function wealthH(y){const cur=td().slice(0,7),ms=Array.from({length:12},(_,i)=>y+'-'+p2(i+1)),tx=liveOf(S.tx),A=S.cfg.accs.filter(isP);
-  const v=ms.map(m=>m>cur?null:A.reduce((x,a)=>x+balance(S.cfg,tx,a.id,m+'-32'),0));if(v.every(x=>x===null))return'';
+  const v=ms.map(m=>m>cur?null:A.reduce((x,a)=>x+balance(S.cfg,tx,a.id,m==cur?addDays(td(),1):m+'-32'),0)); /* bieżący miesiąc – do dziś, jak podsumowanie roku (audyt 2) */if(v.every(x=>x===null))return'';
   return chartBox('Majątek na kontach','wszystkie konta w złotych, na koniec miesiąca (bez zobowiązań)',lineSvg(['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'],v,'#a78bfa'))}
 function catGridH(cfg,M){const cats=cfg.cats.filter(c=>c.type=='exp'&&M.some(a=>(a.cat[c.id]||0)>0));if(!cats.length)return'';
   return`<section class="chart"><div class="ct"><b>Kategorie przez 12 miesięcy</b><span class="mini">im ciemniej, tym więcej w tym miesiącu</span></div><div class="cgrid">${cats.map(c=>{const vals=M.map(a=>Math.max(0,a.cat[c.id]||0)),mx=Math.max(1,...vals),col=markOf(c);
