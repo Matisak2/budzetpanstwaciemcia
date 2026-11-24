@@ -138,6 +138,12 @@ export function planRecon(diffs){// diffs: [{id,d,inv,cur}] – transfers only b
     pos.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:x.d})});neg.forEach(x=>{if(x.d)ops.push({kind:'adj',acc:x.id,amount:-x.d})})}
   diffs.filter(x=>x.inv&&x.d).forEach(x=>ops.push({kind:'val',acc:x.id,amount:x.d}));
   return ops}
+/* ⚡ only the totals {inc,exp} of a month / year, remembered for the same list of entries (a new list after every change) and the same
+   categories / accounts / projects – the Savings page, the cushion and the advisor ask for the same 6–12 past months on every redraw (C2) */
+const aggMemo=new WeakMap();
+export function aggTot(cfg,tx,prefix){const sig=JSON.stringify([cfg.cats.map(c=>[c.id,c.type,c.subs.map(s=>s.id)]),cfg.accs.map(a=>[a.id,a.cur||'']),(cfg.projs||[]).map(p=>[p.id,p.inBudget])]);
+  let m=aggMemo.get(tx);if(!m||m.sig!==sig){m={sig,v:new Map()};aggMemo.set(tx,m)}
+  let r=m.v.get(prefix);if(!r){const a=agg(cfg,tx,prefix);r={inc:a.inc,exp:a.exp};m.v.set(prefix,r)}return r}
 export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outProj(cfg),r={inc:0,exp:0,cat:{},sub:{},who:{},own:{},acc:{},day:{},fixed:0,big:[],n:0,fx:{inc:{},exp:{},cat:{},sub:{}}};
   /* own: spending by whose account it came from (Mati / Wercia / Wspólne) – „who” is only who typed it */
   const ow={};cfg.accs.forEach(a=>ow[a.id]=ownerOf(a));
@@ -169,7 +175,7 @@ export function cushionP(cfg,tx,goals,{ym,at,owner}={}){const live=liveOf(tx),ac
   /* goals are paid first from plain investment accounts (XTB etc., no IKE/IKZE/OKI/PPK) – only the rest comes out of the cushion (audyt 2, K4) */
   const onInv=cfg.accs.filter(a=>a.grp=='inv'&&!wrapOf(a)&&!isPodName(a.name)&&(a.cur||'PLN')=='PLN'&&(!owner||ownerOf(a)==owner)).reduce((x,a)=>x+Math.max(0,balance(cfg,live,a.id,at)),0);
   const inGoals=Math.max(0,goalsAll-onInv);
-  const first=firstYm(live),past=[];for(let k=1;k<=6;k++){const m=addMonths(ym,-k);if(m<first)break;const e=agg(cfg,live,m).exp;if(e>0)past.push(e)}
+  const first=firstYm(live),past=[];for(let k=1;k<=6;k++){const m=addMonths(ym,-k);if(m<first)break;const e=aggTot(cfg,live,m).exp;if(e>0)past.push(e)}
   const avgE=past.length?past.reduce((a,v)=>a+v,0)/past.length:agg(cfg,live,ym).exp,free=Math.max(0,pool-inGoals);
   return{accs,pool,inGoals,goalsAll,onInv,free,avgE,n:past.length,months:avgE>0?free/avgE:null,pod:accs.find(a=>!a.archived&&isPodName(a.name))||null}}
 /* average of each position over the previous n months that have any data (plan hint, "Wypełnij średnimi", anomalies) */

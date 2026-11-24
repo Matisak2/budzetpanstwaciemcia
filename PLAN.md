@@ -266,4 +266,4 @@ Mati 24.11: „Zrób etapy a, b i c po kolei”. D2, E2, F i styczeń 2027 – o
 - [x] Zasada „krótkie linie” w CLAUDE.md
 
 ## Etap C2. Szybkość
-- [ ] Oszczędności: `agg` i `instDiffP` zapamiętane; HELP/NEWS na żądanie; `maillog`/`autoval` bez stałej subskrypcji
+- [x] Oszczędności: `agg` (sumy – `aggTot`) i `instDiffP` zapamiętane (20 681 wpisów, CPU 4×: 85 → 65 ms); HELP/NEWS na żądanie (`help.js`, ok. 41 kB gzip mniej przy starcie); `maillog`/`autoval` bez stałej subskrypcji

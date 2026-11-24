@@ -3,7 +3,7 @@
 import {doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {tNum,qn,sandP,sandCheckP,wishHitP,SAND_KIND,SAND_REG,symOf,thermoP,THERMO_TXT,advRemindP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,fillP,pickEtf,unitsP,tranchesP,bondPickP,adviceDoneP,XTB,taxOf,ikzeRank,wrapCompare,whereP,ANK,ANK_SEC,ankList,ankDone,planP,bandOf,jointPlan,crisisP,devP,diagP,PLAN_G,AGRP,AGRP_ORDER,RISKS,COV,ETFS,ETF_AT,REAL_USE,realP,allocP,clsAll,clsOf,accClsOf,etfCheck,etfDup,etfOf,etfSym,guessCls} from './advisor.js';
 import {donutSvg} from './charts.js';
-import {liveOf,ownerOf,agg,balance,cushionP} from './logic.js';
+import {liveOf,ownerOf,aggTot,balance,cushionP} from './logic.js';
 import {youngUntil} from './pay.js';
 import {debtStateP} from './today.js';
 import {kotki} from './guide.js';
@@ -134,7 +134,7 @@ const planOfWho=who=>advM()[who]?.plan||null;
 function planFor(owner){const o=ownF(owner);if(o=='Mati'||o=='Wercia')return planOfWho(o);if(advW().ank?.q64=='sep'&&o!='Wspólne')return null;return jointPlan(planOfWho('Mati'),planOfWho('Wercia'))}
 /* what the app already knows for the survey ([A]) */
 function ankCtx(who){const tx=liveOf(S.tx),today=td(),cur=today.slice(0,7),A=allocNow(who),R=realNow(who);let inc=0,exp=0,n=0;
-  for(let k=1;k<=6;k++){const g=agg(S.cfg,tx,addMonths(cur,-k));if(g.inc||g.exp){inc+=g.inc;exp+=g.exp;n++}}
+  for(let k=1;k<=6;k++){const g=aggTot(S.cfg,tx,addMonths(cur,-k));if(g.inc||g.exp){inc+=g.inc;exp+=g.exp;n++}}
   const incs=(S.cfg.incs||[]).filter(x=>x.who==who),kinds=[...new Set(incs.map(x=>x.kind))],birth=S.hraw?.birth?.[who]||'';
   let taxHint='';if(birth&&youngUntil(birth)>today&&kinds.some(k=>k=='uop'||k=='zlec'))taxHint='0';
   else if(kinds.some(k=>k=='uop'||k=='zlec')){let b=0,m=0;for(const[ym,sl]of Object.entries(S.slips||{})){if(!ym.startsWith(today.slice(0,4)))continue;let any=0;for(const x of Object.values(sl||{}))if(x?.who==who){b+=+x.base||0;any=1}m+=any}
@@ -354,7 +354,7 @@ export function advFixed(){const who=S.who,P=planFor(who)||planFor('all'),to=S.c
 export function openGoals(){use('f:cele');S.adv='goals';window.scrollTo(0,0);render()}
 /* net income a month: from payslips of the last 6 months (person or both); without payslips – household income from the budget */
 function netInc(who){const from=addMonths(td().slice(0,7),-6);let s=0;const ms=new Set();for(const[ym,sl]of Object.entries(S.slips||{})){if(ym<from)continue;for(const x of Object.values(sl||{}))if(x&&(!who||x.who==who)&&x.net){s+=x.net;ms.add(ym)}}
-  if(ms.size)return Math.round(s/ms.size);const tx=liveOf(S.tx),cur=td().slice(0,7);let inc=0,n=0;for(let k=1;k<=6;k++){const g=agg(S.cfg,tx,addMonths(cur,-k));if(g.inc){inc+=g.inc;n++}}return n?Math.round(inc/n/(who?2:1)):0}
+  if(ms.size)return Math.round(s/ms.size);const tx=liveOf(S.tx),cur=td().slice(0,7);let inc=0,n=0;for(let k=1;k<=6;k++){const g=aggTot(S.cfg,tx,addMonths(cur,-k));if(g.inc){inc+=g.inc;n++}}return n?Math.round(inc/n/(who?2:1)):0}
 const mRate=()=>Math.round(((+macro().nbp||4)+2)*100)/100;
 function buyCtx(){const A=allocNow('all'),W=advW().ank||{},ctx=ankCtx(S.who),liquid=A.rows.filter(r=>{const a=S.cfg.accs.find(x=>x.id==r.acc);return!a||!['ike','ikze','oki'].includes(wrapOf(a))}).reduce((s,r)=>s+r.v,0);
   const y=+td().slice(0,4),gl=[...(ankOf('Mati').q27||[]),...(ankOf('Wercia').q27||[])].filter(g=>g&&g.a&&g.y&&g.y<=y+3).reduce((s,g)=>s+g.a,0);

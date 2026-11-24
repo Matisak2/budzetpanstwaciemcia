@@ -4,7 +4,7 @@ import {getAuth} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.
 import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,setDoc,updateDoc,deleteField,writeBatch} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {scene} from './cats.js';
 import {catSlot} from './art.js';
-import {NEWS,NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
+import {NEWS_V,TOUR,WIDE,greeting,isTreat,kotki} from './guide.js';
 import {CURS,SEASON,tint} from './data.js';
 import {wrapOf} from './inv.js';
 import {actuals,agg,balDrop,cleanCat,liveOf,planOf} from './logic.js';
@@ -55,7 +55,8 @@ export function catSlides(slides,done='Gotowe'){return new Promise(res=>{const d
     if($('csBack'))$('csBack').onclick=()=>{if(i){i--;draw()}else fin()};$('csNext').onclick=()=>{if(!last){i++;draw()}else fin()}};
   d.onclick=e=>{if(e.target===d)fin()};d.onkeydown=e=>{if(e.key=='Escape')fin()};draw();d.hidden=false})}
 export const showTour=()=>catSlides(TOUR(S.who),'Zaczynamy!');
-export function showNews(all){const seen=all?0:+(ls.get('mw_news')||0),list=NEWS.filter(x=>x.v>seen);ls.set('mw_news',String(NEWS_V));
+/* the entries live in help.js, loaded only now (C2) */
+export async function showNews(all){const {NEWS}=await import('./help.js'),seen=all?0:+(ls.get('mw_news')||0),list=NEWS.filter(x=>x.v>seen);ls.set('mw_news',String(NEWS_V));
   return catSlides((list.length?list:NEWS.slice(0,1)).map(x=>({scene:x.scene,title:'Co nowego · '+x.title,text:x.items.map(t=>'• '+t).join('\n')})),'Super!')}
 /* once per session, after the budget has loaded: first steps on a new phone, otherwise "Co nowego" after an update */
 export function maybeIntro(){if(S.introDone||!S.cfg||!$('dlg').hidden||!$('sheet').hidden)return;

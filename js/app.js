@@ -2,7 +2,7 @@ import {onAuthStateChanged,signInWithEmailAndPassword,signOut,setPersistence,bro
 import {doc,collection,onSnapshot,setDoc,getDoc,waitForPendingWrites} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {catIcon,catsEmpty,mountCats} from './art.js';
 import {scene} from './cats.js';
-import {CELEBRATE,HELP,NEWS_V,kotki} from './guide.js';
+import {CELEBRATE,NEWS_V,kotki} from './guide.js';
 import {hbarsH} from './charts.js';
 import {HUES,OWN,OWN_COL,SEASON,catHue,pastel,seed,tint} from './data.js';
 import {IICON,limitOf,paidInYear,wrapOf,intOf,intLabel} from './inv.js';
@@ -363,7 +363,9 @@ function openHelp(open){goTab('set');S.help=true;S.helpOpen=open||'';render()}
 function closeHelp(){S.help=false;window.scrollTo(0,0);render()}
 function helpFilter(v){const q=v.trim().toLowerCase();document.querySelectorAll('#app details.hlp').forEach(d=>{d.hidden=!!q&&!d.textContent.toLowerCase().includes(q)});
   document.querySelectorAll('#app .hlpsec').forEach(c=>{c.hidden=!!q&&![...c.querySelectorAll('details.hlp')].some(d=>!d.hidden)})}
-function helpH(){const isNew=x=>x.v&&x.v>=NEWS_V-2;
+/* ⚡ HELP (help.js) loaded the first time the guide or the 🔍 search needs it (C2); until then a one-line placeholder, then a redraw */
+let HELP=null;const loadHelp=()=>HELP?Promise.resolve(HELP):import('./help.js').then(m=>HELP=m.HELP);
+function helpH(){if(!HELP){loadHelp().then(()=>render());return '<div class="mini">Ładuję przewodnik… 🐾</div>'}const isNew=x=>x.v&&x.v>=NEWS_V-2;
   const item=x=>`<details class="hlp"${S.helpOpen==x.t?' open':''}><summary><span class="hi">${x.i}</span><span class="ht"><b>${esc(x.t)}${isNew(x)?' <em class="newb">nowe</em>':''}</b><small>${esc(x.s)}</small></span><span class="hchev">›</span></summary><div class="hbody"><p>${esc(x.w)}</p><ol>${x.h.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div></details>`;
   const fresh=HELP.flatMap(s=>s.items).filter(isNew).sort((a,b)=>b.v-a.v);
   let h=`<button class="btn sm" style="align-self:flex-start" onclick="closeHelp()">‹ Ustawienia</button>
@@ -375,7 +377,7 @@ function helpH(){const isNew=x=>x.v&&x.v>=NEWS_V-2;
 /* 🔍 one search: entries, positions, accounts, instruments, fixed payments */
 function openFind(){if(!S.cfg)return;use('f:find');const d=$('dlg');
   $('dlgBody').innerHTML=`<div class="r1"><h2>🔍 Szukaj</h2><button class="btn sm" data-x="1">Zamknij</button></div><input id="fdQ" class="pq" type="search" enterkeyhint="search" placeholder="np. Biedronka, prąd, 120, >200" autocomplete="off"><div id="fdRes" class="fdres"></div>`;
-  d.hidden=false;const q=$('fdQ');q.oninput=()=>findRun(q.value);findRun('');setTimeout(()=>q.focus(),60);
+  d.hidden=false;const q=$('fdQ');q.oninput=()=>findRun(q.value);findRun('');setTimeout(()=>q.focus(),60);if(!HELP)loadHelp().then(()=>{if(!d.hidden&&q.value)findRun(q.value)});
   d.onclick=e=>{if(e.target===d||e.target.closest('[data-x]')){d.hidden=true;return}const b=e.target.closest('[data-go],.tx');if(!b)return;d.hidden=true;if(b.dataset.go)findGo(b.dataset.go)}}
 function findRun(raw){const v=raw.trim(),el=$('fdRes');if(!v){el.innerHTML='<div class="mini">Szukam we wpisach (notatka, pozycja, konto, kwota), w pozycjach budżetu, kontach, instrumentach i opłatach stałych.</div>';return}
   const low=s=>String(s||'').toLowerCase(),q=low(v),sm=subsMap(S.cfg),grp=(t,L)=>L.length?`<div class="h2">${t}</div>${L.join('')}`:'',row=(go,ic,t,s)=>`<button class="fhit" data-go="${go}"><span>${ic}</span><b>${esc(t)}</b><small>${esc(s)}</small></button>`;
@@ -383,7 +385,7 @@ function findRun(raw){const v=raw.trim(),el=$('fdRes');if(!v){el.innerHTML='<div
   const accs=S.cfg.accs.filter(a=>!a.archived&&low(a.name).includes(q)).slice(0,4).map(a=>row('acc:'+a.id,'👛',a.name,ACCTAB[a.grp]||''));
   const ins=Object.entries(S.hold).filter(([,x])=>!x.deleted&&(low(x.name).includes(q)||low(x.ticker).includes(q))).slice(0,4).map(([,x])=>row('inst:'+x.acc,IICON[x.kind]||'📈',x.name,accN(x.acc)));
   const fx=(S.cfg.fixed||[]).filter(f=>low(f.name).includes(q)).slice(0,4).map(f=>row('fix:'+f.id,'📌',f.name,'opłata stała'));
-  const hl=HELP.flatMap(s=>s.items).filter(x=>low(x.t+' '+x.s).includes(q)).slice(0,3).map(x=>row('help:'+x.t,x.i,x.t,'📖 jak to działa'));
+  const hl=(HELP||[]).flatMap(s=>s.items).filter(x=>low(x.t+' '+x.s).includes(q)).slice(0,3).map(x=>row('help:'+x.t,x.i,x.t,'📖 jak to działa'));
   const AQ=amtQuery(v),F={scope:'a',q:v,type:'',who:'',acc:'',cat:''},L=liveOf(S.tx).filter(t=>txMatches(t,sm,{...F,q:AQ.q},S.ym,AQ)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
   const txs=L.slice(0,30).map(t=>txRowH(t,sm));
   el.innerHTML=grp('Jak to działa',hl)+grp('Pozycje budżetu',subs)+grp('Opłaty stałe',fx)+grp('Konta',accs)+grp('Instrumenty',ins)+grp(`Wpisy${L.length>30?` (30 z ${L.length})`:L.length?` (${L.length})`:''}`,txs)||'<div class="mini">Nic nie znalazłem 🐾</div>'}
@@ -396,7 +398,7 @@ export const goTab=t=>{S.help=false;S.adv=null;S.setPage=null;S.report=null;if(t
 document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
 $('gearBtn').onclick=()=>goTab(S.tab=='set'&&!S.setPage&&!S.help?'dash':'set');
 /* ⚙️ one group on its own page (null = the tiles) */
-export function setPage(k){S.setPage=k;window.scrollTo(0,0);render()}
+export function setPage(k){S.setPage=k;window.scrollTo(0,0);render();if(k=='auto')loadAutoInfo()}
 $('addBtn').onclick=()=>openTx();
 $('mt').querySelectorAll('button').forEach(b=>b.onclick=()=>setType(b.dataset.v));
 $('mc').onchange=()=>{if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o)$('mto').value=o.value}autoWho();updCoin();updFx();updSave()};
@@ -428,7 +430,10 @@ async function logout(){
   signOut(auth)}
 /* ⚡ market: the small documents live; 🌡️ market/thermo (~5 years of daily prices, rewritten by the automat every day – each time sent
    whole to both phones and redrawn) read once at the start and again when the app comes back after 6 h; market/eom is only for the automat */
-const MKT_DOCS=['rates','funds','limits','pushlog','autoval','maillog','vapid'];let thermoAt=0;
+const MKT_DOCS=['rates','funds','limits','pushlog','vapid'];let thermoAt=0;
+/* ⚡ market/maillog and market/autoval (when the last mail / month-end valuation went) are shown only in ⚙️ → 🤖 Automaty – read when it opens (C2) */
+function loadAutoInfo(){if(!S.uid)return;Promise.all(['maillog','autoval'].map(k=>getDoc(doc(MARKET(),k)).then(d=>[k,d.exists()?clone(d.data()):null])))
+  .then(L=>{const m={...S.market};for(const[k,v]of L)if(v)m[k]=v;else delete m[k];S.market=m;renderSoon()}).catch(()=>{})}
 function loadThermo(){if(!S.uid||Date.now()-thermoAt<6*36e5)return;thermoAt=Date.now();
   getDoc(doc(MARKET(),'thermo')).then(d=>{const m={...S.market};if(d.exists())m.thermo=clone(d.data());else delete m.thermo;S.market=m;renderSoon()}).catch(()=>{thermoAt=0})}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')loadThermo()});

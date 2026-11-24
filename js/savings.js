@@ -5,7 +5,7 @@ import {kotki} from './guide.js';
 import {gainSvg} from './charts.js';
 import {BONDS,IICON,IKINDS,LIMITS,OKI_FREE,OKI_RATE,bondRates,bondYears,fundFromUrl,fundHouse,fundName,instDiffP,macroP,fireMonths,flowSeries,instValue,limitOf,paidInYear,position,taxFree,wrapOf,yearDue,intOf,intPeriod,intCalc,intTax,intMonthly,intLabel} from './inv.js';
 import {limitPropP,maturitiesP,yearStateP} from './today.js';
-import {seasonal,agg,balance,balDrop,liveOf,carStats,yearDueNear,ownerOf,yearLastFor} from './logic.js';
+import {seasonal,aggTot,balance,balDrop,liveOf,carStats,yearDueNear,ownerOf,yearLastFor} from './logic.js';
 import {$,MN,MNG,addDays,addMonths,clone,esc,f2,isDate,pnum,rid,td,zl,zl0,money,curSym,plu,dmy} from './util.js';
 import {infoH,S,toast,ask,CUR,isP,CUR_OPTS,accOpts,subOpts,H,HOLD,w,merge,strip,saveAcc,putTx,guard,negStop,posOf} from './core.js';
 import {openTx} from './sheet.js';
@@ -27,7 +27,13 @@ function instDiff(a,hold){const all=Object.entries(hold||S.hold).filter(([,x])=>
   /* the last instrument of the account deleted: its valuation leaves the balance too (it used to stay there for good) – only the valuations
      made by instruments („Wycena instrumentów…”, the automat), never a value typed by hand („Zmiana wartości”) – audyt 24.11 */
   if(!L.length&&all.length){let v=0;for(const t of liveOf(S.tx))if(t.acc===a.id&&t.type=='adj'&&t.val&&!t.int&&(t.auto||/^Wycena instrumentów/.test(t.note||'')))v+=t.amount;return v?-v:null}
-  return instDiffP(a,L,liveOf(S.tx),td(),macro(),mkt())}
+  if(hold||!S.hold||!S.market||typeof S.hold!='object')return instDiffP(a,L,liveOf(S.tx),td(),macro(),mkt());
+  /* ⚡ the same entries, instruments, prices and day → the same valuation; the Savings page asks for it several times per redraw (C2) */
+  const k=[a.id,td(),JSON.stringify(macro())].join('|'),M=instMemo.get(S.tx)?.get(S.hold)?.get(S.market);if(M?.has(k))return M.get(k);
+  const v=instDiffP(a,L,liveOf(S.tx),td(),macro(),mkt());
+  let m1=instMemo.get(S.tx);if(!m1)instMemo.set(S.tx,m1=new WeakMap());let m2=m1.get(S.hold);if(!m2)m1.set(S.hold,m2=new WeakMap());
+  let m3=m2.get(S.market);if(!m3)m2.set(S.market,m3=new Map());m3.set(k,v);return v}
+const instMemo=new WeakMap();
 function addVal(a,d,note){if(!d)return null;const ym=td().slice(0,7),id='t'+rid();putTx(ym,id,{type:'adj',val:true,amount:d,date:td(),sub:'',acc:a.id,to:'',who:S.who,note,deleted:false,ts:Date.now()});return[ym,id]}
 /* bonds and deposits that end soon */
 function maturities(days){return maturitiesP(S.cfg,S.hold,td(),days)}
@@ -196,7 +202,7 @@ export function gainH(accs,key){if(!accs.length)return'';const R=S.gRange||'y',t
   return`<section class="chart"><div class="ct"><b>Wpłacone a wartość</b><span class="mini">przerywana – wpłaty · fioletowa – wartość · pole: zielone zysk, różowe strata</span></div>
     <div class="frow"><select aria-label="Zakres" onchange="setGain('gRange',this.value)">${[['3m','3 miesiące'],['y','Rok'],['all','Wszystko']].map(([k,l])=>`<option value="${k}"${R==k?' selected':''}>${l}</option>`).join('')}</select><select aria-label="Konto" onchange="setGain('gAcc',this.value)"><option value="">${key}</option>${accs.map(a=>`<option value="${a.id}"${S.gAcc==a.id?' selected':''}>${esc(a.name)}</option>`).join('')}</select></div>${charts}<div class="tip mini">Dotknij wykresu, żeby zobaczyć kwoty.</div></section>`}
 /* FIRE: 25 × yearly spending, progress and an estimate of the time to get there */
-export function fireH(savNow,monthlySave){const tx=liveOf(S.tx),cur=td().slice(0,7),ex=[];for(let k=1;k<=12;k++){const e=agg(S.cfg,tx,addMonths(cur,-k)).exp;if(e>0)ex.push(e)}
+export function fireH(savNow,monthlySave){const tx=liveOf(S.tx),cur=td().slice(0,7),ex=[];for(let k=1;k<=12;k++){const e=aggTot(S.cfg,tx,addMonths(cur,-k)).exp;if(e>0)ex.push(e)}
   if(!ex.length)return'';const yearly=Math.round(ex.reduce((a,v)=>a+v,0)/ex.length*12),target=yearly*25,pc=savNow/target*100,m=fireMonths(savNow,target,Math.max(0,monthlySave));
   return`<section class="chart"><div class="ct"><b>🔥 Niezależność finansowa (FIRE)</b><span class="mini">25 × roczne wydatki (${zl0(yearly)}) – zasada 4%</span></div><div class="cush"><span class="num">${pc.toFixed(1).replace('.',',')}%</span><span>z ${zl0(target)}</span></div><div class="gbar"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div>
     <div class="mini">${monthlySave>0?(m===0?'🎉 Cel FIRE osiągnięty!':m?`Przy odkładaniu ok. ${zl0(monthlySave)}/mies. i 4% realnego zysku: ok. <b style="color:var(--fg)">${(m/12).toFixed(1).replace('.',',')} lat</b> (${+td().slice(0,4)+Math.ceil(m/12)}).`:'Przy obecnym tempie to ponad 100 lat.'):'Gdy zaczniecie odkładać co miesiąc, policzę, ile lat zostało.'}</div>${infoH('fire',`FIRE = oszczędności równe 25 rocznym wydatkom: z nich można bezpiecznie brać ok. 4% rocznie. Z obecnych oszczędności to ok. <b style="color:var(--fg)">${zl0(savNow*0.04/12)}</b> miesięcznie. Szacunek, nie prognoza.`)}</section>`}

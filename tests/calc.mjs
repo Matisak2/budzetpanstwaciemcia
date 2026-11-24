@@ -567,6 +567,9 @@ eq('Wpisano dziś – dopisany wczoraj',typedToday([{id:'a',type:'exp',date:'202
  const eom={prices:{V:{p:100,d:'2026-10-31'},W:{p:10}},sus:{V:{p:50,d:'2026-10-31'},W:{p:30}},gold:400,funds:{}};
  const ef=eomFix(eom,{prices:{V:{p:47},W:{p:10.5}}});
  eq('Automat – koniec miesiąca: potwierdzony krach z ceną z 31.10, odrzucony skok zostaje',[ef.prices.V.p,ef.prices.W.p,eomFix(eom,{prices:{},sus:{V:{p:48}}}),eomFix({prices:{V:{p:1}}},{}).prices.V.p],[50,10,null,1])}
+/* ⚡ „Co nowego” i przewodnik są w help.js (ładowane na żądanie); numer najnowszego wpisu w guide.js musi się zgadzać (C2) */
+{const H=await import('../js/help.js'),G=await import('../js/guide.js');
+ eq('Co nowego: NEWS_V w guide.js = najnowszy wpis NEWS w help.js; wpisy od najnowszego, bez powtórzeń',[G.NEWS_V===H.NEWS[0].v,H.NEWS.every((x,i)=>!i||x.v<H.NEWS[i-1].v),H.HELP.length>5],[true,true,true])}
 /* ---------- 🚫 bez minusa: wydatek / przelew, na który konta nie stać, nie zapisze się (balDrop) ---------- */
 {const cfg={accs:[{id:'k',name:'Konto',grp:'cur',open:30000},{id:'s',name:'Oszczędności',grp:'sav',open:0},{id:'i',name:'IKE',grp:'inv',open:0},{id:'e',name:'Euro',grp:'cur',cur:'EUR',open:0}]};
   const tx=[{id:'t1',type:'inc',amount:100000,date:'2026-11-10',acc:'k'},{id:'t2',type:'exp',amount:90000,date:'2026-11-20',acc:'k'}];
