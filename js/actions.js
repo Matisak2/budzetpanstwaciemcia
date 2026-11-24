@@ -450,9 +450,9 @@ export async function importFile(file){if(guard())return;let o;
   const isNew=o&&o.cfg&&Array.isArray(o.tx),isOld=o&&Array.isArray(o.categories)&&Array.isArray(o.transactions);
   if(!isNew&&!isOld)return ask({title:'Nie rozpoznaję tego pliku',text:'To nie jest kopia budżetu z tej ani ze starej wersji aplikacji.',ok:'OK',cancel:'Zamknij'});
   const n=isNew?o.tx.filter(t=>!t.deleted).length:o.transactions.length;
-  if(!await ask({title:'Wczytać kopię?',text:`Znaleziono ${n} transakcji.\n${isNew?'Konta, pozycje budżetu i opłaty stałe zostaną zastąpione tymi z kopii.':'Brakujące konta i pozycje zostaną dopisane.'} Transakcje o tym samym numerze zostaną nadpisane, reszta zostaje.`,ok:'Wczytaj'}))return;
+  if(!await ask({title:'Wczytać kopię?',text:`Znaleziono ${n} transakcji.\n${isNew?'Konta, pozycje budżetu i opłaty stałe zostaną zastąpione tymi z kopii. Transakcje o tym samym numerze zostaną nadpisane, reszta zostaje.':'Brakujące konta i pozycje zostaną dopisane. Transakcje, które już są (także usunięte), zostaną pominięte; plany i salda początkowe – tylko tam, gdzie ich jeszcze nie ma.'}`,ok:'Wczytaj'}))return;
   toast('Wczytywanie…');
-  try{let ok;
+  try{let ok,nNew=null;
     if(isNew){S.cfg=clone(o.cfg);S.cfg.fixed=S.cfg.fixed||[];S.cfg.round=S.cfg.round||[];S.cfg.incs=S.cfg.incs||[];S.cfg.years=S.cfg.years||[];S.cfg.projs=S.cfg.projs||[];S.cfg.rems=S.cfg.rems||[];if(o.savTarget!=null)S.savTarget=o.savTarget;await saveCfg();for(const k of BACKUP_KEYS){const v=o[k];if(typeof v=='string'?v:v&&typeof v=='object'&&Object.keys(v).length){S.hraw={...S.hraw,[k]:typeof v=='object'?{...(S.hraw?.[k]||{}),...v}:v};merge(H,{[k]:v})}}
       ok=await writeTxs(o.tx.filter(t=>isDate(t.date)).map(t=>{const{id,...b}=t;return[id||('t'+rid()),b]}));
       ok=(await writePlans(o.plans||{}))&&ok;
@@ -467,15 +467,16 @@ export async function importFile(file){if(guard())return;let o;
       o.categories.forEach(c=>{const bil=c.typ=='BILANS_KONTA'||c.typ=='BILANS_OSZCZ';(c.podkategorie||[]).forEach(nm=>{
         if(bil){if(!am[nm]){am[nm]='a'+rid();S.cfg.accs.push({id:am[nm],name:nm,grp:c.typ=='BILANS_KONTA'?'cur':'sav',open:0})}}
         else if(!sm[nm]){let k=S.cfg.cats.find(x=>cleanCat(x.name)==cleanCat(c.nazwa));if(!k){k={id:'c'+rid(),name:cleanCat(c.nazwa),type:c.typ=='PRZYCHOD'?'inc':'exp',hue:freeHue(S.cfg.cats),subs:[]};S.cfg.cats.push(k)}sm[nm]='s'+rid();k.subs.push({id:sm[nm],name:nm})}})});
-      const ob=o.openingBalancesBase||o.openingBalancesJan||{};S.cfg.accs.forEach(a=>{if(ob[a.name]!==undefined)a.open=Math.round(ob[a.name]*100)});
+      const ob=o.openingBalancesBase||o.openingBalancesJan||{};S.cfg.accs.forEach(a=>{if(ob[a.name]!==undefined&&!a.open)a.open=Math.round(ob[a.name]*100)}); /* saldo poprawione po pierwszym wczytaniu zostaje (audyt 2) */
       await saveCfg();
       /* entries loaded before (also deleted or corrected since) stay as they are – loading the old file again brings nothing back */
       const have=new Set(S.tx.map(t=>t.id));
-      ok=await writeTxs(o.transactions.filter(t=>isDate(t.date)&&!have.has('imp_'+t.id)).map(t=>['imp_'+t.id,{type:t.type=='Przychód'?'inc':t.type=='Wydatek'?'exp':'tr',amount:Math.round(Math.abs(t.amount)*100),date:t.date,sub:sm[t.subcategory]||'',acc:am[t.account]||'',to:am[t.targetAccount]||'',who:(/^\[(Mati|Wercia)\]/.exec(t.note||'')||[])[1]||'',note:String(t.note||'').replace(/^\[(Mati|Wercia)\]\s*/,''),deleted:false,ts:Date.now()}]));
+      const todo=o.transactions.filter(t=>isDate(t.date)&&!have.has('imp_'+t.id));nNew=todo.length;
+      ok=await writeTxs(todo.map(t=>['imp_'+t.id,{type:t.type=='Przychód'?'inc':t.type=='Wydatek'?'exp':'tr',amount:Math.round(Math.abs(t.amount)*100),date:t.date,sub:sm[t.subcategory]||'',acc:am[t.account]||'',to:am[t.targetAccount]||'',who:(/^\[(Mati|Wercia)\]/.exec(t.note||'')||[])[1]||'',note:String(t.note||'').replace(/^\[(Mati|Wercia)\]\s*/,''),deleted:false,ts:Date.now()}]));
       const pp=o.plansByYear||{[String(new Date().getFullYear())]:o.plans||{}},pm={};
-      Object.keys(pp).forEach(y=>Object.keys(pp[y]||{}).forEach(m=>{const d={};Object.entries(pp[y][m]||{}).forEach(([nm,v])=>{if(sm[nm]&&v)d[sm[nm]]=Math.round(v*100)});pm[y+'-'+p2(+m+1)]=d}));
+      Object.keys(pp).forEach(y=>Object.keys(pp[y]||{}).forEach(m=>{const d={};Object.entries(pp[y][m]||{}).forEach(([nm,v])=>{if(sm[nm]&&v)d[sm[nm]]=Math.round(v*100)});const k=y+'-'+p2(+m+1);pm[k]=Object.fromEntries(Object.entries(d).filter(([sid])=>S.plans?.[k]?.[sid]==null))}));/* pozycja, która ma już plan, zostaje (audyt 2) */
       ok=(await writePlans(pm))&&ok}
-    toast(`Wczytano ${n} transakcji`)}
+    toast(nNew===null?`Wczytano ${n} transakcji`:nNew?`Wczytano ${nNew} ${plu(nNew,'nową transakcję','nowe transakcje','nowych transakcji')}`:'Te transakcje już są – nic nowego')}
   catch(e){err(e);toast('Błąd wczytywania: '+(e.message||e),'bad')}}
 
 /* ---------- register search & filters ---------- */

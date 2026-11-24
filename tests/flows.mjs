@@ -131,13 +131,19 @@ await step('Wczytanie listy wpisów (.json.gz) dwa razy',async()=>{
 /* 11. a backup of the first version of the app (categories / transactions): account with its opening balance, position, „[Wercia]” → Kto; twice = once */
 await step('Wczytanie kopii ze starej wersji aplikacji dwa razy',async()=>{const day=await E(()=>T.day);
   const o={categories:[{nazwa:'Jedzenie',typ:'WYDATEK',podkategorie:['Robot stary']},{nazwa:'Konta',typ:'BILANS_KONTA',podkategorie:['Stare konto robota']}],
-    transactions:[{id:7,date:day,type:'Wydatek',amount:-12.5,subcategory:'Robot stary',account:'Stare konto robota',note:'[Wercia] robot stary'}],openingBalancesBase:{'Stare konto robota':100}};
+    transactions:[{id:7,date:day,type:'Wydatek',amount:-12.5,subcategory:'Robot stary',account:'Stare konto robota',note:'[Wercia] robot stary'}],openingBalancesBase:{'Stare konto robota':100},plansByYear:{[day.slice(0,4)]:{[String(+day.slice(5,7)-1)]:{'Robot stary':40}}}};
   await file('stara.json',o,false);if(!/Wczytać kopię/.test(await E(()=>T.dlg())))return 'brak pytania „Wczytać kopię?”';await ok();await wait(500);
   const r=await E(()=>{const t=T.live('imp_7')[0],a=S.cfg.accs.find(x=>x.name=='Stare konto robota');
     if(!t||!a)return 'brak wpisu albo konta';if(t.amount!==1250||t.who!=='Wercia'||t.note!=='robot stary'||t.acc!==a.id||t.type!=='exp')return 'wpis: '+JSON.stringify(t);
     return a.open===10000&&T.L.subsMap(S.cfg)[t.sub]?.name=='Robot stary'||'saldo początkowe / pozycja: '+a.open});if(r!==true)return r;
+  /* poprawki po pierwszym wczytaniu (saldo początkowe, plan) zostają przy drugim; toast mówi, że nic nowego (audyt 2) */
+  const sub=await E(async()=>{const C=await import('/js/core.js'),F=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js'),a=S.cfg.accs.find(x=>x.name=='Stare konto robota'),sub=T.live('imp_7')[0].sub;
+    if(S.plans?.[T.ym]?.[sub]!==4000)return 'plan z pliku: '+S.plans?.[T.ym]?.[sub];C.merge(C.H,{accsM:{[a.id]:{open:20000}}});C.merge(F.doc(C.PLC(),T.ym),{[sub]:5000});return sub});
+  if(!/^s/.test(sub))return sub;await wait(400);
   await file('stara.json',o,false);await ok();await wait(500);
-  return await E(()=>S.tx.filter(t=>t.id==='imp_7').length===1&&S.cfg.accs.filter(x=>x.name=='Stare konto robota').length===1)||'drugie wczytanie zdublowało'});
+  return await E(sub=>{if(S.tx.filter(t=>t.id==='imp_7').length!==1||S.cfg.accs.filter(x=>x.name=='Stare konto robota').length!==1)return 'drugie wczytanie zdublowało';
+    const a=S.cfg.accs.find(x=>x.name=='Stare konto robota');if(a.open!==20000||S.plans[T.ym][sub]!==5000)return `drugie wczytanie nadpisało: saldo ${a.open}, plan ${S.plans[T.ym][sub]}`;
+    return /nic nowego/.test(document.getElementById('toast')?.innerText||'')||'toast: '+document.getElementById('toast')?.innerText},sub)});
 
 /* 👥 „Czy starczy?”: rozwinięta karta i rozwinięta osoba zostają otwarte po przerysowaniu (np. zapis z drugiego telefonu) – audyt 24.11 */
 await step('Czy starczy – osoba zostaje rozwinięta',async()=>E(async()=>{goTab('dash');await new Promise(r=>setTimeout(r,200));
