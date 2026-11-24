@@ -157,7 +157,14 @@ export function payPatternP(tx,src,ym){const D=[];for(let k=1;k<=3;k++){const m=
   if(!D.length)return +src.day>0?{day:Math.min(31,+src.day)}:null;
   /* „the end of the month” only when it never came on the 30th of a 31-day month whose 31st was a working day (then it is „the 30th”) */
   const wd=x=>{const w=new Date(Date.UTC(+x.m.slice(0,4),+x.m.slice(5,7)-1,31)).getUTCDay();return w>0&&w<6},on30=D.some(x=>x.L==31&&x.d==30&&wd(x));
-  if(!on30&&D.every(x=>x.d>=x.L-2))return{end:true};const v=D.map(x=>x.d).sort((a,b)=>a-b);return{day:v[Math.floor(v.length/2)]}}
+  if(!on30&&D.every(x=>x.d>=x.L-2)){
+    /* undecided when no month showed it (paid on a 31st, or on the 30th with a working 31st) – e.g. 30.09, 30.10 (31.10 a Saturday), 30.11:
+       look further back (up to a year); still nothing → the day typed at the source (30 = the 30th) – audyt 2 */
+    if(!D.some(x=>x.L==31&&x.d==31)){for(let k=4;k<=12;k++){const m=addMonths(ym,-k),d=firstSal(tx,src,m);if(!d)continue;const x={m,d:+d.slice(8),L:daysIn(m)};
+        if(x.L==31&&x.d==31)return{end:true};if(x.L==31&&x.d==30&&wd(x))return{day:30};if(x.d<x.L-2)break}
+      if(+src.day>0&&+src.day<31&&D.every(x=>x.d==Math.min(+src.day,x.L)||x.d<x.L))return{day:+src.day}}
+    return{end:true}}
+  const v=D.map(x=>x.d).sort((a,b)=>a-b);return{day:v[Math.floor(v.length/2)]}}
 /* the expected pay date of one source in ym: the real one when it already came, otherwise from the pattern (a weekend → the Friday before) */
 /* nom = the usual day of the month (before the weekend shift) – the closed month is decided by it, so a pay on Sunday the 20th moved to Friday
    the 18th, or a pay on the 1st that came on the 31st before, still belongs to its own month. The real salary is looked for ±10 days around

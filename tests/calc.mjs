@@ -185,6 +185,9 @@ const N=' ';
   eq('Wypłata – Wercia w październiku',paydayP(cfg,tx,'Wercia','2026-10').date,'2026-10-30');
   /* zawsze 30.: 30.07 (czw, a 31.07 to piątek – dzień roboczy), 28.08 (30.08 to niedziela), 30.09 → „30.”, nie „koniec miesiąca” (31.12 czekałoby dzień za późno) */
   eq('Wypłata 30. dnia to nie koniec miesiąca',payPatternP([inc('x7','2026-07-30','sW'),inc('x8','2026-08-28','sW'),inc('x9','2026-09-30','sW')],cfg.incs[1],'2026-10'),{day:30});
+  /* audyt 2: 30.09, 30.10 (31.10 to sobota), 30.11 nie rozstrzyga „30.” czy „koniec” – dzień wpisany przy źródle (30) albo starsza historia (31.08 pn, a wypłata 30.08?) */
+  const t30=[inc('y9','2026-09-30','sW'),inc('y10','2026-10-30','sW'),inc('y11','2026-11-30','sW')];
+  eq('Wypłata 30. bez rozstrzygnięcia – dzień ze źródła; starsza wypłata 31. = koniec; bez dnia – koniec',[payPatternP(t30,{...cfg.incs[1],day:30},'2026-12'),payPatternP([inc('y7','2026-07-31','sW'),...t30],{...cfg.incs[1],day:30},'2026-12'),payPatternP(t30,{...cfg.incs[1],day:0},'2026-12')],[{day:30},{end:true},{end:true}]);
   eq('Wypłata – Wercia w listopadzie (30.11 to poniedziałek)',paydayP(cfg,tx,'Wercia','2026-11').date,'2026-11-30');
   eq('Zamknięcie – Mati dzień przed wypłatą',closeDueP({},tx,'2026-10-08',cfg,'Mati'),{ym:'2026-09',n:0,start:'2026-10-08',pay:'2026-10-09'});
   eq('Zamknięcie – Mati jeszcze nie 7.10',closeDueP({},tx,'2026-10-07',cfg,'Mati'),null);
