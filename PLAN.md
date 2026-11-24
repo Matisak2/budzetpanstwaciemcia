@@ -246,3 +246,24 @@ Decyzje Matiego: szybsze dodawanie wydatku i „Pomiń resztę” w zamknięciu 
 - [–] Liczba „Na dziś” na ikonie aplikacji – na razie nie (Mati)
 - [x] 💾 Trwałe przechowywanie: przy starcie `navigator.storage.persist()`, wynik w ⚙️ → Bezpieczeństwo → Diagnostyka („pamięć telefonu: trwała ✓ / zwykła”, `S.persist`)
 - [x] 📲 Instrukcja „Dodaj wydatek” jednym stuknięciem: skrót w aplikacji Skróty (`#go=add`) jako widżet na ekranie głównym / blokady – ⚙️ → 🤖 Automaty → 🗣️ Siri i skróty → „📲 Przycisk na ekranie” (`widgetHelp` w `salary.js`); robot sprawdza na prawdziwej stronie
+
+# Część 10 – po audycie 2 (24.11.2026, raport `reports/audyt-2026-11-23/00-RAPORT.md`)
+Mati 24.11: „Zrób etapy a, b i c po kolei”. D2, E2, F i styczeń 2027 – osobno, na komendę.
+
+## Etap A2. Pieniądze i automat
+- [ ] 🛟 Poduszka nie odejmuje celów, które pokrywają konta inwestycyjne bez IKE/IKZE (cel z XTB nie zmniejsza poduszki) – propozycja z raportu (pytanie 1), Mati: „zrób”
+- [ ] 📈 Automat przy krachu: cena przyjmowana, gdy drugi odczyt z rzędu też jest > 40% od starej (po tej samej stronie); wycena końca miesiąca nie bierze ceny „w poczekalni”; kontrola złota i funduszy
+- [ ] 💼 Wypłata 30. dnia nie jest brana za „koniec miesiąca” (szukanie dalej wstecz)
+
+## Etap B2. Drobne poprawki i testy
+- [ ] Wiek w doradcy z pełnej daty urodzin; „W planie zostało” odejmuje przekroczenia; majątek w Analizie do dziś
+- [ ] Import starej wersji drugi raz nie nadpisuje planów i sald, poprawne teksty
+- [ ] „Cofnij” po usunięciu paska sprawdza nowy pasek; bez podwójnych zapisów kont; Diagnostyka bez `persist`
+- [ ] Automaty: `--ignore-scripts` przy kopii, kopia zawsze usuwana, `pushlog` przed wysyłką, `sched` zachowany, kopia do Matiego wg `lock`
+- [ ] „Czego używamy”: karty Pensji bez nazw pracodawców; test kart w katalogu
+- [ ] Testy przepisów (KUP 300, zlecenie 50%, najem 12,5%, IKZE-JDG, wykup COI/ROR/DOR), `writeBatch` atrapy, `eq` z wyjątkiem
+- [ ] HELP: Diagnostyka, przywracanie celów, kaskada; drobiazgi CSS (`details.more`, `preconnect`)
+- [ ] Zasada „krótkie linie” w CLAUDE.md
+
+## Etap C2. Szybkość
+- [ ] Oszczędności: `agg` i `instDiffP` zapamiętane; HELP/NEWS na żądanie; `maillog`/`autoval` bez stałej subskrypcji
