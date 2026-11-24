@@ -64,8 +64,9 @@ for(const[i,[name,op]]of CASES.entries()){n++;
   console.log(`❌ ${name}: SDK ${eS?'odrzuca ('+eS+')':'przyjmuje'}, demo ${eA?'odrzuca ('+eA+')':'przyjmuje'}`+(okDoc?'':`\n   SDK:  ${JSON.stringify(norm(docS))}\n   demo: ${JSON.stringify(norm(docA))}`))}
 
 /* writeBatch (an entry moved to another month): both documents written; one bad write = nothing written, in both */
-for(const wrong of [false,true]){n++;const m=`b/${wrong?'bad':'ok'}`;let eS=null,eA=null;
-  const run=async(o,ref1,ref2)=>{const b=o.writeBatch(o===A?undefined:db);b.set(ref1,{tx:{x:{amount:1,deleted:false}}},{merge:true});b.set(ref2,{tx:{x:{deleted:true,moved:true,...(wrong?{u:undefined}:{})}}},{merge:true});return b.commit()};
+for(const wrong of [false,true,'mf']){n++;const m=`b/${wrong=='mf'?'mf':wrong?'bad':'ok'}`;let eS=null,eA=null;
+  /* 'mf' (audyt 2): the second write lists a field in mergeFields that the body does not have – the SDK refuses the whole batch */
+  const run=async(o,ref1,ref2)=>{const b=o.writeBatch(o===A?undefined:db);b.set(ref1,{tx:{x:{amount:1,deleted:false}}},{merge:true});if(wrong=='mf')b.set(ref2,{a:1},{mergeFields:['a','zz']});else b.set(ref2,{tx:{x:{deleted:true,moved:true,...(wrong?{u:undefined}:{})}}},{merge:true});return b.commit()};
   run(fs_,fs_.doc(db,m+'1'),fs_.doc(db,m+'2')).catch(e=>{eS=e.code||'błąd'});await flush(); // offline the SDK's commit never resolves – only a rejection comes
   const s1=await getDocFromCache(fs_.doc(db,m+'1')).catch(()=>null),s2=await getDocFromCache(fs_.doc(db,m+'2')).catch(()=>null);
   try{await run(A,A.doc({p:''},m+'1'),A.doc({p:''},m+'2'))}catch(e){eA=e.code||'błąd'}await flush();

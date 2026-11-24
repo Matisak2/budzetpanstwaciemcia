@@ -1,8 +1,8 @@
 /* 🤖 Robot: czy obliczenia pieniędzy dalej dają dobre wyniki. Oczekiwane liczby policzone niezależnie (ręcznie / kalkulatorem), nie skopiowane z kodu.
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
-import {marketQuote,holdAt,instDiffP,intOf,intRate,penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
-import {automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,payDateP,closeWinP,closeYmP,salaryTxP,maturitiesP,pitSummaryP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
+import {bondFee,marketQuote,holdAt,instDiffP,intOf,intRate,penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
+import {rentTaxRaw,automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,payDateP,closeWinP,closeYmP,salaryTxP,maturitiesP,pitSummaryP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {cushionP,BACKUP_KEYS,yearPlanOf,avgActuals,anomalies,yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays,addMonths,daysIn,plDay} from '../js/util.js';
@@ -15,7 +15,9 @@ import {dropJumps,eomFix,keepPrev,parseStooqHist,parseYahooHist} from '../script
 import {allocP,clsOf,etfOf,etfCur,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP,sandP,sandCheckP,wishHitP} from '../js/advisor.js';
 
 let n=0,bad=0;
-const eq=(name,got,exp)=>{n++;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
+/* a check that throws stops the whole file – say after which check it happened (audyt 2) */
+let last='(przed pierwszym sprawdzeniem)';process.on('uncaughtException',e=>{console.log(`❌ Wyjątek w obliczeniach zaraz po sprawdzeniu „${last}”: ${e.stack||e}`);process.exit(1)});
+const eq=(name,got,exp)=>{n++;last=name;const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok){bad++;console.log(`❌ ${name}: jest ${JSON.stringify(got)}, powinno być ${JSON.stringify(exp)}`)}};
 const N=' ';
 
 /* ---------- 💼 pensje (zasady 2026) ---------- */
@@ -313,6 +315,12 @@ const N=' ';
   const s=instValue({kind:'akcje',price:130,lots:{a:{date:'2026-01-02',kind:'buy',qty:10,price:100,fx:1,fee:0}}},{name:'Konto'},'2026-10-01');
   eq('Akcje – wartość',s.value,130000);eq('Akcje – zysk',s.gain,30000);eq('Akcje – Belka',s.tax,5700);
   eq('Limit IKE 2026',limitOf({name:'IKE',wrap:'ike'},'2026'),2826000);
+/* audyt 2 – przepisy bez testu (wyniki policzone niezależnie):
+   KUP 300 zł (dojeżdżający); zlecenie z prawami autorskimi 50%: 3 000 − ZUS 13,71% (411,30) = 2 588,70 × 50% = 1 294,35 zł;
+   ryczałt najmu 120 000 zł = 100 000 × 8,5% + 20 000 × 12,5% = 11 000 zł; IKZE-JDG 2026 = 16 956 zł;
+   wcześniejszy wykup: COI 2 zł, ROR 0,50 zł, DOR 0,70 zł za sztukę, najwyżej odsetki */
+  eq('Przepisy: KUP 300 zł, zlecenie KUP 50%, najem 12,5% ponad 100 000 zł, IKZE-JDG 2026',[suggest({kind:'uop',kup:300},{comp:[{a:600000}]}).kup,suggest({kind:'zlec',kup:50},{comp:[{a:300000}]}).kup,rentTaxRaw(12000000),limitOf({grp:'inv',wrap:'ikze',jdg:true},'2026')],[30000,129435,1100000,1695600]);
+  eq('Obligacje: opłata za wcześniejszy wykup COI / ROR / DOR (10 szt.), najwyżej odsetki',[bondFee('COI',10,99999),bondFee('ROR',10,99999),bondFee('DOR',10,99999),bondFee('COI',10,1500)],[2000,500,700,1500]);
   eq('FIRE – cel osiągnięty',fireMonths(200,100,10),0);
 }
 
