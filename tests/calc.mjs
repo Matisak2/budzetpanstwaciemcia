@@ -932,7 +932,11 @@ eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWD
   // pula 30 000 + 5 000 = 35 000 zł, cele 5 000 + 1 000 → 29 000 zł; wydatki: 4 miesiące z 6 (maj, czerwiec, sierpień, październik) po 5 000 zł → 5,8 mies.
   eq('Poduszka – konta, cele, średnia',[C.accs.map(a=>a.id),C.pool,C.inGoals,C.free,C.avgE,C.n,C.months,C.pod?.id],[['o','p'],3500000,600000,2900000,500000,4,5.8,'p']);
   const M=cushionP(cfg,tx,goals,{ym:'2026-11',at:'2026-11-01',owner:'Mati'});
-  eq('Poduszka osoby – jej konta i jej cele',[M.pool,M.inGoals,M.free],[3000000,0,3000000])}
+  eq('Poduszka osoby – jej konta i jej cele',[M.pool,M.inGoals,M.free],[3000000,0,3000000])
+  /* cele najpierw z rachunku maklerskiego bez IKE/IKZE (XTB) – poduszka traci tylko resztę (audyt 2, K4): oszczędności 10 000, XTB 50 000, IKE 40 000, cel 30 000 */
+  const cfg2={accs:[{id:'o',grp:'sav',owner:'Mati',open:1000000},{id:'x',grp:'inv',owner:'Mati',name:'XTB',open:5000000},{id:'i',grp:'inv',owner:'Mati',wrap:'ike',open:4000000}],cats:cfg.cats};
+  const X=cushionP(cfg2,tx,{a:{alloc:3000000}},{ym:'2026-11',at:'2026-11-01'}),Y=cushionP(cfg2,tx,{a:{alloc:7000000}},{ym:'2026-11',at:'2026-11-01'});
+  eq('Poduszka – cel pokryty z rachunku maklerskiego nie zmniejsza poduszki; większy cel zabiera tylko resztę (IKE się nie liczy)',[X.inGoals,X.free,X.goalsAll,X.onInv,Y.inGoals,Y.free],[0,1000000,3000000,5000000,2000000,0])}
 /* 🏦 obligacje: prognoza doradcy (bondAfter) i wycena w Oszczędnościach (bondLotValue / instValue) liczą tymi samymi zasadami */
 { const lot=bondLotValue({type:'ROR',first:5.75},{date:'2026-01-10',qty:10,price:100},'2027-01-10',{nbp:4});
   eq('ROR po roku: doradca = wycena (odsetki co miesiąc)',bondAfter('ROR',12,{first:5.75},{nbp:4},{taxFree:true,amount:100000}),100000+lot.paid);

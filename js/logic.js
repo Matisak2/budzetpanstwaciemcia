@@ -165,10 +165,13 @@ export function shopsP(cfg,tx,pre){const cm=curMap(cfg),G={},top=o=>Object.entri
 export const isPodName=n=>/poduszk/i.test(n||'');
 export const isPodAcc=a=>!!a&&(isPodName(a.name)||(a.grp=='sav'&&!wrapOf(a)));
 export function cushionP(cfg,tx,goals,{ym,at,owner}={}){const live=liveOf(tx),accs=cfg.accs.filter(a=>isPodAcc(a)&&(a.cur||'PLN')=='PLN'&&(!owner||ownerOf(a)==owner));
-  const pool=accs.reduce((x,a)=>x+balance(cfg,live,a.id,at),0),inGoals=Object.values(goals||{}).filter(g=>g&&!g.deleted&&(!owner||(g.owner||'Wspólne')==owner)).reduce((x,g)=>x+Math.max(0,g.alloc??g.saved??0),0);
+  const pool=accs.reduce((x,a)=>x+balance(cfg,live,a.id,at),0),goalsAll=Object.values(goals||{}).filter(g=>g&&!g.deleted&&(!owner||(g.owner||'Wspólne')==owner)).reduce((x,g)=>x+Math.max(0,g.alloc??g.saved??0),0);
+  /* goals are paid first from plain investment accounts (XTB etc., no IKE/IKZE/OKI/PPK) – only the rest comes out of the cushion (audyt 2, K4) */
+  const onInv=cfg.accs.filter(a=>a.grp=='inv'&&!wrapOf(a)&&!isPodName(a.name)&&(a.cur||'PLN')=='PLN'&&(!owner||ownerOf(a)==owner)).reduce((x,a)=>x+Math.max(0,balance(cfg,live,a.id,at)),0);
+  const inGoals=Math.max(0,goalsAll-onInv);
   const first=firstYm(live),past=[];for(let k=1;k<=6;k++){const m=addMonths(ym,-k);if(m<first)break;const e=agg(cfg,live,m).exp;if(e>0)past.push(e)}
   const avgE=past.length?past.reduce((a,v)=>a+v,0)/past.length:agg(cfg,live,ym).exp,free=Math.max(0,pool-inGoals);
-  return{accs,pool,inGoals,free,avgE,n:past.length,months:avgE>0?free/avgE:null,pod:accs.find(a=>!a.archived&&isPodName(a.name))||null}}
+  return{accs,pool,inGoals,goalsAll,onInv,free,avgE,n:past.length,months:avgE>0?free/avgE:null,pod:accs.find(a=>!a.archived&&isPodName(a.name))||null}}
 /* average of each position over the previous n months that have any data (plan hint, "Wypełnij średnimi", anomalies) */
 /* the first month with any entry (remembered per list; sorting all dates every time was slow) */
 const FIRST=new WeakMap();export const firstYm=tx=>{let f=FIRST.get(tx);if(f==null){let m='9999';for(const t of tx)if(t.date&&t.date<m)m=t.date;f=m.slice(0,7);FIRST.set(tx,f)}return f};
