@@ -28,11 +28,12 @@ const bdayFor=who=>{if(slot!='m')return null;const B=D.hraw?.birth||{},y=+today.
   const is=w=>{const m=(B[w]||'').slice(5);return!!m&&(m==md||(m=='02-29'&&md=='02-28'&&!leap))};
   if(is(who))return{title:`🎂 Wszystkiego najlepszego, ${who}!`,body:'Sto lat! Dużo zdrowia, spokoju i pełnej skarbonki. Bailey i Ivo mruczą życzenia 🐾',url:'./',tag:'bday'};
   const o=who=='Mati'?'Wercia':'Mati';return is(o)?{title:`🎂 Dziś urodziny ${o=='Wercia'?'Werci':'Matiego'}!`,body:'Pamiętasz o życzeniach? Bailey pilnuje tortu, Ivo – niespodzianki 💝',url:'./',tag:'bday'}:null};
+/* „sent” is written before sending: a crash half-way never sends the same slot twice (at most once a day – audyt 2) */
+if(slot!='test')await logRef.set({[slot]:today},{merge:true});
 let sent=0,gone=0;
 for(const d of subs){const s=d.data(),bd=bdayFor(s.who);
   if(bd)try{await webpush.sendNotification(s.sub,JSON.stringify(bd),{TTL:6*3600,urgency:'normal'});sent++}catch(e){console.log('– nie udało się wysłać ('+(e.statusCode||e.message)+')')}
   const msg=msgFor(s.who);if(!msg)continue;
   try{await webpush.sendNotification(s.sub,JSON.stringify(msg),{TTL:6*3600,urgency:'normal'});sent++}
   catch(e){if(e.statusCode==404||e.statusCode==410){await d.ref.delete();gone++}else console.log('– nie udało się wysłać ('+(e.statusCode||e.message)+')')}}
-if(slot!='test')await logRef.set({[slot]:today},{merge:true});
 console.log(`✓ wysłane: ${sent} z ${subs.length}${gone?` · usunięte nieaktywne: ${gone}`:''}`);process.exit(0);

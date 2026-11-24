@@ -23,7 +23,7 @@ const people=Object.values(D.users||{}).filter(u=>u.email);
 const known=new Set(Object.keys(D.users||{}));
 const other=await getAuth().listUsers(20).then(r=>r.users.filter(u=>!known.has(u.uid)).length).catch(()=>0);
 if(other)console.log(`⚠️ kont logowania bez dokumentu users (nie dostają maili): ${other}`);
-const mati=people.find(u=>u.who=='Mati')?.email||user,all=[...new Set(people.map(u=>u.email))];if(!all.length)all.push(user);
+const mati=(people.find(u=>u.who=='Mati'&&u.lock)||people.find(u=>u.who=='Mati'))?.email||user,all=[...new Set(people.map(u=>u.email))];if(!all.length)all.push(user);
 const tr=nodemailer.createTransport({host:'smtp.gmail.com',port:465,secure:true,auth:{user,pass}});
 const from={name:'Budżet M&W 🐾',address:user};
 /* an SMTP error contains the recipients' addresses – the GitHub log is public, so only the error code goes there */
