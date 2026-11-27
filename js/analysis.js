@@ -3,7 +3,7 @@ import {catsEmpty,catSlot} from './art.js';
 import {isTreat,kotki} from './guide.js';
 import {P_OTHER,C_INC,C_EXP,barsSvg,sankeySvg,chartBox,deltaH,donutSvg,gainSvg,hbarsH,legendH,lineSvg,pctS} from './charts.js';
 import {OWN,OWN_COL,catHue,catMark} from './data.js';
-import {outProj,shopsP,anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs,yearAgoP,ownerOf,ytdSpanP} from './logic.js';
+import {offBud,outProj,shopsP,anomalies,actuals,agg,balance,cleanCat,upToDay,liveOf,subsMap,savFlow,savIds,planOf,yearSubs,yearAgoP,ownerOf,ytdSpanP} from './logic.js';
 import {MN,MNG,addDays,addMonths,daysIn,esc,ls,p2,td,zl,zl0,fxTxt,plu} from './util.js';
 import {S,catSlides,toast,accCur,isP} from './core.js';
 import {downloadBlob,txRowH} from './actions.js';
@@ -28,7 +28,7 @@ function monthSumH(cfg,tx,ym){const act=actuals(cfg,tx,ym),pl=planOf(cfg,S.plans
 /* 💑 Mati ↔ Wercia: spending by whose account it came from (a shared account = Wspólne; „Kto” is only who typed it) and what each put aside */
 function personsH(cfg,tx,prefix){const sm=subsMap(cfg),per={},tot={};OWN.forEach(o=>{per[o]={};tot[o]=0});const ow={};cfg.accs.forEach(a=>ow[a.id]=ownerOf(a));
   const op=outProj(cfg);
-  tx.filter(t=>t.date.startsWith(prefix)&&(t.type=='exp'||(t.type=='inc'&&t.refundOf))&&sm[t.sub]?.cat.type=='exp'&&accCur(t.acc)=='PLN'&&!(t.proj&&op.has(t.proj))).forEach(t=>{const c=sm[t.sub].cat,o=ow[t.acc]||'Wspólne',v=t.type=='exp'?t.amount:-t.amount;per[o][c.id]=(per[o][c.id]||0)+v;tot[o]+=v});
+  tx.filter(t=>t.date.startsWith(prefix)&&(t.type=='exp'||(t.type=='inc'&&t.refundOf))&&sm[t.sub]?.cat.type=='exp'&&accCur(t.acc)=='PLN'&&!offBud(t,op)).forEach(t=>{const c=sm[t.sub].cat,o=ow[t.acc]||'Wspólne',v=t.type=='exp'?t.amount:-t.amount;per[o][c.id]=(per[o][c.id]||0)+v;tot[o]+=v});
   if(!OWN.some(o=>tot[o]))return'';
   const put=o=>savFlow(cfg,tx,savIds(cfg,o),prefix).flow,sum=c=>OWN.reduce((a,o)=>a+(per[o][c.id]||0),0);
   const cats=cfg.cats.filter(c=>c.type=='exp'&&sum(c)>0).sort((a,b)=>sum(b)-sum(a)).slice(0,7),L={Mati:['Mati','odłożył'],Wercia:['Wercia 🌸','odłożyła'],'Wspólne':['Wspólne','odłożone']};
@@ -67,7 +67,7 @@ export function exportCsv(y){use('f:csv');const sm=subsMap(S.cfg),L=liveOf(S.tx)
 /* 🎁 Money Wrapped: the year told by Bailey and Ivo */
 export function wrapped(y){use('f:wrapped');const tx=liveOf(S.tx),cfg=S.cfg,Y=agg(cfg,tx,y),sm=subsMap(cfg);if(!Y.exp&&!Y.inc)return toast('Brak danych za rok '+y,'bad');
   /* złoty expenses in the budget only (as everywhere: 300 € is not „300 zł”, a project outside the budget is not the year's spending) */
-  const op=outProj(cfg),inY=t=>t.date.startsWith(y)&&t.type=='exp'&&!t.payoff&&accCur(t.acc)=='PLN'&&!(t.proj&&op.has(t.proj));
+  const op=outProj(cfg),inY=t=>t.date.startsWith(y)&&t.type=='exp'&&!t.payoff&&accCur(t.acc)=='PLN'&&!offBud(t,op);
   const cats=Object.entries(Y.cat).sort((a,b)=>b[1]-a[1]),top=cats[0]&&cfg.cats.find(c=>c.id==cats[0][0]),big=tx.filter(inY).sort((a,b)=>b.amount-a.amount)[0];
   const fav=shopsP(cfg,tx,y).sort((a,b)=>b.n-a.n)[0],ms=Array.from({length:12},(_,i)=>({i,a:agg(cfg,tx,y+'-'+p2(i+1))})).filter(x=>x.a.inc||x.a.exp),best=ms.length?ms.reduce((p,c)=>c.a.inc-c.a.exp>p.a.inc-p.a.exp?c:p):null;
   const treats=tx.filter(t=>inY(t)&&isTreat(sm[t.sub]?.name)).reduce((a,t)=>a+t.amount,0),n=tx.filter(t=>t.date.startsWith(y)).length;

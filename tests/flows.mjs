@@ -171,6 +171,24 @@ await step('Czego używamy – karty w katalogu',async()=>E(async()=>{const U=aw
   for(const f of [()=>goTab('dash'),()=>goTab('sav'),()=>goTab('acc'),()=>goTab('ana'),()=>{goTab('ana');setAna('y')},()=>goTab('fix')]){f();await wait(250);look()}
   return !miss.size||'brak w katalogu: '+[...miss].join(', ')}));
 
+/* 🤝 za kogoś (Mati 27.11): zakup dla Taty – saldo w dół, budżet bez zmian; zwrot 200 zł za 150 zł → 150 zwrot poza budżetem + 50 zł prezent
+   (przychód); drugi zakup „Nie odda – wlicz do budżetu” → wydatek wchodzi do budżetu */
+await step('Za kogoś – zakup, zwrot z nadwyżką, wliczenie do budżetu',async()=>{
+  const g=()=>E(()=>{const A=T.L.agg(S.cfg,T.L.liveOf(S.tx),T.ym);return{exp:A.exp,inc:A.inc,bal:T.bal(T.acc)}}),a0=await g();
+  await E(()=>T.add({a:'150',sub:T.subs[0],acc:T.acc,date:T.day,note:'robot dla taty'}));
+  await E(()=>{document.getElementById('mforBtn').click();document.getElementById('mfor').value='Tata'});await save();
+  const id=await E(()=>T.find('robot dla taty')[0]?.id),a1=await g();if(!id)return 'brak wpisu';
+  if(a1.exp!==a0.exp||a1.bal!==a0.bal-15000)return `zakup: wydatki ${a0.exp}→${a1.exp}, saldo ${a0.bal}→${a1.bal}`;
+  if(!(await E(id=>T.live(id)[0].forWho==='Tata',id)))return 'brak „za kogoś” we wpisie';
+  await E(id=>{forRet(id)},id);await wait();await E(()=>{document.getElementById('f_a').value='200'});await ok();await wait();
+  if(!/Nadwyżka/.test(await E(()=>T.dlg())))return 'brak pytania o nadwyżkę';await ok();await wait(500);
+  const a2=await g();if(a2.exp!==a0.exp||a2.inc!==a0.inc+5000||a2.bal!==a0.bal+5000)return `zwrot: wydatki ${a2.exp}, przychody ${a0.inc}→${a2.inc}, saldo ${a0.bal}→${a2.bal}`;
+  if(await E(id=>T.L.forOpenP(S.tx).some(x=>x.t.id===id),id))return 'zakup dalej do oddania';
+  await E(()=>T.add({a:'100',sub:T.subs[0],acc:T.acc,date:T.day,note:'robot dla taty 2'}));
+  await E(()=>{document.getElementById('mforBtn').click();document.getElementById('mfor').value='Tata'});await save();
+  const id2=await E(()=>T.find('robot dla taty 2')[0]?.id);await E(id=>{forOff(id)},id2);await wait();await ok();await wait(400);
+  const a3=await g();return a3.exp===a0.exp+10000||`wliczenie: wydatki ${a0.exp}→${a3.exp}`});
+
 /* no JS errors on the way; the whole store is still valid for the real SDK (the demo stand-in throws like the SDK) */
 await ctx.close();await browser.close();srv.close();
 console.log(fails.length?`\n❌ Zapis wpisów: ${fails.length} problem(ów) w ${n} scenariuszach.`:`✅ Zapis i usuwanie wpisów działa (${n} scenariuszy).`);

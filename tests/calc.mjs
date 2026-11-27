@@ -3,7 +3,7 @@
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
 import {bondFee,marketQuote,holdAt,instDiffP,intOf,intRate,penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
 import {rentTaxRaw,automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,payDateP,closeWinP,closeYmP,salaryTxP,maturitiesP,pitSummaryP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
-import {cushionP,BACKUP_KEYS,yearPlanOf,avgActuals,anomalies,yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
+import {offBud,forOpenP,shopsP,cushionP,BACKUP_KEYS,yearPlanOf,avgActuals,anomalies,yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays,addMonths,daysIn,plDay} from '../js/util.js';
 import fs from 'node:fs';
@@ -964,6 +964,19 @@ eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWD
   const cfg2={accs:[{id:'o',grp:'sav',owner:'Mati',open:1000000},{id:'x',grp:'inv',owner:'Mati',name:'XTB',open:5000000},{id:'i',grp:'inv',owner:'Mati',wrap:'ike',open:4000000}],cats:cfg.cats};
   const X=cushionP(cfg2,tx,{a:{alloc:3000000}},{ym:'2026-11',at:'2026-11-01'}),Y=cushionP(cfg2,tx,{a:{alloc:7000000}},{ym:'2026-11',at:'2026-11-01'});
   eq('Poduszka – cel pokryty z rachunku maklerskiego nie zmniejsza poduszki; większy cel zabiera tylko resztę (IKE się nie liczy)',[X.inGoals,X.free,X.goalsAll,X.onInv,Y.inGoals,Y.free],[0,1000000,3000000,5000000,2000000,0])}
+/* 🤝 za kogoś: zakup 150 zł dla Taty i jego zwrot nie ruszają budżetu (wydatki, przychody, sklepy); niedopłata zostaje do oddania;
+   „Nie odda – wlicz do budżetu” = wydatek wraca, a to, co już oddał, zmniejsza go jak zwrot w sklepie (150 − 100 = 50 zł) */
+{ const cfg={accs:[{id:'a',grp:'cur',owner:'Mati',name:'Konto'}],cats:[{id:'ce',type:'exp',name:'Dom',subs:[{id:'e',name:'Elektronika'}]},{id:'ci',type:'inc',name:'Przychody',subs:[{id:'p',name:'Prezenty'}]}]};
+  const E={id:'x',type:'exp',amount:15000,date:'2026-11-03',sub:'e',acc:'a',note:'Media Markt',forWho:'Tata'},R={id:'r',type:'inc',amount:10000,date:'2026-11-05',sub:'e',acc:'a',forOf:'x'};
+  const A=agg(cfg,[E,R],'2026-11'),act=actuals(cfg,[E,R],'2026-11');
+  eq('Za kogoś: zakup i zwrot poza budżetem (wydatki, przychody, pozycja, sklepy)',[A.exp,A.inc,act.e||0,shopsP(cfg,[E,R],'2026-11').length],[0,0,0,0]);
+  eq('Za kogoś: do oddania zostało 50 zł; po pełnym zwrocie nic',[forOpenP([E,R]).map(x=>[x.who,x.left,x.ret]),forOpenP([E,{...R,amount:15000}]).length],[[['Tata',5000,10000]],0]);
+  const B=agg(cfg,[{...E,forBud:true},{...R,refundOf:'x'}],'2026-11');
+  eq('Za kogoś: „Nie odda – wlicz do budżetu” = 150 − oddane 100 = 50 zł wydatku, bez przychodu; nie ma już na liście',[B.exp,B.inc,forOpenP([{...E,forBud:true}]).length],[5000,0,0]);
+  const DF=(today)=>({cfg:{...cfg,fixed:[],years:[],incs:[],round:[],projs:[],rems:[]},tx:[E],slips:{},hold:{},debts:{},market:{},backup:{at:new Date(today+'T12:00:00').getTime()},hraw:{}});
+  const fw=today=>todayItems(DF(today),{today,checks:false}).filter(x=>x.icon=='🤝').map(x=>[x.who,x.quiet,x.go.a]);
+  eq('Za kogoś: przypomnienie w Na dziś dopiero po 14 dniach, ciche, dla właściciela konta',[fw('2026-11-16'),fw('2026-11-17')],[[],[['Mati',true,'forret']]]);
+  eq('Za kogoś: offBud – projekt poza budżetem, za kogoś, zwrot; zwykły wydatek i zwrot w sklepie w budżecie',[offBud({proj:'j'},new Set(['j'])),offBud(E),offBud(R),offBud({...E,forBud:true}),offBud({...R,refundOf:'x'}),offBud({type:'exp'})],[true,true,true,false,false,false])}
 /* 🏦 obligacje: prognoza doradcy (bondAfter) i wycena w Oszczędnościach (bondLotValue / instValue) liczą tymi samymi zasadami */
 { const lot=bondLotValue({type:'ROR',first:5.75},{date:'2026-01-10',qty:10,price:100},'2027-01-10',{nbp:4});
   eq('ROR po roku: doradca = wycena (odsetki co miesiąc)',bondAfter('ROR',12,{first:5.75},{nbp:4},{taxFree:true,amount:100000}),100000+lot.paid);

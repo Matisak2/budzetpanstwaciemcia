@@ -53,8 +53,16 @@ export function savFlow(cfg,tx,ids,prefix){const S=new Set(ids);let flow=0,gain=
 /* budget sums count złoty only – other currencies are summed apart (agg().fx) */
 /* projects outside the everyday budget (one-off trips, renovations) are not counted in plans and analyses */
 export const outProj=cfg=>new Set((cfg.projs||[]).filter(p=>p.inBudget===false).map(p=>p.id));
+/* 🤝 „za kogoś”: an expense paid for someone who gives it back (forWho = who) and its returns (inc with forOf = the expense) stay outside the
+   budget – the account balance and 🪙 drobne work as usual. „Nie odda – wlicz do budżetu” (forBud) brings the expense back and its returns
+   become ordinary refunds (refundOf). One rule for every place that counts the budget; also projects outside the budget (op = outProj). */
+export const offBud=(t,op)=>!!((t.proj&&op?.has(t.proj))||(t.forWho&&!t.forBud)||(t.forOf&&!t.refundOf));
+/* open „za kogoś”: what is still to be given back, oldest first – {t,who,ret,left} */
+export function forOpenP(tx){const L=liveOf(tx),ret={};for(const t of L)if(t.forOf&&t.type=='inc')ret[t.forOf]=(ret[t.forOf]||0)+t.amount;
+  return L.filter(t=>t.type=='exp'&&t.forWho&&!t.forBud).map(t=>({t,who:t.forWho,ret:ret[t.id]||0,left:t.amount-(ret[t.id]||0)}))
+    .filter(x=>x.left>0).sort((a,b)=>a.t.date.localeCompare(b.t.date))}
 export function actuals(cfg,tx,ym){const sm=subsMap(cfg),act={},cm=curMap(cfg),op=outProj(cfg);
-  inPeriod(tx,ym).forEach(t=>{if(!t.date.startsWith(ym)||(cm[t.acc]||'PLN')!='PLN'||(t.proj&&op.has(t.proj)))return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
+  inPeriod(tx,ym).forEach(t=>{if(!t.date.startsWith(ym)||(cm[t.acc]||'PLN')!='PLN'||offBud(t,op))return;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))return;
     act[t.sub]=(act[t.sub]||0)+(t.type==s.cat.type?t.amount:-t.amount)});return act}
 /* budget state of a position or category; an empty plan counts as 0 zł, so any spending without a plan is "poza planem"
    k: zero (nothing planned, nothing spent) · ok · near (≥85%) · full (exactly the plan) · over · low (income still missing) */
@@ -105,7 +113,7 @@ export function fixedMatch(cfg,tx,t){if(t.type!='exp'||!isDate(t.date))return nu
   return L.sort((a,b)=>Math.abs(t.amount-a.amount)-Math.abs(t.amount-b.amount))[0]||null}
 /* ticking a fixed payment → a typed expense of that month that is probably the same bill (not linked to anything yet), the closest amount first */
 export function fixedTwin(cfg,tx,f,ym){if((f.kind||'exp')!='exp')return null;
-  const L=inPeriod(tx,ym).filter(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.yearId&&!t.slipOf&&!t.roundOf&&!t.ppk&&!t.payoff&&fixLike(f,t));
+  const L=inPeriod(tx,ym).filter(t=>!t.deleted&&t.type=='exp'&&!t.fixedId&&!t.yearId&&!t.slipOf&&!t.roundOf&&!t.ppk&&!t.payoff&&!t.forWho&&fixLike(f,t));
   return L.sort((a,b)=>Math.abs(a.amount-f.amount)-Math.abs(b.amount-f.amount))[0]||null}
 /* 📅 the due month of a yearly expense closest to ym (±2 months; null when none) – the payment of that date */
 export function yearDueNear(it,ym){let best=null;for(const k of [0,-1,1,-2,2]){const m=new Date(Date.UTC(+ym.slice(0,4),+ym.slice(5,7)-1+k,1)).toISOString().slice(0,7);if(yearDueIn(it,m)){best=m;break}}return best}
@@ -148,7 +156,7 @@ export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outPr
   /* own: spending by whose account it came from (Mati / Wercia / Wspólne) – „who” is only who typed it */
   const ow={};cfg.accs.forEach(a=>ow[a.id]=ownerOf(a));
   const add=(m,k,c,v)=>{const x=m[k]=m[k]||{};x[c]=(x[c]||0)+v};
-  for(const t of inPeriod(tx,prefix)){if(!t.date.startsWith(prefix)||(t.proj&&op.has(t.proj)))continue;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))continue;
+  for(const t of inPeriod(tx,prefix)){if(!t.date.startsWith(prefix)||offBud(t,op))continue;const s=sm[t.sub];if(!s||(t.type!='exp'&&t.type!='inc'))continue;
     const a=(t.type==s.cat.type?1:-1)*t.amount,c=cm[t.acc]||'PLN';
     if(c!='PLN'){const F=r.fx;if(s.cat.type=='inc')F.inc[c]=(F.inc[c]||0)+a;else{F.exp[c]=(F.exp[c]||0)+a;add(F.cat,s.cat.id,c,a);add(F.sub,s.id,c,a)}continue}
     if(s.cat.type=='inc'){r.inc+=a;continue}
@@ -161,7 +169,7 @@ export function agg(cfg,tx,prefix){const sm=subsMap(cfg),cm=curMap(cfg),op=outPr
    the same name written a bit differently counts as one. Analiza „Gdzie wydajemy” and the monthly e-mail; pre = 'YYYY-MM' or 'YYYY' */
 const placeKey=n=>String(n||'').replace(/💱.*$/,'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l').replace(/[.,!?;:"'„”()]/g,'').replace(/\s+/g,' ').trim();
 export function shopsP(cfg,tx,pre){const cm=curMap(cfg),G={},top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0][0];
-  for(const t of inPeriod(liveOf(tx),pre)){if(t.type!='exp'||t.fixedId||t.debt||t.payoff||t.roundOf||(cm[t.acc]||'PLN')!='PLN')continue;const raw=String(t.note||'').replace(/💱.*$/,'').trim();
+  for(const t of inPeriod(liveOf(tx),pre)){if(t.type!='exp'||t.fixedId||t.debt||t.payoff||t.roundOf||offBud(t)||(cm[t.acc]||'PLN')!='PLN')continue;const raw=String(t.note||'').replace(/💱.*$/,'').trim();
     if(raw.length<2||/^[🪙↩📅💼]/u.test(raw)||/^potrącenie/i.test(raw))continue;const k=placeKey(raw);if(!k)continue;
     const g=G[k]||(G[k]={v:0,n:0,names:{},subs:{}});g.v+=t.amount;g.n++;g.names[raw]=(g.names[raw]||0)+1;g.subs[t.sub]=(g.subs[t.sub]||0)+t.amount}
   return Object.values(G).filter(g=>g.v>0).sort((a,b)=>b.v-a.v).map(g=>({name:top(g.names),v:g.v,n:g.n,sub:top(g.subs)}))}
@@ -238,7 +246,7 @@ export const payLabel=v=>typeof v=='number'?(v==50?'Po połowie':`Mati ${v}% · 
 /* the guess: spending on the position in the 3 months before (without fixed payments – they always count by their account) by whose account paid;
    one owner with ≥ 75% → that one, Wspólne the biggest → Wspólne, otherwise Mati and Wercia in proportion (to 10%); no history → Wspólne (no shared account → po połowie) */
 export function payAuto(cfg,tx,ym){const cm=curMap(cfg),ow={},by={},out={};cfg.accs.forEach(a=>ow[a.id]=ownerOf(a));
-  for(let k=1;k<=3;k++)for(const t of inPeriod(tx,addMonths(ym,-k))){if(!t.sub||t.fixedId||(cm[t.acc]||'PLN')!='PLN'||!ow[t.acc])continue;
+  for(let k=1;k<=3;k++)for(const t of inPeriod(tx,addMonths(ym,-k))){if(!t.sub||t.fixedId||offBud(t)||(cm[t.acc]||'PLN')!='PLN'||!ow[t.acc])continue;
     const v=t.type=='exp'?t.amount:t.type=='inc'&&t.refundOf?-t.amount:0;if(!v)continue;const m=by[t.sub]=by[t.sub]||{Mati:0,Wercia:0,'Wspólne':0};m[ow[t.acc]]=(m[ow[t.acc]]||0)+v}
   const shared=cfg.accs.some(a=>!a.archived&&(a.grp=='cur'||a.grp=='sub')&&ownerOf(a)=='Wspólne');
   for(const c of cfg.cats)for(const s of c.subs){const m=by[s.id],tot=m?Math.max(0,m.Mati)+Math.max(0,m.Wercia)+Math.max(0,m['Wspólne']):0;
@@ -285,7 +293,7 @@ function budMonth(cfg,{plans,tx,hraw},ym,today,start0,o){const yAcc=hraw?.yearAc
   for(const f of fx.filter(f=>f.kind=='inc'&&!linked.has(f.id))){const p=pool(f.acc);if(!p)continue;const real=M.filter(t=>t.fixedId===f.id&&t.type=='inc').reduce((a,t)=>a+t.amount,0);
     if(real){if(!live)add(p,'inc','fi:'+f.id,'📌 '+(f.name||'Przychód stały'),real,'',fixedDate(f,ym));continue}add(p,'inc','fi:'+f.id,'📌 '+(f.name||'Przychód stały'),+f.amount||0,'stały, jeszcze nie wpłynął',fixedDate(f,ym))}
   /* in: other incomes (not refunds, loans or PPK) – already on the accounts in the current month */
-  if(!live)for(const t of M)if(t.type=='inc'&&!t.fixedId&&!t.slip&&!t.refundOf&&!t.lendOf&&!t.debtIn&&!t.ppkOf&&!t.ppk&&sm[t.sub]&&!incs.some(s=>isSal(s,t))){const p=pool(t.acc);if(p)add(p,'inc','oth','➕ Inne wpływy',t.amount,'',t.date)}
+  if(!live)for(const t of M)if(t.type=='inc'&&!t.fixedId&&!t.slip&&!t.refundOf&&!t.forOf&&!t.lendOf&&!t.debtIn&&!t.ppkOf&&!t.ppk&&sm[t.sub]&&!incs.some(s=>isSal(s,t))){const p=pool(t.acc);if(p)add(p,'inc','oth','➕ Inne wpływy',t.amount,'',t.date)}
   /* transfers: fixed ones not made yet (+ in a later month those already typed) */
   const trf=(from,to,v,est,d)=>{const P=pool(from),Q=pool(to);if(P==Q||!v)return;
     const a=acc[to],sv=!Q&&(to==yAcc||a?.grp=='sav'||a?.grp=='inv');
@@ -297,7 +305,7 @@ function budMonth(cfg,{plans,tx,hraw},ym,today,start0,o){const yAcc=hraw?.yearAc
   const fixBy={};for(const f of fx.filter(f=>(f.kind||'exp')=='exp')){const v=+f.amount||0;if(f.sub)fixBy[f.sub]=(fixBy[f.sub]||0)+v;const p=pool(f.acc);
     if(p&&!(live&&M.some(t=>t.fixedId===f.id)))add(p,'out','fix','📌 Opłaty stałe',v,live?'jeszcze nie odhaczone':'',fixedDate(f,ym))}
   /* out: the rest of the plan of each position by „who pays” (in the current month minus what that person already spent on it) */
-  const spent={};if(live)for(const t of M){if(!t.sub||t.fixedId)continue;const p=pool(t.acc);if(!p)continue;const v=t.type=='exp'?t.amount:t.type=='inc'&&t.refundOf?-t.amount:0;if(v){const m=spent[p]=spent[p]||{};m[t.sub]=(m[t.sub]||0)+v}}
+  const spent={};if(live)for(const t of M){if(!t.sub||t.fixedId||offBud(t))continue;const p=pool(t.acc);if(!p)continue;const v=t.type=='exp'?t.amount:t.type=='inc'&&t.refundOf?-t.amount:0;if(v){const m=spent[p]=spent[p]||{};m[t.sub]=(m[t.sub]||0)+v}}
   const pl=planOf(cfg,plans,tx,ym),yp=yAcc?yearPlanOf(cfg,tx,ym).sub:{},auto=payAuto(cfg,tx,ym);
   /* 🧾 each person's part of the plan and what they already spent on it; spending beyond one's own part first covers what is left of the shared part,
      then of the other person's part („paid for” – a hint to give it back, nothing is moved) – that part is no longer to be spent */

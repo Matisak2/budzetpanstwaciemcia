@@ -2,7 +2,7 @@
    D = {cfg, tx (live entries), slips, hold, debts, market, backup, hraw}; every item says whom it concerns (who: 'Mati'|'Wercia'|null = both)
    and where a tap leads (go: {a:'fixed'|'slip'|'pay'|'add'|'year'|'rem'|'lent'|'owe'|'rata'|'inst'|'tr'|'sav'|'limits'|'backup'|'automat'|'tx'|'acc', ...}). */
 import {MN,MNG,addDays,addMonths,daysIn,money,p2,zl,plu,dmy,plDay} from './util.js';
-import {NEG_GRPS,balance,carStats,dueAlerts,earlyN,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP,isSal} from './logic.js';
+import {NEG_GRPS,forOpenP,balance,carStats,dueAlerts,earlyN,fixedDate,fixedTwin,fixedWho,inPeriod,subsMap,ownerOf,yearDueIn,subsReviewP,isSal} from './logic.js';
 import {BONDS,IICON,addM,limitOf,paidInYear,wrapOf,yearPlan,yearDue,LIMITS,intOf,intPeriod,intCalc,intTax,intRate} from './inv.js';
 import {calcNet,RULES_YEAR,suggest,youngKind,youngUntil} from './pay.js';
 import {assetOldP} from './advisor.js';
@@ -115,7 +115,7 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
 /* 📌 payments that look regular but are not in 📌 Stałe: the same note once a month, a similar amount (±15%), 3 months in a row */
 const normNote=s=>String(s||'').toLowerCase().replace(/\d+/g,' ').replace(/[^\p{L} ]+/gu,' ').replace(/\s+/g,' ').trim();
 export function recurringP(cfg,tx,today,ign={}){const ym=today.slice(0,7),months=[-3,-2,-1,0].map(d=>addMonths(ym,d)),by={};
-  for(const t of months.flatMap(m=>inPeriod(tx,m))){if(t.type!='exp'||t.fixedId||t.roundOf||t.ppk||t.split||t.slipOf||t.debt||t.date>today)continue;const i=months.indexOf(t.date.slice(0,7)),k=normNote(t.note);if(i<0||k.length<3)continue;
+  for(const t of months.flatMap(m=>inPeriod(tx,m))){if(t.type!='exp'||t.fixedId||t.roundOf||t.ppk||t.split||t.slipOf||t.debt||t.forWho||t.date>today)continue;const i=months.indexOf(t.date.slice(0,7)),k=normNote(t.note);if(i<0||k.length<3)continue;
     (by[k]=by[k]||[[],[],[],[]])[i].push(t)}
   const fx=(cfg.fixed||[]).filter(f=>f.kind!='inc'&&f.kind!='tr'),out=[];
   for(const[k,M]of Object.entries(by)){if(ign['rec:'+k])continue;const w=[[1,2,3],[0,1,2]].find(w=>w.every(i=>M[i].length==1));if(!w)continue;
@@ -255,6 +255,9 @@ export function todayItems(D,{today,hour=12,checks=true}={}){const{cfg,tx,slips,
   for(const r of cfg.rems||[]){const s=remStateP(r,cfg,tx,today);if(s.due||s.late)add('🔔',`${r.name}${r.next?' – '+dmy(r.next):''}${s.kmLeft!=null?` · zostało ${s.kmLeft.toLocaleString('pl-PL')} km`:''}`,{a:'rem'},'Zobacz',s.late?'bad':'',person(r.who),{n:s.days??undefined,later:s.days!=null&&s.days>7&&!(s.kmLeft!=null&&s.kmLeft<=500)})}
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='lent'||!x.until)continue;const d={id,...x},s=debtStateP(d,tx,today);if(!s.left)continue;const n=dd(today,d.until);
     if(n<=7)add('🔺',`${d.party||d.name} – zwrot ${zl(s.left)} ${n<0?'po terminie ('+dmy(d.until)+')':n==0?'dziś':'za '+n+' '+plu(n,'dzień','dni','dni')}`,{a:'lent'},'Zobacz',n<0?'bad':'',person(d.payer),{n})}
+  /* 🤝 za kogoś: someone has not given back for 14 days or more – quiet (no push), „Oddał” opens the settlement */
+  for(const x of forOpenP(tx)){const n=dd(x.t.date,today);if(n<14)continue;const ac=(cfg.accs||[]).find(a=>a.id==x.t.acc);
+    add('🤝',`${x.who} ma oddać ${money(x.left,ac?.cur)}${x.t.note?' – '+x.t.note:''} (od ${dmy(x.t.date)})`,{a:'forret',id:x.t.id},'Oddał','',person(ac?ownerOf(ac):''),{quiet:true,key:'forw:'+x.t.id})}
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='owe'||!x.saveAcc)continue;const d={id,...x},s=debtStateP(d,tx,today),saved=savedP(id,tx),from=+d.day||1;
     if(s.left>0&&saved>=s.left&&day>=from&&day<=from+2)add('💰',`${d.name}: uzbierane ${zl(saved)} – możesz spłacić całość (${zl(s.left)}).`,{a:'owe'},'Zobacz','',person(d.payer))}
   for(const[id,x]of Object.entries(debts||{})){if(x.deleted||x.dir!='owe'||!x.day||(cfg.fixed||[]).some(f=>f.debt==id&&f.kind!='inc'))continue;const d={id,...x},s=debtStateP(d,tx,today);

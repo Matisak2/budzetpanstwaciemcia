@@ -267,3 +267,9 @@ Mati 24.11: „Zrób etapy a, b i c po kolei”. D2, E2, F i styczeń 2027 – o
 
 ## Etap C2. Szybkość
 - [x] Oszczędności: `agg` (sumy – `aggTot`) i `instDiffP` zapamiętane (20 681 wpisów, CPU 4×: 85 → 65 ms); HELP/NEWS na żądanie (`help.js`, ok. 41 kB gzip mniej przy starcie); `maillog`/`autoval` bez stałej subskrypcji
+
+## Etap Z1. 🤝 Za kogoś (Mati 27.11: „do dzieła”)
+Decyzje Matiego: wpis z pozycją i notatką w Rejestrze; nadwyżka domyślnie 🎁 prezent z możliwością zmiany domyślnej opcji; przypomnienie po 14 dniach; dla każdego.
+- [x] Przycisk „🤝 Za kogoś” w okienku wydatku (kto odda, podpowiedzi imion); saldo i 🪙 drobne normalnie, poza budżetem, planem, Analizą, „Czy starczy?”, sklepami i mailem
+- [x] 🔺 Nam winni: karta „Za kogoś – do oddania”, „✓ Oddał” (częściowy zwrot, nadwyżka: 🎁 prezent – przychód / 🤝 do oddania – My winni, wybór zapamiętany), „Nie odda – wlicz do budżetu”
+- [x] 🔔 Na dziś po 14 dniach (ciche), Rejestr „🤝 za: …”, Pomoc, Co nowego v77, demo z przykładem, testy (calc + flows)

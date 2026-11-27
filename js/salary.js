@@ -104,7 +104,7 @@ function subsDone(){if(guard())return;const key='subs:'+S.who+':'+td().slice(0,7
   SUBKEEP.clear();$('dlg').hidden=true;render();toast('Przejrzane ✓ Przypomnę za rok')}
 /* 🗑️ recently deleted (60 days): a deleted entry is only marked deleted:true, so it can always come back.
    Entries deleted together with their parent (PPK, refunds, interest, paystub deductions) come back with it; paystub entries replaced by a re-saved paystub are not listed. */
-const DEL_DAYS=60,parOf=t=>t.ppkOf||t.refundOf||t.payOf||t.slipOf;
+const DEL_DAYS=60,parOf=t=>t.ppkOf||t.refundOf||t.payOf||t.slipOf||t.forOf;
 const withParent=(t,p)=>p&&p.deleted===true&&Math.abs((p.dAt||0)-(t.dAt||0))<15000;
 export function deletedList(){const byId=new Map(S.tx.map(t=>[t.id,t])),cut=Date.now()-DEL_DAYS*864e5;
   const replaced=t=>{if(t.slip){const sl=slipOf(t.date.slice(0,7),t.slip);return!!(sl&&sl.booked&&sl.booked!==t.id)}const p=parOf(t)&&byId.get(parOf(t));return!!(p&&p.slip&&replaced(p))};

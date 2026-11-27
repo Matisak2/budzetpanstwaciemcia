@@ -5,14 +5,15 @@ import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
 import {addM,limitOf,paidInYear,wrapOf} from './inv.js';
 import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
-import {avgActuals,carStats,balance,balDrop,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf,CASC_BUF} from './logic.js';
-import {$,MN,addDays,addMonths,esc,f2,isDate,pnum,rid,td,zl,zl0,plu} from './util.js';
-import {S,CUR,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,posOf,putTx,guard,infoH,negStop} from './core.js';
+import {forOpenP,avgActuals,carStats,balance,balDrop,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf,CASC_BUF} from './logic.js';
+import {$,MN,addDays,addMonths,esc,f2,isDate,ls,pnum,rid,td,zl,zl0,plu} from './util.js';
+import {S,CUR,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,posOf,putTx,putTxs,guard,infoH,negStop,am,accCur,accWho} from './core.js';
 import {calcAmt} from './sheet.js';
 import {fixedPaid,isPod,txRowH} from './actions.js';
 import {gr,segL} from './salary.js';
 import {accById,pn,newYear} from './savings.js';
 import {accN,render} from './app.js';
+import {use} from './usage.js';
 
 /* ---------- 🔻 liabilities (we owe) and 🔺 receivables (owed to us), in 👛 Konta ---------- */
 const DKIND={owe:[['hip','🏠 Kredyt hipoteczny'],['got','💳 Kredyt gotówkowy'],['auto','🚗 Kredyt samochodowy'],['raty','🧾 Raty 0%'],['karta','💳 Karta kredytowa'],['bnpl','🛍️ Odroczone płatności (np. Allegro Pay)'],['leasing','📄 Leasing'],['rodz','👪 Pożyczka od rodziny / znajomych'],['inne','📌 Inne']],
@@ -25,11 +26,51 @@ export function debtState(d){return debtStateP(d,liveOf(S.tx),td())}
 export const debtSum=(dir,owner)=>debtList(dir).filter(d=>!owner||(d.payer||'Wspólne')==owner).reduce((a,d)=>a+debtState(d).left,0);
 export function setAccView(k){S.accView=k;S.recon=false;window.scrollTo(0,0);render()}
 export const accSegH=()=>`<div class="seg seg3">${[['acc','🏦 Salda'],['owe','🔻 My winni'],['lent','🔺 Nam winni']].map(([k,l])=>`<button aria-pressed="${(S.accView||'acc')==k}" onclick="setAccView('${k}')">${segL(l)}</button>`).join('')}</div>`;
+/* 🤝 za kogoś (forOpenP): purchases for someone who gives the money back – in 🔺 Nam winni, outside the budget until „Nie odda” */
+function forH(){const L=forOpenP(S.tx);if(!L.length)return'';const sm=subsMap(S.cfg);
+  const row=x=>`<div class="debt"><div class="r1"><b>🤝 ${esc(x.who)}</b><b class="num">${am(x.left,x.t.acc)}</b></div>
+    <div class="mini">${esc(x.t.note||sm[x.t.sub]?.name||'zakup')} · ${esc(sm[x.t.sub]?.name||'')} · ${dmyD(x.t.date)} · ${esc(accN(x.t.acc))}${x.ret?` · oddał już ${am(x.ret,x.t.acc)} z ${am(x.t.amount,x.t.acc)}`:''}</div>
+    <div class="btns"><button class="btn sm primary" onclick="forRet('${x.t.id}')">✓ Oddał</button><button class="btn sm" onclick="forOff('${x.t.id}')">Nie odda – wlicz do budżetu</button></div></div>`;
+  return`<section class="card"><h3>🤝 Za kogoś – do oddania ${zl(L.filter(x=>accCur(x.t.acc)=='PLN').reduce((a,x)=>a+x.left,0))}</h3>
+    <p class="mini">Zakupy za kogoś nie liczą się do Waszego budżetu. Gdy ktoś odda pieniądze, stuknij „✓ Oddał” – zwrot też nie jest przychodem.</p>${L.map(row).join('')}</section>`}
+const dmyD=d=>d.split('-').reverse().join('.');
+/* „✓ Oddał”: the return (inc, forOf, the expense's position – outside the budget); more than was owed → 🎁 a gift (income on a chosen position,
+   counts in the budget) or 🤝 we give it back (a debt in 🔻 My winni + the money in as debtIn); the choice is remembered on this phone */
+export async function forRet(id){if(guard())return;use('f:forret');const x=forOpenP(S.tx).find(y=>y.t.id===id);if(!x)return toast('Ten zakup jest już rozliczony');
+  const t=x.t,cur=accCur(t.acc),accs=accOpts().map(g=>({...g,items:g.items.filter(([aid])=>accCur(aid)==cur)})).filter(g=>g.items.length);
+  const r=await ask({title:`🤝 ${x.who} oddaje`,text:`${t.note||'Zakup'} z ${dmyD(t.date)} – do oddania ${am(x.left,t.acc)}.`,
+    fields:[{id:'a',label:'Ile oddał',type:'decimal',value:f2(x.left)},{id:'c',label:'Na konto',type:'select',value:t.acc,options:accs},{id:'d',label:'Kiedy',type:'date',value:td()}],
+    ok:'Zapisz',alt:'Nie odda – wlicz do budżetu'});
+  if(!r)return;if(r=='alt')return forOff(id);
+  const a=gr(r.a),date=isDate(r.d)?r.d:td(),acc=r.c||t.acc;if(!(a>0))return toast('Podaj kwotę','bad');
+  const back=Math.min(a,x.left),extra=a-back,ym=date.slice(0,7),now=Date.now(),who=accWho(acc),L=[];
+  L.push([ym,'t'+rid(),{type:'inc',amount:back,date,sub:t.sub,acc,to:'',who,note:`🤝 Zwrot: ${x.who}${t.note?' · '+t.note:''}`,forOf:t.id,deleted:false,ts:now}]);
+  let did='';
+  if(extra>0){const incS=S.cfg.cats.filter(c=>c.type=='inc'&&!c.hidden).flatMap(c=>c.subs.filter(s=>!s.hidden).map(s=>[s.id,cleanCat(c.name)+' → '+s.name]));
+    const gs=(incS.find(([,n])=>/prezent|darowiz/i.test(n))||incS.find(([,n])=>/inne/i.test(n))||incS[0]||[''])[0];
+    const q=await ask({title:`Nadwyżka ${am(extra,acc)}`,text:`${x.who} oddał ${am(a,acc)}, a do oddania było ${am(x.left,t.acc)}. Co z resztą? Twój wybór zapamiętam na następny raz.`,
+      fields:[{id:'o',label:'Nadwyżka',type:'select',value:ls.get('mw_forsur')||'gift',options:[['gift','🎁 Prezent – przychód (liczy się do budżetu)'],['owe',`🤝 Też do oddania – oddamy ${x.who}`]]},
+        {id:'s',label:'Pozycja przychodu (przy prezencie)',type:'select',value:gs,options:incS}],ok:'Zapisz'});
+    if(!q)return;ls.set('mw_forsur',q.o);
+    if(q.o=='gift'){if(!q.s)return toast('Dodaj w ⚙️ pozycję przychodu, np. „Prezenty”','bad');
+      L.push([ym,'t'+rid(),{type:'inc',amount:extra,date,sub:q.s,acc,to:'',who,note:`🎁 ${x.who} – nadwyżka ze zwrotu`,deleted:false,ts:now}])}
+    else{did='d'+rid();const ow=ownerOf(S.cfg.accs.find(z=>z.id==acc));
+      merge(doc(DEBTS(),did),{dir:'owe',kind:'rodz',name:'Do oddania: '+x.who,party:x.who,payer:ow,start:extra,date,until:'',note:'nadwyżka ze zwrotu'+(t.note?' za '+t.note:''),
+        mode:'auto',inst:0,day:0,rate:null,rtype:'fix',amort:'eq',saveAcc:'',deleted:false,ts:now});
+      L.push([ym,'t'+rid(),{type:'inc',amount:extra,date,sub:'',acc,to:'',who,note:'🔻 Do oddania: '+x.who,debtIn:did,deleted:false,ts:now}])}}
+  if(!await putTxs(L))return;render();
+  toast(`Zapisano zwrot ${am(a,acc)} – poza budżetem${extra>0?' (nadwyżka osobno)':''}`,'',{label:'Cofnij',fn:()=>{L.forEach(([m,i])=>putTx(m,i,{deleted:true}));if(did)merge(doc(DEBTS(),did),{deleted:true})}})}
+/* „Nie odda – wlicz do budżetu”: the expense counts in the budget again (forBud) and what came back so far becomes ordinary refunds (refundOf) */
+export async function forOff(id){if(guard())return;const x=forOpenP(S.tx).find(y=>y.t.id===id);if(!x)return;const t=x.t,sm=subsMap(S.cfg);
+  if(!await ask({title:'Wliczyć do budżetu?',text:`${t.note||'Zakup'} (${am(t.amount,t.acc)}) wróci do budżetu jako wydatek na „${sm[t.sub]?.name||'—'}” w ${MN[+t.date.slice(5,7)-1].toLowerCase()}.${x.ret?` To, co ${x.who} już oddał (${am(x.ret,t.acc)}), zmniejszy ten wydatek.`:''}`,ok:'Wlicz'}))return;
+  const R=liveOf(S.tx).filter(y=>y.forOf===t.id);putTx(t.date.slice(0,7),t.id,{forBud:true});R.forEach(y=>putTx(y.date.slice(0,7),y.id,{refundOf:t.id}));render();
+  toast('Wliczono do budżetu','',{label:'Cofnij',fn:()=>{putTx(t.date.slice(0,7),t.id,{forBud:false});R.forEach(y=>putTx(y.date.slice(0,7),y.id,{refundOf:''}))}})}
 export function debtsH(dir){const L=debtList(dir).map(d=>({d,st:debtState(d)})),act=L.filter(x=>x.st.left>0),done=L.filter(x=>x.st.left<=0),owe=dir=='owe';let h='';
   const tot=act.reduce((a,x)=>a+x.st.left,0);
   if(L.length)h+=`<div class="worth ${owe?'':'wsp'}"><div class="l">${owe?'Razem do spłaty':'Razem do oddania Wam'}</div><div class="v num">${zl(tot)}</div><div class="s">${OWN.map(o=>`${o} ${zl0(act.filter(x=>(x.d.payer||'Wspólne')==o).reduce((a,x)=>a+x.st.left,0))}`).join(' · ')} · w 👛 Konta widać to osobno – stan kont się nie zmienia</div></div>`;
   if(!owe){const sid=S.cfg.cats.flatMap(c=>c.subs).find(s=>/udzielone pożyczki/i.test(s.name))?.id,old=sid?liveOf(S.tx).filter(t=>t.type=='exp'&&t.sub===sid):[];
     if(old.length)h+=`<div class="note">💡 W pozycji „Udzielone pożyczki” jest ${old.length} ${plu(old.length,'wydatek','wydatki','wydatków')} (${zl(old.reduce((a,t)=>a+t.amount,0))}). Pożyczka to nie wydatek – ktoś Wam ją odda. <button class="btn sm primary" onclick="moveLent()">Przenieś do należności</button></div>`}
+  if(!owe)h+=forH();
   h+=`<button class="btn dark" onclick="editDebt(null,'${dir}')">+ ${owe?'Dodaj zobowiązanie':'Pożyczyliśmy komuś'}</button>`;
   if(!L.length)h+=catsEmpty(owe?'Dodaj kredyt, raty albo pożyczkę. Raty w Budżecie zostają wydatkami, a tu zobaczysz, ile jeszcze zostało.':'Zapisz, komu pożyczyliście pieniądze i do kiedy ma oddać. Przypomnę o terminie.',1,'envelope');
   const tx=liveOf(S.tx),svH=(d,st)=>{if(!owe||!d.saveAcc||!st.left)return'';const sv=savedP(d.id,tx),pc=Math.min(100,sv/st.left*100);

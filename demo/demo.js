@@ -98,6 +98,8 @@
       add(2,{amount:11000,sub:sid['Komunikacja miejska'],acc:'aW',note:'Bilet miesięczny'});add(3,{amount:1199,sub:sid['Chmura i aplikacje'],acc:'aM',note:'Chmura 200 GB'});
       for(let i=0;i<2;i++)add(r(1,28),{amount:r(9000,16000),sub:sid['Karma'],acc:'aJ',note:'Sklep zoologiczny'});
       add(r(5,25),{amount:r(3000,8000),sub:sid['Środki czystości'],acc:'aJ',note:'Drogeria'});
+      /* 🤝 za kogoś: zakup dla taty w poprzednim miesiącu – poza budżetem, czeka w 🔺 Nam winni (i w Na dziś po 14 dniach) */
+      if(mi==-1)add(12,{amount:14900,sub:sid['Hobby'],acc:'aM',note:'Taśmy dla taty',forWho:'Tata'});
       const extra=[['Kino i koncerty',6000,9000,'Kino'],['Hobby',5000,15000,'Sklep z modelami'],['Fryzjer i kosmetyki',7000,12000,'Fryzjer'],['Leki',2500,6000,'Apteka'],['Prezenty',8000,20000,'Prezent urodzinowy'],
         [`Ubrania ${A}`,12000,30000,'Sklep odzieżowy'],[`Ubrania ${B}`,12000,35000,'Sklep odzieżowy'],['Lekarz',15000,25000,'Wizyta prywatna'],['Opłaty bankowe',500,1500,'Opłata za kartę']];
       for(let i=0;i<4;i++){const[s,a,b,note]=pick(extra);add(r(1,28),{amount:r(a,b),sub:sid[s],acc:s.includes(B)?'aW':s.includes(A)?'aM':pick(['aM','aW','aJ']),note})}

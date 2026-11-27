@@ -32,12 +32,16 @@ export function setType(t){S.etype=t;$('mt').querySelectorAll('button').forEach(
   if(t=='tr'&&SP.length){SP=[];renderSplit()}updSplit()}
 /* 🪙 drobne: the rule of the chosen account, the rounding of this amount, on/off for this one expense (on by default) */
 const ruleOf=acc=>(S.cfg.round||[]).find(r=>r.from==acc&&S.cfg.accs.some(a=>a.id==r.to)&&accCur(r.from)==accCur(r.to));
+/* 🤝 who has given back before (the most frequent first) – suggestions under „Kto odda?” */
+const forNames=()=>{const c={};for(const t of liveOf(S.tx))if(t.forWho)c[t.forWho]=(c[t.forWho]||0)+1;return Object.keys(c).sort((a,b)=>c[b]-c[a]).slice(0,8)};
 /* 🛡️ warranty (asked from 300 zł) and 🧾 tax relief in the sheet */
 function updX(){if(!S.cfg)return;const exp=S.etype=='exp'&&!S.refEdit,amt=calcAmt($('ma').value);
   $('mwarWrap').hidden=!(exp&&(amt>=30000||$('mwar').value));$('mward').hidden=$('mwar').value!='date';
   $('mwarPh').hidden=!$('mwar').value||PH.some(p=>!p.removed);
   $('mulgaWrap').hidden=!(exp&&(S.ulgaOpen||$('mulga').value));$('mulgaBtn').hidden=!exp||!$('mulgaWrap').hidden;
-  const u=ULGI[$('mulga').value];$('mulgaHint').textContent=u?u.d:'';$('mulgaHint').hidden=!u}
+  const u=ULGI[$('mulga').value];$('mulgaHint').textContent=u?u.d:'';$('mulgaHint').hidden=!u;
+  /* 🤝 za kogoś: a field after the button (or when the entry has it) */
+  $('mforWrap').hidden=!(exp&&(S.forOpen||$('mfor').value.trim()));$('mforBtn').hidden=!exp||!$('mforWrap').hidden}
 export function updCoin(){const b=$('rnd'),r=S.etype=='exp'&&!S.edit&&ruleOf($('mc').value),d=$('md').value,amt=calcAmt($('ma').value);
   const v=r&&amt>0&&(!r.since||d>=r.since)?roundUp(amt,r):0;S.coin=v?{r,v}:null;b.hidden=!v;if(!v)return;
   b.setAttribute('aria-pressed',S.coinOn);b.innerHTML=`<span class="cn">🪙</span><span class="ct"><b>Drobne +${am(v,r.from)}</b><small>→ ${esc(accN(r.to))}${S.coinOn?'':' · nie odłożę'}</small></span><span class="ck">${S.coinOn?'✓':''}</span>`}
@@ -175,7 +179,8 @@ export function openTx(id,pre){if(guard())return;
   if($('mto').value==$('mc').value){const o=[...$('mto').options].find(o=>o.value!=$('mc').value);if(o){if(pre?.to)$('mc').value=o.value;else $('mto').value=o.value}}
   if(!t)autoWho();
   $('mn').value=t?stripFx(t.note):(pre?.note||'');if(!t&&pre?.note&&!pre.sub)setTimeout(()=>$('mn').dispatchEvent(new window.Event('input')),0);
-  $('mwar').value=t?.war?'date':'';$('mward').value=t?.war||'';$('mulga').value=t?.ulga||'';S.ulgaOpen=!!t?.ulga;updX();
+  $('mwar').value=t?.war?'date':'';$('mward').value=t?.war||'';$('mulga').value=t?.ulga||'';S.ulgaOpen=!!t?.ulga;
+  $('mfor').value=t?.forWho||'';S.forOpen=!!t?.forWho;$('mforL').innerHTML=forNames().map(n=>`<option value="${esc(n)}">`).join('');updX();
   {const f=x=>new Date(x).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
    $('shWho').textContent=t&&(t.by||t.eby)?[t.by?`➕ ${t.by=='Wercia'?'dodała':'dodał'} ${t.by}${t.ts?' · '+f(t.ts):''}`:'',t.eby?`✏️ ${t.eby=='Wercia'?'zmieniła':'zmienił'} ${t.eby}${t.eAt?' · '+f(t.eAt):''}`:''].filter(Boolean).join('   '):'';$('shWho').hidden=!$('shWho').textContent}
   setMs(t?t.sub:pre?.sub||(pre?.debt&&S.debts[pre.debt]?.sub)||'');renderSplit();fillDebt(t?.debt||pre?.debt||'');updDebtHint(!t&&!pre?.amount);fillProj(t?.proj||pre?.proj||'');$('mlit').value=t?.lit?String(t.lit).replace('.',','):'';$('modo').value=t?.odo||'';S.coinOn=true;updCoin();
@@ -249,6 +254,9 @@ export async function saveTx(next){if(guard())return;
   const lit=!$('mcarWrap').hidden?pnum($('mlit').value)||0:0,odo=!$('mcarWrap').hidden?Math.round(pnum($('modo').value))||0:0;if(lit)body.lit=lit;else if(old?.lit)body.lit=0;if(odo)body.odo=odo;else if(old?.odo)body.odo=0;
   {const wv=type=='exp'&&!$('mwarWrap').hidden?$('mwar').value:'',war=wv=='date'?(isDate($('mward').value)?$('mward').value:''):wv?addM(date,+wv):'';if(war)body.war=war;else if(old?.war)body.war='';
    const ul=type=='exp'&&!$('mulgaWrap').hidden?$('mulga').value:'';if(ul){body.ulga=ul;body.ulgaWho=base.who}else if(old?.ulga){body.ulga='';body.ulgaWho=''}}
+  /* 🤝 za kogoś – also every part of a split receipt (base); with returns already given back it cannot just be switched off */
+  {const fw=type=='exp'&&!$('mforWrap').hidden?$('mfor').value.trim().slice(0,40):'';if(fw){body.forWho=fw;base.forWho=fw}
+   else if(old?.forWho){if(liveOf(S.tx).some(x=>x.forOf===old.id))return toast('Ta osoba już coś oddała – w 👛 Konta → 🔺 Nam winni wybierz „Nie odda – wlicz do budżetu”','bad');body.forWho=''}}
   const debt=type=='exp'&&!$('mdebtWrap').hidden?$('mdebt').value:'';if(debt)body.debt=debt;else if(old?.debt)body.debt='';
   if(debt&&S.debts[debt]&&!subsMap(S.cfg)[S.debts[debt].sub]&&body.sub)merge(doc(DEBTS(),debt),{sub:body.sub});
   if(old){for(const k of['fixedId','refundOf','split'])if(old[k])body[k]=old[k];body.by=old.by||'';body.ts=old.ts||body.ts;body.eby=S.who;body.eAt=Date.now()}
@@ -273,7 +281,7 @@ export async function delTx(id){if(guard())return;const t=liveById(id);if(!t)ret
   const par=t.slipOf?liveById(t.slipOf):t.ppkOf?liveById(t.ppkOf):null;
   if(par?.slip){const r=await ask({title:'To część paska pensji',text:`${stripFx(t.note)||'Potrącenie'} – ${am(t.amount,t.acc)}\nWpływ z paska to netto + potrącenia, więc samo to usunięcie zawyżyłoby saldo. Zmień kwoty w pasku albo usuń cały pasek.`,ok:'Otwórz pasek',alt:'Usuń cały pasek',cancel:'Anuluj'});
     if(r=='alt')return delTx(par.id);if(r){closeSheet();openSlip(par.slip,par.date.slice(0,7))}return}
-  const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id),bak=slipOfTx(t);
+  const ym=t.date.slice(0,7),linked=liveOf(S.tx).filter(x=>x.ppkOf===id||x.refundOf===id||x.slipOf===id||x.payOf===id||x.forOf===id),bak=slipOfTx(t);
   /* 🚫 deleting an income or a transfer in must not leave the account with a minus (later spending was paid with it) */
   if(!await txOk([t,...linked].map(x=>({...x,deleted:true}))))return;
   closeSheet();if(!await putTx(ym,id,{deleted:true,...(bak?{slipBak:bak}:{})}))return;
@@ -312,6 +320,7 @@ $('ma').oninput=()=>{const v=$('ma').value;$('maSum').textContent=/\d\s*[+\-−]
 $('mproj').onchange=()=>updProj();
 $('mwar').onchange=()=>{if($('mwar').value=='date'&&!$('mward').value)$('mward').value=addM($('md').value||td(),24);updX()};
 $('mulga').onchange=()=>updX();$('mulgaBtn').onclick=()=>{S.ulgaOpen=true;updX()};
+$('mforBtn').onclick=()=>{S.forOpen=true;updX();setTimeout(()=>$('mfor').focus(),50)};
 $('mphBtn').onclick=()=>$('mphIn').click();
 $('mphIn').onchange=async e=>{const files=[...e.target.files];e.target.value='';const room=PH_MAX-PH.filter(p=>!p.removed).length;if(files.length>room)toast(`Najwyżej ${PH_MAX} zdjęcia przy jednym wpisie`);
   for(const f of files.slice(0,room)){try{PH.push({id:'r'+rid(),...await shrinkPhoto(f),isNew:true})}catch(er){toast('Nie udało się wczytać zdjęcia','bad')}}renderPh()};
