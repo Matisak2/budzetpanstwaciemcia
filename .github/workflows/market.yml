@@ -3,9 +3,11 @@
 name: Automat – kursy i ceny
 on:
   schedule:
-    - cron: '23 16 * * 1-5'   # w dni robocze 18:23 czasu letniego (po zamknięciu giełd w Europie i tabeli NBP)
-    - cron: '23 17 * * 1-5'   # 18:23 czasu zimowego – skrypt sam pomija uruchomienie przed 18:00 i drugie tego samego dnia
-    - cron: '23 18 * * 1-5'   # zapasowo godzinę później (GitHub czasem pomija start) – gdy dziś już pobrane, nic nie robi
+    # co 2 godziny w dni robocze (i w sobotę do południa – spóźniony piątek): GitHub potrafi uruchomić zadanie wiele godzin później
+    # (24–27.11.2026 – dopiero po północy). Skrypt sam pobiera raz na wieczór (od 18:00); start po północy liczy się jako wczorajszy wieczór,
+    # jeśli go nie było (marketDay w scripts/when-lib.mjs); pozostałe starty kończą się od razu.
+    - cron: '23 */2 * * 1-5'
+    - cron: '23 0-12/2 * * 6'
   workflow_dispatch: {}        # przycisk „Run workflow” – ręczne uruchomienie
 permissions:
   contents: read    # zapis do repozytorium tylko w osobnym zadaniu „znak życia” (bez sekretów)

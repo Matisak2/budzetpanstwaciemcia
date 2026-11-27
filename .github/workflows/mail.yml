@@ -3,14 +3,11 @@
 name: Maile
 on:
   schedule:
-    - cron: '5 19 * * 0'     # niedziela 21:05 latem (skrypt sam sprawdza, czy to pierwsza niedziela miesiąca)
-    - cron: '5 20 * * 0'     # niedziela 21:05 zimą
-    - cron: '5 7 1 * *'      # 1. dnia miesiąca 9:05 latem
-    - cron: '5 8 1 * *'      # 1. dnia miesiąca 9:05 zimą
-    - cron: '5 19 * * 1'     # zapasowo: poniedziałek po pierwszej niedzieli 21:05 latem (gdy kopia nie wyszła)
-    - cron: '5 20 * * 1'     # … i zimą
-    - cron: '5 7 2 * *'      # zapasowo: 2. dnia 9:05 latem (gdy podsumowanie nie wyszło)
-    - cron: '5 8 2 * *'      # … i zimą
+    # co 2 godziny w niedziele i poniedziałki (kopia ok. 21:00 w pierwszą niedzielę, zapasowo w poniedziałek) oraz 1. i 2. dnia miesiąca
+    # (podsumowanie 9–14): GitHub potrafi spóźnić start o wiele godzin (24–27.11.2026), a skrypt sam wybiera porę i wysyła najwyżej raz
+    # (mailPlan w scripts/when-lib.mjs, dziennik market/maillog)
+    - cron: '5 */2 * * 0,1'
+    - cron: '5 */2 1,2 * *'
   workflow_dispatch:
     inputs:
       tryb:

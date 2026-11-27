@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import {greeting} from '../js/guide.js';
 import {factOfDay,FACTS} from '../js/facts.js';
 import {monthStats,summaryHtml,summaryText} from '../scripts/mail-lib.mjs';
-import {pushSlot,mailPlan} from '../scripts/when-lib.mjs';
+import {pushSlot,mailPlan,marketDay} from '../scripts/when-lib.mjs';
 import {dropJumps,eomFix,keepPrev,parseStooqHist,parseYahooHist} from '../scripts/market-lib.mjs';
 import {allocP,clsOf,etfOf,etfCur,etfDup,guessCls,etfCheck,realP,assetOldP,assetShare,planP,bandOf,jointPlan,crisisP,devP,diagP,ankList,ankDone,ANK,whereP,wrapCompare,ikzeRank,taxOf,bondAfter,bondPickP,fillP,pickEtf,unitsP,tranchesP,adviceDoneP,crisesP,pensionNet,retireP,homeP,rentP,buyCheckP,costsP,rataOf,thermoP,advRemindP,sandP,sandCheckP,wishHitP} from '../js/advisor.js';
 
@@ -948,6 +948,11 @@ eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWD
   eq('Maile – kopia w pierwszą niedzielę o 21',[P(T,'Sun',21),P(T,'Sun',20),P(T,'Sun',21,{backup:'2026-12'}),P('2026-12-07','Mon',21),P('2026-12-13','Sun',21),P('2026-12-14','Mon',22)],[['backup'],[],[],['backup'],[],[]]);
   eq('Maile – 1. dnia podsumowanie (i kopia, gdy to pierwsza niedziela)',[P('2026-11-01','Sun',9),P('2026-11-01','Sun',21),P('2026-11-02','Mon',13),P('2026-11-02','Mon',14),P('2026-11-02','Mon',10,{sum:'2026-11'})],[['sum'],['backup'],['sum'],[],[]]);
   eq('Maile – 1 stycznia także rok',[P('2027-01-01','Fri',9),P('2027-01-01','Fri',8),P('2027-01-02','Sat',9,{sum:'2027-01',year:'2027'}),P('2027-01-03','Sun',9)],[['year','sum'],[],[],[]]);
+  /* kursy i ceny (market.mjs): wieczór od 18:00; GitHub spóźniony po północy (24–27.11.2026) = wieczór dnia poprzedniego, jeśli go nie było */
+  eq('Automat kursów – kiedy pobiera',[marketDay({today:'2026-11-26',hour:18,last:'2026-11-25'}),marketDay({today:'2026-11-26',hour:19,last:'2026-11-26'}),
+    marketDay({today:'2026-11-27',hour:2,last:'2026-11-20'}),marketDay({today:'2026-11-27',hour:2,last:'2026-11-26'}),marketDay({today:'2026-11-26',hour:17,last:'2026-11-25'}),
+    marketDay({today:'2026-12-01',hour:1,last:'2026-11-27'}),marketDay({today:'2026-11-27',hour:10,sched:false,last:'2026-11-27'})],
+    ['2026-11-26',null,'2026-11-26',null,null,'2026-11-30','2026-11-27']);
   eq('Maile – tryby ręczne',[P('2026-11-20','Fri',3,{},'test-kopia'),P('2026-11-20','Fri',3,{},'test-rok'),P('2026-11-20','Fri',3,{},'test-podsumowanie')],[['backup'],['year'],['sum']])}
 /* 🛟 jedna poduszka (karta w Oszczędnościach, doradca, mail): konta oszczędnościowe w zł bez IKE/IKZE + konto „Poduszka” z każdej grupy, minus cele;
    średnie wydatki z miesięcy z wydatkami (do 6 przed miesiącem) */

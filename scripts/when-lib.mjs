@@ -10,3 +10,9 @@ export function mailPlan({today,hour,weekday,mode='auto',log={}}){const ym=today
   return{backup:mode=='test-kopia'||(auto&&firstSun&&hour>=21&&log.backup!=ym),
     year:mode=='test-rok'||(auto&&today.slice(5,7)=='01'&&dom<=2&&hour>=9&&hour<14&&log.year!=today.slice(0,4)),
     sum:mode=='test-podsumowanie'||(auto&&dom<=2&&hour>=9&&hour<14&&log.sum!=ym)}}
+/* market.mjs (kursy i ceny): the evening run of a day (from 18:00 Polish time). GitHub sometimes starts scheduled runs many hours late (24–27.11.2026:
+   after midnight) – a run before 18:00 counts as the evening of the day before, if that one was not fetched yet. Returns the day the run counts
+   for (written to market/rates.sched), or null = nothing to do. „Run workflow” (manual) always runs. */
+export function marketDay({today,hour,sched=true,last=''}){if(!sched)return today;
+  const d=hour>=18?today:(()=>{const x=new Date(today+'T12:00:00Z');x.setUTCDate(x.getUTCDate()-1);return x.toISOString().slice(0,10)})();
+  return last>=d?null:d}

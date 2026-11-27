@@ -6,6 +6,7 @@ import {CRYPTO_IDS,OZ,bondLinks,dropJumps,eomFix,fundLinks,gusCsvLink,keepPrev,p
 import {holdAt,instDiffP,macroP} from '../js/inv.js';
 import {ownerOf} from '../js/today.js';
 import {daysIn} from '../js/util.js';
+import {marketDay} from './when-lib.mjs';
 
 const H=fdb().doc('households/main'),M=H.collection('market');
 const {today,hour}=warsaw(),sched=process.env.RUN=='schedule';
@@ -16,8 +17,9 @@ const tryIt=async(name,fn)=>{try{return await fn()}catch(e){console.log(`– ${n
 
 const prev=(await M.doc('rates').get()).data()||{};
 /* two scheduled times (GitHub runs in UTC): only the one at about 18:23 Polish time runs, once a day; „Run workflow” always runs */
-if(sched&&(hour<18||prev.sched==today)){console.log('– to nie pora albo dziś już pobrane');process.exit(0)}
-const out={date:today,ts:Date.now(),...(sched?{sched:today}:prev.sched?{sched:prev.sched}:{}),fx:{},prices:{},src:{},inflH:{...(prev.inflH||{})},funds:{...(prev.funds||{})},...(prev.bonds?{bonds:prev.bonds}:{})};
+/* GitHub can start a scheduled run hours late (after midnight) – marketDay counts it as the evening before, if that one is missing */
+const day=marketDay({today,hour,sched,last:prev.sched||''});if(!day){console.log('– to nie pora albo dziś już pobrane');process.exit(0)}
+const out={date:today,ts:Date.now(),...(sched?{sched:day}:prev.sched?{sched:prev.sched}:{}),fx:{},prices:{},src:{},inflH:{...(prev.inflH||{})},funds:{...(prev.funds||{})},...(prev.bonds?{bonds:prev.bonds}:{})};
 // 1. exchange rates (NBP, table A)
 const nbp=await tryIt('kursy NBP',async()=>parseNbpTable(await get('https://api.nbp.pl/api/exchangerates/tables/A?format=json')));
 if(nbp&&Object.keys(nbp.fx).length){out.fx=nbp.fx;out.fxDate=nbp.date;out.src.fx='NBP';console.log(`✓ kursy NBP: ${Object.keys(nbp.fx).length} walut`)}
