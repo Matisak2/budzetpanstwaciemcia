@@ -162,4 +162,4 @@ export const TOUR=n=>[
 ];
 /* ⚡ the number of the newest „Co nowego” entry – the entries themselves (NEWS) and the guide (HELP) are in help.js, loaded only when
    needed (C2: ~41 kB gzip less at the start). A new entry in NEWS → raise this number too (the robot checks NEWS[0].v == NEWS_V). */
-export const NEWS_V=77;
+export const NEWS_V=78;

@@ -273,3 +273,10 @@ Decyzje Matiego: wpis z pozycją i notatką w Rejestrze; nadwyżka domyślnie �
 - [x] Przycisk „🤝 Za kogoś” w okienku wydatku (kto odda, podpowiedzi imion); saldo i 🪙 drobne normalnie, poza budżetem, planem, Analizą, „Czy starczy?”, sklepami i mailem
 - [x] 🔺 Nam winni: karta „Za kogoś – do oddania”, „✓ Oddał” (częściowy zwrot, nadwyżka: 🎁 prezent – przychód / 🤝 do oddania – My winni, wybór zapamiętany), „Nie odda – wlicz do budżetu”
 - [x] 🔔 Na dziś po 14 dniach (ciche), Rejestr „🤝 za: …”, Pomoc, Co nowego v77, demo z przykładem, testy (calc + flows)
+
+## Etap Z2. 💰 Koperty na koncie (Mati 27.11: „do dzieła”)
+Decyzje Matiego: spłaty i cele; drobne do Wolne; spłacone → do Wolne; „Rozdziel wolne” automatycznie (najbliższy termin, do brakującej kwoty).
+- [x] Okienko konta (stuknięcie w 👛 Konta): saldo, 🔻 spłaty, 🎯 cele na tym koncie, 🪙 Wolne, ostatnie przesunięcia
+- [x] 🎯 cel może mieć konto („Zbieracie na koncie”); cele bez konta bez zmian
+- [x] ⇄ Przesuń i ✨ Rozdziel wolne bez przelewu, z „Cofnij”; spłacona pożyczka oddaje kopertę do Wolne; ostrzeżenie, gdy koperty > saldo
+- [x] Pomoc, Co nowego v78, demo (cel na koncie), robot (calc, flows, ekran okienka konta)

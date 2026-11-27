@@ -10,7 +10,7 @@ import {openTx} from './sheet.js';
 import {editFixed,goFixed,exportJson,editInt,planToFixed,pbudOf,pbudBad,pbudHalf} from './actions.js';
 import {openSlip,openSubs} from './salary.js';
 import {openClose} from './close.js';
-import {fillAvg,forRet} from './debts.js';
+import {fillAvg,forRet,accEnv} from './debts.js';
 import {openInst,editLimits,goYear,bookInt} from './savings.js';
 import {render,goTab,setPage} from './app.js';
 import {use} from './usage.js';
@@ -43,7 +43,7 @@ export async function shareDemo(){const url=new URL('./demo/',location.href).hre
 export const demoCardH=()=>`<div class="card"><h3>🧪 Wersja demonstracyjna</h3><div class="mini">Dane są przykładowe i zapisują się tylko w tej przeglądarce. Kursy walut są prawdziwe (z NBP), ceny akcji i funduszy – przykładowe (w prawdziwej aplikacji wszystko pobiera automat).</div><div class="btns"><button class="btn sm" onclick="MW_DEMO.rename()">✎ Imię drugiej osoby</button><button class="btn sm" onclick="MW_DEMO.reset()">↺ Zacznij od nowa</button></div></div>`;
 export const pushCardH=()=>`<div class="card"><h3>🔔 Powiadomienia</h3><div class="mini">${S.pushOk?'✓ Włączone na tym telefonie: rano ok. 7:30 „Na dziś” (gdy coś czeka), o 20:00 przypomnienie, gdy dziś nic nie wpisano. Okienka „Na dziś” nie wyskakują już same – dzwonek 🔔 zostaje.':S.pushLost?'⚠️ Powiadomienia na tym telefonie przestały działać (wyłączone w ustawieniach telefonu albo cofnięta zgoda). Do czasu ponownego włączenia okienka „Na dziś” pokazują się w aplikacji.':'Prawdziwe powiadomienia na telefon, także gdy aplikacja jest zamknięta. Każde z Was włącza je na swoim telefonie.'}</div>
   <div class="btns" style="gap:6px">${S.pushOk?'<button class="btn sm" onclick="disablePush()">Wyłącz</button>':`<button class="btn sm primary" onclick="enablePush()">${S.pushLost?'Włącz ponownie':'Włącz powiadomienia'}</button>`}</div></div>`;
-const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw});
+const todayD=()=>({cfg:S.cfg,tx:liveOf(S.tx),slips:S.slips,hold:S.hold,debts:S.debts,market:S.market,backup:S.backup,hraw:S.hraw,goals:S.goals});
 /* 🗓️ the closing of the month is personal – each phone shows only its own person's; the most urgent first (late → today → tomorrow → the rest), „Wkrótce” (later) at the end */
 /* ⚡ (audyt W14) counted again only when something changed – the bell asks on every render and the clock every minute, and the advisor's part
    alone (survey, wealth wheel, plan, purchase checks, thermometer) is a third of it; every change replaces the state objects (Firestore and local
@@ -78,6 +78,7 @@ export function runGo(g){if(!g||!S.cfg)return;closeToday();const a=g.a;
   if(a=='pit'){S.fixSub='pay';S.payView='y';S.ym=(g.y||String(+td().slice(0,4)-1))+'-12';return goTab('fix')}if(a=='fixed')return goFixed();if(a=='slip')return openSlip(g.id,g.ym);
   if(a=='pay'){S.fixSub='pay';return goTab('fix')}if(a=='year')return goYear();if(a=='rem'){S.fixSub='year';return goTab('fix')}
   if(a=='forret')return forRet(g.id);
+  if(a=='env')return accEnv(g.acc);
   if(a=='lent'||a=='owe'){S.accView=a;return goTab('acc')}if(a=='rata')return openTx(null,{type:'exp',debt:g.id});if(a=='acc'){S.accView='acc';return goTab('acc')}if(a=='inst'){goTab('sav');return openInst(g.acc)}
   if(a=='tr')return openTx(null,{type:'tr',to:g.to,...(+g.amount>0?{amount:+g.amount}:{})});if(a=='sav'){S.sub='all';return goTab('sav')}if(a=='asset'){S.sub='all';goTab('sav');return editAsset(g.id)}if(a=='goals'){S.sub='all';goTab('sav');return openGoals()}if(a=='sand'){S.sub='all';goTab('sav');return openSand()}if(a=='where'||a=='plan'||a=='ank'){S.sub='all';goTab('sav');return a=='where'?openWhere():a=='plan'?openPlan():openAnk()}if(a=='limits'){goTab('sav');return editLimits()}
   if(a=='backup')return exportJson();if(a=='automat')return window.open('https://github.com/Matisak2/budzetpanstwaciemcia/actions','_blank');

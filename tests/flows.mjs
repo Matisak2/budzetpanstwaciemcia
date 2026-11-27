@@ -189,6 +189,25 @@ await step('Za kogoś – zakup, zwrot z nadwyżką, wliczenie do budżetu',asyn
   const id2=await E(()=>T.find('robot dla taty 2')[0]?.id);await E(id=>{forOff(id)},id2);await wait();await ok();await wait(400);
   const a3=await g();return a3.exp===a0.exp+10000||`wliczenie: wydatki ${a0.exp}→${a3.exp}`});
 
+/* 💰 Z2 koperty na koncie (Mati 27.11): konto oszczędnościowe + pożyczka zbierająca na nim + cel na nim; „⇄ Przesuń” 100 zł z Wolne do celu
+   i 50 zł do pożyczki (wpis env, saldo bez zmian, poza Rejestrem); „✨ Rozdziel wolne” dopełnia cel; „Cofnij” przesunięcia */
+await step('Koperty na koncie – przesuń, rozdziel, cofnij',async()=>{
+  const r0=await E(async()=>{const C=await import('/js/core.js'),F=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
+    const a=T.sav;C.merge(F.doc(C.DEBTS(),'drob'),{dir:'owe',kind:'rodz',name:'Pożyczka robota',party:'Tomalek',payer:'Mati',start:500000,date:T.day,mode:'auto',saveAcc:a,deleted:false,ts:Date.now()});
+    C.merge(F.doc(C.GOALS(),'grob'),{name:'Cel robota',target:20000,alloc:0,saved:0,owner:'Wspólne',acc:a,deadline:'2020-01',ts:Date.now()});
+    await new Promise(r=>setTimeout(r,400));return{a,bal:T.bal(a)}});
+  const env=()=>E(a=>{const s=T.envOf(a);return{free:s.free,goal:s.G.find(x=>x.g.id=='grob')?.alloc,debt:s.L.find(x=>x.d.id=='drob')?.saved,bal:s.bal}},r0.a);
+  await E(async()=>{const Td=await import('/js/today.js'),U=await import('/js/util.js');T.envOf=a=>Td.saveSplitP(S.cfg,T.L.liveOf(S.tx),S.debts,a,U.td(),S.goals)});
+  const e0=await env();if(e0.goal!==0||e0.debt!==0)return 'start: '+JSON.stringify(e0);
+  const mv=async(t,v)=>{await E(a=>{envMove(a)},r0.a);await wait();await E(([t,v])=>{document.getElementById('f_t').value=t;document.getElementById('f_a').value=v},[t,v]);await ok();await wait(400)};
+  await mv('g:grob','100');await mv('d:drob','50');const e1=await env();
+  if(e1.goal!==10000||e1.debt!==5000||e1.bal!==e0.bal||e1.free!==e0.free-15000)return 'przesuń: '+JSON.stringify([e0,e1]);
+  if(await E(async()=>{S.f={q:'',type:'',who:'',acc:'',cat:'',scope:'a'};goTab('tx');await new Promise(r=>setTimeout(r,300));const v=document.getElementById('app').innerText.includes('Wolne → Cel robota');goTab('dash');return v}))return 'przesunięcie widać w Rejestrze';
+  await E(a=>{envFill(a)},r0.a);await wait();await ok();await wait(400);const e2=await env();
+  if(e2.goal!==20000)return 'rozdziel: cel '+e2.goal;
+  /* Cofnij ostatniego (rozdziel) → cel wraca do 100 zł */
+  await undo();const e3=await env();return e3.goal===10000||'cofnij: cel '+e3.goal});
+
 /* no JS errors on the way; the whole store is still valid for the real SDK (the demo stand-in throws like the SDK) */
 await ctx.close();await browser.close();srv.close();
 console.log(fails.length?`\n❌ Zapis wpisów: ${fails.length} problem(ów) w ${n} scenariuszach.`:`✅ Zapis i usuwanie wpisów działa (${n} scenariuszy).`);

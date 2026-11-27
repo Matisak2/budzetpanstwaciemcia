@@ -113,6 +113,8 @@
     st['households/main/hold/h5']={acc:'aI',kind:'etf',name:'iShares Core S&P 500 (Acc)',ticker:'CSPX.UK',cur:'USD',price:610,fxNow:3.7,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:1,price:610,fx:3.7,fee:0}},deleted:false};
     st['households/main/hold/h6']={acc:'aO',kind:'zloto',name:'Złota moneta 1 oz (31,1 g)',cur:'PLN',price:430,priceDate:m3,lots:{l1:{date:m3,kind:'buy',qty:31.1,price:418,fx:1,fee:0}},deleted:false};
     st['households/main/goals/g1']={name:'Wakacje',target:800000,alloc:250000,deadline:addMonths(ym0,8)+'-01',owner:'Wspólne'};
+    /* 💰 cel zbierany na konkretnym koncie – okienko konta „Oszczędności wspólne” pokazuje go jako kopertę */
+    st['households/main/goals/g2']={name:'Ubezpieczenie auta',target:180000,alloc:60000,deadline:addMonths(ym0,3),owner:'Wspólne',acc:'aS'};
     st['households/main/market/rates']=marketFor(today);
     {const d={},fx={},t0=Date.parse(today+'T12:00:00Z');for(let i=500;i>=0;i--){const dt=new Date(t0-i*864e5).toISOString().slice(0,10),k=500-i;d[dt]=Math.round((100+k*0.07-Math.max(0,k-430)*0.25+Math.sin(k/9)*1.5)*100)/100;if(i<60)fx[dt]={USD:Math.round((3.9+Math.sin(i/7)*0.08)*10000)/10000,EUR:4.27}}
       st['households/main/market/thermo']={sym:'VWCE.DE',at:today,back:today,d,fx}}

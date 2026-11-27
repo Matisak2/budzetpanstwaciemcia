@@ -4,12 +4,12 @@ import {catsEmpty} from './art.js';
 import {PAL,C_EXP,barsSvg,chartBox,hbarsH} from './charts.js';
 import {OWN} from './data.js';
 import {addM,limitOf,paidInYear,wrapOf} from './inv.js';
-import {closeWinP,debtStateP,nextCloseP,rataP,remStateP,salaryTxP,savedP} from './today.js';
+import {closeWinP,debtStateP,envFillP,nextCloseP,rataP,remStateP,salaryTxP,saveSplitP,savedP} from './today.js';
 import {forOpenP,avgActuals,carStats,balance,balDrop,cleanCat,fixedDate,liveOf,status,subsMap,planOf,yearSubs,ownerOf,CASC_BUF} from './logic.js';
 import {$,MN,addDays,addMonths,esc,f2,isDate,ls,pnum,rid,td,zl,zl0,plu} from './util.js';
 import {S,CUR,toast,ask,isP,accOpts,subOpts,H,DEBTS,PLC,w,merge,strip,posOf,putTx,putTxs,guard,infoH,negStop,am,accCur,accWho} from './core.js';
 import {calcAmt} from './sheet.js';
-import {fixedPaid,isPod,txRowH} from './actions.js';
+import {fixedPaid,isPod,txRowH,editGoal,goalAdd} from './actions.js';
 import {gr,segL} from './salary.js';
 import {accById,pn,newYear} from './savings.js';
 import {accN,render} from './app.js';
@@ -26,6 +26,41 @@ export function debtState(d){return debtStateP(d,liveOf(S.tx),td())}
 export const debtSum=(dir,owner)=>debtList(dir).filter(d=>!owner||(d.payer||'Wspólne')==owner).reduce((a,d)=>a+debtState(d).left,0);
 export function setAccView(k){S.accView=k;S.recon=false;window.scrollTo(0,0);render()}
 export const accSegH=()=>`<div class="seg seg3">${[['acc','🏦 Salda'],['owe','🔻 My winni'],['lent','🔺 Nam winni']].map(([k,l])=>`<button aria-pressed="${(S.accView||'acc')==k}" onclick="setAccView('${k}')">${segL(l)}</button>`).join('')}</div>`;
+/* 💰 Z2 koperty na koncie (Mati 27.11): stuknięcie konta w 👛 Konta → saldo, koperty (🔻 spłaty z saveAcc, 🎯 cele z goal.acc) i „Wolne”;
+   „⇄ Przesuń” i „✨ Rozdziel wolne” przesuwają pieniądze między kopertami bez przelewu – spłaty wpisem `env` (kwota 0, `save`), cele polem alloc */
+const envOf=acc=>saveSplitP(S.cfg,liveOf(S.tx),S.debts,acc,td(),S.goals);
+const envList=s=>[...s.L.map(x=>({k:'d:'+x.d.id,ic:'🔻',name:x.d.name,a:x.saved,goal:x.left,txt:'do spłaty zostało'})),
+  ...s.G.map(x=>({k:'g:'+x.g.id,ic:'🎯',name:x.g.name,a:x.alloc,goal:x.g.target||0,txt:'cel'}))];
+export function accEnv(acc){const a=S.cfg.accs.find(x=>x.id==acc);if(!a)return;use('f:env');const s=envOf(acc),E=envList(s),d=$('dlg'),M=v=>am(v,acc);
+  const row=e=>`<div class="debt"><div class="r1"><b>${e.ic} ${esc(e.name)}</b><b class="num">${M(e.a)}</b></div>
+    <div class="gbar"><i style="width:${e.goal>0?Math.min(100,Math.max(0,e.a/e.goal*100)).toFixed(1):0}%"></i></div><div class="mini">${e.txt} ${M(e.goal)}</div></div>`;
+  const moves=liveOf(S.tx).filter(t=>t.type=='env'&&t.acc==acc).sort((x,y)=>(y.ts||0)-(x.ts||0)).slice(0,5);
+  $('dlgBody').innerHTML=`<h2>🏦 ${esc(a.name)}</h2><p class="dtext">Saldo <b>${M(s.bal)}</b>${E.length?` · w kopertach ${M(s.sum)}`:''}</p>
+    ${E.length?E.map(row).join(''):`<p class="mini">To konto nie ma kopert. Spłata: w 👛 Konta → 🔻 My winni przy zobowiązaniu wybierz „konto na spłatę”. Cel: „🎯 Nowy cel na tym koncie” niżej.</p>`}
+    <div class="debt"><div class="r1"><b>🪙 Wolne</b><b class="num${s.free<0?' t-neg':''}">${M(s.free)}</b></div>
+      <div class="mini">${s.free<0?'⚠️ W kopertach jest więcej, niż jest na koncie – zdejmij różnicę z którejś koperty („⇄ Przesuń” do Wolne).':'Nieprzydzielone – tu wpadają m.in. 🪙 drobne.'}</div></div>
+    ${moves.length?`<div class="mini">Ostatnie przesunięcia: ${moves.map(t=>`${t.date.split('-').reverse().join('.')} ${esc(t.note||'')}`).join(' · ')}</div>`:''}
+    <div class="stfoot">${E.length?`<div class="g2"><button class="btn" id="enMove">⇄ Przesuń</button><button class="btn primary" id="enFill"${s.free>0?'':' disabled'}>✨ Rozdziel wolne</button></div>`:''}
+      <div class="g2"><button class="btn sm" id="enGoal">🎯 Nowy cel na tym koncie</button><button class="btn sm" id="enNo">Zamknij</button></div></div>`;
+  d.hidden=false;$('dlgBody').scrollTop=0;const close=()=>{d.hidden=true};d.onclick=e=>{if(e.target===d)close()};$('enNo').onclick=close;
+  $('enGoal').onclick=()=>{close();editGoal(null,ownerOf(a),acc)};
+  if($('enMove'))$('enMove').onclick=()=>{close();envMove(acc)};if($('enFill'))$('enFill').onclick=()=>{close();envFill(acc)}}
+/* one change of envelopes: liabilities in one `env` entry (amount 0), goals through their alloc; → undo */
+function envApply(acc,parts,note){const save={},gl=[];for(const[k,v]of parts){if(!v)continue;const[t,id]=[k.slice(0,1),k.slice(2)];if(t=='d')save[id]=(save[id]||0)+v;else gl.push([id,v])}
+  const ym=td().slice(0,7),eid='t'+rid();if(Object.keys(save).length)putTx(ym,eid,{type:'env',amount:0,date:td(),acc,sub:'',to:'',who:accWho(acc),note,save,deleted:false,ts:Date.now()});
+  gl.forEach(([id,v])=>goalAdd(id,v));render();
+  return()=>{if(Object.keys(save).length)putTx(ym,eid,{deleted:true});gl.forEach(([id,v])=>goalAdd(id,-v))}}
+export async function envMove(acc){if(guard())return;const s=envOf(acc),E=envList(s);if(!E.length)return;
+  const opts=[['free',`🪙 Wolne (${am(s.free,acc)})`],...E.map(e=>[e.k,`${e.ic} ${e.name} (${am(e.a,acc)})`])];
+  const r=await ask({title:'⇄ Przesuń między kopertami',text:'Bez przelewu – pieniądze zostają na tym samym koncie, zmienia się tylko, na co są przeznaczone.',
+    fields:[{id:'f',label:'Z',type:'select',value:'free',options:opts},{id:'t',label:'Do',type:'select',value:E[0].k,options:opts},{id:'a',label:'Ile',type:'decimal',value:''}],ok:'Przesuń'});
+  if(!r)return;const v=gr(r.a);if(!(v>0))return toast('Podaj kwotę','bad');if(r.f==r.t)return toast('Wybierz dwie różne koperty','bad');
+  const have=r.f=='free'?s.free:(E.find(e=>e.k==r.f)?.a||0);if(v>have)return toast('Tam jest tylko '+am(Math.max(0,have),acc),'bad');
+  const nm=k=>k=='free'?'Wolne':E.find(e=>e.k==k)?.name||'?',parts=[];if(r.f!='free')parts.push([r.f,-v]);if(r.t!='free')parts.push([r.t,v]);
+  const undo=envApply(acc,parts,`⇄ ${am(v,acc)}: ${nm(r.f)} → ${nm(r.t)}`);toast(`Przesunięto ${am(v,acc)}`,'',{label:'Cofnij',fn:undo})}
+export async function envFill(acc){if(guard())return;const s=envOf(acc),F=envFillP(s);if(!F.length)return toast('Wszystkie koperty są pełne – wolne zostają wolne');
+  if(!await ask({title:'✨ Rozdziel wolne',text:`Z wolnych ${am(s.free,acc)} – najpierw najbliższy termin, każda koperta do brakującej kwoty:\n`+F.map(x=>`• ${x.name}: ${am(x.a,acc)}`).join('\n')+(s.free>F.reduce((a,x)=>a+x.a,0)?`\nZostaje wolne: ${am(s.free-F.reduce((a,x)=>a+x.a,0),acc)}`:''),ok:'Rozdziel'}))return;
+  const undo=envApply(acc,F.map(x=>[x.k,x.a]),'✨ Rozdzielono wolne: '+F.map(x=>x.name).join(', '));toast('Rozdzielono wolne','',{label:'Cofnij',fn:undo})}
 /* 🤝 za kogoś (forOpenP): purchases for someone who gives the money back – in 🔺 Nam winni, outside the budget until „Nie odda” */
 function forH(){const L=forOpenP(S.tx);if(!L.length)return'';const sm=subsMap(S.cfg);
   const row=x=>`<div class="debt"><div class="r1"><b>🤝 ${esc(x.who)}</b><b class="num">${am(x.left,x.t.acc)}</b></div>

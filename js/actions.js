@@ -4,7 +4,7 @@ import {catIcon,catsEmpty,mountCats} from './art.js';
 import {CELEBRATE} from './guide.js';
 import {HUES,OWN_COL,catHue,freeHue,pastel} from './data.js';
 import {wrapOf,intOf,intRate,intTax,INT_CAP,INT_TAX} from './inv.js';
-import {ULGI,payDateP} from './today.js';
+import {ULGI,payDateP,saveSplitP} from './today.js';
 import {offBud,fixedWho,isPodName,balance,balDrop,cleanCat,fixedDate,liveOf,planRecon,subsMap,fixedTwin,fixedPlanGap,planOf,backupDoc,BACKUP_KEYS,actuals,inPeriod,ownerOf,PAYERS,payAuto,payOf,payOk,payShare,payLabel,personBudP} from './logic.js';
 import {$,MN,addDays,addMonths,clone,esc,f2,isDate,ls,p2,pg,pnum,rid,td,zl,zl0,money,curSym,fxPlus,priv,plu,dmy} from './util.js';
 import {S,accWho,catL,celebrate,toast,err,ask,CUR,accCur,isP,am,WRAP_F,setWrap,CUR_OPTS,GRPN,accOpts,subOpts,H,PUSH,DEBTS,HOLD,SLIPS,MC,PLC,GOALS,w,merge,saveCfg,saveAcc,delAccDb,saveSub,saveCat,delCatDb,delSubDb,saveFixed,saveRound,delFixedDb,putTx,putInv,guard,negStop,txOk,infoH} from './core.js';
@@ -304,24 +304,33 @@ export function goalProgress(g,cfg,tx,today){const saved=goalAlloc(g);
   let months=null,perMonth=null;
   if(g.deadline&&left>0){const[y,m]=g.deadline.split('-').map(Number),[cy,cm]=today.split('-').map(Number);months=Math.max(1,(y-cy)*12+(m-cm)+1);perMonth=Math.ceil(left/months)}
   return{saved,pct,left,months,perMonth,done:saved>=g.target&&g.target>0}}
-export const unallocated=owner=>poolNow(S.cfg,liveOf(S.tx),owner)-Object.values(S.goals).filter(g=>goalOwner(g)==owner).reduce((a,g)=>a+goalAlloc(g),0);
-export async function editGoal(gid,owner){if(guard())return;const g=gid?S.goals[gid]:null;owner=g?goalOwner(g):(owner||'Wspólne');
+/* 💰 Z2: a goal kept on its own account (goal.acc) takes money from that account's free part; it counts against the shared pool only when
+   that account is in the pool (savings / investments without IKE/IKZE, not the cushion) */
+export const inPool=(cfg,g)=>{if(!g.acc)return true;const a=cfg.accs.find(x=>x.id==g.acc);return!!a&&(a.grp=='sav'||a.grp=='inv')&&!wrapOf(a)&&!isPod(a)&&isP(a)};
+export const unallocated=owner=>poolNow(S.cfg,liveOf(S.tx),owner)-Object.values(S.goals).filter(g=>goalOwner(g)==owner&&inPool(S.cfg,g)).reduce((a,g)=>a+goalAlloc(g),0);
+/* add x (may be negative) to a goal's envelope – increment when both fields are there, so two phones at once both count */
+export function goalAdd(gid,x){const g=S.goals[gid];if(!g||!x)return;const have=goalAlloc(g),inc=Number.isFinite(g.alloc)&&Number.isFinite(g.saved)&&g.alloc===have&&g.saved===have;
+  merge(doc(GOALS(),gid),inc?{alloc:increment(x),saved:increment(x)}:{alloc:have+x,saved:have+x})}
+export async function editGoal(gid,owner,acc0){if(guard())return;const g=gid?S.goals[gid]:null;owner=g?goalOwner(g):(owner||'Wspólne');
+  const accO=[['','— wspólna pula oszczędności (jak dotąd) —'],...S.cfg.accs.filter(a=>!a.archived&&isP(a)&&!wrapOf(a)).map(a=>[a.id,a.name])];
   const r=await ask({title:g?'Edytuj cel':'Nowy cel (koperta)',text:g?'':`Cel to „koperta”: przydzielacie do niej część oszczędności (${owner=='Wspólne'?'wspólnych':owner=='Mati'?'Matiego':'Werci'}).\nCo roku to samo (OC, prezenty)? Lepsze będzie 📌 Stałe → 📅 Roczne i terminy.`,fields:[
     {id:'n',label:'Na co oszczędzacie?',value:g?.name||'',ph:'np. Wakacje 2027'},
     {id:'t',label:'Ile potrzebujecie (zł)',type:'decimal',value:g?f2(g.target):'',ph:'np. 6000'},
     {id:'d',label:'Do kiedy (miesiąc, opcjonalnie)',type:'month',value:g?.deadline||''},
-    {id:'o',label:'Czyj cel',type:'select',value:owner,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]}],
+    {id:'o',label:'Czyj cel',type:'select',value:owner,options:[['Mati','Mati'],['Wercia','Wercia'],['Wspólne','Wspólne']]},
+    {id:'a',label:'Zbieracie na koncie (koperta na tym koncie)',type:'select',value:g?.acc||acc0||'',options:accO}],
     ok:g?'Zapisz':'Dodaj cel',alt:g?'Usuń cel':null});
   if(!r)return;
   if(r=='alt'){if(!await ask({title:'Usunąć cel?',text:`${g.name}\nPrzydzielone ${zl(goalAlloc(g))} wróci do puli „do przydzielenia”.`,ok:'Usuń',danger:true}))return;merge(doc(GOALS(),gid),{deleted:true,dAt:Date.now(),dby:S.who});toast('Usunięto cel – wróci z 🗑️ „Ostatnio usunięte”','',{label:'Cofnij',fn:()=>merge(doc(GOALS(),gid),{deleted:false})});return} // 🗑️ soft: the goal can come back
   const target=pg(r.t);if(!r.n.trim())return toast('Podaj nazwę celu','bad');if(target<=0)return toast('Podaj kwotę celu','bad');
-  const body={name:r.n.trim(),target,deadline:/^\d{4}-\d{2}$/.test(r.d)?r.d:'',owner:r.o};
+  const body={name:r.n.trim(),target,deadline:/^\d{4}-\d{2}$/.test(r.d)?r.d:'',owner:r.o,acc:r.a||''};
   const id=gid||'g'+rid();if(!g){body.alloc=0;body.ts=Date.now()}
   merge(doc(GOALS(),id),body);toast(g?'Zapisano cel':'Dodano cel: '+body.name)}
 /* 🗑️ goal deleted in the last 60 days → „Przywróć” in ⚙️ Ostatnio usunięte */
 export function restoreGoal(gid){if(guard())return;merge(doc(GOALS(),gid),{deleted:false});toast('Przywrócono cel 🎯')}
-export async function allocGoal(gid,dir){if(guard())return;use('f:goal');const g=S.goals[gid],have=goalAlloc(g),own=goalOwner(g),free=unallocated(own);
-  if(dir>0&&free<=0)return ask({title:'Brak wolnych pieniędzy',text:`Wszystkie ${own=='Wspólne'?'wspólne oszczędności':'oszczędności ('+own+')'} są już przydzielone do celów. Wpłaćcie coś na takie konto albo zabierzcie z innego celu.`,ok:'OK',cancel:'Zamknij'});
+export async function allocGoal(gid,dir){if(guard())return;use('f:goal');const g=S.goals[gid],have=goalAlloc(g),own=goalOwner(g);
+  const ga=g.acc&&S.cfg.accs.find(a=>a.id==g.acc),free=ga?saveSplitP(S.cfg,liveOf(S.tx),S.debts,ga.id,td(),S.goals).free:unallocated(own);
+  if(dir>0&&free<=0)return ask({title:'Brak wolnych pieniędzy',text:ga?`Na koncie „${ga.name}” nie ma wolnych pieniędzy – wszystko jest już w kopertach. Wpłaćcie coś na to konto albo przesuńcie z innej koperty (stuknij konto w 👛 Konta).`:`Wszystkie ${own=='Wspólne'?'wspólne oszczędności':'oszczędności ('+own+')'} są już przydzielone do celów. Wpłaćcie coś na takie konto albo zabierzcie z innego celu.`,ok:'OK',cancel:'Zamknij'});
   const sug=dir>0?Math.max(0,Math.min(free,g.target-have)):have;
   const r=await ask({title:(dir>0?'Przydziel do: ':'Zabierz z: ')+g.name,text:dir>0?`Do przydzielenia: ${zl(free)}`:`W kopercie: ${zl(have)}`,fields:[{id:'v',label:'Kwota (zł)',type:'decimal',value:sug?f2(sug):''}],ok:dir>0?'Przydziel':'Zabierz'});
   if(!r)return;const v=pg(r.v);if(v<=0)return;
@@ -486,6 +495,7 @@ export function amtQuery(raw){const f=[];
     .replace(/([<>]=?)\s*(\d+(?:[.,]\d+)?)/g,(m,op,a)=>{const x=pg(a);f.push(op=='>'?v=>v>x:op=='>='?v=>v>=x:op=='<'?v=>v<x:v=>v<=x);return' '});
   return{q:q.trim(),f}}
 export function txMatches(t,sm,F,ym,AQ){
+  if(t.type=='env')return false; /* 💰 przesunięcia między kopertami – bez kwoty, widać je w okienku konta */
   if(F.scope=='m'&&!t.date.startsWith(ym))return false;
   if(F.scope=='y'&&!t.date.startsWith(ym.slice(0,4)))return false;
   if(F.type&&!(t.type==F.type||(F.type=='inv'&&t.type=='invs')))return false;

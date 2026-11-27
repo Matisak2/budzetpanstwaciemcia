@@ -54,10 +54,19 @@ export function rataP(d,tx,today){const st=debtStateP(d,tx,today),L=st.left;if(!
 /* 💰 saving up for a one-time payoff: every liability counts what was put aside for it – tx.save{debtId:grosze}
    (+ a transfer into the account, − money taken back, the payoff and its interest) */
 export const savedP=(id,tx)=>tx.reduce((a,t)=>a+(+t.save?.[id]||0),0);
-/* an account that holds money for payoffs: per liability, all together, the balance and what is left free */
-export function saveSplitP(cfg,tx,debts,acc,today){
-  const L=Object.entries(debts||{}).filter(([,d])=>!d.deleted&&d.dir=='owe'&&d.saveAcc==acc).map(([id,x])=>{const d={id,...x};return{d,saved:savedP(id,tx),left:debtStateP(d,tx,today).left}}).filter(x=>x.saved||x.left>0);
-  const sum=L.reduce((a,x)=>a+x.saved,0),bal=balance(cfg,tx,acc,addDays(today,1));return{L,sum,bal,free:bal-sum}}
+/* 💰 envelopes of one account (Z2, Mati 27.11): liabilities that save on it (L: saved = savedP) and 🎯 goals kept on it (G: goal.acc, alloc);
+   free = the balance minus both. A paid-off liability is not an envelope any more – what is left in it counts as free. */
+export function saveSplitP(cfg,tx,debts,acc,today,goals){
+  const L=Object.entries(debts||{}).filter(([,d])=>!d.deleted&&d.dir=='owe'&&d.saveAcc==acc)
+    .map(([id,x])=>{const d={id,...x};return{d,saved:savedP(id,tx),left:debtStateP(d,tx,today).left}}).filter(x=>x.left>0);
+  const G=Object.entries(goals||{}).filter(([,g])=>g&&!g.deleted&&g.acc==acc).map(([id,g])=>({g:{id,...g},alloc:g.alloc??g.saved??0}));
+  const sum=L.reduce((a,x)=>a+x.saved,0)+G.reduce((a,x)=>a+x.alloc,0),bal=balance(cfg,tx,acc,addDays(today,1));return{L,G,sum,bal,free:bal-sum}}
+/* „Rozdziel wolne”: the free money of the account into its envelopes – the nearest deadline first (a liability's end date, a goal's month),
+   each up to what it still needs (to pay off / to the target); the rest stays free. → [{k:'d:id'|'g:id',name,a}] */
+export function envFillP(s){let free=Math.max(0,s.free);const out=[];
+  const E=[...s.L.map(x=>({k:'d:'+x.d.id,name:x.d.name,need:x.left-x.saved,due:(x.d.until||'').slice(0,7)||'9999'})),
+    ...s.G.map(x=>({k:'g:'+x.g.id,name:x.g.name,need:(x.g.target||0)-x.alloc,due:x.g.deadline||'9999'}))].filter(x=>x.need>0).sort((a,b)=>a.due.localeCompare(b.due));
+  for(const e of E){if(free<=0)break;const a=Math.min(free,e.need);out.push({k:e.k,name:e.name,a});free-=a}return out}
 /* 🔔 reminders: days left, kilometres left for a car */
 export function remStateP(r,cfg,tx,today){const car=r.proj&&(cfg.projs||[]).find(p=>p.id==r.proj),odo=car?carStats(cfg,tx,car.id,car.odo0).odo:0;
   const days=r.next?dd(today,r.next):null,kmLeft=r.km&&car?(r.lastOdo||car.odo0||0)+r.km-odo:null;
@@ -106,8 +115,8 @@ export function checksP(D,today){const{cfg,tx,slips,hraw}=D,ign=hraw?.checkIgnor
   for(const r of cfg.round||[])for(const id of [r.from,r.to])if(!accOk(id))add('refa:r:'+r.id+':'+id,'❓',`Reguła drobnych ma ${accTxt(id)} – zmień ją w ⚙️ → 🗂️ Kategorie i drobne.`,{a:'round'});
   if(!accOk(hraw?.yearAcc)&&(cfg.years||[]).length)add('refa:y:'+hraw.yearAcc,'❓',`Subkonto wydatków rocznych to ${accTxt(hraw.yearAcc)} – wybierz inne w 📅 Roczne i terminy.`,{a:'year'});
   for(const[id,d]of Object.entries(D.debts||{}))if(!d.deleted&&!accOk(d.saveAcc))add('refa:d:'+id+':'+d.saveAcc,'❓',`„${d.name}”: odkładanie na spłatę ma ${accTxt(d.saveAcc)} – wybierz inne.`,{a:'owe'});
-  for(const a of cfg.accs.filter(a=>!a.archived)){const s=saveSplitP(cfg,tx,D.debts,a.id,today);if(s.L.length&&s.free<=-100)
-    add('save:'+a.id+':'+s.sum+':'+s.bal,'💰',`${a.name}: na koncie ${money(s.bal,a.cur)}, a odłożone na spłatę pożyczek to ${zl(s.sum)} – brakuje ${zl(-s.free)}. Może wypłata albo płatność z tego konta bez wybrania pożyczki?`,{a:'owe'})}
+  for(const a of cfg.accs.filter(a=>!a.archived)){const s=saveSplitP(cfg,tx,D.debts,a.id,today,D.goals);if((s.L.length||s.G.length)&&s.free<=-100)
+    add('save:'+a.id+':'+s.sum+':'+s.bal,'💰',`${a.name}: na koncie ${money(s.bal,a.cur)}, a w kopertach (spłaty i cele) ${zl(s.sum)} – brakuje ${zl(-s.free)}. Zdejmij tyle z którejś koperty albo dopłać na konto.`,{a:'env',acc:a.id})}
   const ym=today.slice(0,7),pm=addMonths(ym,-1);
   for(const m of [pm,ym])for(const[id,sl]of Object.entries(slips?.[m]||{})){const src=(cfg.incs||[]).find(s=>s.id==id)||sl;if(src.kind=='b2b')continue;const diff=(sl.net||0)-calcNet(src,sl);
     if(Math.abs(diff)>=1)add('slip:'+m+':'+id+':'+sl.ts,'💼',`Pasek ${sl.name||src.name} (${MN[+m.slice(5)-1].toLowerCase()}) – rachunek nie zgadza się o ${zl(Math.abs(diff))}`,{a:'slip',id,ym:m})}
@@ -219,7 +228,7 @@ export function closeDueP(hraw,tx,today,cfg,who){const w=cfg&&who?closeWinP(cfg,
 /* ✍️ was anything typed today? (automatic entries – fixed payments ticked, PPK, drobne, value changes of investments – do not count);
    one rule for „Na dziś” after 20:00, the evening nudge in the app and the evening notification of the automat */
 /* ✍️ typed today: dated today or added today (ts in Polish time) – yesterday's shopping typed in the evening counts too */
-export const typedToday=(tx,today)=>tx.some(t=>(t.date==today||(Number.isFinite(+t.ts)&&+t.ts>0&&plDay(+t.ts)==today))&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!t.slip&&!t.slipOf&&!(t.type=='adj'&&t.val));
+export const typedToday=(tx,today)=>tx.some(t=>t.type!='env'&&(t.date==today||(Number.isFinite(+t.ts)&&+t.ts>0&&plDay(+t.ts)==today))&&!t.deleted&&!t.fixedId&&!t.ppk&&!t.roundOf&&!t.slip&&!t.slipOf&&!(t.type=='adj'&&t.val));
 /* everything that needs attention today; n = days until the deadline (−1 late, 0 today, 1 tomorrow), later:true = not for today („Wkrótce” – collapsed, no number on the bell) */
 export const todayRank=x=>x.k=='bad'?0:x.n!=null&&x.n<=0?1:x.n==1?2:3;
 /* 🏠 ryczałt od najmu: 8,5% do 100 000 zł w roku, 12,5% ponad – one rule for the reminder here and the advisor's rentP (rentTaxRaw, not rounded to zł) */

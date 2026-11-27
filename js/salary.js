@@ -108,7 +108,7 @@ const DEL_DAYS=60,parOf=t=>t.ppkOf||t.refundOf||t.payOf||t.slipOf||t.forOf;
 const withParent=(t,p)=>p&&p.deleted===true&&Math.abs((p.dAt||0)-(t.dAt||0))<15000;
 export function deletedList(){const byId=new Map(S.tx.map(t=>[t.id,t])),cut=Date.now()-DEL_DAYS*864e5;
   const replaced=t=>{if(t.slip){const sl=slipOf(t.date.slice(0,7),t.slip);return!!(sl&&sl.booked&&sl.booked!==t.id)}const p=parOf(t)&&byId.get(parOf(t));return!!(p&&p.slip&&replaced(p))};
-  return S.tx.filter(t=>t.deleted===true&&!t.moved&&t.dAt>cut&&isDate(t.date)&&!withParent(t,byId.get(parOf(t)))&&!replaced(t)).sort((a,b)=>b.dAt-a.dAt)}
+  return S.tx.filter(t=>t.deleted===true&&t.type!='env'&&!t.moved&&t.dAt>cut&&isDate(t.date)&&!withParent(t,byId.get(parOf(t)))&&!replaced(t)).sort((a,b)=>b.dAt-a.dAt)}
 export function deletedH(){const L=deletedList(),cut=Date.now()-DEL_DAYS*864e5,G=Object.entries(S.goalsDel||{}).filter(([,g])=>(g.dAt||0)>cut);if(!L.length&&!G.length)return'';const sm=subsMap(S.cfg),n=S.delAll?50:5,
     f=x=>new Date(x).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   return`<div class="card"><h3>🗑️ Ostatnio usunięte</h3><div class="mini">Wpisy usunięte w ostatnich ${DEL_DAYS} dniach. „Przywróć” wstawia wpis z powrotem (razem z jego zwrotami, PPK i odsetkami).</div><div class="chg2">${G.map(([id,g])=>`<div class="r1 delr"><span><b>🎯 Cel: ${esc(g.name||'')}</b><small class="mini" style="display:block">usunięto ${f(g.dAt)}${g.dby?' ('+esc(g.dby)+')':''}</small></span><button class="btn sm" onclick="restoreGoal('${id}')">↩️ Przywróć</button></div>`).join('')}${L.slice(0,n).map(t=>{

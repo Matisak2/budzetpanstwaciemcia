@@ -2,7 +2,7 @@
    Uruchomienie: node tests/calc.mjs   (uruchamiany przez .github/workflows/test.yml). Kwoty w groszach. */
 import {suggest,calcNet,totals,fromNet,youngUntil,youngLeft,baseOf,jdgZus} from '../js/pay.js';
 import {bondFee,marketQuote,holdAt,instDiffP,intOf,intRate,penceFix,bondLotValue,position,bondYears,instValue,limitOf,fireMonths,intCalc,intPeriod,intMonthly} from '../js/inv.js';
-import {rentTaxRaw,automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,payDateP,closeWinP,closeYmP,salaryTxP,maturitiesP,pitSummaryP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
+import {rentTaxRaw,saveSplitP,envFillP,automatStale,debtStateP,rataP,recurringP,savedP,todayItems,todayRank,typedToday,checksP,payDateP,closeWinP,closeYmP,salaryTxP,maturitiesP,pitSummaryP,yearPayP,closeDueP,closeStateP,paydayP,payPatternP,nextCloseP,shortP} from '../js/today.js';
 import {offBud,forOpenP,shopsP,cushionP,BACKUP_KEYS,yearPlanOf,avgActuals,anomalies,yearLastFor,balance,balDrop,actuals,agg,roundUp,status,savFlow,savIds,planOf,yearDueIn,fixedMatch,fixedTwin,yearMatch,yearDueNear,fixedPlanGap,upToDay,fixedWho,seenBy,yearAgoP,subsReviewP,ytdSpanP,payAuto,payOf,payShare,personBudP} from '../js/logic.js';
 import {yearStats} from '../js/report.js';
 import {pg,pnum,zl,zl0,fmtN,priv,money,addDays,addMonths,daysIn,plDay} from '../js/util.js';
@@ -982,6 +982,16 @@ eq('Waluta innej linii notowań: IWDA, EIMI w USD, SWDA w GBP, VWCE w EUR',['IWD
   const fw=today=>todayItems(DF(today),{today,checks:false}).filter(x=>x.icon=='🤝').map(x=>[x.who,x.quiet,x.go.a]);
   eq('Za kogoś: przypomnienie w Na dziś dopiero po 14 dniach, ciche, dla właściciela konta',[fw('2026-11-16'),fw('2026-11-17')],[[],[['Mati',true,'forret']]]);
   eq('Za kogoś: offBud – projekt poza budżetem, za kogoś, zwrot; zwykły wydatek i zwrot w sklepie w budżecie',[offBud({proj:'j'},new Set(['j'])),offBud(E),offBud(R),offBud({...E,forBud:true}),offBud({...R,refundOf:'x'}),offBud({type:'exp'})],[true,true,true,false,false,false])}
+/* 💰 Z2 koperty na koncie: saldo 1 800 zł; pożyczka Tomalka (zostało 2 000, odłożone 1 200), pralka spłacona (odłożone 100 → wraca do wolnych),
+   cel „Opony” 300 / 1 000 zł na tym koncie, cel bez konta się nie liczy → w kopertach 1 500, wolne 300; „Rozdziel wolne”: najbliższy termin pierwszy */
+{ const cfg={accs:[{id:'s',grp:'sub',owner:'Mati',name:'Spłata zobowiązań',open:0}],cats:[]};
+  const debts={dt:{dir:'owe',name:'Tomalek',start:200000,date:'2026-01-01',mode:'auto',saveAcc:'s',until:'2027-06-30'},dp:{dir:'owe',name:'Pralka',start:50000,date:'2026-01-01',mode:'auto',saveAcc:'s'}};
+  const tx=[{id:'a',type:'tr',amount:180000,date:'2026-11-02',acc:'x',to:'s',save:{dt:120000,dp:10000}},{id:'b',type:'exp',amount:50000,date:'2026-10-01',acc:'x',debt:'dp',payoff:true}];
+  const goals={go:{name:'Opony',target:100000,alloc:30000,acc:'s',deadline:'2027-03'},gx:{name:'Wakacje',target:500000,alloc:50000}};
+  const S2=saveSplitP(cfg,tx,debts,'s','2026-11-20',goals);
+  eq('Koperty konta: spłacona pralka wraca do wolnych, cel na koncie liczy się, cel bez konta nie',[S2.L.map(x=>[x.d.name,x.saved,x.left]),S2.G.map(x=>[x.g.name,x.alloc]),S2.sum,S2.bal,S2.free],[[['Tomalek',120000,200000]],[['Opony',30000]],150000,180000,30000]);
+  eq('Rozdziel wolne: najpierw cel z terminem 2027-03, potem pożyczka do 2027-06; najwyżej brakująca kwota',[envFillP(S2).map(x=>[x.k,x.a]),envFillP({...S2,free:100000}).map(x=>[x.k,x.a])],[[['g:go',30000]],[['g:go',70000],['d:dt',30000]]]);
+  eq('Rozdziel wolne: brak wolnych = nic',envFillP({...S2,free:-500}),[])}
 /* 🏦 obligacje: prognoza doradcy (bondAfter) i wycena w Oszczędnościach (bondLotValue / instValue) liczą tymi samymi zasadami */
 { const lot=bondLotValue({type:'ROR',first:5.75},{date:'2026-01-10',qty:10,price:100},'2027-01-10',{nbp:4});
   eq('ROR po roku: doradca = wycena (odsetki co miesiąc)',bondAfter('ROR',12,{first:5.75},{nbp:4},{taxFree:true,amount:100000}),100000+lot.paid);
